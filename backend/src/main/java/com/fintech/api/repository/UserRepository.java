@@ -9,7 +9,9 @@ import java.util.UUID;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, UUID> {
-    // O Spring é inteligente: ele lê o nome do método e cria o SQL (Magic Method)
-    // SELECT * FROM users WHERE email = ?
+    // Magic Method: O Spring cria o SQL automaticamente baseado no nome
     Optional<User> findByEmail(String email);
+
+    // Para validar se já existe antes de tentar cadastrar
+    boolean existsByEmail(String email);
 }
