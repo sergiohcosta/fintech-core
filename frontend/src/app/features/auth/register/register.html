@@ -1,5 +1,7 @@
 <div class="register-container">
     <mat-card class="register-card">
+
+        @if (!isSuccess()) {
         <mat-card-header>
             <mat-card-title>Criar Nova Conta</mat-card-title>
             <mat-card-subtitle>Cadastre sua empresa ou família</mat-card-subtitle>
@@ -10,10 +12,7 @@
 
                 <mat-form-field appearance="outline" class="full-width">
                     <mat-label>Nome da Conta (Ex: Família Silva)</mat-label>
-                    <input matInput formControlName="name" placeholder="Como quer chamar seu ambiente?">
-                    <mat-error *ngIf="form.get('name')?.hasError('required')">
-                        O nome é obrigatório
-                    </mat-error>
+                    <input matInput formControlName="name" placeholder="Nome do ambiente">
                 </mat-form-field>
 
                 <mat-form-field appearance="outline" class="full-width">
@@ -21,47 +20,53 @@
                     <input matInput formControlName="document">
                 </mat-form-field>
 
-                <h3>Dados do Administrador</h3>
+                <div class="divider">
+                    <span>DADOS DO ADMINISTRADOR</span>
+                </div>
 
                 <mat-form-field appearance="outline" class="full-width">
                     <mat-label>Seu Nome Completo</mat-label>
                     <input matInput formControlName="adminName">
-                    <mat-error *ngIf="form.get('adminName')?.hasError('required')">
-                        Nome do admin é obrigatório
-                    </mat-error>
                 </mat-form-field>
 
                 <mat-form-field appearance="outline" class="full-width">
                     <mat-label>E-mail de Login</mat-label>
-                    <input matInput type="email" formControlName="adminEmail" placeholder="seu@email.com">
-                    <mat-error *ngIf="form.get('adminEmail')?.hasError('email')">
-                        E-mail inválido
-                    </mat-error>
-                    <mat-error *ngIf="form.get('adminEmail')?.hasError('required')">
-                        E-mail é obrigatório
-                    </mat-error>
+                    <input matInput type="email" formControlName="adminEmail">
                 </mat-form-field>
 
                 <mat-form-field appearance="outline" class="full-width">
                     <mat-label>Senha</mat-label>
                     <input matInput type="password" formControlName="password">
-                    <mat-error *ngIf="form.get('password')?.hasError('minlength')">
-                        A senha deve ter no mínimo 6 caracteres
-                    </mat-error>
                 </mat-form-field>
 
-                <div *ngIf="errorMessage()" class="error-banner">
+                @if (errorMessage()) {
+                <div class="error-banner">
                     {{ errorMessage() }}
                 </div>
+                }
 
                 <mat-card-actions align="end">
-                    <button mat-raised-button color="primary" type="submit" [disabled]="form.invalid || isLoading()">
-
-                        <span *ngIf="!isLoading()">CADASTRAR</span>
-                        <span *ngIf="isLoading()">Processando...</span>
+                    <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid || isLoading()">
+                        {{ isLoading() ? 'PROCESSANDO...' : 'CADASTRAR' }}
                     </button>
                 </mat-card-actions>
             </form>
         </mat-card-content>
+        }
+        @else {
+        <div class="success-state">
+            <mat-icon color="primary">check_circle</mat-icon>
+            <h2>Conta Criada!</h2>
+            <p>Seja bem-vindo, <strong>{{ registeredTenantName() }}</strong>.</p>
+            <p>Seu ambiente fintech já está pronto para uso.</p>
+
+            <mat-card-actions align="end">
+                <button mat-stroked-button color="primary" routerLink="/login">
+                    IR PARA O LOGIN
+                </button>
+            </mat-card-actions>
+        </div>
+        }
+
     </mat-card>
 </div>

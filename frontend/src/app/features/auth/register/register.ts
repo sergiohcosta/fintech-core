@@ -5,6 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatIconModule } from '@angular/material/icon';
 import { AuthService } from '../../../core/services/auth';
 
 @Component({
@@ -16,17 +17,20 @@ import { AuthService } from '../../../core/services/auth';
     MatCardModule,
     MatFormFieldModule,
     MatInputModule,
-    MatButtonModule
+    MatButtonModule,
+    MatIconModule
   ],
-  templateUrl: './register.html', // Nome simplificado
-  styleUrl: './register.scss'     // Nome simplificado
+  templateUrl: './register.html',
+  styleUrl: './register.scss'
 })
 export class RegisterComponent {
   private fb = inject(FormBuilder);
   private authService = inject(AuthService);
 
   isLoading = signal(false);
+  isSuccess = signal(false);
   errorMessage = signal('');
+  registeredTenantName = signal('');
 
   form = this.fb.group({
     name: ['', [Validators.required]],
@@ -38,15 +42,20 @@ export class RegisterComponent {
 
   onSubmit() {
     if (this.form.invalid) return;
+
     this.isLoading.set(true);
+    this.errorMessage.set('');
 
     this.authService.register(this.form.value as any).subscribe({
-      next: () => alert('Sucesso!'),
+      next: (response) => {
+        this.isLoading.set(false);
+        this.isSuccess.set(true);
+        this.registeredTenantName.set(response.name);
+      },
       error: (err) => {
         this.isLoading.set(false);
-        this.errorMessage.set('Erro ao cadastrar. Verifique os dados.');
-      },
-      complete: () => this.isLoading.set(true)
+        this.errorMessage.set('Erro ao realizar cadastro. Tente novamente.');
+      }
     });
   }
 }
