@@ -1,0 +1,67 @@
+<div class="register-container">
+    <mat-card class="register-card">
+        <mat-card-header>
+            <mat-card-title>Criar Nova Conta</mat-card-title>
+            <mat-card-subtitle>Cadastre sua empresa ou família</mat-card-subtitle>
+        </mat-card-header>
+
+        <mat-card-content>
+            <form [formGroup]="form" (ngSubmit)="onSubmit()">
+
+                <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Nome da Conta (Ex: Família Silva)</mat-label>
+                    <input matInput formControlName="name" placeholder="Como quer chamar seu ambiente?">
+                    <mat-error *ngIf="form.get('name')?.hasError('required')">
+                        O nome é obrigatório
+                    </mat-error>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>CPF ou CNPJ (Opcional)</mat-label>
+                    <input matInput formControlName="document">
+                </mat-form-field>
+
+                <h3>Dados do Administrador</h3>
+
+                <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Seu Nome Completo</mat-label>
+                    <input matInput formControlName="adminName">
+                    <mat-error *ngIf="form.get('adminName')?.hasError('required')">
+                        Nome do admin é obrigatório
+                    </mat-error>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>E-mail de Login</mat-label>
+                    <input matInput type="email" formControlName="adminEmail" placeholder="seu@email.com">
+                    <mat-error *ngIf="form.get('adminEmail')?.hasError('email')">
+                        E-mail inválido
+                    </mat-error>
+                    <mat-error *ngIf="form.get('adminEmail')?.hasError('required')">
+                        E-mail é obrigatório
+                    </mat-error>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Senha</mat-label>
+                    <input matInput type="password" formControlName="password">
+                    <mat-error *ngIf="form.get('password')?.hasError('minlength')">
+                        A senha deve ter no mínimo 6 caracteres
+                    </mat-error>
+                </mat-form-field>
+
+                <div *ngIf="errorMessage()" class="error-banner">
+                    {{ errorMessage() }}
+                </div>
+
+                <mat-card-actions align="end">
+                    <button mat-raised-button color="primary" type="submit" [disabled]="form.invalid || isLoading()">
+
+                        <span *ngIf="!isLoading()">CADASTRAR</span>
+                        <span *ngIf="isLoading()">Processando...</span>
+                    </button>
+                </mat-card-actions>
+            </form>
+        </mat-card-content>
+    </mat-card>
+</div>
