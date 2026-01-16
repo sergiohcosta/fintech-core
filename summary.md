@@ -60,6 +60,6 @@ Principais correções realizadas durante o desenvolvimento:
 - [x] Banco de Dados e Migrations Iniciais.
 - [x] Cadastro de Tenant/Usuário (Fullstack).
 - [x] Infraestrutura de Segurança JWT (Backend).
-- [ ] Implementação da Tela de Login (Frontend).
-- [ ] Persistência de Sessão e Interceptadores de Requisição.
+- [x] Implementação da Tela de Login (Frontend).
+- [x] Persistência de Sessão e Interceptadores de Requisição.
 - [ ] Gestão de Transações Financeiras.
