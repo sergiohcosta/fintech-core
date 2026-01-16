@@ -1,1 +1,19 @@
-<p>dashboard works!</p>
+<div class="dashboard-container">
+    <mat-card class="welcome-card">
+        <mat-card-header>
+            <mat-card-title>Bem-vindo!</mat-card-title>
+        </mat-card-header>
+
+        <mat-card-content>
+            <h3>Olá, {{ user()?.name || user()?.sub }}</h3>
+
+            <p>Você está logado no sistema.</p>
+
+            <small>Empresa ID: {{ user()?.tenant_id }}</small>
+        </mat-card-content>
+
+        <mat-card-actions>
+            <button mat-flat-button color="warn" (click)="logout()">SAIR DO SISTEMA</button>
+        </mat-card-actions>
+    </mat-card>
+</div>

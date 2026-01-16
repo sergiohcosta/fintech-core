@@ -24,8 +24,11 @@ public class TokenService {
             Algorithm algorithm = Algorithm.HMAC256(secret);
             return JWT.create()
                     .withIssuer("fintech-api")
+                    .withClaim("id", user.getId().toString())
+                    .withClaim("name", user.getName())
+                    .withClaim("role", "ROLE_USER")
                     .withSubject(user.getEmail())
-                    .withClaim("tenantId", user.getTenant().getId().toString())
+                    .withClaim("tenant_id", user.getTenant().getId().toString())
                     .withExpiresAt(genExpirationDate())
                     .sign(algorithm);
         } catch (JWTCreationException exception) {
