@@ -1,0 +1,32 @@
+name: Backend CI (Spring Boot)
+
+on:
+  push:
+    branches: [ "develop", "main" ]
+    paths:
+      - 'backend/**' # Só acorda se mexerem no backend
+  pull_request:
+    branches: [ "develop", "main" ]
+    paths:
+      - 'backend/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend # Importante: entra na pasta do Java
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache:maven
+
+    - name: Build and Test with Maven
+      # O comando 'verify' roda testes unitários e empacota o JAR
+      run: ./mvnw verify
