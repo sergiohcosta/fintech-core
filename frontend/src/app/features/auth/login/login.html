@@ -1,0 +1,35 @@
+<div class="login-container">
+    <mat-card class="login-card">
+        <mat-card-header>
+            <mat-card-title>Login</mat-card-title>
+            <mat-card-subtitle>Acesse sua conta Fintech</mat-card-subtitle>
+        </mat-card-header>
+
+        <mat-card-content>
+            <form [formGroup]="form" (ngSubmit)="onSubmit()">
+                <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>E-mail</mat-label>
+                    <input matInput type="email" formControlName="email" placeholder="seu@email.com">
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Senha</mat-label>
+                    <input matInput type="password" formControlName="password">
+                </mat-form-field>
+
+                @if (errorMessage()) {
+                <div class="error-message">{{ errorMessage() }}</div>
+                }
+
+                <button mat-flat-button color="primary" class="full-width submit-btn"
+                    [disabled]="form.invalid || isLoading()">
+                    {{ isLoading() ? 'ENTRANDO...' : 'ENTRAR' }}
+                </button>
+            </form>
+        </mat-card-content>
+
+        <mat-card-footer>
+            <p>Ainda não tem conta? <a routerLink="/register">Cadastre-se</a></p>
+        </mat-card-footer>
+    </mat-card>
+</div>

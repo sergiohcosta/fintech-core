@@ -18,4 +18,18 @@ export class AuthService {
   register(data: RegisterRequest): Observable<any> {
     return this.http.post(`${this.API_URL}/register`, data);
   }
+
+  login(credentials: { email: string; password: string }): Observable<{ token: string }> {
+    return this.http.post<{ token: string }>(`${this.API_URL}/login`, credentials);
+  }
+
+  // Método auxiliar para salvar o token
+  saveToken(token: string) {
+    localStorage.setItem('auth_token', token);
+  }
+
+  // Método para recuperar o token
+  getToken() {
+    return localStorage.getItem('auth_token');
+  }
 }
