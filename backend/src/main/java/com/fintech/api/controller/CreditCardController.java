@@ -72,7 +72,7 @@ public class CreditCardController {
         User user = getUser(userDetails); // Reusa nosso método auxiliar
 
         var card = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Cartão não encontrado"));
+                .orElseThrow(() -> new EntityNotFoundException("Cartão não encontrado"));
 
         // SEGURANÇA: Impede que eu acesse o cartão de outro Tenant sabendo o ID
         validateTenantAccess(card, user);
@@ -91,7 +91,7 @@ public class CreditCardController {
 
         // 1. Busca o cartão
         var card = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Cartão não encontrado"));
+                .orElseThrow(() -> new EntityNotFoundException("Cartão não encontrado"));
 
         // 2. SEGURANÇA: Verifica se o cartão pertence ao mesmo Tenant do usuário
         validateTenantAccess(card, user);
@@ -126,7 +126,7 @@ public class CreditCardController {
         User user = getUser(userDetails);
 
         var card = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Cartão não encontrado"));
+                .orElseThrow(() -> new EntityNotFoundException("Cartão não encontrado"));
 
         // SEGURANÇA: Verifica se o cartão é do usuário/tenant correto
         validateTenantAccess(card, user);
@@ -140,13 +140,13 @@ public class CreditCardController {
 
     private User getUser(UserDetails userDetails) {
         return userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
+                .orElseThrow(() -> new EntityNotFoundException("Usuário não encontrado"));
     }
 
     private void validateTenantAccess(CreditCard card, User user) {
         if (!card.getTenant().getId().equals(user.getTenant().getId())) {
             // Retornamos 404 para não dar pistas de que o ID existe mas é de outro usuário
-            throw new RuntimeException("Cartão não encontrado ou acesso negado");
+            throw new EntityNotFoundException("Cartão não encontrado ou acesso negado");
         }
     }
 }
