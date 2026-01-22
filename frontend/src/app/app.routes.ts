@@ -17,5 +17,9 @@ export const routes: Routes = [
     path: 'dashboard',
     loadComponent: () => import('./features/dashboard/dashboard').then(m => m.DashboardComponent),
     canActivate: [authGuard]
-  }
+  },
+  {
+    path: 'credit-cards',
+    loadComponent: () => import('./features/credit-card/components/card-list').then(m => m.CardListComponent),
+    canActivate: [authGuard]  }
 ];

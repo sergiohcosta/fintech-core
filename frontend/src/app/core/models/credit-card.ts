@@ -8,7 +8,7 @@ export interface ApiError {
 }
 
 // O Espelho do Java (DTO de Resposta)
-export interface CreditCard {
+export interface CreditCardModel {
   id: string;
   name: string;
   brand: string;
@@ -20,4 +20,4 @@ export interface CreditCard {
 }
 
 // O Espelho do Java (DTO de Criação - sem ID)
-export type CreditCardCreate = Omit<CreditCard, 'id'>;
+export type CreditCardCreate = Omit<CreditCardModel, 'id'>;

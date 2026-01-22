@@ -1,29 +1,30 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { CreditCard, CreditCardCreate } from '../models/credit-card.model';
+import { CreditCardModel, CreditCardCreate } from '../models/credit-card';
 
 @Injectable({ providedIn: 'root' })
 export class CreditCardService {
   private http = inject(HttpClient);
   
-  // Apontando para o seu backend local
-  private readonly API_URL = 'http://localhost:8080/credit-cards';
+  // Use o prefixo /api se configurou proxy, ou o URL completo
+  // Assumindo que você configurou o proxy.conf.json ou está rodando local:
+  private readonly API_URL = '/credit-cards'; // O interceptor vai adicionar o domínio se configurado, ou use 'http://localhost:8080/credit-cards'
 
-  list(): Observable<CreditCard[]> {
-    return this.http.get<CreditCard[]>(this.API_URL);
+  list(): Observable<CreditCardModel[]> {
+    return this.http.get<CreditCardModel[]>(this.API_URL);
   }
 
-  getById(id: string): Observable<CreditCard> {
-    return this.http.get<CreditCard>(`${this.API_URL}/${id}`);
+  getById(id: string): Observable<CreditCardModel> {
+    return this.http.get<CreditCardModel>(`${this.API_URL}/${id}`);
   }
 
-  create(data: CreditCardCreate): Observable<CreditCard> {
-    return this.http.post<CreditCard>(this.API_URL, data);
+  create(data: CreditCardCreate): Observable<CreditCardModel> {
+    return this.http.post<CreditCardModel>(this.API_URL, data);
   }
 
-  update(id: string, data: Partial<CreditCard>): Observable<CreditCard> {
-    return this.http.put<CreditCard>(`${this.API_URL}/${id}`, data);
+  update(id: string, data: Partial<CreditCardModel>): Observable<CreditCardModel> {
+    return this.http.put<CreditCardModel>(`${this.API_URL}/${id}`, data);
   }
 
   delete(id: string): Observable<void> {
