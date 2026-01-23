@@ -1,3 +1,5 @@
+import { Brand } from "./brand.enum";
+
 // Modelo de Erro (para tratar o 400 e 404 que fizemos no Java)
 export interface ApiError {
   timestamp: string;
@@ -11,7 +13,7 @@ export interface ApiError {
 export interface CreditCardModel {
   id: string;
   name: string;
-  brand: string;
+  brand: Brand;
   color: string;
   lastFourDigits: string;
   limitAmount: number;

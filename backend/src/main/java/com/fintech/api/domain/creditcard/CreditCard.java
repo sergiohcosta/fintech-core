@@ -25,9 +25,10 @@ public class CreditCard {
     private UUID id;
 
     private String name;
-    private String brand;
+    @Enumerated(EnumType.STRING)
+    private CardBrand brand;
     private String color;
-    
+
     @Column(name = "last_four_digits")
     private String lastFourDigits;
 

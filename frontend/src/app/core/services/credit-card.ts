@@ -6,10 +6,10 @@ import { CreditCardModel, CreditCardCreate } from '../models/credit-card';
 @Injectable({ providedIn: 'root' })
 export class CreditCardService {
   private http = inject(HttpClient);
-  
+
   // Use o prefixo /api se configurou proxy, ou o URL completo
   // Assumindo que você configurou o proxy.conf.json ou está rodando local:
-  private readonly API_URL = '/credit-cards'; // O interceptor vai adicionar o domínio se configurado, ou use 'http://localhost:8080/credit-cards'
+  private readonly API_URL = '/api/credit-cards'; // O interceptor vai adicionar o domínio se configurado, ou use 'http://localhost:8080/credit-cards'
 
   list(): Observable<CreditCardModel[]> {
     return this.http.get<CreditCardModel[]>(this.API_URL);

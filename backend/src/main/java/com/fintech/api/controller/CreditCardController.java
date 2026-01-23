@@ -4,7 +4,8 @@ import com.fintech.api.domain.creditcard.CreditCard;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.CreateCreditCardDTO;
 import com.fintech.api.dto.CreditCardResponseDTO;
-import com.fintech.api.dto.UpdateCreditCardDTO; // Importe o novo DTO
+import com.fintech.api.dto.UpdateCreditCardDTO;
+import com.fintech.api.exception.EntityNotFoundException;
 import com.fintech.api.repository.CreditCardRepository;
 import com.fintech.api.repository.UserRepository;
 import jakarta.transaction.Transactional;
@@ -20,7 +21,8 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/credit-cards")
+@CrossOrigin(origins = "*")
+@RequestMapping("/api/credit-cards")
 public class CreditCardController {
 
     @Autowired

@@ -1,29 +1,22 @@
 package com.fintech.api.dto;
 
+import com.fintech.api.domain.creditcard.CardBrand;
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 
 public record CreateCreditCardDTO(
-    
-    @NotBlank(message = "O nome do cartão é obrigatório")
-    String name,
 
-    @NotBlank(message = "A bandeira é obrigatória")
-    String brand, // Ex: "MASTERCARD", "VISA"
+        @NotBlank(message = "O nome do cartão é obrigatório") String name,
 
-    @Pattern(regexp = "^#([A-Fa-f0-9]{6})$", message = "Cor inválida")
-    String color, // Ex: "#000000"
+        @NotNull(message = "A bandeira é obrigatória") CardBrand brand, // Ex: "MASTERCARD", "VISA"
 
-    @Size(min = 4, max = 4, message = "Informe apenas os últimos 4 dígitos")
-    String lastFourDigits,
+        @Pattern(regexp = "^#([A-Fa-f0-9]{6})$", message = "Cor inválida") String color, // Ex: "#000000"
 
-    @NotNull
-    @Positive(message = "O limite deve ser positivo")
-    BigDecimal limitAmount,
+        @Size(min = 4, max = 4, message = "Informe apenas os últimos 4 dígitos") String lastFourDigits,
 
-    @NotNull @Min(1) @Max(31)
-    Integer closingDay,
+        @NotNull @Positive(message = "O limite deve ser positivo") BigDecimal limitAmount,
 
-    @NotNull @Min(1) @Max(31)
-    Integer dueDay
-) {}
+        @NotNull @Min(1) @Max(31) Integer closingDay,
+
+        @NotNull @Min(1) @Max(31) Integer dueDay) {
+}

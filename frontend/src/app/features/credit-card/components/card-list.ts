@@ -8,26 +8,29 @@ import { MatCardModule } from '@angular/material/card';
 import { CreditCardService } from '../../../core/services/credit-card';
 import { CreditCardModel } from '../../../core/models/credit-card';
 
+import { Router, RouterLink } from '@angular/router';
+
+
 @Component({
   selector: 'app-card-list',
   standalone: true,
   imports: [
-    CommonModule, 
-    MatTableModule, 
-    MatButtonModule, 
+    CommonModule,
+    MatTableModule,
+    MatButtonModule,
     MatIconModule,
     MatCardModule,
-    CurrencyPipe
+    CurrencyPipe,
+    RouterLink
   ],
-  // AQUI ESTÁ A SIMPLIFICAÇÃO:
   templateUrl: './card-list.html',
   styleUrl: './card-list.scss'
 })
 export class CardListComponent implements OnInit {
-  
+  private router = inject(Router);
   private service = inject(CreditCardService);
   cards = signal<CreditCardModel[]>([]);
-  
+
   displayedColumns: string[] = ['color', 'name', 'brand', 'limit', 'closingDay', 'actions'];
 
   ngOnInit(): void {
@@ -42,12 +45,12 @@ export class CardListComponent implements OnInit {
   }
 
   onEdit(card: CreditCardModel) {
-    console.log('Editar', card);
+    this.router.navigate(['/credit-cards', card.id]);
   }
 
   onDelete(card: CreditCardModel) {
-    if(confirm(`Excluir ${card.name}?`)) {
-       this.service.delete(card.id).subscribe(() => this.loadCards());
+    if (confirm(`Excluir ${card.name}?`)) {
+      this.service.delete(card.id).subscribe(() => this.loadCards());
     }
   }
 }
