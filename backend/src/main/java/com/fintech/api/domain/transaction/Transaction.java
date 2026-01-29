@@ -2,16 +2,19 @@ package com.fintech.api.domain.transaction;
 
 import com.fintech.api.domain.category.Category;
 import com.fintech.api.domain.creditcard.CreditCard;
+import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.user.User;
-
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -20,44 +23,62 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Transaction {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @EqualsAndHashCode.Include
     private UUID id;
 
+    @NotBlank(message = "A descrição é obrigatória")
     @Column(nullable = false)
-    private String description; // "Almoço no Shopping"
+    private String description;
 
+    @NotNull(message = "O valor é obrigatório")
+    @DecimalMin(value = "0.01", message = "O valor deve ser positivo")
     @Column(nullable = false)
     private BigDecimal amount;
 
+    @NotNull(message = "A data é obrigatória")
     @Column(nullable = false)
-    private LocalDate date; // Data da compra
+    private LocalDate date;
 
+    @NotNull(message = "O tipo da transação é obrigatório")
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private TransactionType type;
+    private TransactionType type; // INCOME, EXPENSE, TRANSFER
 
-    // --- RELACIONAMENTOS ---
+    // --- SEGURANÇA & MULTITENANCY ---
 
-    @ManyToOne
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tenant_id", nullable = false)
+    @ToString.Exclude // <--- EVITA LOOP INFINITO E ERRO DE MEMÓRIA
+    private Tenant tenant;
+
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    private User user; // Dono da transação
+    @ToString.Exclude // <--- EVITA LOOP INFINITO
+    private User user;
 
-    @ManyToOne
+    // --- RELACIONAMENTOS OPCIONAIS ---
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
+    @ToString.Exclude
     private Category category;
 
-    // --- ORIGENS (Nullable) ---
-    // Aqui implementamos a estratégia de Tabela Única.
-    // Se for compra no crédito, preenche este campo.
-    // Se for Pix (futuro), esse campo fica NULL.
-
-    @ManyToOne
-    @JoinColumn(name = "credit_card_id", nullable = true)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "credit_card_id")
+    @ToString.Exclude
     private CreditCard creditCard;
 
-    // Futuro:
-    // private BankAccount bankAccount;
+    // --- AUDITORIA ---
+    @CreationTimestamp
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    private LocalDateTime updatedAt;
 }
