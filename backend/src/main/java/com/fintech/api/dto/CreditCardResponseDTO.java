@@ -1,7 +1,8 @@
 package com.fintech.api.dto;
 
-import com.fintech.api.domain.creditcard.CardBrand;
 import com.fintech.api.domain.creditcard.CreditCard;
+import com.fintech.api.domain.enums.CardBrand;
+
 import java.math.BigDecimal;
 import java.util.UUID;
 

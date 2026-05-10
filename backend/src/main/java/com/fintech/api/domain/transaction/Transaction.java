@@ -2,6 +2,8 @@ package com.fintech.api.domain.transaction;
 
 import com.fintech.api.domain.category.Category;
 import com.fintech.api.domain.creditcard.CreditCard;
+import com.fintech.api.domain.enums.TransactionStatus;
+import com.fintech.api.domain.enums.TransactionType;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.user.User;
 import jakarta.persistence.*;
@@ -73,7 +75,23 @@ public class Transaction {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "credit_card_id")
     @ToString.Exclude
-    private CreditCard creditCard;
+    private CreditCard creditCard; 
+
+    @NotNull(message = "O status é obrigatório")
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default // Garante que se não informado, nasce como PENDING
+    private TransactionStatus status = TransactionStatus.PENDING;
+
+    @NotNull(message = "O número de parcelas é obrigatório")
+    @Column(nullable = false)
+    @Builder.Default // Garante que se não informado, nasce como 1
+    private Integer installmentNumber = 1;
+
+    @NotNull(message = "O número total de parcelas é obrigatório")
+    @Column(nullable = false)
+    @Builder.Default // Garante que se não informado, nasce como 1
+    private Integer totalInstallments = 1;
 
     // --- AUDITORIA ---
     @CreationTimestamp

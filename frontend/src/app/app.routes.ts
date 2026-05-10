@@ -29,8 +29,18 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
-    path: 'credit-cards/:id',
-    loadComponent: () => import('./features/credit-card/components/card-form/card-form').then(m => m.CardFormComponent),
+    path: 'categories',
+    loadComponent: () => import('./features/category/category-list/category-list').then(m => m.CategoryList),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'categories/new',
+    loadComponent: () => import('./features/category/category-form/category-form').then(m => m.CategoryForm),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'categories/:id',
+    loadComponent: () => import('./features/category/category-form/category-form').then(m => m.CategoryForm),
     canActivate: [authGuard]
   }
 ];

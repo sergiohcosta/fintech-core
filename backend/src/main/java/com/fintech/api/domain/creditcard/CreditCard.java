@@ -1,5 +1,6 @@
 package com.fintech.api.domain.creditcard;
 
+import com.fintech.api.domain.enums.CardBrand;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.user.User;
 import jakarta.persistence.*;

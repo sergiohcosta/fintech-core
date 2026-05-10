@@ -55,11 +55,34 @@ Principais correções realizadas durante o desenvolvimento:
 
 ---
 
+## 🏗️ 6. Refatoração e Padronização de Categorias (Fullstack)
+Implementação completa da gestão de categorias com foco em UX e integridade de dados.
+* **Hierarquia Multinível:** Suporte a categorias pai/filho tanto no Backend (JPA Adjacency List) quanto no Frontend (Visualização em árvore na tabela e no seletor).
+* **Segurança e Validação:** Lógica anti-circular no Frontend para impedir que uma categoria seja pai de si mesma.
+* **Padronização Visual:** Replicação dos padrões de design de 'Credit Cards' para Categorias, garantindo consistência em todo o sistema (Grids, Tabelas, MatSnackBar).
+
+---
+
+## 🛡️ 7. Segurança e Fluxo de Autenticação Refinado
+Melhorias críticas na proteção de dados e na experiência de acesso.
+* **Roles com Enum:** Substituição de Strings por Enums (`UserRole`) no Backend, garantindo tipagem forte e hierarquia de permissões (Admin + User).
+* **Validação de Token no Front:** O `AuthGuard` agora verifica a expiração (`exp`) do JWT, impedindo acessos com tokens vencidos.
+* **Redirecionamento Inteligente:** Usuários já autenticados são redirecionados automaticamente do Login/Register para o Dashboard.
+
+---
+
+## 💻 8. Infraestrutura de Desenvolvimento (DX)
+* **Spring Boot DevTools:** Configuração de auto-restart otimizada para ambiente WSL/VSCode, agilizando o ciclo de feedback no Backend.
+* **Geração de GEMINI.md:** Criação de documentação viva para contexto do agente, detalhando arquitetura e convenções do projeto.
+
+---
+
 ## 📅 Status Atual
 - [x] Estrutura de Pastas e Projetos.
 - [x] Banco de Dados e Migrations Iniciais.
 - [x] Cadastro de Tenant/Usuário (Fullstack).
 - [x] Infraestrutura de Segurança JWT (Backend).
 - [x] Implementação da Tela de Login (Frontend).
-- [x] Persistência de Sessão e Interceptadores de Requisição.
-- [ ] Gestão de Transações Financeiras.
+- [x] Gestão Completa de Categorias (Hierárquico).
+- [x] Padronização Visual de Listas e Formulários.
+- [ ] Gestão de Transações Financeiras (Próximo Grande Passo).

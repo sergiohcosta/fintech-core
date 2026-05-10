@@ -1,4 +1,4 @@
-package com.fintech.api.domain.creditcard;
+package com.fintech.api.domain.enums;
 
 public enum CardBrand {
     VISA,

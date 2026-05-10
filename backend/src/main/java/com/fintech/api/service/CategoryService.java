@@ -62,6 +62,26 @@ public class CategoryService {
     }
 
     @Transactional
+    public CategoryResponseDTO update(UUID id, CategoryCreateDTO dto, User user) {
+        Category category = repository.findByIdAndTenantId(id, user.getTenant().getId())
+                .orElseThrow(() -> new EntityNotFoundException("Categoria não encontrada."));
+
+        category.setName(dto.name());
+        category.setIcon(dto.icon());
+        category.setColor(dto.color());
+
+        if (dto.parentId() != null) {
+            Category parent = repository.findByIdAndTenantId(dto.parentId(), user.getTenant().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Categoria pai não encontrada."));
+            category.setParent(parent);
+        } else {
+            category.setParent(null);
+        }
+
+        return CategoryResponseDTO.fromEntity(repository.save(category));
+    }
+
+    @Transactional
     public void delete(UUID id, User user) {
         Category category = repository.findByIdAndTenantId(id, user.getTenant().getId())
                 .orElseThrow(() -> new EntityNotFoundException("Categoria não encontrada."));

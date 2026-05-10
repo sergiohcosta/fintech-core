@@ -1,4 +1,4 @@
-package com.fintech.api.domain.transaction;
+package com.fintech.api.domain.enums;
 
 public enum TransactionType {
     INCOME, // Receita (Salário, Venda, Dividendo)

@@ -1,8 +1,9 @@
 package com.fintech.api.dto;
 
-import com.fintech.api.domain.creditcard.CardBrand;
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
+
+import com.fintech.api.domain.enums.CardBrand;
 
 public record CreateCreditCardDTO(
 
