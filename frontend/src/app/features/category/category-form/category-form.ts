@@ -47,6 +47,15 @@ export class CategoryForm implements OnInit {
   categoryId = signal<string | null>(null);
   parentOptions = signal<CategoryOption[]>([]);
 
+  availableIcons = [
+    'shopping_cart', 'restaurant', 'directions_car', 'home', 'build', 
+    'medical_services', 'school', 'fitness_center', 'flight', 'local_gas_station', 
+    'payments', 'account_balance', 'savings', 'trending_up', 'work', 
+    'pets', 'redeem', 'videogame_asset', 'subscriptions', 'electrical_services',
+    'face', 'family_restroom', 'celebration', 'movie', 'checkroom'
+  ];
+
+
   ngOnInit(): void {
     this.initForm();
     this.checkEditMode();

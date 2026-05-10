@@ -32,9 +32,23 @@
 
             <!-- Ícone -->
             <mat-form-field appearance='outline'>
-                <mat-label>Ícone (Material Icon)</mat-label>
-                <input matInput formControlName='icon' placeholder='Ex: shopping_cart'>
-                <mat-icon matSuffix>{{ form.get('icon')?.value }}</mat-icon>
+                <mat-label>Ícone</mat-label>
+                <mat-select formControlName='icon'>
+                    <mat-select-trigger>
+                        <div style='display: flex; align-items: center; gap: 8px;'>
+                            <mat-icon>{{ form.get('icon')?.value }}</mat-icon>
+                            <span>{{ form.get('icon')?.value }}</span>
+                        </div>
+                    </mat-select-trigger>
+                    @for (icon of availableIcons; track icon) {
+                        <mat-option [value]='icon'>
+                            <div style='display: flex; align-items: center; gap: 12px;'>
+                                <mat-icon>{{ icon }}</mat-icon>
+                                <span>{{ icon }}</span>
+                            </div>
+                        </mat-option>
+                    }
+                </mat-select>
             </mat-form-field>
 
             <!-- Cor -->
