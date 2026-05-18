@@ -7,7 +7,7 @@ Este documento detalha a evolução da arquitetura Fullstack desenvolvida, as de
 ## 🏛️ 1. Fundação da Arquitetura
 O objetivo central é criar uma estrutura **SaaS Multi-Tenant**, onde uma única instância do sistema atende múltiplos clientes de forma isolada e segura.
 
-* **Backend:** Spring Boot 3.4+ com Java 21.
+* **Backend:** Spring Boot 4.0.1 com Java 21.
 * **Frontend:** Angular 21 (Utilizando o novo padrão **Zoneless** para alta performance).
 * **Banco de Dados:** PostgreSQL 16.
 * **Versionamento de Banco:** Flyway (Migrations).
@@ -77,6 +77,34 @@ Melhorias críticas na proteção de dados e na experiência de acesso.
 
 ---
 
+## 💸 9. CRUD Completo de Transações Financeiras (Fullstack)
+
+Implementação end-to-end do módulo de transações, cobrindo criação, listagem, edição e exclusão com isolamento de tenant em todas as operações.
+
+### Backend
+* **Endpoints REST:** `GET /api/transactions`, `GET /:id`, `POST`, `PUT /:id`, `DELETE /:id` — todos protegidos por JWT e escopados ao tenant do usuário autenticado.
+* **Parcelamento:** criação em parcelas gera múltiplos registros automaticamente, com divisão do valor e incremento mensal de data.
+* **Isolamento de ownership:** `findByIdAndTenant` no repository garante que edição e exclusão só funcionam para transações do próprio tenant — 404 intencional caso o id seja de outro tenant (não vaza informação de existência).
+* **Dirty checking do Hibernate:** método `update()` não chama `repository.save()` explicitamente — o Hibernate detecta mudanças na entidade gerenciada e gera o `UPDATE` automaticamente no commit da transação.
+
+### Frontend
+* **Model e Service:** `TransactionResponse`/`TransactionRequest` tipados; service com `list`, `getById`, `create`, `update`, `delete`.
+* **Listagem:** tabela com badges de tipo (Receita/Despesa/Transferência) e status (Pendente/Pago/Cancelado), formatação monetária em pt-BR, botões de editar e excluir por linha.
+* **Formulário unificado:** mesmo componente (`TransactionForm`) detecta modo criação vs. edição via `ActivatedRoute` — pré-preenche campos ao editar, exibe título dinâmico.
+* **Exclusão com confirmação:** reutiliza `ConfirmationDialogComponent` existente, padrão idêntico ao de categorias e cartões.
+* **Locale pt-BR:** registro global de `LOCALE_ID` e `MAT_DATE_LOCALE` — corrige `CurrencyPipe` e formato do `MatDatepicker`.
+
+### Bugs corrigidos no caminho
+* `EntityNotFoundException` da JPA usada no service em vez da customizada — impedia o `GlobalExceptionHandler` de interceptar e retornar 404 (retornava 500).
+* `TransactionStatus.CONFIRMED` no frontend vs `PAID` no backend — desalinhamento de contrato de enum.
+* Locale `pt-BR` não registrado — valor monetário em branco na listagem e datepicker em formato americano.
+* `GET /api/transactions/:id` esquecido no planejamento — descoberto ao testar o fluxo de edição.
+
+### Infraestrutura de desenvolvimento
+* **MCPs configurados:** `postgres` (queries diretas ao banco), `context7` (documentação atualizada de libs) e `github` (gestão de issues) — registrados via `claude mcp add` em `~/.claude.json`.
+
+---
+
 ## 📅 Status Atual
 - [x] Estrutura de Pastas e Projetos.
 - [x] Banco de Dados e Migrations Iniciais.
@@ -85,4 +113,6 @@ Melhorias críticas na proteção de dados e na experiência de acesso.
 - [x] Implementação da Tela de Login (Frontend).
 - [x] Gestão Completa de Categorias (Hierárquico).
 - [x] Padronização Visual de Listas e Formulários.
-- [ ] Gestão de Transações Financeiras (Próximo Grande Passo).
+- [x] CRUD Completo de Transações Financeiras (Fullstack).
+- [ ] Dashboard com resumo financeiro (Próximo passo sugerido).
+- [ ] Filtros na listagem de transações (por período, tipo, status).
