@@ -1,7 +1,7 @@
 <div class="page-container">
   <header class="page-header">
     <div>
-      <h1>Nova Transação</h1>
+      <h1>{{ isEditMode() ? 'Editar Transação' : 'Nova Transação' }}</h1>
       <p class="subtitle">Preencha os dados da transação</p>
     </div>
     <button mat-stroked-button routerLink="/transactions">

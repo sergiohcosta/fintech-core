@@ -40,6 +40,13 @@ public class TransactionService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public TransactionResponseDTO findById(UUID id, User user) {
+        Transaction transaction = repository.findByIdAndTenant(id, user.getTenant())
+                .orElseThrow(() -> new EntityNotFoundException("Transação não encontrada."));
+        return TransactionResponseDTO.fromEntity(transaction);
+    }
+
     @Transactional
     public List<TransactionResponseDTO> create(TransactionRequestDTO dto, User user) {
         UUID tenantId = user.getTenant().getId();
