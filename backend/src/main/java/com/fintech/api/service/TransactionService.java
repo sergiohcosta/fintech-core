@@ -7,10 +7,11 @@ import com.fintech.api.domain.transaction.Transaction;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.transaction.TransactionRequestDTO;
 import com.fintech.api.dto.transaction.TransactionResponseDTO;
+import com.fintech.api.dto.transaction.TransactionUpdateDTO;
+import com.fintech.api.exception.EntityNotFoundException;
 import com.fintech.api.repository.CategoryRepository;
 import com.fintech.api.repository.CreditCardRepository;
 import com.fintech.api.repository.TransactionRepository;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -89,9 +90,49 @@ public class TransactionService {
             createdTransactions.add(repository.save(t));
         }
 
-        // Retorna a lista completa criada (ou apenas a primeira, dependendo da UX. Vamos retornar todas)
         return createdTransactions.stream()
                 .map(TransactionResponseDTO::fromEntity)
                 .toList();
+    }
+
+    @Transactional
+    public TransactionResponseDTO update(UUID id, TransactionUpdateDTO dto, User user) {
+        // findByIdAndTenant já garante o isolamento: se o id existir mas for de outro
+        // tenant, cai no orElseThrow — indistinguível de "não encontrado" para o cliente.
+        // Isso evita vazar informação sobre existência de recursos de outros tenants.
+        Transaction transaction = repository.findByIdAndTenant(id, user.getTenant())
+                .orElseThrow(() -> new EntityNotFoundException("Transação não encontrada."));
+
+        if (dto.description() != null) transaction.setDescription(dto.description());
+        if (dto.amount() != null)      transaction.setAmount(dto.amount());
+        if (dto.date() != null)        transaction.setDate(dto.date());
+        if (dto.type() != null)        transaction.setType(dto.type());
+        if (dto.status() != null)      transaction.setStatus(dto.status());
+
+        if (dto.categoryId() != null) {
+            Category category = categoryRepository.findByIdAndTenantId(dto.categoryId(), user.getTenant().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Categoria não encontrada."));
+            transaction.setCategory(category);
+        }
+
+        if (dto.creditCardId() != null) {
+            CreditCard card = creditCardRepository.findByIdAndTenantId(dto.creditCardId(), user.getTenant().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Cartão não encontrado."));
+            transaction.setCreditCard(card);
+        }
+
+        // Não é necessário chamar repository.save() explicitamente:
+        // como 'transaction' é uma entidade gerenciada dentro de um @Transactional,
+        // o Hibernate detecta as mudanças automaticamente (dirty checking) e
+        // gera o UPDATE no commit da transação.
+        return TransactionResponseDTO.fromEntity(transaction);
+    }
+
+    @Transactional
+    public void delete(UUID id, User user) {
+        Transaction transaction = repository.findByIdAndTenant(id, user.getTenant())
+                .orElseThrow(() -> new EntityNotFoundException("Transação não encontrada."));
+
+        repository.delete(transaction);
     }
 }
