@@ -42,5 +42,15 @@ export const routes: Routes = [
     path: 'categories/:id',
     loadComponent: () => import('./features/category/category-form/category-form').then(m => m.CategoryForm),
     canActivate: [authGuard]
+  },
+  {
+    path: 'transactions',
+    loadComponent: () => import('./features/transaction/transaction-list/transaction-list').then(m => m.TransactionList),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'transactions/new',
+    loadComponent: () => import('./features/transaction/transaction-form/transaction-form').then(m => m.TransactionForm),
+    canActivate: [authGuard]
   }
 ];
