@@ -3,6 +3,7 @@ package com.fintech.api.controller;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.transaction.TransactionRequestDTO;
 import com.fintech.api.dto.transaction.TransactionResponseDTO;
+import com.fintech.api.dto.transaction.TransactionUpdateDTO;
 import com.fintech.api.service.TransactionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +13,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/transactions")
@@ -40,7 +42,23 @@ public class TransactionController {
         // O service agora retorna uma Lista, pois uma compra em 12x gera 12 registros
         List<TransactionResponseDTO> newTransactions = service.create(dto, user);
 
-        // Retornamos 201 Created com o corpo contendo todas as parcelas geradas
         return ResponseEntity.status(HttpStatus.CREATED).body(newTransactions);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<TransactionResponseDTO> update(
+            @PathVariable UUID id,
+            @RequestBody @Valid TransactionUpdateDTO dto,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(service.update(id, dto, user));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal User user) {
+        service.delete(id, user);
+        // 204 No Content: sucesso sem corpo de resposta — padrão REST para DELETE
+        return ResponseEntity.noContent().build();
     }
 }

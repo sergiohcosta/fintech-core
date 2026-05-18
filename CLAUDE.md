@@ -80,7 +80,7 @@ Trabalhe sempre em **português (PT-BR)**: explicações, comentários pedagógi
 Aplicação Fullstack SaaS com arquitetura moderna para suporte a múltiplos tenants em uma única instância do sistema.
 
 ### Stack
-- **Backend:** Java 21, Spring Boot 3.4+ (confirmar versão exata), Spring Security, JPA/Hibernate
+- **Backend:** Java 21, Spring Boot 4.0.1, Spring Security, JPA/Hibernate
 - **Frontend:** Angular 21 com Zoneless Change Detection, Angular Material 3, Vitest
 - **Banco:** PostgreSQL 16, Flyway para migrations
 - **Infra local:** Docker Compose (PostgreSQL + pgAdmin)
