@@ -35,6 +35,13 @@ public class TransactionController {
      * Cria uma ou múltiplas transações (caso seja parcelado).
      * Retorna HTTP 201 e a lista dos itens criados.
      */
+    @GetMapping("/{id}")
+    public ResponseEntity<TransactionResponseDTO> findById(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(service.findById(id, user));
+    }
+
     @PostMapping
     public ResponseEntity<List<TransactionResponseDTO>> create(
             @RequestBody @Valid TransactionRequestDTO dto,

@@ -14,7 +14,19 @@ export class TransactionService {
     return this.http.get<TransactionResponse[]>(this.API_URL);
   }
 
+  getById(id: string): Observable<TransactionResponse> {
+    return this.http.get<TransactionResponse>(`${this.API_URL}/${id}`);
+  }
+
   create(data: TransactionRequest): Observable<TransactionResponse[]> {
     return this.http.post<TransactionResponse[]>(this.API_URL, data);
+  }
+
+  update(id: string, data: Partial<TransactionRequest>): Observable<TransactionResponse> {
+    return this.http.put<TransactionResponse>(`${this.API_URL}/${id}`, data);
+  }
+
+  delete(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.API_URL}/${id}`);
   }
 }
