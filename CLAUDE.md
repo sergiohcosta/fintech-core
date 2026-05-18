@@ -124,6 +124,11 @@ npm start
 
 ## 📏 Convenções de Desenvolvimento
 
+### Commits
+
+- Mensagens em português, descritivas, no imperativo ("adiciona", "corrige", "implementa")
+- **Nunca incluir co-autoria (`Co-Authored-By`) nas mensagens de commit**
+
 ### Backend
 
 **Regras invioláveis:**
