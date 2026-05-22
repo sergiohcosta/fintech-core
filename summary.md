@@ -105,6 +105,62 @@ Implementação end-to-end do módulo de transações, cobrindo criação, lista
 
 ---
 
+## 🧭 10. Shell de Navegação — Toolbar Superior + Sidenav Lateral
+
+Implementação do layout principal da aplicação autenticada usando o **Shell Pattern**.
+
+### Arquitetura adotada
+* **ShellComponent** (`components/shell/`) — componente de layout que contém `mat-toolbar` (topo) e `mat-sidenav-container` (lateral + conteúdo), com seu próprio `<router-outlet>` para as features.
+* **Layout Route** — rota com `path: ''` (sem `pathMatch: 'full'`) como pai de todas as rotas protegidas. `canActivate: [authGuard]` aplicado uma única vez no pai, propagando para todos os filhos automaticamente.
+* Login e Register ficam fora da hierarquia do shell — sem navbar/sidenav nessas telas.
+
+### Decisões técnicas
+* `sidenavOpened = signal(true)` para controle do toggle — consistente com modelo Zoneless (sem zone.js).
+* `userName = computed(() => authService.currentUser()?.name)` — relê o signal do AuthService, atualiza a toolbar sem re-renders desnecessários.
+* Destaque do item ativo via `routerLinkActive` com tokens M3 (`--mat-sys-secondary-container`) — sem cores hardcoded.
+* `@for` control flow syntax (Angular 17+) para gerar os itens do sidenav.
+
+### Conceitos ensinados
+* Por que `canActivate` no pai protege filhos — pipeline de validação em cascata percorrido de cima para baixo.
+* Diferença entre `canActivate` e `canActivateChild`.
+* Como `authGuard` funciona internamente — `jwtDecode` decodifica sem validar assinatura, verifica campo `exp`; guards frontend são segurança de UX, não de dados.
+* Por que `inject()` funciona dentro de funções guard — executado no contexto de injeção do router.
+
+### Pendências identificadas
+* Componente `navbar` antigo (`components/navbar/`) estava vazio/obsoleto — **deletado nesta sessão**.
+
+---
+
+## 📊 11. Dashboard com Resumo Financeiro
+
+Implementação fullstack do dashboard com totais mensais de receita, despesa e saldo, navegação de período e lista de transações recentes.
+
+### Backend
+* **`DashboardSummaryDTO`** — Java `record` com `totalIncome`, `totalExpense`, `balance`, `period` (YearMonth). Factory method `DashboardSummaryDTO.of(period, income, expense)` calcula o saldo internamente.
+* **Query JPQL com `COALESCE(SUM)`** — `SUM` retorna `null` quando não há registros; `COALESCE(..., 0)` garante BigDecimal zero. Query filtra por `tenant`, `type`, `status <> CANCELLED` e intervalo de datas (`BETWEEN start AND end`).
+* **`DashboardService`** — `@Transactional(readOnly = true)`, duas chamadas ao repository (uma por tipo), monta o DTO com `DashboardSummaryDTO.of()`.
+* **`DashboardController`** — `GET /api/dashboard/summary?month=yyyy-MM`. Parâmetro recebe `YearMonth` diretamente via `@DateTimeFormat(pattern = "yyyy-MM")` — Spring retorna 400 automaticamente para formato inválido.
+
+### Frontend
+* **Padrão `toSignal + toObservable + switchMap`** — substitui o `subscribe() + signal.set()` existente nos outros componentes. `switchMap` cancela a request anterior ao trocar de mês; `toSignal()` faz o unsubscribe automático ao destruir o componente.
+* **Navegação de mês** — `selectedYear` e `selectedMonthIndex` como signals separados; `selectedMonth` e `monthLabel` como `computed()`. Botão "próximo" desabilitado quando `isCurrentMonth()`.
+* **3 cards** — Receita (verde), Despesa (vermelho), Saldo (azul positivo / vermelho negativo) com ícones e cores semânticas via `color-mix()`.
+* **Transações recentes** — Reutiliza `TransactionService.list()` + `toSignal()`, exibe as 5 primeiras via `.slice(0, 5)` no template.
+
+### Boas práticas aplicadas / ajustadas
+* `@DateTimeFormat(pattern = "yyyy-MM")` em vez de `String` — validação delegada ao Spring MVC.
+* Duas queries limpas com `COALESCE(SUM)` em vez de uma JPQL com `CASE WHEN` (verbosa e propensa a erros com enums qualificados).
+* `toSignal()` + `switchMap` em vez de `subscribe()` manual — cancela requests em voo, unsubscribe automático.
+* Teste end-to-end antes do commit: backend iniciado, login com usuário real, transações criadas via API (incluindo uma `CANCELLED`), verificação de que o saldo excluiu corretamente o valor cancelado.
+
+### Processo de verificação adotado
+* Backend compilado (`./mvnw compile`) antes de codar o frontend.
+* Endpoint testado via `curl` com JWT real antes de abrir o browser.
+* Transação `CANCELLED` criada propositalmente para validar que o `COALESCE(SUM ... WHERE status <> CANCELLED)` funciona.
+* Playwright para screenshot do dashboard renderizado e da navegação entre meses.
+
+---
+
 ## 📅 Status Atual
 - [x] Estrutura de Pastas e Projetos.
 - [x] Banco de Dados e Migrations Iniciais.
@@ -114,5 +170,7 @@ Implementação end-to-end do módulo de transações, cobrindo criação, lista
 - [x] Gestão Completa de Categorias (Hierárquico).
 - [x] Padronização Visual de Listas e Formulários.
 - [x] CRUD Completo de Transações Financeiras (Fullstack).
-- [ ] Dashboard com resumo financeiro (Próximo passo sugerido).
+- [x] Shell de Navegação (Toolbar + Sidenav).
+- [x] Dashboard com resumo financeiro (Receita / Despesa / Saldo por período).
 - [ ] Filtros na listagem de transações (por período, tipo, status).
+- [ ] Gráficos no dashboard (evolução mensal, breakdown por categoria).
