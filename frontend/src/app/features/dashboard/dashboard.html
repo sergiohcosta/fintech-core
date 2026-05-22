@@ -1,19 +1,93 @@
 <div class="dashboard-container">
-    <mat-card class="welcome-card">
-        <mat-card-header>
-            <mat-card-title>Bem-vindo!</mat-card-title>
-        </mat-card-header>
 
+  <!-- Cabeçalho: título + navegação de mês -->
+  <div class="dashboard-header">
+    <h2 class="page-title">Dashboard</h2>
+    <div class="month-nav">
+      <button mat-icon-button (click)="prevMonth()" aria-label="Mês anterior">
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+      <span class="month-label">{{ monthLabel() }}</span>
+      <button mat-icon-button (click)="nextMonth()" [disabled]="isCurrentMonth()" aria-label="Próximo mês">
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Cards de resumo -->
+  @if (summary(); as s) {
+    <div class="summary-cards">
+      <mat-card class="summary-card income-card">
         <mat-card-content>
-            <h3>Olá, {{ user()?.name || user()?.sub }}</h3>
-
-            <p>Você está logado no sistema.</p>
-
-            <small>Empresa ID: {{ user()?.tenant_id }}</small>
+          <div class="card-icon">
+            <mat-icon>trending_up</mat-icon>
+          </div>
+          <div class="card-info">
+            <span class="card-label">Receita</span>
+            <span class="card-value">{{ s.totalIncome | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
+          </div>
         </mat-card-content>
+      </mat-card>
 
-        <mat-card-actions>
-            <button mat-flat-button color="warn" (click)="logout()">SAIR DO SISTEMA</button>
-        </mat-card-actions>
-    </mat-card>
+      <mat-card class="summary-card expense-card">
+        <mat-card-content>
+          <div class="card-icon">
+            <mat-icon>trending_down</mat-icon>
+          </div>
+          <div class="card-info">
+            <span class="card-label">Despesa</span>
+            <span class="card-value">{{ s.totalExpense | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="summary-card" [class.balance-positive]="s.balance >= 0" [class.balance-negative]="s.balance < 0">
+        <mat-card-content>
+          <div class="card-icon">
+            <mat-icon>account_balance_wallet</mat-icon>
+          </div>
+          <div class="card-info">
+            <span class="card-label">Saldo</span>
+            <span class="card-value">{{ s.balance | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  } @else {
+    <div class="loading-cards">
+      <mat-spinner diameter="40" />
+    </div>
+  }
+
+  <!-- Transações recentes -->
+  <mat-card class="recent-card">
+    <mat-card-header>
+      <mat-card-title>Transações Recentes</mat-card-title>
+      <span class="spacer"></span>
+      <a mat-button routerLink="/transactions">Ver todas</a>
+    </mat-card-header>
+
+    <mat-card-content>
+      @if (recentTransactions().length === 0) {
+        <p class="empty-state">Nenhuma transação encontrada.</p>
+      } @else {
+        @for (t of recentTransactions().slice(0, 5); track t.id) {
+          <div class="transaction-row">
+            <div class="transaction-info">
+              <span class="transaction-description">{{ t.description }}</span>
+              <span class="transaction-date">{{ t.date | date:'dd/MM/yyyy':'':'pt-BR' }}</span>
+            </div>
+            <div class="transaction-right">
+              <span class="transaction-amount" [class]="typeColor(t.type)">
+                {{ t.type === 'EXPENSE' ? '-' : '+' }}{{ t.amount | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}
+              </span>
+              <mat-chip [class]="typeColor(t.type)">{{ typeLabel(t.type) }}</mat-chip>
+            </div>
+          </div>
+          <mat-divider />
+        }
+      }
+    </mat-card-content>
+  </mat-card>
+
 </div>
