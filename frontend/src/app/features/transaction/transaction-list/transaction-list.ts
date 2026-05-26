@@ -68,7 +68,7 @@ export class TransactionList implements OnInit {
 
     dialogRef.afterClosed().subscribe(confirmed => {
       if (confirmed === true) {
-        this.service.deleteTransaction(t.id!).subscribe({
+        this.service.deleteTransaction(t.id).subscribe({
           next: () => {
             this.snackBar.open('Transação excluída.', 'OK', { duration: 3000 });
             this.loadTransactions();

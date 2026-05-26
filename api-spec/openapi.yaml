@@ -96,6 +96,7 @@ components:
 
     CategoryResponseDTO:
       type: object
+      required: [id, name, icon, color, children]
       properties:
         id:
           type: string
@@ -179,6 +180,7 @@ components:
 
     TransactionResponseDTO:
       type: object
+      required: [id, description, amount, date, type, status]
       properties:
         id:
           type: string
@@ -258,6 +260,7 @@ components:
 
     CreditCardResponseDTO:
       type: object
+      required: [id, name, brand, limitAmount, closingDay, dueDay]
       properties:
         id:
           type: string

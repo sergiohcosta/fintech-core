@@ -65,7 +65,7 @@ export class CardListComponent implements OnInit {
 
     dialogRef.afterClosed().subscribe(result => {
       if (result === true) {
-        this.service.deleteCreditCard(card.id!).subscribe({
+        this.service.deleteCreditCard(card.id).subscribe({
           next: () => {
             this.loadCards();
           },

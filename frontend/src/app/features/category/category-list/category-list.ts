@@ -81,7 +81,7 @@ export class CategoryList implements OnInit {
 
     dialogRef.afterClosed().subscribe(result => {
       if (result === true) {
-        this.service.deleteCategory(category.id!).subscribe({
+        this.service.deleteCategory(category.id).subscribe({
           next: () => {
             this.snackBar.open('Categoria excluída com sucesso!', 'OK', { duration: 3000 });
             this.loadCategories();
