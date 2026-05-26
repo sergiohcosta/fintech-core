@@ -161,6 +161,41 @@ Implementação fullstack do dashboard com totais mensais de receita, despesa e 
 
 ---
 
+---
+
+## 🔗 12. Adoção OpenAPI Spec-First (2026-05-26)
+
+Migração completa para contrato formal de API, com geração de código em ambos os lados da stack.
+
+### Motivação
+Três problemas resolvidos de uma vez: documentação automática (Swagger UI), geração de client TypeScript no Angular eliminando modelos/services manuais, e contrato formal que impede desalinhamentos silenciosos (ex: enum `CONFIRMED` vs `PAID` detectado apenas em runtime antes).
+
+### Backend
+* **`api-spec/openapi.yaml`** na raiz do monorepo — fonte da verdade, ~650 linhas, 18 operationIds, 5 grupos de tags.
+* **`openapi-generator-maven-plugin 7.4.0`** com `interfaceOnly=true` — gera interfaces Spring em `target/` durante `generate-sources`. Controllers implementam essas interfaces: mudança no YAML sem atualizar o controller = erro de compilação. O compilador virou o guardião do contrato.
+* **`springdoc 2.8.9`** — versão 2.6.0 é incompatível com Spring Boot 4.0.1. Swagger UI disponível em `http://localhost:8080/swagger-ui.html`.
+* **`importMappings`** aponta os types gerados para os DTOs existentes em vez de gerar novos — zero duplicação.
+* **`getAuthenticatedUser()` via `SecurityContextHolder`** — `@AuthenticationPrincipal` não pode estar na assinatura de métodos de interface; padrão adotado: método privado em cada controller fazendo cast direto `(User)`.
+
+### Frontend
+* **Orval 8.13.0** (`npm run api:generate`) gera services Angular em `core/api/` com `mode: 'tags-split'` — um subdiretório por tag.
+* **`fintechSaaSAPI.schemas.ts`** centraliza todos os tipos, interfaces e enums TypeScript gerados.
+* **`auth/auth.service.ts` deletado após cada geração** — o AuthService gerencia estado (token, signals, router) além de HTTP; não pode ser substituído por client gerado.
+* **`required` nos response DTOs do spec** — sem isso, Orval gera campos opcionais (`id?: string`) forçando `!` assertions nos templates. Adicionar `required: [id, name, ...]` no YAML resolve.
+* Sete componentes migrados para os services gerados; modelos e services manuais de transactions, categories, dashboard e credit-cards **deletados**.
+* **`.gitattributes`** marca `core/api/**/*.ts` como `linguist-generated=true` para reduzir ruído em diffs de PR.
+
+### Fluxo de trabalho estabelecido
+1. Editar `api-spec/openapi.yaml`
+2. `mvn compile` → interfaces Spring atualizadas (falha = divergência de contrato)
+3. `npm run api:generate` → services Angular atualizados; deletar `core/api/auth/auth.service.ts`
+4. Copiar spec para `backend/src/main/resources/static/openapi.yaml`
+
+### Bug corrigido durante os testes manuais
+* `CategoryService` usava `jakarta.persistence.EntityNotFoundException` em vez de `com.fintech.api.exception.EntityNotFoundException` — `GlobalExceptionHandler` não capturava a exceção JPA, retornava 500 em vez de 404. Corrigido trocando o import.
+
+---
+
 ## 📅 Status Atual
 - [x] Estrutura de Pastas e Projetos.
 - [x] Banco de Dados e Migrations Iniciais.
@@ -172,5 +207,6 @@ Implementação fullstack do dashboard com totais mensais de receita, despesa e 
 - [x] CRUD Completo de Transações Financeiras (Fullstack).
 - [x] Shell de Navegação (Toolbar + Sidenav).
 - [x] Dashboard com resumo financeiro (Receita / Despesa / Saldo por período).
+- [x] Adoção OpenAPI spec-first (documentação + geração de código backend + frontend).
 - [ ] Filtros na listagem de transações (por período, tipo, status).
 - [ ] Gráficos no dashboard (evolução mensal, breakdown por categoria).
