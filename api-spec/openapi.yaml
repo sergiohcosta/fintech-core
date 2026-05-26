@@ -265,7 +265,8 @@ components:
       required: [closingDay, dueDay]
       properties:
         brand:
-          $ref: '#/components/schemas/CardBrand'
+          oneOf:
+            - $ref: '#/components/schemas/CardBrand'
           nullable: true
         lastFourDigits:
           type: string
@@ -302,7 +303,8 @@ components:
           type: boolean
           nullable: true
         creditCardDetails:
-          $ref: '#/components/schemas/CreditCardDetailsRequest'
+          oneOf:
+            - $ref: '#/components/schemas/CreditCardDetailsRequest'
           nullable: true
 
     AccountUpdateRequest:
@@ -353,7 +355,8 @@ components:
           type: number
           format: double
         creditCardDetails:
-          $ref: '#/components/schemas/CreditCardDetailsResponse'
+          oneOf:
+            - $ref: '#/components/schemas/CreditCardDetailsResponse'
           nullable: true
 
 paths:
