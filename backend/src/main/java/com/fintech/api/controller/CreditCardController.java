@@ -137,9 +137,7 @@ public class CreditCardController implements CreditCardsApi {
     // Obtém o usuário autenticado via SecurityContextHolder em vez de @AuthenticationPrincipal,
     // pois a interface OpenAPI não inclui esse parâmetro extra nas assinaturas dos métodos.
     private User getAuthenticatedUser() {
-        UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        return userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new EntityNotFoundException("Usuário não encontrado"));
+        return (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     }
 
     private void validateTenantAccess(CreditCard card, User user) {
