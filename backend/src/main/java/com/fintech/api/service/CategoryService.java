@@ -6,7 +6,7 @@ import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.category.CategoryCreateDTO;
 import com.fintech.api.dto.category.CategoryResponseDTO;
 import com.fintech.api.repository.CategoryRepository;
-import jakarta.persistence.EntityNotFoundException;
+import com.fintech.api.exception.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
