@@ -1,0 +1,34 @@
+<mat-toolbar color="primary" class="toolbar">
+  <button mat-icon-button (click)="toggleSidenav()" aria-label="Abrir/fechar menu">
+    <mat-icon>menu</mat-icon>
+  </button>
+  <span class="toolbar-title">Fintech Core</span>
+
+  <span class="spacer"></span>
+
+  <span class="user-name">{{ userName() }}</span>
+  <button mat-icon-button (click)="logout()" matTooltip="Sair" aria-label="Sair">
+    <mat-icon>logout</mat-icon>
+  </button>
+</mat-toolbar>
+
+<mat-sidenav-container class="sidenav-container">
+  <mat-sidenav [opened]="sidenavOpened()" mode="side" class="sidenav">
+    <mat-nav-list>
+      @for (item of navItems; track item.route) {
+        <a mat-list-item
+           [routerLink]="item.route"
+           routerLinkActive="active-link">
+          <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+          <span matListItemTitle>{{ item.label }}</span>
+        </a>
+      }
+    </mat-nav-list>
+  </mat-sidenav>
+
+  <mat-sidenav-content>
+    <div class="content">
+      <router-outlet />
+    </div>
+  </mat-sidenav-content>
+</mat-sidenav-container>

@@ -1,5 +1,6 @@
 package com.fintech.api.service;
 
+import com.fintech.api.domain.enums.UserRole;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.TenantRegistrationDTO;
@@ -37,7 +38,7 @@ public class TenantRegistrationService {
         User adminUser = new User();
         adminUser.setName(dto.adminName());
         adminUser.setEmail(dto.adminEmail());
-        adminUser.setRole("ADMIN");
+        adminUser.setRole(UserRole.ADMIN);
         adminUser.setTenant(tenant); // Vincula o usuário ao tenant criado acima
 
         // Criptografar a senha antes de salvar

@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -23,10 +23,17 @@ import { AuthService } from '../../../core/services/auth';
   templateUrl: './login.html',
   styleUrl: './login.scss'
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   private fb = inject(FormBuilder);
   private auth = inject(AuthService);
   private router = inject(Router);
+
+  ngOnInit(): void {
+    if (this.auth.isAuthenticated()) {
+      this.router.navigate(['/dashboard']);
+    }
+  }
+
 
   isLoading = signal(false);
   errorMessage = signal('');

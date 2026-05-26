@@ -1,0 +1,115 @@
+<div class="page-container">
+  <header class="page-header">
+    <div>
+      <h1>{{ isEditMode() ? 'Editar Transação' : 'Nova Transação' }}</h1>
+      <p class="subtitle">Preencha os dados da transação</p>
+    </div>
+    <button mat-stroked-button routerLink="/transactions">
+      <mat-icon>arrow_back</mat-icon>
+      Voltar
+    </button>
+  </header>
+
+  <div class="form-card mat-elevation-z2">
+    <form [formGroup]="form" (ngSubmit)="onSubmit()">
+
+      <div class="form-row">
+        <mat-form-field appearance="outline" class="field-full">
+          <mat-label>Descrição</mat-label>
+          <input matInput formControlName="description" placeholder="Ex: Supermercado, Salário..." />
+          @if (form.controls.description.hasError('required')) {
+            <mat-error>Descrição obrigatória</mat-error>
+          }
+        </mat-form-field>
+      </div>
+
+      <div class="form-row form-row-cols">
+        <mat-form-field appearance="outline">
+          <mat-label>Valor (R$)</mat-label>
+          <input matInput type="number" formControlName="amount" min="0.01" step="0.01" />
+          @if (form.controls.amount.hasError('required')) {
+            <mat-error>Valor obrigatório</mat-error>
+          }
+          @if (form.controls.amount.hasError('min')) {
+            <mat-error>Valor deve ser maior que zero</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Data</mat-label>
+          <input matInput [matDatepicker]="picker" formControlName="date" />
+          <mat-datepicker-toggle matIconSuffix [for]="picker" />
+          <mat-datepicker #picker />
+          @if (form.controls.date.hasError('required')) {
+            <mat-error>Data obrigatória</mat-error>
+          }
+        </mat-form-field>
+      </div>
+
+      <div class="form-row form-row-cols">
+        <mat-form-field appearance="outline">
+          <mat-label>Tipo</mat-label>
+          <mat-select formControlName="type">
+            <mat-option value="EXPENSE">Despesa</mat-option>
+            <mat-option value="INCOME">Receita</mat-option>
+            <mat-option value="TRANSFER">Transferência</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Status</mat-label>
+          <mat-select formControlName="status">
+            <mat-option value="PENDING">Pendente</mat-option>
+            <mat-option value="PAID">Pago</mat-option>
+            <mat-option value="CANCELLED">Cancelado</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+
+      <div class="form-row form-row-cols">
+        <mat-form-field appearance="outline">
+          <mat-label>Nº de Parcelas</mat-label>
+          <input matInput type="number" formControlName="totalInstallments" min="1" max="48" />
+          <mat-hint>1 = à vista. Máx: 48x</mat-hint>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Categoria (opcional)</mat-label>
+          <mat-select formControlName="categoryId">
+            <mat-option [value]="null">Nenhuma</mat-option>
+            @for (cat of categories(); track cat.id) {
+              <mat-option [value]="cat.id">{{ cat.name }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </div>
+
+      <div class="form-row">
+        <mat-form-field appearance="outline" class="field-full">
+          <mat-label>Cartão de Crédito (opcional)</mat-label>
+          <mat-select formControlName="creditCardId">
+            <mat-option [value]="null">Nenhum</mat-option>
+            @for (card of creditCards(); track card.id) {
+              <mat-option [value]="card.id">{{ card.name }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </div>
+
+      <div class="form-actions">
+        <button mat-stroked-button type="button" routerLink="/transactions">Cancelar</button>
+        @if (saving()) {
+          <button mat-flat-button color="primary" type="submit" disabled>
+            <mat-icon>hourglass_empty</mat-icon>
+            Salvando...
+          </button>
+        } @else {
+          <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid">
+            <mat-icon>save</mat-icon>
+            Salvar
+          </button>
+        }
+      </div>
+    </form>
+  </div>
+</div>

@@ -1,0 +1,60 @@
+// :host é o elemento <app-shell> em si — precisamos que ele ocupe toda a viewport
+// e empilhe toolbar + sidenav-container em coluna.
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.toolbar {
+  flex-shrink: 0; // impede a toolbar de encolher quando o conteúdo cresce
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.toolbar-title {
+  font-size: 1.1rem;
+  font-weight: 500;
+  margin-left: 4px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.user-name {
+  font-size: 0.875rem;
+  margin-right: 8px;
+  opacity: 0.9;
+}
+
+.sidenav-container {
+  flex: 1;       // ocupa o espaço restante após a toolbar
+  overflow: hidden;
+}
+
+.sidenav {
+  width: 220px;
+  border-right: none;
+  padding-top: 8px;
+}
+
+// Destaque visual do item ativo usando tokens do Material 3 (sem hardcode de cor)
+.active-link {
+  background-color: var(--mat-sys-secondary-container) !important;
+  color: var(--mat-sys-on-secondary-container) !important;
+  border-radius: 28px;
+  margin: 2px 8px;
+
+  mat-icon {
+    color: var(--mat-sys-on-secondary-container);
+  }
+}
+
+.content {
+  padding: 24px;
+  height: 100%;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
