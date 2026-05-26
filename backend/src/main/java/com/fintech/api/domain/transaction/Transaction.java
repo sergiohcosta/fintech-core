@@ -1,7 +1,7 @@
 package com.fintech.api.domain.transaction;
 
+import com.fintech.api.domain.account.Account;
 import com.fintech.api.domain.category.Category;
-import com.fintech.api.domain.creditcard.CreditCard;
 import com.fintech.api.domain.enums.TransactionStatus;
 import com.fintech.api.domain.enums.TransactionType;
 import com.fintech.api.domain.tenant.Tenant;
@@ -49,7 +49,7 @@ public class Transaction {
     @NotNull(message = "O tipo da transação é obrigatório")
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private TransactionType type; // INCOME, EXPENSE, TRANSFER
+    private TransactionType type; // INCOME, EXPENSE
 
     // --- SEGURANÇA & MULTITENANCY ---
 
@@ -73,9 +73,12 @@ public class Transaction {
     private Category category;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "credit_card_id")
+    @JoinColumn(name = "account_id", nullable = false)
     @ToString.Exclude
-    private CreditCard creditCard; 
+    private Account account;
+
+    // Liga as duas pernas de uma transferência (nullable para transações comuns)
+    private UUID transferId; 
 
     @NotNull(message = "O status é obrigatório")
     @Enumerated(EnumType.STRING)
