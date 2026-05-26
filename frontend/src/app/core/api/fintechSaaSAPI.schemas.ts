@@ -67,13 +67,13 @@ export interface CategoryCreateDTO {
 }
 
 export interface CategoryResponseDTO {
-  id?: string;
-  name?: string;
-  icon?: string;
-  color?: string;
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
   /** @nullable */
   parentId?: string | null;
-  children?: CategoryResponseDTO[];
+  children: CategoryResponseDTO[];
 }
 
 export interface TransactionRequestDTO {
@@ -110,12 +110,12 @@ export interface TransactionUpdateDTO {
 }
 
 export interface TransactionResponseDTO {
-  id?: string;
-  description?: string;
-  amount?: number;
-  date?: string;
-  type?: TransactionType;
-  status?: TransactionStatus;
+  id: string;
+  description: string;
+  amount: number;
+  date: string;
+  type: TransactionType;
+  status: TransactionStatus;
   /** @nullable */
   installmentLabel?: string | null;
   /** @nullable */
@@ -161,16 +161,16 @@ export interface CreateCreditCardDTO {
 }
 
 export interface CreditCardResponseDTO {
-  id?: string;
-  name?: string;
-  brand?: CardBrand;
+  id: string;
+  name: string;
+  brand: CardBrand;
   /** @nullable */
   color?: string | null;
   /** @nullable */
   lastFourDigits?: string | null;
-  limitAmount?: number;
-  closingDay?: number;
-  dueDay?: number;
+  limitAmount: number;
+  closingDay: number;
+  dueDay: number;
 }
 
 export interface UpdateCreditCardDTO {
