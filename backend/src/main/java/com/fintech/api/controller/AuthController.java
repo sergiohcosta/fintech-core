@@ -6,6 +6,7 @@ import com.fintech.api.dto.LoginDTO;
 import com.fintech.api.dto.LoginResponseDTO;
 import com.fintech.api.dto.RegisterResponseDTO;
 import com.fintech.api.dto.TenantRegistrationDTO;
+import com.fintech.api.openapi.AuthApi;
 import com.fintech.api.repository.UserRepository;
 import com.fintech.api.service.TenantRegistrationService;
 import jakarta.validation.Valid;
@@ -19,13 +20,14 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/auth")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
-public class AuthController {
+public class AuthController implements AuthApi {
 
     private final TenantRegistrationService registrationService;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
 
+    @Override
     @PostMapping("/register")
     public ResponseEntity<RegisterResponseDTO> register(@RequestBody @Valid TenantRegistrationDTO dto) {
         Tenant newTenant = registrationService.register(dto);
@@ -33,6 +35,7 @@ public class AuthController {
                 .body(new RegisterResponseDTO(newTenant.getId(), newTenant.getName()));
     }
 
+    @Override
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDTO> login(@RequestBody @Valid LoginDTO data) {
         var user = this.userRepository.findByEmail(data.email())
