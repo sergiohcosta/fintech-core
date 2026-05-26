@@ -1,0 +1,652 @@
+openapi: 3.0.3
+info:
+  title: Fintech SaaS API
+  version: 1.0.0
+  description: API de gestão financeira multi-tenant.
+
+servers:
+  - url: http://localhost:8080
+    description: Desenvolvimento local
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+
+    # --- Enums ---
+
+    TransactionType:
+      type: string
+      enum: [INCOME, EXPENSE, TRANSFER]
+
+    TransactionStatus:
+      type: string
+      enum: [PENDING, PAID, CANCELLED]
+
+    CardBrand:
+      type: string
+      enum: [VISA, MASTERCARD, ELO, AMEX, HIPERCARD, OTHER]
+
+    # --- Auth ---
+
+    LoginDTO:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+
+    LoginResponseDTO:
+      type: object
+      properties:
+        token:
+          type: string
+
+    TenantRegistrationDTO:
+      type: object
+      required: [name, adminName, adminEmail, password]
+      properties:
+        name:
+          type: string
+        document:
+          type: string
+          nullable: true
+        adminName:
+          type: string
+        adminEmail:
+          type: string
+          format: email
+        password:
+          type: string
+
+    RegisterResponseDTO:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+
+    # --- Categories ---
+
+    CategoryCreateDTO:
+      type: object
+      required: [name, icon, color]
+      properties:
+        name:
+          type: string
+        icon:
+          type: string
+        color:
+          type: string
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+
+    CategoryResponseDTO:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        icon:
+          type: string
+        color:
+          type: string
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategoryResponseDTO'
+
+    # --- Transactions ---
+
+    TransactionRequestDTO:
+      type: object
+      required: [description, amount, date, type]
+      properties:
+        description:
+          type: string
+        amount:
+          type: number
+          format: double
+          minimum: 0.01
+        date:
+          type: string
+          format: date
+        type:
+          $ref: '#/components/schemas/TransactionType'
+        status:
+          $ref: '#/components/schemas/TransactionStatus'
+          nullable: true
+        totalInstallments:
+          type: integer
+          nullable: true
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
+        creditCardId:
+          type: string
+          format: uuid
+          nullable: true
+
+    TransactionUpdateDTO:
+      type: object
+      properties:
+        description:
+          type: string
+          nullable: true
+        amount:
+          type: number
+          format: double
+          minimum: 0.01
+          nullable: true
+        date:
+          type: string
+          format: date
+          nullable: true
+        type:
+          $ref: '#/components/schemas/TransactionType'
+          nullable: true
+        status:
+          $ref: '#/components/schemas/TransactionStatus'
+          nullable: true
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
+        creditCardId:
+          type: string
+          format: uuid
+          nullable: true
+
+    TransactionResponseDTO:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        description:
+          type: string
+        amount:
+          type: number
+          format: double
+        date:
+          type: string
+          format: date
+        type:
+          $ref: '#/components/schemas/TransactionType'
+        status:
+          $ref: '#/components/schemas/TransactionStatus'
+        installmentLabel:
+          type: string
+          nullable: true
+        categoryName:
+          type: string
+          nullable: true
+        creditCardName:
+          type: string
+          nullable: true
+
+    # --- Dashboard ---
+
+    DashboardSummaryDTO:
+      type: object
+      properties:
+        period:
+          type: string
+          example: "2026-05"
+        totalIncome:
+          type: number
+          format: double
+        totalExpense:
+          type: number
+          format: double
+        balance:
+          type: number
+          format: double
+
+    # --- Credit Cards ---
+
+    CreateCreditCardDTO:
+      type: object
+      required: [name, brand, limitAmount, closingDay, dueDay]
+      properties:
+        name:
+          type: string
+        brand:
+          $ref: '#/components/schemas/CardBrand'
+        color:
+          type: string
+          pattern: '^#([A-Fa-f0-9]{6})$'
+          nullable: true
+        lastFourDigits:
+          type: string
+          minLength: 4
+          maxLength: 4
+          nullable: true
+        limitAmount:
+          type: number
+          format: double
+          minimum: 0.01
+        closingDay:
+          type: integer
+          minimum: 1
+          maximum: 31
+        dueDay:
+          type: integer
+          minimum: 1
+          maximum: 31
+
+    CreditCardResponseDTO:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        brand:
+          $ref: '#/components/schemas/CardBrand'
+        color:
+          type: string
+          nullable: true
+        lastFourDigits:
+          type: string
+          nullable: true
+        limitAmount:
+          type: number
+          format: double
+        closingDay:
+          type: integer
+        dueDay:
+          type: integer
+
+    UpdateCreditCardDTO:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
+        color:
+          type: string
+          nullable: true
+        lastFourDigits:
+          type: string
+          nullable: true
+        limitAmount:
+          type: number
+          format: double
+          nullable: true
+        closingDay:
+          type: integer
+          nullable: true
+        dueDay:
+          type: integer
+          nullable: true
+
+paths:
+
+  # --- Auth (sem autenticação) ---
+
+  /auth/login:
+    post:
+      tags: [auth]
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginDTO'
+      responses:
+        '200':
+          description: Token JWT gerado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponseDTO'
+        '401':
+          description: Credenciais inválidas
+
+  /auth/register:
+    post:
+      tags: [auth]
+      operationId: register
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantRegistrationDTO'
+      responses:
+        '201':
+          description: Tenant e usuário admin criados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterResponseDTO'
+
+  # --- Categories ---
+
+  /api/categories:
+    get:
+      tags: [categories]
+      operationId: listCategories
+      responses:
+        '200':
+          description: Lista de categorias raiz com filhos aninhados
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CategoryResponseDTO'
+    post:
+      tags: [categories]
+      operationId: createCategory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryCreateDTO'
+      responses:
+        '201':
+          description: Categoria criada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponseDTO'
+
+  /api/categories/{id}:
+    get:
+      tags: [categories]
+      operationId: getCategory
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Categoria encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponseDTO'
+        '404':
+          description: Categoria não encontrada
+    put:
+      tags: [categories]
+      operationId: updateCategory
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryCreateDTO'
+      responses:
+        '200':
+          description: Categoria atualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponseDTO'
+        '404':
+          description: Categoria não encontrada
+    delete:
+      tags: [categories]
+      operationId: deleteCategory
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Categoria removida
+        '404':
+          description: Categoria não encontrada
+
+  # --- Transactions ---
+
+  /api/transactions:
+    get:
+      tags: [transactions]
+      operationId: listTransactions
+      responses:
+        '200':
+          description: Lista de transações do tenant
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TransactionResponseDTO'
+    post:
+      tags: [transactions]
+      operationId: createTransaction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionRequestDTO'
+      responses:
+        '201':
+          description: Transação(ões) criada(s) — múltiplas em caso de parcelamento
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TransactionResponseDTO'
+
+  /api/transactions/{id}:
+    get:
+      tags: [transactions]
+      operationId: getTransaction
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Transação encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionResponseDTO'
+        '404':
+          description: Transação não encontrada
+    put:
+      tags: [transactions]
+      operationId: updateTransaction
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionUpdateDTO'
+      responses:
+        '200':
+          description: Transação atualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionResponseDTO'
+        '404':
+          description: Transação não encontrada
+    delete:
+      tags: [transactions]
+      operationId: deleteTransaction
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Transação removida
+        '404':
+          description: Transação não encontrada
+
+  # --- Dashboard ---
+
+  /api/dashboard/summary:
+    get:
+      tags: [dashboard]
+      operationId: getDashboardSummary
+      parameters:
+        - name: month
+          in: query
+          required: true
+          schema:
+            type: string
+          example: "2026-05"
+          description: Mês no formato yyyy-MM
+      responses:
+        '200':
+          description: Resumo financeiro do período
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardSummaryDTO'
+        '400':
+          description: Formato do parâmetro month inválido
+
+  # --- Credit Cards ---
+
+  /api/credit-cards:
+    get:
+      tags: [credit-cards]
+      operationId: listCreditCards
+      responses:
+        '200':
+          description: Lista de cartões do tenant
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CreditCardResponseDTO'
+    post:
+      tags: [credit-cards]
+      operationId: createCreditCard
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCreditCardDTO'
+      responses:
+        '201':
+          description: Cartão criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreditCardResponseDTO'
+
+  /api/credit-cards/{id}:
+    get:
+      tags: [credit-cards]
+      operationId: getCreditCard
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Cartão encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreditCardResponseDTO'
+        '404':
+          description: Cartão não encontrado
+    put:
+      tags: [credit-cards]
+      operationId: updateCreditCard
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCreditCardDTO'
+      responses:
+        '200':
+          description: Cartão atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreditCardResponseDTO'
+        '404':
+          description: Cartão não encontrado
+    delete:
+      tags: [credit-cards]
+      operationId: deleteCreditCard
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Cartão removido
+        '404':
+          description: Cartão não encontrado
