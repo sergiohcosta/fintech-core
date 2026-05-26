@@ -9,8 +9,8 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
-import { TransactionService } from '../../../core/services/transaction';
-import { TransactionResponse } from '../../../core/models/transaction';
+import { TransactionsService } from '../../../core/api/transactions/transactions.service';
+import { TransactionResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
 import { ConfirmationDialogComponent } from '../../../components/confirmation-dialog/confirmation-dialog';
 
 @Component({
@@ -33,12 +33,12 @@ import { ConfirmationDialogComponent } from '../../../components/confirmation-di
   styleUrl: './transaction-list.scss'
 })
 export class TransactionList implements OnInit {
-  private service = inject(TransactionService);
+  private service = inject(TransactionsService);
   private router = inject(Router);
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
 
-  transactions = signal<TransactionResponse[]>([]);
+  transactions = signal<TransactionResponseDTO[]>([]);
   displayedColumns = ['description', 'amount', 'date', 'type', 'status', 'installment', 'category', 'creditCard', 'actions'];
 
   ngOnInit(): void {
@@ -46,17 +46,17 @@ export class TransactionList implements OnInit {
   }
 
   loadTransactions(): void {
-    this.service.list().subscribe({
+    this.service.listTransactions().subscribe({
       next: (data) => this.transactions.set(data),
       error: () => this.snackBar.open('Erro ao carregar transações.', 'Fechar', { duration: 5000 })
     });
   }
 
-  onEdit(t: TransactionResponse): void {
+  onEdit(t: TransactionResponseDTO): void {
     this.router.navigate(['/transactions', t.id]);
   }
 
-  onDelete(t: TransactionResponse): void {
+  onDelete(t: TransactionResponseDTO): void {
     const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
       width: '400px',
       data: {
@@ -68,7 +68,7 @@ export class TransactionList implements OnInit {
 
     dialogRef.afterClosed().subscribe(confirmed => {
       if (confirmed === true) {
-        this.service.delete(t.id).subscribe({
+        this.service.deleteTransaction(t.id!).subscribe({
           next: () => {
             this.snackBar.open('Transação excluída.', 'OK', { duration: 3000 });
             this.loadTransactions();

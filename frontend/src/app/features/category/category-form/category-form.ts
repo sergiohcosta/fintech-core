@@ -9,8 +9,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
-import { CategoryService } from '../../../core/services/category';
-import { CategoryModel } from '../../../core/models/category';
+import { CategoriesService } from '../../../core/api/categories/categories.service';
+import { CategoryResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
 
 interface CategoryOption {
   id: string;
@@ -37,7 +37,7 @@ interface CategoryOption {
 })
 export class CategoryForm implements OnInit {
   private fb = inject(FormBuilder);
-  private service = inject(CategoryService);
+  private service = inject(CategoriesService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private snackBar = inject(MatSnackBar);
@@ -72,7 +72,7 @@ export class CategoryForm implements OnInit {
   }
 
   private loadParentOptions() {
-    this.service.list().subscribe(categories => {
+    this.service.listCategories().subscribe(categories => {
       const flattened: CategoryOption[] = [];
       this.flattenCategories(categories, flattened, 0);
       
@@ -84,7 +84,7 @@ export class CategoryForm implements OnInit {
     });
   }
 
-  private flattenCategories(categories: CategoryModel[], result: CategoryOption[], level: number) {
+  private flattenCategories(categories: CategoryResponseDTO[], result: CategoryOption[], level: number) {
     categories.forEach(cat => {
       if (this.isEditMode() && cat.id === this.categoryId()) {
         return; 
@@ -101,7 +101,7 @@ export class CategoryForm implements OnInit {
     if (id) {
       this.isEditMode.set(true);
       this.categoryId.set(id);
-      this.service.getById(id).subscribe({
+      this.service.getCategory(id).subscribe({
         next: (cat) => this.form.patchValue(cat),
         error: () => this.showError('Erro ao carregar categoria.')
       });
@@ -112,8 +112,8 @@ export class CategoryForm implements OnInit {
     if (this.form.invalid) return;
     const data = this.form.value;
     const request = (this.isEditMode() && this.categoryId())
-      ? this.service.update(this.categoryId()!, data)
-      : this.service.create(data);
+      ? this.service.updateCategory(this.categoryId()!, data)
+      : this.service.createCategory(data);
 
     request.subscribe({
       next: () => this.onSuccess('Categoria salva com sucesso!'),

@@ -9,9 +9,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
-import { CreditCardService } from '../../../../core/services/credit-card';
-import { CreditCardModel } from '../../../../core/models/credit-card';
-import { BRAND_OPTIONS } from '../../../../core/models/brand.enum';
+import { CreditCardsService } from '../../../../core/api/credit-cards/credit-cards.service';
+import { CardBrand } from '../../../../core/api/fintechSaaSAPI.schemas';
 
 @Component({
   selector: 'app-card-form',
@@ -33,7 +32,7 @@ import { BRAND_OPTIONS } from '../../../../core/models/brand.enum';
 export class CardFormComponent implements OnInit {
 
   private fb = inject(FormBuilder);
-  private service = inject(CreditCardService);
+  private service = inject(CreditCardsService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private snackBar = inject(MatSnackBar);
@@ -42,8 +41,8 @@ export class CardFormComponent implements OnInit {
   isEditMode = signal(false);
   cardId = signal<string | null>(null);
 
-  // Opções para o Select (poderia vir de um Enum ou API)
-  brands = BRAND_OPTIONS;
+  // Opções para o Select geradas a partir do enum CardBrand
+  brands = Object.values(CardBrand);
 
   ngOnInit(): void {
     this.initForm();
@@ -68,7 +67,7 @@ export class CardFormComponent implements OnInit {
       this.isEditMode.set(true);
       this.cardId.set(id);
 
-      this.service.getById(id).subscribe({
+      this.service.getCreditCard(id).subscribe({
         next: (card) => {
           this.form.patchValue(card);
         },
@@ -87,13 +86,13 @@ export class CardFormComponent implements OnInit {
 
     if (this.isEditMode() && this.cardId()) {
       // Edição
-      this.service.update(this.cardId()!, card).subscribe({
+      this.service.updateCreditCard(this.cardId()!, card).subscribe({
         next: () => this.onSuccess('Cartão atualizado com sucesso!'),
         error: () => this.showError('Erro ao atualizar cartão.')
       });
     } else {
       // Criação
-      this.service.create(card).subscribe({
+      this.service.createCreditCard(card).subscribe({
         next: () => this.onSuccess('Cartão criado com sucesso!'),
         error: () => this.showError('Erro ao criar cartão.')
       });

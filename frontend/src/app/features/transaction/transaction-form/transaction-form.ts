@@ -11,11 +11,10 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
-import { TransactionService } from '../../../core/services/transaction';
-import { CategoryService } from '../../../core/services/category';
-import { CreditCardService } from '../../../core/services/credit-card';
-import { CategoryModel } from '../../../core/models/category';
-import { CreditCardModel } from '../../../core/models/credit-card';
+import { TransactionsService } from '../../../core/api/transactions/transactions.service';
+import { CategoriesService } from '../../../core/api/categories/categories.service';
+import { CreditCardsService } from '../../../core/api/credit-cards/credit-cards.service';
+import { CategoryResponseDTO, CreditCardResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
 
 @Component({
   selector: 'app-transaction-form',
@@ -40,16 +39,16 @@ export class TransactionForm implements OnInit {
   private fb = inject(FormBuilder);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
-  private transactionService = inject(TransactionService);
-  private categoryService = inject(CategoryService);
-  private creditCardService = inject(CreditCardService);
+  private transactionService = inject(TransactionsService);
+  private categoryService = inject(CategoriesService);
+  private creditCardService = inject(CreditCardsService);
   private snackBar = inject(MatSnackBar);
 
   saving = signal(false);
   isEditMode = signal(false);
   transactionId = signal<string | null>(null);
-  categories = signal<CategoryModel[]>([]);
-  creditCards = signal<CreditCardModel[]>([]);
+  categories = signal<CategoryResponseDTO[]>([]);
+  creditCards = signal<CreditCardResponseDTO[]>([]);
 
   form = this.fb.group({
     description: ['', [Validators.required, Validators.minLength(2)]],
@@ -63,11 +62,11 @@ export class TransactionForm implements OnInit {
   });
 
   ngOnInit(): void {
-    this.categoryService.list().subscribe({
+    this.categoryService.listCategories().subscribe({
       next: (data) => this.categories.set(this.flattenCategories(data)),
       error: () => {}
     });
-    this.creditCardService.list().subscribe({
+    this.creditCardService.listCreditCards().subscribe({
       next: (data) => this.creditCards.set(data),
       error: () => {}
     });
@@ -76,7 +75,7 @@ export class TransactionForm implements OnInit {
     if (id) {
       this.isEditMode.set(true);
       this.transactionId.set(id);
-      this.transactionService.getById(id).subscribe({
+      this.transactionService.getTransaction(id).subscribe({
         next: (t) => {
           this.form.patchValue({
             description: t.description,
@@ -97,7 +96,7 @@ export class TransactionForm implements OnInit {
     }
   }
 
-  private flattenCategories(cats: CategoryModel[], prefix = ''): CategoryModel[] {
+  private flattenCategories(cats: CategoryResponseDTO[], prefix = ''): CategoryResponseDTO[] {
     return cats.flatMap(c => [
       { ...c, name: prefix + c.name },
       ...this.flattenCategories(c.children ?? [], prefix + '  ')
@@ -125,7 +124,7 @@ export class TransactionForm implements OnInit {
     };
 
     if (this.isEditMode()) {
-      this.transactionService.update(this.transactionId()!, payload).subscribe({
+      this.transactionService.updateTransaction(this.transactionId()!, payload).subscribe({
         next: () => {
           this.snackBar.open('Transação atualizada com sucesso!', 'OK', { duration: 3000 });
           this.router.navigate(['/transactions']);
@@ -136,7 +135,7 @@ export class TransactionForm implements OnInit {
         }
       });
     } else {
-      this.transactionService.create({ ...payload, totalInstallments: raw.totalInstallments ?? 1 }).subscribe({
+      this.transactionService.createTransaction({ ...payload, totalInstallments: raw.totalInstallments ?? 1 }).subscribe({
         next: (created) => {
           const msg = created.length > 1
             ? `${created.length} parcelas criadas com sucesso!`

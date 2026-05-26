@@ -10,8 +10,8 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
-import { DashboardService } from '../../core/services/dashboard';
-import { TransactionService } from '../../core/services/transaction';
+import { DashboardService } from '../../core/api/dashboard/dashboard.service';
+import { TransactionsService } from '../../core/api/transactions/transactions.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -31,7 +31,7 @@ import { TransactionService } from '../../core/services/transaction';
 })
 export class DashboardComponent {
   private dashboardService = inject(DashboardService);
-  private transactionService = inject(TransactionService);
+  private transactionService = inject(TransactionsService);
 
   private now = new Date();
   selectedYear = signal(this.now.getFullYear());
@@ -56,12 +56,12 @@ export class DashboardComponent {
 
   // toObservable + switchMap: quando selectedMonth muda, cancela a request anterior e dispara nova
   private summary$ = toObservable(this.selectedMonth).pipe(
-    switchMap(month => this.dashboardService.getSummary(month))
+    switchMap(month => this.dashboardService.getDashboardSummary({ month }))
   );
   summary = toSignal(this.summary$, { initialValue: null });
 
   // Transações recentes: reaproveitamos o service existente, exibimos as 5 primeiras
-  recentTransactions = toSignal(this.transactionService.list(), { initialValue: [] });
+  recentTransactions = toSignal(this.transactionService.listTransactions(), { initialValue: [] });
 
   prevMonth() {
     if (this.selectedMonthIndex() === 1) {

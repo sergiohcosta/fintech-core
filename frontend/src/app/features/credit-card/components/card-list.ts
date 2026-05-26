@@ -7,8 +7,8 @@ import { MatCardModule } from '@angular/material/card';
 import { MatDialog } from '@angular/material/dialog';
 
 
-import { CreditCardService } from '../../../core/services/credit-card';
-import { CreditCardModel } from '../../../core/models/credit-card';
+import { CreditCardsService } from '../../../core/api/credit-cards/credit-cards.service';
+import { CreditCardResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
 import { ConfirmationDialogComponent } from '../../../components/confirmation-dialog/confirmation-dialog';
 
 import { Router, RouterLink } from '@angular/router';
@@ -31,8 +31,8 @@ import { Router, RouterLink } from '@angular/router';
 })
 export class CardListComponent implements OnInit {
   private router = inject(Router);
-  private service = inject(CreditCardService);
-  cards = signal<CreditCardModel[]>([]);
+  private service = inject(CreditCardsService);
+  cards = signal<CreditCardResponseDTO[]>([]);
 
   private dialog = inject(MatDialog);
 
@@ -43,17 +43,17 @@ export class CardListComponent implements OnInit {
   }
 
   loadCards() {
-    this.service.list().subscribe({
+    this.service.listCreditCards().subscribe({
       next: (data) => this.cards.set(data),
       error: (err) => console.error('Erro:', err)
     });
   }
 
-  onEdit(card: CreditCardModel) {
+  onEdit(card: CreditCardResponseDTO) {
     this.router.navigate(['/credit-cards', card.id]);
   }
 
-  onDelete(card: CreditCardModel) {
+  onDelete(card: CreditCardResponseDTO) {
     const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
       width: '400px',
       data: {
@@ -65,7 +65,7 @@ export class CardListComponent implements OnInit {
 
     dialogRef.afterClosed().subscribe(result => {
       if (result === true) {
-        this.service.delete(card.id).subscribe({
+        this.service.deleteCreditCard(card.id!).subscribe({
           next: () => {
             this.loadCards();
           },
