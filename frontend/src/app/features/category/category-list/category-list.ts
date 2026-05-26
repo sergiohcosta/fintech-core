@@ -8,11 +8,11 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Router, RouterLink } from '@angular/router';
 
-import { CategoryService } from '../../../core/services/category';
-import { CategoryModel } from '../../../core/models/category';
+import { CategoriesService } from '../../../core/api/categories/categories.service';
+import { CategoryResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
 import { ConfirmationDialogComponent } from '../../../components/confirmation-dialog/confirmation-dialog';
 
-interface FlatCategory extends CategoryModel {
+interface FlatCategory extends CategoryResponseDTO {
   level: number;
 }
 
@@ -34,7 +34,7 @@ interface FlatCategory extends CategoryModel {
 })
 export class CategoryList implements OnInit {
   private router = inject(Router);
-  private service = inject(CategoryService);
+  private service = inject(CategoriesService);
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
 
@@ -46,7 +46,7 @@ export class CategoryList implements OnInit {
   }
 
   loadCategories() {
-    this.service.list().subscribe({
+    this.service.listCategories().subscribe({
       next: (data) => {
         const flattened: FlatCategory[] = [];
         this.flattenCategories(data, flattened, 0);
@@ -56,7 +56,7 @@ export class CategoryList implements OnInit {
     });
   }
 
-  private flattenCategories(categories: CategoryModel[], result: FlatCategory[], level: number) {
+  private flattenCategories(categories: CategoryResponseDTO[], result: FlatCategory[], level: number) {
     categories.forEach(cat => {
       result.push({ ...cat, level });
       if (cat.children && cat.children.length > 0) {
@@ -65,11 +65,11 @@ export class CategoryList implements OnInit {
     });
   }
 
-  onEdit(category: CategoryModel) {
+  onEdit(category: CategoryResponseDTO) {
     this.router.navigate(['/categories', category.id]);
   }
 
-  onDelete(category: CategoryModel) {
+  onDelete(category: CategoryResponseDTO) {
     const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
       width: '400px',
       data: {
@@ -81,7 +81,7 @@ export class CategoryList implements OnInit {
 
     dialogRef.afterClosed().subscribe(result => {
       if (result === true) {
-        this.service.delete(category.id).subscribe({
+        this.service.deleteCategory(category.id!).subscribe({
           next: () => {
             this.snackBar.open('Categoria excluída com sucesso!', 'OK', { duration: 3000 });
             this.loadCategories();
