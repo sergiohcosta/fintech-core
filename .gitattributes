@@ -1,0 +1,2 @@
+# Arquivos gerados pelo Orval — marcados para reduzir ruído em diffs de PR
+frontend/src/app/core/api/**/*.ts linguist-generated=true
