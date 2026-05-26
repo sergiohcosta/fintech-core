@@ -27,7 +27,7 @@ public class CreditCardDetails {
     private Account account;
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 20)
+    @Column(length = 50)
     private CardBrand brand;
 
     @Column(length = 4)

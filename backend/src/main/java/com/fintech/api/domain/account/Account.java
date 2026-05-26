@@ -38,6 +38,8 @@ public class Account {
     @Column(length = 50)
     private String icon;
 
+    // Defaults definidos explicitamente no AccountService por tipo; não usar @Builder.Default
+    // para forçar o service a sempre setar esses valores conscientemente.
     @Column(nullable = false)
     private boolean countInLiquidBalance;
 
