@@ -1,5 +1,6 @@
 package com.fintech.api.domain.user;
 
+import com.fintech.api.domain.enums.UserRole;
 import com.fintech.api.domain.tenant.Tenant;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -40,9 +41,9 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private String passwordHash;
 
-    // Num futuro próximo usaremos Enums aqui
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String role;
+    private UserRole role;
 
     private boolean active = true;
 
@@ -54,8 +55,12 @@ public class User implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // Certifique-se de que não há espaços extras e que o prefixo ROLE_ está
-        // presente
+        if (this.role == UserRole.ADMIN) {
+            return List.of(
+                new SimpleGrantedAuthority("ROLE_ADMIN"),
+                new SimpleGrantedAuthority("ROLE_USER")
+            );
+        }
         return List.of(new SimpleGrantedAuthority("ROLE_USER"));
     }
 

@@ -1,0 +1,62 @@
+frontend/
+├── README.md
+├── angular.json
+├── package-lock.json
+├── package.json
+├── proxy.conf.json
+├── public/
+│   └── favicon.ico
+├── src/
+│   ├── app/
+│   │   ├── components/
+│   │   │   ├── confirmation-dialog/
+│   │   │   │   ├── confirmation-dialog.html
+│   │   │   │   ├── confirmation-dialog.scss
+│   │   │   │   ├── confirmation-dialog.spec.ts
+│   │   │   │   └── confirmation-dialog.ts
+│   │   │   └── navbar/
+│   │   │       ├── navbar.html
+│   │   │       ├── navbar.scss
+│   │   │       ├── navbar.spec.ts
+│   │   │       └── navbar.ts
+│   │   ├── core/
+│   │   │   ├── guards/
+│   │   │   │   ├── auth-guard.spec.ts
+│   │   │   │   └── auth-guard.ts
+│   │   │   ├── interceptors/
+│   │   │   │   └── auth.interceptor.ts
+│   │   │   ├── models/
+│   │   │   │   ├── brand.enum.ts
+│   │   │   │   └── credit-card.ts
+│   │   │   └── services/
+│   │   │       ├── auth.spec.ts
+│   │   │       ├── auth.ts
+│   │   │       └── credit-card.ts
+│   │   ├── features/
+│   │   │   ├── auth/
+│   │   │   │   ├── login/
+│   │   │   │   └── register/
+│   │   │   ├── credit-card/
+│   │   │   │   └── components/
+│   │   │   └── dashboard/
+│   │   │       ├── dashboard.html
+│   │   │       ├── dashboard.scss
+│   │   │       ├── dashboard.spec.ts
+│   │   │       └── dashboard.ts
+│   │   ├── teste/
+│   │   │   ├── teste.html
+│   │   │   ├── teste.scss
+│   │   │   ├── teste.spec.ts
+│   │   │   └── teste.ts
+│   │   ├── app.config.ts
+│   │   ├── app.html
+│   │   ├── app.routes.ts
+│   │   ├── app.scss
+│   │   ├── app.spec.ts
+│   │   └── app.ts
+│   ├── index.html
+│   ├── main.ts
+│   └── styles.scss
+├── tsconfig.app.json
+├── tsconfig.json
+└── tsconfig.spec.json

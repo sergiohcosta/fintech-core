@@ -27,6 +27,8 @@ services:
       - postgres
     networks:
       - fintech-net
+    restart: unless-stopped
+
 
 networks:
   fintech-net:

@@ -1,0 +1,98 @@
+<div class="page-container">
+  <header class="page-header">
+    <div>
+      <h1>Transações</h1>
+      <p class="subtitle">Acompanhe suas receitas, despesas e transferências</p>
+    </div>
+    <button mat-flat-button color="primary" routerLink="/transactions/new">
+      <mat-icon>add</mat-icon>
+      Nova Transação
+    </button>
+  </header>
+
+  <div class="table-container mat-elevation-z2">
+    <table mat-table [dataSource]="transactions()">
+
+      <ng-container matColumnDef="description">
+        <th mat-header-cell *matHeaderCellDef>Descrição</th>
+        <td mat-cell *matCellDef="let t">
+          <span class="description-text">{{ t.description }}</span>
+          @if (t.installmentLabel) {
+            <span class="installment-badge">{{ t.installmentLabel }}</span>
+          }
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="amount">
+        <th mat-header-cell *matHeaderCellDef>Valor</th>
+        <td mat-cell *matCellDef="let t">
+          <span [class]="'amount ' + t.type.toLowerCase()">
+            {{ t.amount | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}
+          </span>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="date">
+        <th mat-header-cell *matHeaderCellDef>Data</th>
+        <td mat-cell *matCellDef="let t">{{ t.date | date:'dd/MM/yyyy' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="type">
+        <th mat-header-cell *matHeaderCellDef>Tipo</th>
+        <td mat-cell *matCellDef="let t">
+          <span [class]="'type-badge type-' + t.type.toLowerCase()">
+            {{ typeLabel(t.type) }}
+          </span>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="status">
+        <th mat-header-cell *matHeaderCellDef>Status</th>
+        <td mat-cell *matCellDef="let t">
+          <span [class]="'status-badge status-' + t.status.toLowerCase()">
+            {{ statusLabel(t.status) }}
+          </span>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="installment">
+        <th mat-header-cell *matHeaderCellDef>Parcela</th>
+        <td mat-cell *matCellDef="let t">{{ t.installmentLabel ?? '—' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="category">
+        <th mat-header-cell *matHeaderCellDef>Categoria</th>
+        <td mat-cell *matCellDef="let t">{{ t.categoryName ?? '—' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="creditCard">
+        <th mat-header-cell *matHeaderCellDef>Cartão</th>
+        <td mat-cell *matCellDef="let t">{{ t.creditCardName ?? '—' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef></th>
+        <td mat-cell *matCellDef="let t">
+          <div class="actions-group">
+            <button mat-icon-button color="primary" (click)="onEdit(t)" matTooltip="Editar">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button color="warn" (click)="onDelete(t)" matTooltip="Excluir">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </div>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="element-row"></tr>
+
+      <tr class="mat-row" *matNoDataRow>
+        <td class="mat-cell empty-state" colspan="9">
+          <mat-icon>receipt_long</mat-icon>
+          <p>Nenhuma transação encontrada.</p>
+        </td>
+      </tr>
+    </table>
+  </div>
+</div>

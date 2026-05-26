@@ -9,7 +9,7 @@ export interface TokenPayload {
   sub: string;       // Email
   name: string;      // Nome do usuário
   tenant_id: string; // ID da empresa
-  // Se tiver mais coisas no futuro, adicionamos aqui
+  exp: number;       // Expiração (Unix timestamp)
 }
 
 // O Contrato do Registro (que você já tinha)
@@ -67,6 +67,23 @@ export class AuthService {
 
   getToken() {
     return localStorage.getItem(this.TOKEN_KEY);
+  }
+
+  /**
+   * 🎓 CONCEITO: Segurança no Frontend
+   * Verifica se o token existe e se ainda é válido (não expirou).
+   */
+  isAuthenticated(): boolean {
+    const token = this.getToken();
+    if (!token) return false;
+
+    try {
+      const decoded = jwtDecode<TokenPayload>(token);
+      const currentTime = Math.floor(Date.now() / 1000);
+      return decoded.exp > currentTime;
+    } catch {
+      return false;
+    }
   }
 
   // 3. O Tradutor: A mágica acontece aqui

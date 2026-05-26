@@ -76,28 +76,35 @@
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-actuator-test</artifactId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-test</artifactId>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-data-jpa-test</artifactId>
-			<scope>test</scope>
+			<artifactId>spring-boot-devtools</artifactId>
+			<scope>runtime</scope>
+			<optional>true</optional>
 		</dependency>
 		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-flyway-test</artifactId>
-			<scope>test</scope>
+			<groupId>com.fasterxml.jackson.datatype</groupId>
+			<artifactId>jackson-datatype-jsr310</artifactId>
 		</dependency>
+
+		<!-- Swagger UI via springdoc — serve o spec estático em /swagger-ui.html -->
 		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-validation-test</artifactId>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-webmvc-test</artifactId>
-			<scope>test</scope>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+			<version>2.8.9</version>
 		</dependency>
 	</dependencies>
 
@@ -126,6 +133,51 @@
 						</exclude>
 					</excludes>
 				</configuration>
+			</plugin>
+
+			<plugin>
+				<groupId>org.openapitools</groupId>
+				<artifactId>openapi-generator-maven-plugin</artifactId>
+				<version>7.4.0</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>generate</goal>
+						</goals>
+						<configuration>
+							<generatorName>spring</generatorName>
+							<inputSpec>${project.basedir}/../api-spec/openapi.yaml</inputSpec>
+							<output>${project.build.directory}/generated-sources/openapi</output>
+							<generateModels>false</generateModels>
+							<apiPackage>com.fintech.api.openapi</apiPackage>
+							<importMappings>
+								<importMapping>LoginDTO=com.fintech.api.dto.LoginDTO</importMapping>
+								<importMapping>LoginResponseDTO=com.fintech.api.dto.LoginResponseDTO</importMapping>
+								<importMapping>TenantRegistrationDTO=com.fintech.api.dto.TenantRegistrationDTO</importMapping>
+								<importMapping>RegisterResponseDTO=com.fintech.api.dto.RegisterResponseDTO</importMapping>
+								<importMapping>CategoryCreateDTO=com.fintech.api.dto.category.CategoryCreateDTO</importMapping>
+								<importMapping>CategoryResponseDTO=com.fintech.api.dto.category.CategoryResponseDTO</importMapping>
+								<importMapping>TransactionRequestDTO=com.fintech.api.dto.transaction.TransactionRequestDTO</importMapping>
+								<importMapping>TransactionUpdateDTO=com.fintech.api.dto.transaction.TransactionUpdateDTO</importMapping>
+								<importMapping>TransactionResponseDTO=com.fintech.api.dto.transaction.TransactionResponseDTO</importMapping>
+								<importMapping>DashboardSummaryDTO=com.fintech.api.dto.dashboard.DashboardSummaryDTO</importMapping>
+								<importMapping>CreateCreditCardDTO=com.fintech.api.dto.CreateCreditCardDTO</importMapping>
+								<importMapping>CreditCardResponseDTO=com.fintech.api.dto.CreditCardResponseDTO</importMapping>
+								<importMapping>UpdateCreditCardDTO=com.fintech.api.dto.UpdateCreditCardDTO</importMapping>
+								<importMapping>TransactionType=com.fintech.api.domain.enums.TransactionType</importMapping>
+								<importMapping>TransactionStatus=com.fintech.api.domain.enums.TransactionStatus</importMapping>
+								<importMapping>CardBrand=com.fintech.api.domain.enums.CardBrand</importMapping>
+							</importMappings>
+							<configOptions>
+								<interfaceOnly>true</interfaceOnly>
+								<useSpringBoot3>true</useSpringBoot3>
+								<useTags>true</useTags>
+								<useJakartaEe>true</useJakartaEe>
+								<skipDefaultInterface>true</skipDefaultInterface>
+							</configOptions>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</build>
