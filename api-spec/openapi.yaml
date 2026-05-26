@@ -24,7 +24,7 @@ components:
 
     TransactionType:
       type: string
-      enum: [INCOME, EXPENSE, TRANSFER]
+      enum: [INCOME, EXPENSE]
 
     TransactionStatus:
       type: string
@@ -120,7 +120,7 @@ components:
 
     TransactionRequestDTO:
       type: object
-      required: [description, amount, date, type]
+      required: [description, amount, date, type, accountId]
       properties:
         description:
           type: string
@@ -143,10 +143,9 @@ components:
           type: string
           format: uuid
           nullable: true
-        creditCardId:
+        accountId:
           type: string
           format: uuid
-          nullable: true
 
     TransactionUpdateDTO:
       type: object
@@ -173,7 +172,7 @@ components:
           type: string
           format: uuid
           nullable: true
-        creditCardId:
+        accountId:
           type: string
           format: uuid
           nullable: true
@@ -203,8 +202,12 @@ components:
         categoryName:
           type: string
           nullable: true
-        creditCardName:
+        accountName:
           type: string
+          nullable: true
+        transferId:
+          type: string
+          format: uuid
           nullable: true
 
     # --- Dashboard ---
@@ -226,20 +229,17 @@ components:
           type: number
           format: double
 
-    # --- Credit Cards ---
+    # --- Accounts ---
 
-    CreateCreditCardDTO:
+    AccountType:
+      type: string
+      enum: [CHECKING, INVESTMENT, CREDIT_CARD, CASH]
+
+    CreditCardDetailsRequest:
       type: object
-      required: [name, brand, limitAmount, closingDay, dueDay]
       properties:
-        name:
-          type: string
         brand:
           $ref: '#/components/schemas/CardBrand'
-        color:
-          type: string
-          pattern: '^#([A-Fa-f0-9]{6})$'
-          nullable: true
         lastFourDigits:
           type: string
           minLength: 4
@@ -248,63 +248,112 @@ components:
         limitAmount:
           type: number
           format: double
-          minimum: 0.01
+          nullable: true
         closingDay:
           type: integer
           minimum: 1
           maximum: 31
+          nullable: true
         dueDay:
           type: integer
           minimum: 1
           maximum: 31
+          nullable: true
 
-    CreditCardResponseDTO:
+    CreditCardDetailsResponse:
       type: object
-      required: [id, name, brand, limitAmount, closingDay, dueDay]
+      required: [closingDay, dueDay]
+      properties:
+        brand:
+          $ref: '#/components/schemas/CardBrand'
+          nullable: true
+        lastFourDigits:
+          type: string
+          nullable: true
+        limitAmount:
+          type: number
+          format: double
+          nullable: true
+        closingDay:
+          type: integer
+        dueDay:
+          type: integer
+
+    AccountCreateRequest:
+      type: object
+      required: [name, type]
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        type:
+          $ref: '#/components/schemas/AccountType'
+        color:
+          type: string
+          pattern: '^#([A-Fa-f0-9]{6})$'
+          nullable: true
+        icon:
+          type: string
+          nullable: true
+        countInLiquidBalance:
+          type: boolean
+          nullable: true
+        countInNetWorth:
+          type: boolean
+          nullable: true
+        creditCardDetails:
+          $ref: '#/components/schemas/CreditCardDetailsRequest'
+          nullable: true
+
+    AccountUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          nullable: true
+        color:
+          type: string
+          pattern: '^#([A-Fa-f0-9]{6})$'
+          nullable: true
+        icon:
+          type: string
+          nullable: true
+        countInLiquidBalance:
+          type: boolean
+          nullable: true
+        countInNetWorth:
+          type: boolean
+          nullable: true
+
+    AccountResponse:
+      type: object
+      required: [id, name, type, countInLiquidBalance, countInNetWorth, active, balance]
       properties:
         id:
           type: string
           format: uuid
         name:
           type: string
-        brand:
-          $ref: '#/components/schemas/CardBrand'
+        type:
+          $ref: '#/components/schemas/AccountType'
         color:
           type: string
           nullable: true
-        lastFourDigits:
+        icon:
           type: string
           nullable: true
-        limitAmount:
+        countInLiquidBalance:
+          type: boolean
+        countInNetWorth:
+          type: boolean
+        active:
+          type: boolean
+        balance:
           type: number
           format: double
-        closingDay:
-          type: integer
-        dueDay:
-          type: integer
-
-    UpdateCreditCardDTO:
-      type: object
-      properties:
-        name:
-          type: string
-          nullable: true
-        color:
-          type: string
-          pattern: '^#([A-Fa-f0-9]{6})$'
-          nullable: true
-        lastFourDigits:
-          type: string
-          nullable: true
-        limitAmount:
-          type: number
-          format: double
-          nullable: true
-        closingDay:
-          type: integer
-          nullable: true
-        dueDay:
-          type: integer
+        creditCardDetails:
+          $ref: '#/components/schemas/CreditCardDetailsResponse'
           nullable: true
 
 paths:
@@ -563,42 +612,42 @@ paths:
         '400':
           description: Formato do parâmetro month inválido
 
-  # --- Credit Cards ---
+  # --- Accounts ---
 
-  /api/credit-cards:
+  /api/accounts:
     get:
-      tags: [credit-cards]
-      operationId: listCreditCards
+      tags: [accounts]
+      operationId: listAccounts
       responses:
         '200':
-          description: Lista de cartões do tenant
+          description: Lista de contas ativas do tenant (com saldo calculado)
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/CreditCardResponseDTO'
+                  $ref: '#/components/schemas/AccountResponse'
     post:
-      tags: [credit-cards]
-      operationId: createCreditCard
+      tags: [accounts]
+      operationId: createAccount
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateCreditCardDTO'
+              $ref: '#/components/schemas/AccountCreateRequest'
       responses:
         '201':
-          description: Cartão criado
+          description: Conta criada
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CreditCardResponseDTO'
+                $ref: '#/components/schemas/AccountResponse'
 
-  /api/credit-cards/{id}:
+  /api/accounts/{id}:
     get:
-      tags: [credit-cards]
-      operationId: getCreditCard
+      tags: [accounts]
+      operationId: getAccount
       parameters:
         - name: id
           in: path
@@ -608,16 +657,16 @@ paths:
             format: uuid
       responses:
         '200':
-          description: Cartão encontrado
+          description: Conta encontrada com saldo
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CreditCardResponseDTO'
+                $ref: '#/components/schemas/AccountResponse'
         '404':
-          description: Cartão não encontrado
+          description: Conta não encontrada
     put:
-      tags: [credit-cards]
-      operationId: updateCreditCard
+      tags: [accounts]
+      operationId: updateAccount
       parameters:
         - name: id
           in: path
@@ -630,19 +679,19 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateCreditCardDTO'
+              $ref: '#/components/schemas/AccountUpdateRequest'
       responses:
         '200':
-          description: Cartão atualizado
+          description: Conta atualizada
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CreditCardResponseDTO'
+                $ref: '#/components/schemas/AccountResponse'
         '404':
-          description: Cartão não encontrado
+          description: Conta não encontrada
     delete:
-      tags: [credit-cards]
-      operationId: deleteCreditCard
+      tags: [accounts]
+      operationId: deleteAccount
       parameters:
         - name: id
           in: path
@@ -652,6 +701,6 @@ paths:
             format: uuid
       responses:
         '204':
-          description: Cartão removido
+          description: Conta arquivada (soft-delete)
         '404':
-          description: Cartão não encontrado
+          description: Conta não encontrada
