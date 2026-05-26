@@ -20,12 +20,14 @@ CREATE TABLE accounts (
 
 CREATE INDEX idx_accounts_tenant       ON accounts(tenant_id);
 CREATE INDEX idx_accounts_tenant_type  ON accounts(tenant_id, type);
+CREATE UNIQUE INDEX uk_accounts_tenant_name ON accounts(tenant_id, name);
+CREATE INDEX idx_accounts_tenant_active ON accounts(tenant_id, active);
 
 -- 2. Criar tabela credit_card_details
 CREATE TABLE credit_card_details (
     id               UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     account_id       UUID NOT NULL UNIQUE REFERENCES accounts(id) ON DELETE CASCADE,
-    brand            VARCHAR(20),
+    brand            VARCHAR(50),
     last_four_digits VARCHAR(4),
     limit_amount     DECIMAL(19, 2),
     closing_day      INTEGER,
@@ -65,12 +67,12 @@ WHERE t.credit_card_id IS NULL
   AND NOT EXISTS (
       SELECT 1 FROM accounts a
       WHERE a.tenant_id = t.tenant_id
-        AND a.name = 'Conta Padrão'
+        AND a.type = 'CHECKING'
   );
 
 -- 6. Adicionar colunas em transactions
 ALTER TABLE transactions ADD COLUMN account_id UUID REFERENCES accounts(id);
-ALTER TABLE transactions ADD COLUMN transfer_id UUID;
+ALTER TABLE transactions ADD COLUMN transfer_id UUID; -- liga as duas pernas de uma transferência
 
 -- 7. Vincular transações com credit_card_id ao account correspondente
 UPDATE transactions
