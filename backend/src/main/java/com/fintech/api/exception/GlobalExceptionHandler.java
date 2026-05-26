@@ -6,6 +6,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -47,8 +48,12 @@ public class GlobalExceptionHandler {
 
     // 4. NOVO CÓDIGO (Fallback de segurança)
     // Trata qualquer outro erro não mapeado (500)
+    // Nota: NoResourceFoundException é excluída para deixar o Spring MVC tratar 404 de recursos estáticos
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, Object>> handleGeneralException(Exception ex) {
+    public ResponseEntity<Map<String, Object>> handleGeneralException(Exception ex) throws NoResourceFoundException {
+        if (ex instanceof NoResourceFoundException nrfe) {
+            throw nrfe;
+        }
         // Em produção, é bom logar o 'ex' aqui
         return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Ocorreu um erro interno no servidor.", null);
     }
