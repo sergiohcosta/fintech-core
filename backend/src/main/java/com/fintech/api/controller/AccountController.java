@@ -20,7 +20,6 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/accounts")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class AccountController implements AccountsApi {
 
     private final AccountService accountService;
