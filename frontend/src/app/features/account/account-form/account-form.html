@@ -1,0 +1,69 @@
+<div class="page-header">
+  <h1>{{ isEditMode() ? 'Editar Conta' : 'Nova Conta' }}</h1>
+  <a mat-button routerLink="/accounts"><mat-icon>arrow_back</mat-icon> Voltar</a>
+</div>
+
+<form [formGroup]="form" (ngSubmit)="onSubmit()" class="form-container">
+
+  <mat-form-field appearance="outline">
+    <mat-label>Nome</mat-label>
+    <input matInput formControlName="name" placeholder="Ex: Bradesco Corrente">
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Tipo</mat-label>
+    <mat-select formControlName="type">
+      <mat-option *ngFor="let t of accountTypes" [value]="t.value">{{ t.label }}</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Cor (hex)</mat-label>
+    <input matInput formControlName="color" placeholder="#3F51B5">
+  </mat-form-field>
+
+  <div class="toggle-row">
+    <mat-slide-toggle formControlName="countInLiquidBalance">Entra no saldo disponível do dia</mat-slide-toggle>
+    <mat-slide-toggle formControlName="countInNetWorth">Entra no patrimônio total</mat-slide-toggle>
+  </div>
+
+  <!-- Campos específicos de cartão — visíveis apenas quando type = CREDIT_CARD -->
+  @if (isCreditCard()) {
+    <div data-testid="credit-card-fields" class="credit-card-section">
+      <h3>Dados do Cartão</h3>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Bandeira</mat-label>
+        <mat-select formControlName="brand">
+          <mat-option *ngFor="let b of cardBrands" [value]="b">{{ b }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Últimos 4 dígitos</mat-label>
+        <input matInput formControlName="lastFourDigits" maxlength="4" placeholder="1234">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Limite (R$)</mat-label>
+        <input matInput type="number" formControlName="limitAmount" placeholder="5000">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Dia de fechamento</mat-label>
+        <input matInput type="number" formControlName="closingDay" min="1" max="31">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Dia de vencimento</mat-label>
+        <input matInput type="number" formControlName="dueDay" min="1" max="31">
+      </mat-form-field>
+    </div>
+  }
+
+  <div class="form-actions">
+    <button mat-raised-button color="primary" type="submit" [disabled]="form.invalid || saving()">
+      {{ saving() ? 'Salvando...' : (isEditMode() ? 'Atualizar' : 'Criar Conta') }}
+    </button>
+  </div>
+</form>

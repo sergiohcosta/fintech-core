@@ -1,0 +1,28 @@
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.form-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 480px;
+}
+
+.toggle-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.credit-card-section {
+  border-left: 3px solid #3F51B5;
+  padding-left: 16px;
+}
+
+.form-actions {
+  margin-top: 8px;
+}
