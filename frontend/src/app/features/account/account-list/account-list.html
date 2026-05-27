@@ -1,0 +1,48 @@
+<div class="page-header">
+  <h1>Contas</h1>
+  <a mat-raised-button color="primary" routerLink="/accounts/new">
+    <mat-icon>add</mat-icon> Nova Conta
+  </a>
+</div>
+
+<mat-table [dataSource]="accounts()">
+  <ng-container matColumnDef="name">
+    <mat-header-cell *matHeaderCellDef>Nome</mat-header-cell>
+    <mat-cell *matCellDef="let row">{{ row.name }}</mat-cell>
+  </ng-container>
+
+  <ng-container matColumnDef="type">
+    <mat-header-cell *matHeaderCellDef>Tipo</mat-header-cell>
+    <mat-cell *matCellDef="let row">
+      <mat-chip>{{ typeLabel(row.type) }}</mat-chip>
+    </mat-cell>
+  </ng-container>
+
+  <ng-container matColumnDef="balance">
+    <mat-header-cell *matHeaderCellDef>Saldo</mat-header-cell>
+    <mat-cell *matCellDef="let row">{{ row.balance | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</mat-cell>
+  </ng-container>
+
+  <ng-container matColumnDef="flags">
+    <mat-header-cell *matHeaderCellDef>Flags</mat-header-cell>
+    <mat-cell *matCellDef="let row">
+      <mat-icon [matTooltip]="'Entra no saldo disponível'" *ngIf="row.countInLiquidBalance" color="primary">water_drop</mat-icon>
+      <mat-icon [matTooltip]="'Entra no patrimônio'" *ngIf="row.countInNetWorth">account_balance</mat-icon>
+    </mat-cell>
+  </ng-container>
+
+  <ng-container matColumnDef="actions">
+    <mat-header-cell *matHeaderCellDef>Ações</mat-header-cell>
+    <mat-cell *matCellDef="let row">
+      <a mat-icon-button [routerLink]="['/accounts', row.id]" matTooltip="Editar">
+        <mat-icon>edit</mat-icon>
+      </a>
+      <button mat-icon-button (click)="archive(row.id)" matTooltip="Arquivar">
+        <mat-icon>archive</mat-icon>
+      </button>
+    </mat-cell>
+  </ng-container>
+
+  <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
+  <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
+</mat-table>
