@@ -8,6 +8,7 @@ import { MAT_DATE_LOCALE } from '@angular/material/core';
 
 import { routes } from './app.routes';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
+import { apiUrlInterceptor } from './core/interceptors/api-url.interceptor';
 
 // Registra os dados de formatação do locale pt-BR (moeda, datas, números)
 registerLocaleData(localePtBr);
@@ -18,7 +19,7 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     provideHttpClient(
       withFetch(),
-      withInterceptors([authInterceptor])
+      withInterceptors([apiUrlInterceptor, authInterceptor])
     ),
     provideAnimationsAsync(),
     { provide: LOCALE_ID, useValue: 'pt-BR' },
