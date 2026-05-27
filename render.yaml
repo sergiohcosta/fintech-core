@@ -2,7 +2,7 @@ services:
   - type: web
     name: fintech-api
     env: docker
-    dockerfilePath: ./Dockerfile
+    dockerfilePath: ./backend/Dockerfile
     dockerContext: .
     envVars:
       - key: SPRING_PROFILES_ACTIVE
