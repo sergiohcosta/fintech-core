@@ -1,0 +1,7 @@
+.docker/
+.git/
+.github/
+frontend/
+docs/
+backend/target/
+*.md
