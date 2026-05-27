@@ -150,6 +150,13 @@
 							<output>${project.build.directory}/generated-sources/openapi</output>
 							<generateModels>false</generateModels>
 							<apiPackage>com.fintech.api.openapi</apiPackage>
+							<schemaMappings>
+								<schemaMapping>AccountResponse=AccountResponseDTO</schemaMapping>
+								<schemaMapping>AccountCreateRequest=AccountCreateDTO</schemaMapping>
+								<schemaMapping>AccountUpdateRequest=AccountUpdateDTO</schemaMapping>
+								<schemaMapping>CreditCardDetailsRequest=CreditCardDetailsDTO</schemaMapping>
+								<schemaMapping>CreditCardDetailsResponse=CreditCardDetailsResponseDTO</schemaMapping>
+							</schemaMappings>
 							<importMappings>
 								<importMapping>LoginDTO=com.fintech.api.dto.LoginDTO</importMapping>
 								<importMapping>LoginResponseDTO=com.fintech.api.dto.LoginResponseDTO</importMapping>
@@ -161,9 +168,12 @@
 								<importMapping>TransactionUpdateDTO=com.fintech.api.dto.transaction.TransactionUpdateDTO</importMapping>
 								<importMapping>TransactionResponseDTO=com.fintech.api.dto.transaction.TransactionResponseDTO</importMapping>
 								<importMapping>DashboardSummaryDTO=com.fintech.api.dto.dashboard.DashboardSummaryDTO</importMapping>
-								<importMapping>CreateCreditCardDTO=com.fintech.api.dto.CreateCreditCardDTO</importMapping>
-								<importMapping>CreditCardResponseDTO=com.fintech.api.dto.CreditCardResponseDTO</importMapping>
-								<importMapping>UpdateCreditCardDTO=com.fintech.api.dto.UpdateCreditCardDTO</importMapping>
+								<importMapping>AccountResponseDTO=com.fintech.api.dto.account.AccountResponseDTO</importMapping>
+								<importMapping>AccountCreateDTO=com.fintech.api.dto.account.AccountCreateDTO</importMapping>
+								<importMapping>AccountUpdateDTO=com.fintech.api.dto.account.AccountUpdateDTO</importMapping>
+								<importMapping>CreditCardDetailsDTO=com.fintech.api.dto.account.CreditCardDetailsDTO</importMapping>
+								<importMapping>CreditCardDetailsResponseDTO=com.fintech.api.dto.account.CreditCardDetailsResponseDTO</importMapping>
+								<importMapping>AccountType=com.fintech.api.domain.enums.AccountType</importMapping>
 								<importMapping>TransactionType=com.fintech.api.domain.enums.TransactionType</importMapping>
 								<importMapping>TransactionStatus=com.fintech.api.domain.enums.TransactionStatus</importMapping>
 								<importMapping>CardBrand=com.fintech.api.domain.enums.CardBrand</importMapping>
