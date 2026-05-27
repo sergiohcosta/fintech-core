@@ -105,7 +105,7 @@ class TransactionControllerTest {
                 // Arrange
                 TransactionRequestDTO requestDTO = new TransactionRequestDTO(
                                 "New Transaction", new BigDecimal("50.00"), LocalDate.now(), TransactionType.EXPENSE,
-                                null, 1, null, null);
+                                null, 1, null, UUID.randomUUID());
 
                 TransactionResponseDTO responseDTO = new TransactionResponseDTO(
                                 UUID.randomUUID(), "New Transaction", new BigDecimal("50.00"), LocalDate.now(), null,
