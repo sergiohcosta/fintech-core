@@ -10,7 +10,6 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 public record TransactionUpdateDTO(
-
         @Size(min = 1, message = "A descrição não pode ser vazia")
         String description,
 
@@ -18,12 +17,8 @@ public record TransactionUpdateDTO(
         BigDecimal amount,
 
         LocalDate date,
-
         TransactionType type,
-
         TransactionStatus status,
-
         UUID categoryId,
-
-        UUID creditCardId
+        UUID accountId
 ) {}
