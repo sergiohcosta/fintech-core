@@ -26,9 +26,9 @@ import {
 } from 'rxjs';
 
 import type {
-  CreateCreditCardDTO,
-  CreditCardResponseDTO,
-  UpdateCreditCardDTO
+  AccountCreateRequest,
+  AccountResponse,
+  AccountUpdateRequest
 } from '../fintechSaaSAPI.schemas';
 
 
@@ -77,16 +77,16 @@ type HttpClientObserveOptions = HttpClientOptions & {
 
 
 @Injectable({ providedIn: 'root' })
-export class CreditCardsService {
+export class AccountsService {
   private readonly http = inject(HttpClient);
- listCreditCards<TData = CreditCardResponseDTO[]>( options?: HttpClientBodyOptions): Observable<TData>;
- listCreditCards<TData = CreditCardResponseDTO[]>( options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
- listCreditCards<TData = CreditCardResponseDTO[]>( options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
-  listCreditCards<TData = CreditCardResponseDTO[]>(
+ listAccounts<TData = AccountResponse[]>( options?: HttpClientBodyOptions): Observable<TData>;
+ listAccounts<TData = AccountResponse[]>( options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ listAccounts<TData = AccountResponse[]>( options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  listAccounts<TData = AccountResponse[]>(
      options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
     if (options?.observe === 'events') {
       return this.http.get<TData>(
-      `/api/credit-cards`,{
+      `/api/accounts`,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'events',
       }
@@ -95,7 +95,7 @@ export class CreditCardsService {
 
     if (options?.observe === 'response') {
       return this.http.get<TData>(
-      `/api/credit-cards`,{
+      `/api/accounts`,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'response',
       }
@@ -103,21 +103,21 @@ export class CreditCardsService {
     }
 
     return this.http.get<TData>(
-      `/api/credit-cards`,{
+      `/api/accounts`,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'body',
       }
     );
   }
- createCreditCard<TData = CreditCardResponseDTO>(createCreditCardDTO: CreateCreditCardDTO, options?: HttpClientBodyOptions): Observable<TData>;
- createCreditCard<TData = CreditCardResponseDTO>(createCreditCardDTO: CreateCreditCardDTO, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
- createCreditCard<TData = CreditCardResponseDTO>(createCreditCardDTO: CreateCreditCardDTO, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
-  createCreditCard<TData = CreditCardResponseDTO>(
-    createCreditCardDTO: CreateCreditCardDTO, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+ createAccount<TData = AccountResponse>(accountCreateRequest: AccountCreateRequest, options?: HttpClientBodyOptions): Observable<TData>;
+ createAccount<TData = AccountResponse>(accountCreateRequest: AccountCreateRequest, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ createAccount<TData = AccountResponse>(accountCreateRequest: AccountCreateRequest, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  createAccount<TData = AccountResponse>(
+    accountCreateRequest: AccountCreateRequest, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
     if (options?.observe === 'events') {
       return this.http.post<TData>(
-      `/api/credit-cards`,
-      createCreditCardDTO,{
+      `/api/accounts`,
+      accountCreateRequest,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'events',
       }
@@ -126,8 +126,8 @@ export class CreditCardsService {
 
     if (options?.observe === 'response') {
       return this.http.post<TData>(
-      `/api/credit-cards`,
-      createCreditCardDTO,{
+      `/api/accounts`,
+      accountCreateRequest,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'response',
       }
@@ -135,21 +135,21 @@ export class CreditCardsService {
     }
 
     return this.http.post<TData>(
-      `/api/credit-cards`,
-      createCreditCardDTO,{
+      `/api/accounts`,
+      accountCreateRequest,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'body',
       }
     );
   }
- getCreditCard<TData = CreditCardResponseDTO>(id: string, options?: HttpClientBodyOptions): Observable<TData>;
- getCreditCard<TData = CreditCardResponseDTO>(id: string, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
- getCreditCard<TData = CreditCardResponseDTO>(id: string, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
-  getCreditCard<TData = CreditCardResponseDTO>(
+ getAccount<TData = AccountResponse>(id: string, options?: HttpClientBodyOptions): Observable<TData>;
+ getAccount<TData = AccountResponse>(id: string, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ getAccount<TData = AccountResponse>(id: string, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  getAccount<TData = AccountResponse>(
     id: string, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
     if (options?.observe === 'events') {
       return this.http.get<TData>(
-      `/api/credit-cards/${id}`,{
+      `/api/accounts/${id}`,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'events',
       }
@@ -158,7 +158,7 @@ export class CreditCardsService {
 
     if (options?.observe === 'response') {
       return this.http.get<TData>(
-      `/api/credit-cards/${id}`,{
+      `/api/accounts/${id}`,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'response',
       }
@@ -166,25 +166,25 @@ export class CreditCardsService {
     }
 
     return this.http.get<TData>(
-      `/api/credit-cards/${id}`,{
+      `/api/accounts/${id}`,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'body',
       }
     );
   }
- updateCreditCard<TData = CreditCardResponseDTO>(id: string,
-    updateCreditCardDTO: UpdateCreditCardDTO, options?: HttpClientBodyOptions): Observable<TData>;
- updateCreditCard<TData = CreditCardResponseDTO>(id: string,
-    updateCreditCardDTO: UpdateCreditCardDTO, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
- updateCreditCard<TData = CreditCardResponseDTO>(id: string,
-    updateCreditCardDTO: UpdateCreditCardDTO, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
-  updateCreditCard<TData = CreditCardResponseDTO>(
+ updateAccount<TData = AccountResponse>(id: string,
+    accountUpdateRequest: AccountUpdateRequest, options?: HttpClientBodyOptions): Observable<TData>;
+ updateAccount<TData = AccountResponse>(id: string,
+    accountUpdateRequest: AccountUpdateRequest, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ updateAccount<TData = AccountResponse>(id: string,
+    accountUpdateRequest: AccountUpdateRequest, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  updateAccount<TData = AccountResponse>(
     id: string,
-    updateCreditCardDTO: UpdateCreditCardDTO, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    accountUpdateRequest: AccountUpdateRequest, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
     if (options?.observe === 'events') {
       return this.http.put<TData>(
-      `/api/credit-cards/${id}`,
-      updateCreditCardDTO,{
+      `/api/accounts/${id}`,
+      accountUpdateRequest,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'events',
       }
@@ -193,8 +193,8 @@ export class CreditCardsService {
 
     if (options?.observe === 'response') {
       return this.http.put<TData>(
-      `/api/credit-cards/${id}`,
-      updateCreditCardDTO,{
+      `/api/accounts/${id}`,
+      accountUpdateRequest,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'response',
       }
@@ -202,21 +202,21 @@ export class CreditCardsService {
     }
 
     return this.http.put<TData>(
-      `/api/credit-cards/${id}`,
-      updateCreditCardDTO,{
+      `/api/accounts/${id}`,
+      accountUpdateRequest,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'body',
       }
     );
   }
- deleteCreditCard<TData = void>(id: string, options?: HttpClientBodyOptions): Observable<TData>;
- deleteCreditCard<TData = void>(id: string, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
- deleteCreditCard<TData = void>(id: string, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
-  deleteCreditCard<TData = void>(
+ deleteAccount<TData = void>(id: string, options?: HttpClientBodyOptions): Observable<TData>;
+ deleteAccount<TData = void>(id: string, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ deleteAccount<TData = void>(id: string, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  deleteAccount<TData = void>(
     id: string, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
     if (options?.observe === 'events') {
       return this.http.delete<TData>(
-      `/api/credit-cards/${id}`,{
+      `/api/accounts/${id}`,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'events',
       }
@@ -225,7 +225,7 @@ export class CreditCardsService {
 
     if (options?.observe === 'response') {
       return this.http.delete<TData>(
-      `/api/credit-cards/${id}`,{
+      `/api/accounts/${id}`,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'response',
       }
@@ -233,7 +233,7 @@ export class CreditCardsService {
     }
 
     return this.http.delete<TData>(
-      `/api/credit-cards/${id}`,{
+      `/api/accounts/${id}`,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'body',
       }
