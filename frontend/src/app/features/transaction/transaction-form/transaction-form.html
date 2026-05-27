@@ -52,7 +52,6 @@
           <mat-select formControlName="type">
             <mat-option value="EXPENSE">Despesa</mat-option>
             <mat-option value="INCOME">Receita</mat-option>
-            <mat-option value="TRANSFER">Transferência</mat-option>
           </mat-select>
         </mat-form-field>
 
@@ -86,11 +85,10 @@
 
       <div class="form-row">
         <mat-form-field appearance="outline" class="field-full">
-          <mat-label>Cartão de Crédito (opcional)</mat-label>
-          <mat-select formControlName="creditCardId">
-            <mat-option [value]="null">Nenhum</mat-option>
-            @for (card of creditCards(); track card.id) {
-              <mat-option [value]="card.id">{{ card.name }}</mat-option>
+          <mat-label>Conta *</mat-label>
+          <mat-select formControlName="accountId">
+            @for (a of accounts(); track a.id) {
+              <mat-option [value]="a.id">{{ a.name }}</mat-option>
             }
           </mat-select>
         </mat-form-field>

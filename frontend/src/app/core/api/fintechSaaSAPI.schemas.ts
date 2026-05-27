@@ -11,7 +11,6 @@ export type TransactionType = typeof TransactionType[keyof typeof TransactionTyp
 export const TransactionType = {
   INCOME: 'INCOME',
   EXPENSE: 'EXPENSE',
-  TRANSFER: 'TRANSFER',
 } as const;
 
 export type TransactionStatus = typeof TransactionStatus[keyof typeof TransactionStatus];
@@ -87,8 +86,7 @@ export interface TransactionRequestDTO {
   totalInstallments?: number | null;
   /** @nullable */
   categoryId?: string | null;
-  /** @nullable */
-  creditCardId?: string | null;
+  accountId: string;
 }
 
 export interface TransactionUpdateDTO {
@@ -106,7 +104,7 @@ export interface TransactionUpdateDTO {
   /** @nullable */
   categoryId?: string | null;
   /** @nullable */
-  creditCardId?: string | null;
+  accountId?: string | null;
 }
 
 export interface TransactionResponseDTO {
@@ -121,7 +119,9 @@ export interface TransactionResponseDTO {
   /** @nullable */
   categoryName?: string | null;
   /** @nullable */
-  creditCardName?: string | null;
+  accountName?: string | null;
+  /** @nullable */
+  transferId?: string | null;
 }
 
 export interface DashboardSummaryDTO {
@@ -132,49 +132,73 @@ export interface DashboardSummaryDTO {
   balance?: number;
 }
 
-export interface CreateCreditCardDTO {
-  name: string;
-  brand: CardBrand;
-  /**
-     * @nullable
-     * @pattern ^#([A-Fa-f0-9]{6})$
-     */
-  color?: string | null;
+export type AccountType = typeof AccountType[keyof typeof AccountType];
+
+
+export const AccountType = {
+  CHECKING: 'CHECKING',
+  INVESTMENT: 'INVESTMENT',
+  CREDIT_CARD: 'CREDIT_CARD',
+  CASH: 'CASH',
+} as const;
+
+export interface CreditCardDetailsRequest {
+  brand?: CardBrand;
   /**
      * @minLength 4
      * @maxLength 4
      * @nullable
      */
   lastFourDigits?: string | null;
-  /** @minimum 0.01 */
-  limitAmount: number;
+  /** @nullable */
+  limitAmount?: number | null;
   /**
      * @minimum 1
      * @maximum 31
+     * @nullable
      */
-  closingDay: number;
+  closingDay?: number | null;
   /**
      * @minimum 1
      * @maximum 31
+     * @nullable
      */
-  dueDay: number;
+  dueDay?: number | null;
 }
 
-export interface CreditCardResponseDTO {
-  id: string;
-  name: string;
-  brand: CardBrand;
-  /** @nullable */
-  color?: string | null;
+export interface CreditCardDetailsResponse {
+  brand?: CardBrand | null;
   /** @nullable */
   lastFourDigits?: string | null;
-  limitAmount: number;
+  /** @nullable */
+  limitAmount?: number | null;
   closingDay: number;
   dueDay: number;
 }
 
-export interface UpdateCreditCardDTO {
+export interface AccountCreateRequest {
+  /** @maxLength 100 */
+  name: string;
+  type: AccountType;
+  /**
+     * @nullable
+     * @pattern ^#([A-Fa-f0-9]{6})$
+     */
+  color?: string | null;
   /** @nullable */
+  icon?: string | null;
+  /** @nullable */
+  countInLiquidBalance?: boolean | null;
+  /** @nullable */
+  countInNetWorth?: boolean | null;
+  creditCardDetails?: CreditCardDetailsRequest | null;
+}
+
+export interface AccountUpdateRequest {
+  /**
+     * @maxLength 100
+     * @nullable
+     */
   name?: string | null;
   /**
      * @nullable
@@ -182,13 +206,26 @@ export interface UpdateCreditCardDTO {
      */
   color?: string | null;
   /** @nullable */
-  lastFourDigits?: string | null;
+  icon?: string | null;
   /** @nullable */
-  limitAmount?: number | null;
+  countInLiquidBalance?: boolean | null;
   /** @nullable */
-  closingDay?: number | null;
+  countInNetWorth?: boolean | null;
+}
+
+export interface AccountResponse {
+  id: string;
+  name: string;
+  type: AccountType;
   /** @nullable */
-  dueDay?: number | null;
+  color?: string | null;
+  /** @nullable */
+  icon?: string | null;
+  countInLiquidBalance: boolean;
+  countInNetWorth: boolean;
+  active: boolean;
+  balance: number;
+  creditCardDetails?: CreditCardDetailsResponse | null;
 }
 
 export type GetDashboardSummaryParams = {
