@@ -14,20 +14,17 @@ public record TransactionResponseDTO(
         BigDecimal amount,
         LocalDate date,
         TransactionType type,
-
-        // Novos Campos
         TransactionStatus status,
-        String installmentLabel, // Retornaremos formatado: "1/12"
-
+        String installmentLabel,
         String categoryName,
-        String creditCardName) {
+        String accountName,
+        UUID transferId
+) {
     public static TransactionResponseDTO fromEntity(Transaction t) {
-
         String installLabel = null;
         if (t.getTotalInstallments() != null && t.getTotalInstallments() > 1) {
             installLabel = t.getInstallmentNumber() + "/" + t.getTotalInstallments();
         }
-
         return new TransactionResponseDTO(
                 t.getId(),
                 t.getDescription(),
@@ -37,6 +34,8 @@ public record TransactionResponseDTO(
                 t.getStatus(),
                 installLabel,
                 t.getCategory() != null ? t.getCategory().getName() : null,
-                t.getCreditCard() != null ? t.getCreditCard().getName() : null);
+                t.getAccount() != null ? t.getAccount().getName() : null,
+                t.getTransferId()
+        );
     }
 }
