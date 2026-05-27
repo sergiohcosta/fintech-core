@@ -51,7 +51,7 @@ jobs:
     needs: [test-backend, test-frontend]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
-      - name: Aciona deploy do backend (Render)
-        run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+      - name: Aciona deploy do backend (Railway)
+        run: curl -X POST "${{ secrets.BACKEND_DEPLOY_HOOK_URL }}"
       - name: Aciona deploy do frontend (Netlify)
         run: curl -X POST "${{ secrets.NETLIFY_DEPLOY_HOOK_URL }}"
