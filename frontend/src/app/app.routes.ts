@@ -25,12 +25,16 @@ export const routes: Routes = [
         loadComponent: () => import('./features/dashboard/dashboard').then(m => m.DashboardComponent)
       },
       {
-        path: 'credit-cards',
-        loadComponent: () => import('./features/credit-card/components/card-list').then(m => m.CardListComponent)
+        path: 'accounts',
+        loadComponent: () => import('./features/account/account-list/account-list').then(m => m.AccountList)
       },
       {
-        path: 'credit-cards/new',
-        loadComponent: () => import('./features/credit-card/components/card-form/card-form').then(m => m.CardFormComponent)
+        path: 'accounts/new',
+        loadComponent: () => import('./features/account/account-form/account-form').then(m => m.AccountForm)
+      },
+      {
+        path: 'accounts/:id',
+        loadComponent: () => import('./features/account/account-form/account-form').then(m => m.AccountForm)
       },
       {
         path: 'categories',
