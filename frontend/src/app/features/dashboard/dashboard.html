@@ -41,7 +41,7 @@
         </mat-card-content>
       </mat-card>
 
-      <mat-card class="summary-card" [class.balance-positive]="s.balance >= 0" [class.balance-negative]="s.balance < 0">
+      <mat-card class="summary-card" [class.balance-positive]="(s.balance ?? 0) >= 0" [class.balance-negative]="(s.balance ?? 0) < 0">
         <mat-card-content>
           <div class="card-icon">
             <mat-icon>account_balance_wallet</mat-icon>

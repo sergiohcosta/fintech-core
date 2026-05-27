@@ -13,8 +13,8 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 import { TransactionsService } from '../../../core/api/transactions/transactions.service';
 import { CategoriesService } from '../../../core/api/categories/categories.service';
-import { CreditCardsService } from '../../../core/api/credit-cards/credit-cards.service';
-import { CategoryResponseDTO, CreditCardResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
+import { AccountsService } from '../../../core/api/accounts/accounts.service';
+import { CategoryResponseDTO, AccountResponse } from '../../../core/api/fintechSaaSAPI.schemas';
 
 @Component({
   selector: 'app-transaction-form',
@@ -41,14 +41,14 @@ export class TransactionForm implements OnInit {
   private route = inject(ActivatedRoute);
   private transactionService = inject(TransactionsService);
   private categoryService = inject(CategoriesService);
-  private creditCardService = inject(CreditCardsService);
+  private accountService = inject(AccountsService);
   private snackBar = inject(MatSnackBar);
 
   saving = signal(false);
   isEditMode = signal(false);
   transactionId = signal<string | null>(null);
   categories = signal<CategoryResponseDTO[]>([]);
-  creditCards = signal<CreditCardResponseDTO[]>([]);
+  accounts = signal<AccountResponse[]>([]);
 
   form = this.fb.group({
     description: ['', [Validators.required, Validators.minLength(2)]],
@@ -58,7 +58,7 @@ export class TransactionForm implements OnInit {
     status: ['PENDING'],
     totalInstallments: [1, [Validators.min(1), Validators.max(48)]],
     categoryId: [null as string | null],
-    creditCardId: [null as string | null]
+    accountId: [null as string | null, Validators.required]
   });
 
   ngOnInit(): void {
@@ -66,8 +66,8 @@ export class TransactionForm implements OnInit {
       next: (data) => this.categories.set(this.flattenCategories(data)),
       error: () => {}
     });
-    this.creditCardService.listCreditCards().subscribe({
-      next: (data) => this.creditCards.set(data),
+    this.accountService.listAccounts().subscribe({
+      next: (data) => this.accounts.set(data),
       error: () => {}
     });
 
@@ -85,7 +85,7 @@ export class TransactionForm implements OnInit {
             type: t.type,
             status: t.status,
             categoryId: null,
-            creditCardId: null
+            accountId: null
           });
         },
         error: () => {
@@ -117,10 +117,10 @@ export class TransactionForm implements OnInit {
       description: raw.description!,
       amount: raw.amount!,
       date: this.toDateString(raw.date as Date),
-      type: raw.type as 'INCOME' | 'EXPENSE' | 'TRANSFER',
+      type: raw.type as 'INCOME' | 'EXPENSE',
       status: raw.status as 'PENDING' | 'PAID' | 'CANCELLED' ?? undefined,
       categoryId: raw.categoryId ?? undefined,
-      creditCardId: raw.creditCardId ?? undefined
+      accountId: raw.accountId!
     };
 
     if (this.isEditMode()) {
