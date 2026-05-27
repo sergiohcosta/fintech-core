@@ -11,19 +11,12 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 public record TransactionRequestDTO(
-
         @NotBlank(message = "A descrição é obrigatória") String description,
-
-        @NotNull(message = "O valor é obrigatório") @DecimalMin(value = "0.01", message = "O valor deve ser positivo") BigDecimal amount,
-
+        @NotNull(message = "O valor é obrigatório") @DecimalMin(value = "0.01") BigDecimal amount,
         @NotNull(message = "A data é obrigatória") LocalDate date,
-
         @NotNull(message = "O tipo é obrigatório") TransactionType type,
-
-        TransactionStatus status, // Pode ser nulo
-
-        Integer totalInstallments, // Pode ser nulo
-
+        TransactionStatus status,
+        Integer totalInstallments,
         UUID categoryId,
-        UUID creditCardId) {
-}
+        @NotNull(message = "A conta é obrigatória") UUID accountId
+) {}

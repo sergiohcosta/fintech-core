@@ -196,6 +196,44 @@ Três problemas resolvidos de uma vez: documentação automática (Swagger UI), 
 
 ---
 
+## 🏦 13. Gestão de Contas — Account Management (2026-05-27)
+
+Implementação fullstack do módulo de contas financeiras, substituindo a entidade `CreditCard` por uma abstração genérica `Account` com suporte a quatro tipos de conta e transferências double-entry.
+
+### Motivação e decisões de design
+
+* **`CreditCard` era demasiado específico** — o sistema precisava suportar conta corrente, investimentos, carteira física e cartão de crédito com o mesmo mecanismo de lançamentos.
+* **`TRANSFER` removido do `TransactionType`** — transferências não são um tipo de lançamento, são uma coordenação de dois lançamentos (`EXPENSE` na origem + `INCOME` no destino) com um `transferId` UUID compartilhado. Esse modelo elimina saldo duplicado e permite rastrear as duas pontas de qualquer transferência.
+* **Flags `countInLiquidBalance` / `countInNetWorth`** — investimentos têm saldo real mas não entram na projeção de caixa do dia. A decisão é por conta, não por tipo global.
+
+### Backend
+
+* **Migration Flyway V5** — cria tabela `accounts` (UUID, name, type, color, icon, active, countInLiquidBalance, countInNetWorth, tenant_id, created_by), migra dados de `credit_cards`, cria "Conta Padrão" por tenant para transações órfãs, adiciona `account_id` + `transfer_id` em `transactions`, dropa `credit_cards`.
+* **`Account.java`** — `@Builder.Default private boolean active = true` (não `isActive` — Lombok geraria `isIsActive()`). `countInLiquidBalance` e `countInNetWorth` sem `@Builder.Default` — forçar o service a sempre setar explicitamente por tipo.
+* **`CreditCardDetails.java`** — entidade separada `@OneToOne(fetch = LAZY)` com marca (`CardBrand`), últimos 4 dígitos, limite, dia de fechamento e vencimento.
+* **`AccountRepository.calculateBalance`** — JPQL com `COALESCE(SUM(CASE WHEN type = INCOME THEN amount ELSE -amount END), 0)` excluindo `CANCELLED` — SUM retorna null em tabela vazia; COALESCE garante zero.
+* **`AccountService.create()`** — aplica defaults por tipo: `CHECKING`/`CASH` → `countInLiquidBalance=true`; `INVESTMENT`/`CREDIT_CARD` → false.
+* **`schemaMappings` no pom.xml** — `importMappings` só substitui imports/tipos em assinaturas. `@Schema(implementation = ...)` usa o nome raw do schema YAML, não o nome Java mapeado — necessário `schemaMappings: AccountResponse=AccountResponseDTO` para que a anotação referencia o DTO correto.
+* 19/19 testes backend passando (AccountService 5, AccountController 4, TransactionService 4, TransactionController 2, AuthController 3, Application 1).
+
+### Frontend
+
+* **Orval regenerado** — `core/api/accounts/` criado, `core/api/credit-cards/` deletado manualmente (Orval não limpa diretórios antigos).
+* **`AccountList`** — tabela Material com colunas nome, tipo (chip), saldo (CurrencyPipe pt-BR), flags (ícones com tooltip), ações. `registerLocaleData(localePt, 'pt-BR')` necessário no spec para o `CurrencyPipe` funcionar em testes.
+* **`AccountForm`** — `toSignal(form.get('type').valueChanges)` + `computed(() => typeValue() === 'CREDIT_CARD')` para `isCreditCard`. Seção de campos do cartão visível apenas com `@if (isCreditCard())`. Mudança de tipo auto-atualiza `countInLiquidBalance` via `subscribe` no `ngOnInit`.
+* **`TransactionForm` atualizado** — `creditCardId` substituído por `accountId` (obrigatório); opção `TRANSFER` removida do select de tipo.
+* **`app.routes.ts`** — rotas `/accounts`, `/accounts/new`, `/accounts/:id` adicionadas; rotas `credit-cards` removidas.
+* **Specs pré-existentes corrigidos** — imports errados (`Login` → `LoginComponent`, `Dashboard` → `DashboardComponent`, etc.) e `dashboard.html` strict null check (`s.balance ?? 0`).
+* 7 novos testes frontend passando (AccountList 2, AccountForm 5).
+
+### Bugs encontrados e corrigidos
+
+* **`@Column(length=20)` em `CreditCardDetails.brand`** — SQL criava `VARCHAR(50)`; JPA mapeava com 20, causaria truncamento em produção. Corrigido para `@Column(length=50)`.
+* **`vi.spyOn(...).mockReturnValue(of(...) as any)`** — Orval gera métodos com overloads; TypeScript tenta corresponder à assinatura mais específica (`Observable<HttpResponse<unknown>>`). Cast `as any` contorna sem perder cobertura de teste.
+* **`feature/accounts-spec-migration` não mergeada antes de compilar o service** — `AccountsApi` não existia em `develop` ainda, causando falha de compilação na branch de service. Solução: merge Track 1 → develop antes de iniciar Track 2.
+
+---
+
 ## 📅 Status Atual
 - [x] Estrutura de Pastas e Projetos.
 - [x] Banco de Dados e Migrations Iniciais.
@@ -208,5 +246,7 @@ Três problemas resolvidos de uma vez: documentação automática (Swagger UI), 
 - [x] Shell de Navegação (Toolbar + Sidenav).
 - [x] Dashboard com resumo financeiro (Receita / Despesa / Saldo por período).
 - [x] Adoção OpenAPI spec-first (documentação + geração de código backend + frontend).
-- [ ] Filtros na listagem de transações (por período, tipo, status).
-- [ ] Gráficos no dashboard (evolução mensal, breakdown por categoria).
+- [x] Gestão de Contas — Account Management (4 tipos, transferências double-entry, frontend TDD).
+- [ ] Filtros na listagem de transações (por período, tipo, status, conta).
+- [ ] Gráficos no dashboard (evolução mensal, breakdown por categoria/conta).
+- [ ] Tela de Transferências (fluxo específico para criar os dois lançamentos espelhados).
