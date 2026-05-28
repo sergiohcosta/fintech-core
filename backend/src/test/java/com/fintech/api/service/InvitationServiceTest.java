@@ -5,28 +5,22 @@ import com.fintech.api.domain.enums.UserRole;
 import com.fintech.api.domain.invitation.Invitation;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.user.User;
-import com.fintech.api.dto.AcceptInviteDTO;
 import com.fintech.api.dto.CreateInvitationDTO;
-import com.fintech.api.dto.InvitationInfoDTO;
 import com.fintech.api.dto.InvitationResponseDTO;
 import com.fintech.api.exception.BusinessConflictException;
-import com.fintech.api.exception.EntityNotFoundException;
-import com.fintech.api.exception.InviteAlreadyUsedException;
-import com.fintech.api.exception.InviteExpiredException;
 import com.fintech.api.repository.InvitationRepository;
 import com.fintech.api.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.*;
@@ -57,6 +51,9 @@ class InvitationServiceTest {
         admin.setEmail("admin@silva.com");
         admin.setRole(UserRole.ADMIN);
         admin.setTenant(tenant);
+
+        // @Value não é processado pelo Mockito — inicializa manualmente via ReflectionTestUtils
+        ReflectionTestUtils.setField(service, "frontendUrl", "http://localhost:4200");
     }
 
     // --- CRIAR CONVITE ---
@@ -74,7 +71,7 @@ class InvitationServiceTest {
 
         assertThat(result.email()).isEqualTo("novo@silva.com");
         assertThat(result.token()).isNotBlank();
-        assertThat(result.link()).contains(result.token());
+        assertThat(result.link()).isEqualTo("http://localhost:4200/accept-invite?token=" + result.token());
         assertThat(result.expiresAt()).isAfter(LocalDateTime.now());
     }
 
