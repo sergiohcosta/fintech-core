@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -7,7 +7,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatDatepicker, MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
@@ -43,6 +43,8 @@ export class TransactionForm implements OnInit {
   private categoryService = inject(CategoriesService);
   private accountService = inject(AccountsService);
   private snackBar = inject(MatSnackBar);
+
+  @ViewChild('picker') private picker!: MatDatepicker<Date>;
 
   saving = signal(false);
   isEditMode = signal(false);
@@ -146,7 +148,15 @@ export class TransactionForm implements OnInit {
     }
   }
 
-  onDateBlur(event: Event): void {
+  onDateBlur(event: FocusEvent): void {
+    // Se o foco foi para o toggle do datepicker, o calendar está prestes a abrir —
+    // chamar setValue aqui causaria um tick de CD durante a inicialização do overlay,
+    // deixando o backdrop preso (tela acinzentada/inclicável no modo Zoneless).
+    const relatedTarget = event.relatedTarget as HTMLElement | null;
+    if (relatedTarget?.closest('mat-datepicker-toggle')) return;
+    // Se o calendar já está aberto (ex: foco saiu ao clicar no overlay), também não processar.
+    if (this.picker?.opened) return;
+
     const input = event.target as HTMLInputElement;
     const val = input.value;
     const match = val.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
