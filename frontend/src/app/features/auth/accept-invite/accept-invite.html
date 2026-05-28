@@ -1,0 +1,58 @@
+<div class="accept-invite-container">
+  <mat-card class="accept-invite-card">
+
+    @if (state() === 'loading') {
+      <mat-card-content class="loading-state">
+        <mat-spinner diameter="48"></mat-spinner>
+        <p>Validando convite...</p>
+      </mat-card-content>
+    }
+
+    @if (state() === 'error') {
+      <mat-card-header>
+        <mat-card-title>Convite inválido</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <p class="error-message">{{ errorMessage() }}</p>
+      </mat-card-content>
+      <mat-card-actions align="end">
+        <button mat-stroked-button (click)="goToLogin()">Ir para o Login</button>
+      </mat-card-actions>
+    }
+
+    @if (state() === 'form' || state() === 'submitting') {
+      <mat-card-header>
+        <mat-card-title>Criar sua conta</mat-card-title>
+        <mat-card-subtitle>Você foi convidado para <strong>{{ invitationInfo()?.tenantName }}</strong></mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        <form [formGroup]="form" (ngSubmit)="onSubmit()">
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>E-mail</mat-label>
+            <input matInput [value]="invitationInfo()?.email ?? ''" readonly>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Seu Nome Completo</mat-label>
+            <input matInput formControlName="name">
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Senha</mat-label>
+            <input matInput type="password" formControlName="password">
+          </mat-form-field>
+
+          <mat-card-actions align="end">
+            <button mat-flat-button color="primary" type="submit"
+                    [disabled]="form.invalid || state() === 'submitting'">
+              {{ state() === 'submitting' ? 'PROCESSANDO...' : 'CRIAR CONTA' }}
+            </button>
+          </mat-card-actions>
+        </form>
+      </mat-card-content>
+    }
+
+  </mat-card>
+</div>
