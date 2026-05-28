@@ -202,8 +202,16 @@ components:
         categoryName:
           type: string
           nullable: true
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
         accountName:
           type: string
+          nullable: true
+        accountId:
+          type: string
+          format: uuid
           nullable: true
         transferId:
           type: string

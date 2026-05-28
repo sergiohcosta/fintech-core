@@ -49,6 +49,7 @@ export class TransactionForm implements OnInit {
   transactionId = signal<string | null>(null);
   categories = signal<CategoryResponseDTO[]>([]);
   accounts = signal<AccountResponse[]>([]);
+  amountDisplay = signal('');
 
   form = this.fb.group({
     description: ['', [Validators.required, Validators.minLength(2)]],
@@ -84,9 +85,10 @@ export class TransactionForm implements OnInit {
             date: new Date(t.date + 'T00:00:00'),
             type: t.type,
             status: t.status,
-            categoryId: null,
-            accountId: null
+            categoryId: t.categoryId ?? null,
+            accountId: t.accountId ?? null
           });
+          this.amountDisplay.set(this.formatAmount(t.amount));
         },
         error: () => {
           this.snackBar.open('Transação não encontrada.', 'Fechar', { duration: 5000 });
@@ -95,6 +97,69 @@ export class TransactionForm implements OnInit {
       });
     }
   }
+
+  // --- Máscara de moeda (#17) ---
+
+  private formatAmount(value: number): string {
+    return new Intl.NumberFormat('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(value);
+  }
+
+  onAmountInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    // Mantém apenas dígitos e vírgula; converte para ponto-flutuante
+    const cleaned = input.value.replace(/[^\d,]/g, '');
+    const asFloat = parseFloat(cleaned.replace(',', '.'));
+    this.form.controls.amount.setValue(isNaN(asFloat) ? null : asFloat);
+    this.form.controls.amount.markAsTouched();
+  }
+
+  onAmountBlur(event: Event): void {
+    const val = this.form.controls.amount.value;
+    if (val !== null && val !== undefined) {
+      const input = event.target as HTMLInputElement;
+      const formatted = this.formatAmount(val);
+      input.value = formatted;
+      this.amountDisplay.set(formatted);
+    }
+  }
+
+  onAmountFocus(event: Event): void {
+    const val = this.form.controls.amount.value;
+    const input = event.target as HTMLInputElement;
+    input.value = val !== null && val !== undefined ? String(val).replace('.', ',') : '';
+  }
+
+  // --- Máscara de data (#18) ---
+
+  onDateKeydown(event: KeyboardEvent): void {
+    const PASS_THROUGH = ['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter'];
+    if (PASS_THROUGH.includes(event.key) || !(/^\d$/.test(event.key))) return;
+
+    const input = event.target as HTMLInputElement;
+    const val = input.value;
+    // Insere barra automaticamente após o dia (pos 2) e após o mês (pos 5)
+    if (val.length === 2 || val.length === 5) {
+      input.value = val + '/';
+    }
+  }
+
+  onDateBlur(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const val = input.value;
+    const match = val.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (match) {
+      const [, day, month, year] = match;
+      const date = new Date(+year, +month - 1, +day);
+      if (!isNaN(date.getTime())) {
+        this.form.controls.date.setValue(date);
+      }
+    }
+  }
+
+  // --- Utilitários ---
 
   private flattenCategories(cats: CategoryResponseDTO[], prefix = ''): CategoryResponseDTO[] {
     return cats.flatMap(c => [
