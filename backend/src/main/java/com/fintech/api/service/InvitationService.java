@@ -3,9 +3,15 @@ package com.fintech.api.service;
 import com.fintech.api.config.TokenService;
 import com.fintech.api.domain.invitation.Invitation;
 import com.fintech.api.domain.user.User;
+import com.fintech.api.domain.enums.UserRole;
+import com.fintech.api.dto.AcceptInviteDTO;
 import com.fintech.api.dto.CreateInvitationDTO;
+import com.fintech.api.dto.InvitationInfoDTO;
 import com.fintech.api.dto.InvitationResponseDTO;
 import com.fintech.api.exception.BusinessConflictException;
+import com.fintech.api.exception.EntityNotFoundException;
+import com.fintech.api.exception.InviteAlreadyUsedException;
+import com.fintech.api.exception.InviteExpiredException;
 import com.fintech.api.repository.InvitationRepository;
 import com.fintech.api.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -50,5 +56,39 @@ public class InvitationService {
         return new InvitationResponseDTO(invitation.getToken(), link, invitation.getEmail(), invitation.getExpiresAt());
     }
 
-    // validate() e accept() serão adicionados na Tarefa 4
+    @Transactional(readOnly = true)
+    public InvitationInfoDTO validate(String token) {
+        Invitation invitation = findValidInvitation(token);
+        return new InvitationInfoDTO(invitation.getEmail(), invitation.getTenant().getName());
+    }
+
+    @Transactional
+    public String accept(AcceptInviteDTO dto) {
+        Invitation invitation = findValidInvitation(dto.token());
+
+        if (userRepository.existsByEmail(invitation.getEmail())) {
+            throw new BusinessConflictException("Este email já possui uma conta");
+        }
+
+        User user = new User();
+        user.setName(dto.name());
+        user.setEmail(invitation.getEmail());
+        user.setPasswordHash(passwordEncoder.encode(dto.password()));
+        user.setRole(UserRole.USER);
+        user.setTenant(invitation.getTenant());
+        userRepository.save(user);
+
+        invitation.setUsed(true);
+        invitationRepository.save(invitation);
+
+        return tokenService.generateToken(user);
+    }
+
+    private Invitation findValidInvitation(String token) {
+        Invitation invitation = invitationRepository.findByToken(token)
+                .orElseThrow(() -> new EntityNotFoundException("Convite inválido ou inexistente"));
+        if (invitation.isUsed()) throw new InviteAlreadyUsedException();
+        if (invitation.getExpiresAt().isBefore(LocalDateTime.now())) throw new InviteExpiredException();
+        return invitation;
+    }
 }
