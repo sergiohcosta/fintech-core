@@ -12,6 +12,11 @@ export const routes: Routes = [
     path: 'register',
     loadComponent: () => import('./features/auth/register/register').then(m => m.RegisterComponent)
   },
+  {
+    path: 'accept-invite',
+    loadComponent: () =>
+      import('./features/auth/accept-invite/accept-invite').then(m => m.AcceptInviteComponent)
+  },
 
   // Rota de layout: path vazio + canActivate aqui protege TODOS os filhos de uma vez.
   // O ShellComponent renderiza toolbar + sidenav e tem seu próprio <router-outlet>.
