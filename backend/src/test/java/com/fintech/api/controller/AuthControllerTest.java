@@ -4,9 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fintech.api.config.TokenService;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.user.User;
+import com.fintech.api.dto.AcceptInviteDTO;
 import com.fintech.api.dto.LoginDTO;
 import com.fintech.api.dto.TenantRegistrationDTO;
 import com.fintech.api.repository.UserRepository;
+import com.fintech.api.service.InvitationService;
 import com.fintech.api.service.TenantRegistrationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -48,6 +50,9 @@ class AuthControllerTest {
 
     @MockitoBean
     private TokenService tokenService;
+
+    @MockitoBean
+    private InvitationService invitationService;
 
     private ObjectMapper objectMapper = new ObjectMapper();
 
@@ -116,5 +121,27 @@ class AuthControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(loginDTO)))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("POST /auth/accept-invite retorna 200 com token JWT")
+    void shouldAcceptInviteSuccessfully() throws Exception {
+        AcceptInviteDTO dto = new AcceptInviteDTO("valid-token", "João Silva", "senha123");
+        when(invitationService.accept(any(AcceptInviteDTO.class))).thenReturn("jwt-result");
+
+        mockMvc.perform(post("/auth/accept-invite")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").value("jwt-result"));
+    }
+
+    @Test
+    @DisplayName("POST /auth/accept-invite retorna 400 quando campos obrigatórios ausentes")
+    void shouldFailAcceptInviteWhenMissingFields() throws Exception {
+        mockMvc.perform(post("/auth/accept-invite")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+                .andExpect(status().isBadRequest());
     }
 }

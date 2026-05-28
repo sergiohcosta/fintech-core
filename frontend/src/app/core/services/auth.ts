@@ -65,6 +65,11 @@ export class AuthService {
     localStorage.setItem(this.TOKEN_KEY, token);
   }
 
+  setToken(token: string): void {
+    this.saveToken(token);
+    this.decodeToken();
+  }
+
   getToken() {
     return localStorage.getItem(this.TOKEN_KEY);
   }
