@@ -1,5 +1,8 @@
 package com.fintech.api.exception;
 
+import com.fintech.api.exception.BusinessConflictException;
+import com.fintech.api.exception.InviteAlreadyUsedException;
+import com.fintech.api.exception.InviteExpiredException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -47,23 +50,20 @@ public class GlobalExceptionHandler {
     }
 
     // 5. Trata Conflito de Negócio (409)
-    @ExceptionHandler(com.fintech.api.exception.BusinessConflictException.class)
-    public ResponseEntity<Map<String, Object>> handleConflict(
-            com.fintech.api.exception.BusinessConflictException ex) {
+    @ExceptionHandler(BusinessConflictException.class)
+    public ResponseEntity<Map<String, Object>> handleConflict(BusinessConflictException ex) {
         return buildErrorResponse(HttpStatus.CONFLICT, ex.getMessage(), null);
     }
 
     // 6. Trata Convite Já Utilizado (410 Gone)
-    @ExceptionHandler(com.fintech.api.exception.InviteAlreadyUsedException.class)
-    public ResponseEntity<Map<String, Object>> handleInviteAlreadyUsed(
-            com.fintech.api.exception.InviteAlreadyUsedException ex) {
+    @ExceptionHandler(InviteAlreadyUsedException.class)
+    public ResponseEntity<Map<String, Object>> handleInviteAlreadyUsed(InviteAlreadyUsedException ex) {
         return buildErrorResponse(HttpStatus.GONE, ex.getMessage(), null);
     }
 
     // 7. Trata Convite Expirado (410 Gone)
-    @ExceptionHandler(com.fintech.api.exception.InviteExpiredException.class)
-    public ResponseEntity<Map<String, Object>> handleInviteExpired(
-            com.fintech.api.exception.InviteExpiredException ex) {
+    @ExceptionHandler(InviteExpiredException.class)
+    public ResponseEntity<Map<String, Object>> handleInviteExpired(InviteExpiredException ex) {
         return buildErrorResponse(HttpStatus.GONE, ex.getMessage(), null);
     }
 
