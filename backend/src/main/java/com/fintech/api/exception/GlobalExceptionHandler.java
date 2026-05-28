@@ -46,6 +46,27 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage(), null);
     }
 
+    // 5. Trata Conflito de Negócio (409)
+    @ExceptionHandler(com.fintech.api.exception.BusinessConflictException.class)
+    public ResponseEntity<Map<String, Object>> handleConflict(
+            com.fintech.api.exception.BusinessConflictException ex) {
+        return buildErrorResponse(HttpStatus.CONFLICT, ex.getMessage(), null);
+    }
+
+    // 6. Trata Convite Já Utilizado (410 Gone)
+    @ExceptionHandler(com.fintech.api.exception.InviteAlreadyUsedException.class)
+    public ResponseEntity<Map<String, Object>> handleInviteAlreadyUsed(
+            com.fintech.api.exception.InviteAlreadyUsedException ex) {
+        return buildErrorResponse(HttpStatus.GONE, ex.getMessage(), null);
+    }
+
+    // 7. Trata Convite Expirado (410 Gone)
+    @ExceptionHandler(com.fintech.api.exception.InviteExpiredException.class)
+    public ResponseEntity<Map<String, Object>> handleInviteExpired(
+            com.fintech.api.exception.InviteExpiredException ex) {
+        return buildErrorResponse(HttpStatus.GONE, ex.getMessage(), null);
+    }
+
     // 4. NOVO CÓDIGO (Fallback de segurança)
     // Trata qualquer outro erro não mapeado (500)
     // Nota: NoResourceFoundException é excluída para deixar o Spring MVC tratar 404 de recursos estáticos
