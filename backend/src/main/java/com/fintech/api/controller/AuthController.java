@@ -2,12 +2,14 @@ package com.fintech.api.controller;
 
 import com.fintech.api.config.TokenService;
 import com.fintech.api.domain.tenant.Tenant;
+import com.fintech.api.dto.AcceptInviteDTO;
 import com.fintech.api.dto.LoginDTO;
 import com.fintech.api.dto.LoginResponseDTO;
 import com.fintech.api.dto.RegisterResponseDTO;
 import com.fintech.api.dto.TenantRegistrationDTO;
 import com.fintech.api.openapi.AuthApi;
 import com.fintech.api.repository.UserRepository;
+import com.fintech.api.service.InvitationService;
 import com.fintech.api.service.TenantRegistrationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,7 @@ public class AuthController implements AuthApi {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
+    private final InvitationService invitationService;
 
     @Override
     @PostMapping("/register")
@@ -46,5 +49,11 @@ public class AuthController implements AuthApi {
         }
 
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    }
+
+    @PostMapping("/accept-invite")
+    public ResponseEntity<LoginResponseDTO> acceptInvite(@RequestBody @Valid AcceptInviteDTO dto) {
+        String token = invitationService.accept(dto);
+        return ResponseEntity.ok(new LoginResponseDTO(token));
     }
 }
