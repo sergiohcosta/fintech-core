@@ -5,9 +5,15 @@ import com.fintech.api.domain.enums.UserRole;
 import com.fintech.api.domain.invitation.Invitation;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.user.User;
+import com.fintech.api.dto.AcceptInviteDTO;
 import com.fintech.api.dto.CreateInvitationDTO;
+import com.fintech.api.dto.InvitationInfoDTO;
 import com.fintech.api.dto.InvitationResponseDTO;
 import com.fintech.api.exception.BusinessConflictException;
+import com.fintech.api.exception.EntityNotFoundException;
+import com.fintech.api.exception.InviteAlreadyUsedException;
+import com.fintech.api.exception.InviteExpiredException;
+import org.mockito.ArgumentCaptor;
 import com.fintech.api.repository.InvitationRepository;
 import com.fintech.api.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,6 +27,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.*;
@@ -97,5 +104,102 @@ class InvitationServiceTest {
         assertThatThrownBy(() -> service.create(dto, admin))
                 .isInstanceOf(BusinessConflictException.class)
                 .hasMessage("Já existe um convite pendente para este email");
+    }
+
+    // --- helper compartilhado pelos testes abaixo ---
+
+    private Invitation buildInvitation(boolean used, LocalDateTime expiresAt) {
+        Invitation inv = new Invitation();
+        inv.setId(UUID.randomUUID());
+        inv.setTenant(tenant);
+        inv.setEmail("convidado@silva.com");
+        inv.setToken("valid-token");
+        inv.setUsed(used);
+        inv.setExpiresAt(expiresAt);
+        return inv;
+    }
+
+    // --- VALIDAR TOKEN ---
+
+    @Test
+    @DisplayName("validate retorna email e tenantName para token válido")
+    void validate_happyPath() {
+        Invitation inv = buildInvitation(false, LocalDateTime.now().plusDays(1));
+        when(invitationRepository.findByToken("valid-token")).thenReturn(Optional.of(inv));
+
+        InvitationInfoDTO result = service.validate("valid-token");
+
+        assertThat(result.email()).isEqualTo("convidado@silva.com");
+        assertThat(result.tenantName()).isEqualTo("Família Silva");
+    }
+
+    @Test
+    @DisplayName("validate lança EntityNotFoundException para token inexistente")
+    void validate_tokenNotFound() {
+        when(invitationRepository.findByToken("nope")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.validate("nope"))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessage("Convite inválido ou inexistente");
+    }
+
+    @Test
+    @DisplayName("validate lança InviteAlreadyUsedException para token já usado")
+    void validate_alreadyUsed() {
+        Invitation inv = buildInvitation(true, LocalDateTime.now().plusDays(1));
+        when(invitationRepository.findByToken("used-token")).thenReturn(Optional.of(inv));
+
+        assertThatThrownBy(() -> service.validate("used-token"))
+                .isInstanceOf(InviteAlreadyUsedException.class);
+    }
+
+    @Test
+    @DisplayName("validate lança InviteExpiredException para token expirado")
+    void validate_expired() {
+        Invitation inv = buildInvitation(false, LocalDateTime.now().minusDays(1));
+        when(invitationRepository.findByToken("expired-token")).thenReturn(Optional.of(inv));
+
+        assertThatThrownBy(() -> service.validate("expired-token"))
+                .isInstanceOf(InviteExpiredException.class);
+    }
+
+    // --- ACEITAR CONVITE ---
+
+    @Test
+    @DisplayName("accept cria usuário USER, marca convite como usado e retorna JWT")
+    void accept_happyPath() {
+        Invitation inv = buildInvitation(false, LocalDateTime.now().plusDays(1));
+        when(invitationRepository.findByToken("valid-token")).thenReturn(Optional.of(inv));
+        when(userRepository.existsByEmail("convidado@silva.com")).thenReturn(false);
+        when(passwordEncoder.encode("senha123")).thenReturn("hashed");
+        when(userRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(invitationRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(tokenService.generateToken(any())).thenReturn("jwt-token");
+
+        AcceptInviteDTO dto = new AcceptInviteDTO("valid-token", "João Silva", "senha123");
+        String jwt = service.accept(dto);
+
+        assertThat(jwt).isEqualTo("jwt-token");
+        assertThat(inv.isUsed()).isTrue();
+
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(userCaptor.capture());
+        User saved = userCaptor.getValue();
+        assertThat(saved.getRole()).isEqualTo(UserRole.USER);
+        assertThat(saved.getEmail()).isEqualTo("convidado@silva.com");
+        assertThat(saved.getTenant()).isEqualTo(tenant);
+    }
+
+    @Test
+    @DisplayName("accept lança BusinessConflictException quando email já tem conta")
+    void accept_emailAlreadyExists() {
+        Invitation inv = buildInvitation(false, LocalDateTime.now().plusDays(1));
+        when(invitationRepository.findByToken("valid-token")).thenReturn(Optional.of(inv));
+        when(userRepository.existsByEmail("convidado@silva.com")).thenReturn(true);
+
+        AcceptInviteDTO dto = new AcceptInviteDTO("valid-token", "João", "senha");
+        assertThatThrownBy(() -> service.accept(dto))
+                .isInstanceOf(BusinessConflictException.class)
+                .hasMessage("Este email já possui uma conta");
     }
 }
