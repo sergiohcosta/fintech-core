@@ -1,5 +1,4 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -16,7 +15,6 @@ type PageState = 'loading' | 'error' | 'form' | 'submitting';
   selector: 'app-accept-invite',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     MatCardModule,
     MatFormFieldModule,
@@ -34,6 +32,8 @@ export class AcceptInviteComponent implements OnInit {
   private invitationService = inject(InvitationService);
   private authService = inject(AuthService);
 
+  private token: string | null = null;
+
   state = signal<PageState>('loading');
   errorMessage = signal('');
   invitationInfo = signal<InvitationInfo | null>(null);
@@ -44,14 +44,14 @@ export class AcceptInviteComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    const token = this.route.snapshot.queryParamMap.get('token');
-    if (!token) {
+    this.token = this.route.snapshot.queryParamMap.get('token');
+    if (!this.token) {
       this.errorMessage.set('Link de convite inválido.');
       this.state.set('error');
       return;
     }
 
-    this.invitationService.validateToken(token).subscribe({
+    this.invitationService.validateToken(this.token).subscribe({
       next: (info) => {
         this.invitationInfo.set(info);
         this.state.set('form');
@@ -64,12 +64,11 @@ export class AcceptInviteComponent implements OnInit {
   }
 
   onSubmit(): void {
-    if (this.form.invalid) return;
-    const token = this.route.snapshot.queryParamMap.get('token')!;
+    if (this.form.invalid || !this.token) return;
 
     this.state.set('submitting');
     this.invitationService.acceptInvite({
-      token,
+      token:    this.token,
       name:     this.form.value.name!,
       password: this.form.value.password!,
     }).subscribe({
@@ -79,7 +78,7 @@ export class AcceptInviteComponent implements OnInit {
       },
       error: (err) => {
         this.errorMessage.set(err.error?.message ?? 'Erro ao aceitar convite.');
-        this.state.set('error');
+        this.state.set('form');  // permite nova tentativa sem recarregar a página
       },
     });
   }
