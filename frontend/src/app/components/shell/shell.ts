@@ -42,7 +42,7 @@ export class ShellComponent {
   readonly navItems: NavItem[] = [
     { label: 'Dashboard',  icon: 'dashboard',   route: '/dashboard' },
     { label: 'Transações', icon: 'swap_horiz',  route: '/transactions' },
-    { label: 'Cartões',    icon: 'credit_card', route: '/credit-cards' },
+    { label: 'Contas',    icon: 'credit_card', route: '/accounts' },
     { label: 'Categorias', icon: 'category',    route: '/categories' },
   ];
 
