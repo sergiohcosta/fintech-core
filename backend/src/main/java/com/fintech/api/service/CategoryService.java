@@ -66,6 +66,9 @@ public class CategoryService {
         Category category = repository.findByIdAndTenantId(id, user.getTenant().getId())
                 .orElseThrow(() -> new EntityNotFoundException("Categoria não encontrada."));
 
+        String oldIcon  = category.getIcon();
+        String oldColor = category.getColor();
+
         category.setName(dto.name());
         category.setIcon(dto.icon());
         category.setColor(dto.color());
@@ -78,7 +81,23 @@ public class CategoryService {
             category.setParent(null);
         }
 
+        // Propaga para todos os descendentes quando ícone ou cor mudam.
+        // Os filhos são entidades gerenciadas — dirty checking do JPA persiste
+        // as alterações automaticamente no flush, sem save() explícito.
+        if (!oldIcon.equals(dto.icon()) || !oldColor.equals(dto.color())) {
+            propagateToDescendants(category, dto.icon(), dto.color());
+        }
+
         return CategoryResponseDTO.fromEntity(repository.save(category));
+    }
+
+    // Recursão em profundidade sobre a árvore de filhos (lazy load por nível).
+    private void propagateToDescendants(Category category, String icon, String color) {
+        for (Category child : category.getChildren()) {
+            child.setIcon(icon);
+            child.setColor(color);
+            propagateToDescendants(child, icon, color);
+        }
     }
 
     @Transactional
