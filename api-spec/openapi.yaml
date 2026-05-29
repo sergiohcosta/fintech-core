@@ -224,6 +224,8 @@ components:
           type: string
           format: uuid
           nullable: true
+        categoryArchived:
+          type: boolean
         accountName:
           type: string
           nullable: true
