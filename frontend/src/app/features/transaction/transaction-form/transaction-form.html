@@ -85,7 +85,11 @@
           <mat-select formControlName="categoryId">
             <mat-option [value]="null">Nenhuma</mat-option>
             @for (cat of categories(); track cat.id) {
-              <mat-option [value]="cat.id">{{ cat.name }}</mat-option>
+              <mat-option [value]="cat.id">
+                <span [style.padding-left.px]="cat.level * 20">
+                  {{ cat.level > 0 ? '↳ ' : '' }}{{ cat.name }}
+                </span>
+              </mat-option>
             }
           </mat-select>
         </mat-form-field>
