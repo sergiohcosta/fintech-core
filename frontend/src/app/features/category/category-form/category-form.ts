@@ -79,20 +79,24 @@ export class CategoryForm implements OnInit {
     });
   }
 
+  private applyInheritance(parentId: string) {
+    const parent = this.parentOptions().find(opt => opt.id === parentId);
+    if (parent) {
+      this.form.patchValue({ icon: parent.icon, color: parent.color }, { emitEvent: false });
+      this.form.get('icon')!.disable({ emitEvent: false });
+      this.form.get('color')!.disable({ emitEvent: false });
+      this.inherited.set(true);
+      this.inheritedFromName.set(parent.name);
+      this.selectedIcon.set(parent.icon);
+    }
+  }
+
   private setupParentInheritance() {
     this.form.get('parentId')!.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((parentId: string | null) => {
         if (parentId) {
-          const parent = this.parentOptions().find(opt => opt.id === parentId);
-          if (parent) {
-            this.form.patchValue({ icon: parent.icon, color: parent.color }, { emitEvent: false });
-            this.form.get('icon')!.disable({ emitEvent: false });
-            this.form.get('color')!.disable({ emitEvent: false });
-            this.inherited.set(true);
-            this.inheritedFromName.set(parent.name);
-            this.selectedIcon.set(parent.icon);
-          }
+          this.applyInheritance(parentId);
         } else {
           this.form.get('icon')!.enable({ emitEvent: false });
           this.form.get('color')!.enable({ emitEvent: false });
@@ -120,7 +124,11 @@ export class CategoryForm implements OnInit {
         next: ({ categories, cat }) => {
           this.buildParentOptions(categories);
           this.form.patchValue(cat, { emitEvent: false });
-          this.selectedIcon.set(cat.icon);
+          if (cat.parentId) {
+            this.applyInheritance(cat.parentId);
+          } else {
+            this.selectedIcon.set(cat.icon);
+          }
         },
         error: () => this.showError('Erro ao carregar categoria.'),
       });
