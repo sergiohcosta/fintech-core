@@ -46,3 +46,61 @@
         grid-template-columns: 1fr;
     }
 }
+
+// --- Linha de pickers (ícone + cor) ---
+
+.pickers-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 1.5rem;
+}
+
+.icon-picker-wrapper,
+.color-picker-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.color-picker-wrapper.disabled {
+    .color-picker-label { color: rgba(0, 0, 0, 0.38); }
+    .color-picker-trigger { opacity: 0.6; cursor: not-allowed; }
+}
+
+.color-picker-label {
+    font-size: 0.75rem;
+    color: rgba(0, 0, 0, 0.6);
+    margin-bottom: 2px;
+}
+
+.color-picker-trigger {
+    width: 80px;
+    height: 56px;
+    box-sizing: border-box;
+    border: 1px solid rgba(0, 0, 0, 0.38);
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.2s;
+
+    &:hover {
+        border-color: rgba(0, 0, 0, 0.87);
+    }
+}
+
+.color-input {
+    width: 100%;
+    height: 100%;
+    padding: 4px;
+    border: none;
+    cursor: pointer;
+    box-sizing: border-box;
+
+    &:disabled { cursor: not-allowed; }
+}
+
+.inherited-hint {
+    font-size: 0.75rem;
+    color: #3f51b5;
+    margin-top: 2px;
+}

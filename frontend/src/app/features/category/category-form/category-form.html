@@ -6,7 +6,7 @@
 
     <form [formGroup]='form' (ngSubmit)='onSubmit()'>
         <div class='grid-layout'>
-            
+
             <!-- Categoria Pai -->
             <mat-form-field appearance='outline' class='full-width'>
                 <mat-label>Categoria Pai (Opcional)</mat-label>
@@ -27,35 +27,40 @@
             <mat-form-field appearance='outline' class='full-width'>
                 <mat-label>Nome da Categoria</mat-label>
                 <input matInput formControlName='name' placeholder='Ex: Alimentação'>
-                <mat-error *ngIf='form.get("name")?.hasError("required")'>Obrigatório</mat-error>
+                @if (form.get('name')?.hasError('required')) {
+                    <mat-error>Obrigatório</mat-error>
+                }
             </mat-form-field>
 
-            <!-- Ícone -->
-            <mat-form-field appearance='outline'>
-                <mat-label>Ícone</mat-label>
-                <mat-select formControlName='icon'>
-                    <mat-select-trigger>
-                        <div style='display: flex; align-items: center; gap: 8px;'>
-                            <mat-icon>{{ form.get('icon')?.value }}</mat-icon>
-                            <span>{{ form.get('icon')?.value }}</span>
-                        </div>
-                    </mat-select-trigger>
-                    @for (icon of availableIcons; track icon) {
-                        <mat-option [value]='icon'>
-                            <div style='display: flex; align-items: center; gap: 12px;'>
-                                <mat-icon>{{ icon }}</mat-icon>
-                                <span>{{ icon }}</span>
-                            </div>
-                        </mat-option>
+            <!-- Ícone e Cor — em linha com visual consistente -->
+            <div class='pickers-row full-width'>
+
+                <div class='icon-picker-wrapper'>
+                    <app-icon-picker
+                        [selectedIcon]='selectedIcon()'
+                        [disabled]='inherited()'
+                        label='Ícone *'
+                        (iconSelected)='selectIcon($event)' />
+                    @if (inherited()) {
+                        <span class='inherited-hint'>Herdado de {{ inheritedFromName() }}</span>
                     }
-                </mat-select>
-            </mat-form-field>
+                </div>
 
-            <!-- Cor -->
-            <mat-form-field appearance='outline'>
-                <mat-label>Cor de Identificação</mat-label>
-                <input matInput type='color' formControlName='color' style='height: 40px; cursor: pointer;'>
-            </mat-form-field>
+                <div class='color-picker-wrapper' [class.disabled]='inherited()'>
+                    <span class='color-picker-label'>Cor de Identificação</span>
+                    <div class='color-picker-trigger'>
+                        <input
+                            type='color'
+                            formControlName='color'
+                            class='color-input'
+                            title='Escolher cor' />
+                    </div>
+                    @if (inherited()) {
+                        <span class='inherited-hint'>Herdado de {{ inheritedFromName() }}</span>
+                    }
+                </div>
+
+            </div>
 
         </div>
 

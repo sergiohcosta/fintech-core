@@ -189,9 +189,17 @@ npm start
 - Tela de Login
 - Gestão completa de Categorias (hierárquica, multinível)
 - Padronização visual de listas e formulários
+- CRUD completo de Transações Financeiras (fullstack)
+- Shell de Navegação (Shell Pattern — toolbar + sidenav)
+- Dashboard com resumo financeiro (receita / despesa / saldo por período)
+- OpenAPI spec-first (documentação automática + geração de código backend + frontend via Orval)
+- Gestão de Contas — Account Management (4 tipos, transferências double-entry, frontend TDD)
+- Melhorias UX no formulário de categorias (grid de ícones + herança de cor/ícone do pai)
 
-**Próximo grande passo:**
-- Gestão de Transações Financeiras (fullstack)
+**Próximos passos:**
+- Filtros na listagem de transações (por período, tipo, status, conta)
+- Gráficos no dashboard (evolução mensal, breakdown por categoria/conta)
+- Tela de Transferências (fluxo específico para os dois lançamentos espelhados)
 
 ---
 

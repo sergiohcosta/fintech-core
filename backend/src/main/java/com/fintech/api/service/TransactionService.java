@@ -9,6 +9,8 @@ import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.transaction.TransactionRequestDTO;
 import com.fintech.api.dto.transaction.TransactionResponseDTO;
 import com.fintech.api.dto.transaction.TransactionUpdateDTO;
+import com.fintech.api.dto.transfer.TransferRequestDTO;
+import com.fintech.api.dto.transfer.TransferResponseDTO;
 import com.fintech.api.exception.EntityNotFoundException;
 import com.fintech.api.repository.AccountRepository;
 import com.fintech.api.repository.CategoryRepository;
@@ -19,7 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -76,14 +77,19 @@ public class TransactionService {
     }
 
     @Transactional
-    public void createTransfer(UUID fromAccountId, UUID toAccountId, BigDecimal amount, LocalDate date, User user) {
-        Account from = resolveAccount(fromAccountId, user);
-        Account to = resolveAccount(toAccountId, user);
+    public TransferResponseDTO createTransfer(TransferRequestDTO dto, User user) {
+        if (dto.fromAccountId().equals(dto.toAccountId())) {
+            throw new IllegalArgumentException("As contas de origem e destino devem ser diferentes.");
+        }
+        Account from = resolveAccount(dto.fromAccountId(), user);
+        Account to   = resolveAccount(dto.toAccountId(), user);
         UUID transferId = UUID.randomUUID();
+        String description = (dto.description() != null && !dto.description().isBlank())
+                ? dto.description() : "Transferência";
 
-        repository.save(Transaction.builder()
-                .description("Transferência")
-                .amount(amount).date(date)
+        Transaction expense = repository.save(Transaction.builder()
+                .description(description)
+                .amount(dto.amount()).date(dto.date())
                 .type(TransactionType.EXPENSE)
                 .status(TransactionStatus.PAID)
                 .installmentNumber(1).totalInstallments(1)
@@ -91,15 +97,35 @@ public class TransactionService {
                 .account(from).transferId(transferId)
                 .build());
 
-        repository.save(Transaction.builder()
-                .description("Transferência")
-                .amount(amount).date(date)
+        Transaction income = repository.save(Transaction.builder()
+                .description(description)
+                .amount(dto.amount()).date(dto.date())
                 .type(TransactionType.INCOME)
                 .status(TransactionStatus.PAID)
                 .installmentNumber(1).totalInstallments(1)
                 .tenant(user.getTenant()).user(user)
                 .account(to).transferId(transferId)
                 .build());
+
+        return new TransferResponseDTO(
+                transferId,
+                expense.getId(),
+                income.getId(),
+                dto.amount(),
+                dto.date(),
+                description,
+                from.getName(),
+                to.getName()
+        );
+    }
+
+    @Transactional
+    public void deleteTransfer(UUID transferId, User user) {
+        List<Transaction> legs = repository.findByTransferIdAndTenant(transferId, user.getTenant());
+        if (legs.isEmpty()) {
+            throw new EntityNotFoundException("Transferência não encontrada.");
+        }
+        repository.deleteAll(legs);
     }
 
     @Transactional
@@ -131,7 +157,7 @@ public class TransactionService {
 
     private Category resolveCategory(UUID categoryId, User user) {
         if (categoryId == null) return null;
-        return categoryRepository.findByIdAndTenantId(categoryId, user.getTenant().getId())
+        return categoryRepository.findByIdAndTenantIdAndDeletedAtIsNull(categoryId, user.getTenant().getId())
                 .orElseThrow(() -> new EntityNotFoundException("Categoria não encontrada."));
     }
 

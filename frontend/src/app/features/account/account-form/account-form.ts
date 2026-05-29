@@ -13,6 +13,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 import { AccountsService } from '../../../core/api/accounts/accounts.service';
 import { AccountCreateRequest } from '../../../core/api/fintechSaaSAPI.schemas';
+import { IconPicker } from '../../../components/icon-picker/icon-picker';
 
 @Component({
   selector: 'app-account-form',
@@ -20,7 +21,8 @@ import { AccountCreateRequest } from '../../../core/api/fintechSaaSAPI.schemas';
   imports: [
     CommonModule, RouterLink, ReactiveFormsModule,
     MatFormFieldModule, MatInputModule, MatSelectModule,
-    MatButtonModule, MatIconModule, MatSlideToggleModule, MatSnackBarModule
+    MatButtonModule, MatIconModule, MatSlideToggleModule, MatSnackBarModule,
+    IconPicker
   ],
   templateUrl: './account-form.html',
   styleUrl: './account-form.scss'
@@ -35,6 +37,7 @@ export class AccountForm implements OnInit {
   saving = signal(false);
   isEditMode = signal(false);
   accountId = signal<string | null>(null);
+  selectedIconSignal = signal('account_balance');
 
   readonly accountTypes = [
     { value: 'CHECKING',     label: 'Conta Corrente' },
@@ -75,21 +78,29 @@ export class AccountForm implements OnInit {
       this.isEditMode.set(true);
       this.accountId.set(id);
       this.service.getAccount(id).subscribe({
-        next: (a) => this.form.patchValue({
-          name: a.name, type: a.type, color: a.color ?? '', icon: a.icon ?? '',
-          countInLiquidBalance: a.countInLiquidBalance, countInNetWorth: a.countInNetWorth,
-          brand: a.creditCardDetails?.brand ?? '',
-          lastFourDigits: a.creditCardDetails?.lastFourDigits ?? '',
-          limitAmount: a.creditCardDetails?.limitAmount ?? null,
-          closingDay: a.creditCardDetails?.closingDay ?? null,
-          dueDay: a.creditCardDetails?.dueDay ?? null
-        }),
+        next: (a) => {
+          this.form.patchValue({
+            name: a.name, type: a.type, color: a.color ?? '', icon: a.icon ?? '',
+            countInLiquidBalance: a.countInLiquidBalance, countInNetWorth: a.countInNetWorth,
+            brand: a.creditCardDetails?.brand ?? '',
+            lastFourDigits: a.creditCardDetails?.lastFourDigits ?? '',
+            limitAmount: a.creditCardDetails?.limitAmount ?? null,
+            closingDay: a.creditCardDetails?.closingDay ?? null,
+            dueDay: a.creditCardDetails?.dueDay ?? null
+          });
+          this.selectedIconSignal.set(a.icon ?? 'account_balance');
+        },
         error: () => {
           this.snackBar.open('Conta não encontrada.', 'Fechar', { duration: 5000 });
           this.router.navigate(['/accounts']);
         }
       });
     }
+  }
+
+  onIconSelected(icon: string): void {
+    this.form.patchValue({ icon });
+    this.selectedIconSignal.set(icon);
   }
 
   onSubmit(): void {

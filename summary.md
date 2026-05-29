@@ -234,6 +234,33 @@ Implementação fullstack do módulo de contas financeiras, substituindo a entid
 
 ---
 
+## 🎨 14. Melhorias no Formulário de Categorias — UX (2026-05-29)
+
+Duas melhorias de usabilidade no `category-form`, puramente frontend, sem alterações de backend ou contrato de API.
+
+### Issue #22 — Grid expansível de ícones
+
+* **Problema:** o `mat-select` com lista vertical de 25 ícones era pouco visual — difícil comparar ícones num dropdown linear.
+* **Solução:** bloco customizado com trigger clicável + grid 5×5 de `mat-icon`. Clicar no trigger abre/fecha o grid; clicar num ícone seleciona e fecha automaticamente. Ícone selecionado destacado com cor primária.
+* **Signal `iconPickerOpen`** controla o estado aberto/fechado; método `toggleIconPicker()` bloqueia a abertura quando `inherited()` estiver ativo.
+* **`selectedIcon = signal('folder')`** mantém o valor atual do ícone de forma reativa para o template Zoneless (substituiu `form.getRawValue().icon`, que não é um Signal).
+
+### Issue #20 — Herança automática de cor e ícone do pai
+
+* **Comportamento:** ao selecionar uma categoria pai, os campos `icon` e `color` são preenchidos com os valores do pai, desabilitados, e um hint "Herdado de X" aparece em ambos.
+* **Ao remover o pai:** campos reabilitados, valores restaurados para os defaults (`folder` / `#3f51b5`).
+* **Modo edição:** `forkJoin({ categories, cat })` garante que `parentOptions` já está populado antes do `patchValue`, evitando race condition. Após o patchValue, `applyInheritance(cat.parentId)` aplica o estado de herança manualmente (necessário porque `patchValue` usa `emitEvent: false`).
+* **`emitEvent: false`** em todos os `patchValue`/`disable`/`enable` dentro de `setupParentInheritance` — evita que alterações programáticas sejam tratadas como ações do usuário e causem loops de `valueChanges`.
+* **`takeUntilDestroyed(destroyRef)`** na subscription do `valueChanges` — evita memory leak ao destruir o componente.
+* **`onSubmit()` usa `getRawValue()`** — campos `disabled` ficam fora do `.value` padrão mas são incluídos no `getRawValue()`.
+
+### Testes
+
+* 35/35 testes frontend passando — arquivo `category-form.spec.ts` criado do zero (TDD).
+* Cobertura: icon picker (5 testes), herança de pai (7 testes), modo edição com categoria filha (1 teste).
+
+---
+
 ## 📅 Status Atual
 - [x] Estrutura de Pastas e Projetos.
 - [x] Banco de Dados e Migrations Iniciais.
@@ -247,6 +274,7 @@ Implementação fullstack do módulo de contas financeiras, substituindo a entid
 - [x] Dashboard com resumo financeiro (Receita / Despesa / Saldo por período).
 - [x] Adoção OpenAPI spec-first (documentação + geração de código backend + frontend).
 - [x] Gestão de Contas — Account Management (4 tipos, transferências double-entry, frontend TDD).
+- [x] Melhorias UX no formulário de categorias (grid de ícones + herança de cor/ícone do pai).
 - [ ] Filtros na listagem de transações (por período, tipo, status, conta).
 - [ ] Gráficos no dashboard (evolução mensal, breakdown por categoria/conta).
 - [ ] Tela de Transferências (fluxo específico para criar os dois lançamentos espelhados).

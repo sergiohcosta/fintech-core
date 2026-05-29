@@ -1,20 +1,30 @@
 import { Component, inject, OnInit, signal, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDatepicker, MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { TransactionsService } from '../../../core/api/transactions/transactions.service';
+import { TransfersService } from '../../../core/api/transfers/transfers.service';
 import { CategoriesService } from '../../../core/api/categories/categories.service';
 import { AccountsService } from '../../../core/api/accounts/accounts.service';
 import { CategoryResponseDTO, AccountResponse } from '../../../core/api/fintechSaaSAPI.schemas';
+
+interface TransactionCategoryOption {
+  id: string;
+  name: string;
+  level: number;
+  archived: boolean;
+}
 
 @Component({
   selector: 'app-transaction-form',
@@ -27,10 +37,12 @@ import { CategoryResponseDTO, AccountResponse } from '../../../core/api/fintechS
     MatInputModule,
     MatSelectModule,
     MatButtonModule,
+    MatButtonToggleModule,
     MatIconModule,
     MatDatepickerModule,
     MatNativeDateModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    MatTooltipModule,
   ],
   templateUrl: './transaction-form.html',
   styleUrl: './transaction-form.scss'
@@ -40,6 +52,7 @@ export class TransactionForm implements OnInit {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private transactionService = inject(TransactionsService);
+  private transferService = inject(TransfersService);
   private categoryService = inject(CategoriesService);
   private accountService = inject(AccountsService);
   private snackBar = inject(MatSnackBar);
@@ -49,9 +62,10 @@ export class TransactionForm implements OnInit {
   saving = signal(false);
   isEditMode = signal(false);
   transactionId = signal<string | null>(null);
-  categories = signal<CategoryResponseDTO[]>([]);
+  categories = signal<TransactionCategoryOption[]>([]);
   accounts = signal<AccountResponse[]>([]);
   amountDisplay = signal('');
+  mode = signal<'TRANSACTION' | 'TRANSFER'>('TRANSACTION');
 
   form = this.fb.group({
     description: ['', [Validators.required, Validators.minLength(2)]],
@@ -61,11 +75,13 @@ export class TransactionForm implements OnInit {
     status: ['PENDING'],
     totalInstallments: [1, [Validators.min(1), Validators.max(48)]],
     categoryId: [null as string | null],
-    accountId: [null as string | null, Validators.required]
-  });
+    accountId: [null as string | null, Validators.required],
+    fromAccountId: [null as string | null],
+    toAccountId: [null as string | null]
+  }, { validators: this.differentAccountsValidator });
 
   ngOnInit(): void {
-    this.categoryService.listCategories().subscribe({
+    this.categoryService.listCategories({ includeArchived: true }).subscribe({
       next: (data) => this.categories.set(this.flattenCategories(data)),
       error: () => {}
     });
@@ -83,7 +99,6 @@ export class TransactionForm implements OnInit {
           this.form.patchValue({
             description: t.description,
             amount: t.amount,
-            // O backend retorna string 'YYYY-MM-DD'; o datepicker precisa de Date
             date: new Date(t.date + 'T00:00:00'),
             type: t.type,
             status: t.status,
@@ -100,6 +115,30 @@ export class TransactionForm implements OnInit {
     }
   }
 
+  onModeChange(mode: 'TRANSACTION' | 'TRANSFER'): void {
+    this.mode.set(mode);
+    const fromCtrl    = this.form.controls.fromAccountId;
+    const toCtrl      = this.form.controls.toAccountId;
+    const accountCtrl = this.form.controls.accountId;
+    const descCtrl    = this.form.controls.description;
+
+    if (mode === 'TRANSFER') {
+      fromCtrl.setValidators(Validators.required);
+      toCtrl.setValidators(Validators.required);
+      accountCtrl.clearValidators();
+      descCtrl.clearValidators();
+    } else {
+      fromCtrl.clearValidators();
+      toCtrl.clearValidators();
+      accountCtrl.setValidators(Validators.required);
+      descCtrl.setValidators([Validators.required, Validators.minLength(2)]);
+    }
+    fromCtrl.updateValueAndValidity();
+    toCtrl.updateValueAndValidity();
+    accountCtrl.updateValueAndValidity();
+    descCtrl.updateValueAndValidity();
+  }
+
   // --- Máscara de moeda (#17) ---
 
   private formatAmount(value: number): string {
@@ -111,7 +150,6 @@ export class TransactionForm implements OnInit {
 
   onAmountInput(event: Event): void {
     const input = event.target as HTMLInputElement;
-    // Mantém apenas dígitos e vírgula; converte para ponto-flutuante
     const cleaned = input.value.replace(/[^\d,]/g, '');
     const asFloat = parseFloat(cleaned.replace(',', '.'));
     this.form.controls.amount.setValue(isNaN(asFloat) ? null : asFloat);
@@ -142,19 +180,14 @@ export class TransactionForm implements OnInit {
 
     const input = event.target as HTMLInputElement;
     const val = input.value;
-    // Insere barra automaticamente após o dia (pos 2) e após o mês (pos 5)
     if (val.length === 2 || val.length === 5) {
       input.value = val + '/';
     }
   }
 
   onDateBlur(event: FocusEvent): void {
-    // Se o foco foi para o toggle do datepicker, o calendar está prestes a abrir —
-    // chamar setValue aqui causaria um tick de CD durante a inicialização do overlay,
-    // deixando o backdrop preso (tela acinzentada/inclicável no modo Zoneless).
     const relatedTarget = event.relatedTarget as HTMLElement | null;
     if (relatedTarget?.closest('mat-datepicker-toggle')) return;
-    // Se o calendar já está aberto (ex: foco saiu ao clicar no overlay), também não processar.
     if (this.picker?.opened) return;
 
     const input = event.target as HTMLInputElement;
@@ -171,10 +204,10 @@ export class TransactionForm implements OnInit {
 
   // --- Utilitários ---
 
-  private flattenCategories(cats: CategoryResponseDTO[], prefix = ''): CategoryResponseDTO[] {
+  private flattenCategories(cats: CategoryResponseDTO[], level = 0): TransactionCategoryOption[] {
     return cats.flatMap(c => [
-      { ...c, name: prefix + c.name },
-      ...this.flattenCategories(c.children ?? [], prefix + '  ')
+      { id: c.id, name: c.name, level, archived: c.archived },
+      ...this.flattenCategories(c.children ?? [], level + 1)
     ]);
   }
 
@@ -182,24 +215,30 @@ export class TransactionForm implements OnInit {
     return date.toISOString().split('T')[0];
   }
 
+  private differentAccountsValidator(group: AbstractControl): ValidationErrors | null {
+    const from = group.get('fromAccountId')?.value;
+    const to = group.get('toAccountId')?.value;
+    if (from && to && from === to) {
+      return { sameAccount: true };
+    }
+    return null;
+  }
+
   onSubmit(): void {
     if (this.form.invalid) return;
-
     const raw = this.form.getRawValue();
     this.saving.set(true);
 
-    const payload = {
-      description: raw.description!,
-      amount: raw.amount!,
-      date: this.toDateString(raw.date as Date),
-      type: raw.type as 'INCOME' | 'EXPENSE',
-      status: raw.status as 'PENDING' | 'PAID' | 'CANCELLED' ?? undefined,
-      categoryId: raw.categoryId ?? undefined,
-      accountId: raw.accountId!
-    };
-
     if (this.isEditMode()) {
-      this.transactionService.updateTransaction(this.transactionId()!, payload).subscribe({
+      this.transactionService.updateTransaction(this.transactionId()!, {
+        description: raw.description!,
+        amount: raw.amount!,
+        date: this.toDateString(raw.date as Date),
+        type: raw.type as 'INCOME' | 'EXPENSE',
+        status: raw.status as 'PENDING' | 'PAID' | 'CANCELLED' ?? undefined,
+        categoryId: raw.categoryId ?? undefined,
+        accountId: raw.accountId!
+      }).subscribe({
         next: () => {
           this.snackBar.open('Transação atualizada com sucesso!', 'OK', { duration: 3000 });
           this.router.navigate(['/transactions']);
@@ -209,20 +248,50 @@ export class TransactionForm implements OnInit {
           this.snackBar.open('Erro ao atualizar transação.', 'Fechar', { duration: 5000 });
         }
       });
-    } else {
-      this.transactionService.createTransaction({ ...payload, totalInstallments: raw.totalInstallments ?? 1 }).subscribe({
-        next: (created) => {
-          const msg = created.length > 1
-            ? `${created.length} parcelas criadas com sucesso!`
-            : 'Transação criada com sucesso!';
-          this.snackBar.open(msg, 'OK', { duration: 3000 });
+      return;
+    }
+
+    if (this.mode() === 'TRANSFER') {
+      this.transferService.createTransfer({
+        fromAccountId: raw.fromAccountId!,
+        toAccountId: raw.toAccountId!,
+        amount: raw.amount!,
+        date: this.toDateString(raw.date as Date),
+        description: raw.description || undefined
+      }).subscribe({
+        next: () => {
+          this.snackBar.open('Transferência registrada com sucesso!', 'OK', { duration: 3000 });
           this.router.navigate(['/transactions']);
         },
         error: () => {
           this.saving.set(false);
-          this.snackBar.open('Erro ao salvar transação.', 'Fechar', { duration: 5000 });
+          this.snackBar.open('Erro ao registrar transferência.', 'Fechar', { duration: 5000 });
         }
       });
+      return;
     }
+
+    this.transactionService.createTransaction({
+      description: raw.description!,
+      amount: raw.amount!,
+      date: this.toDateString(raw.date as Date),
+      type: raw.type as 'INCOME' | 'EXPENSE',
+      status: raw.status as 'PENDING' | 'PAID' | 'CANCELLED' ?? undefined,
+      categoryId: raw.categoryId ?? undefined,
+      accountId: raw.accountId!,
+      totalInstallments: raw.totalInstallments ?? 1
+    }).subscribe({
+      next: (created) => {
+        const msg = created.length > 1
+          ? `${created.length} parcelas criadas com sucesso!`
+          : 'Transação criada com sucesso!';
+        this.snackBar.open(msg, 'OK', { duration: 3000 });
+        this.router.navigate(['/transactions']);
+      },
+      error: () => {
+        this.saving.set(false);
+        this.snackBar.open('Erro ao salvar transação.', 'Fechar', { duration: 5000 });
+      }
+    });
   }
 }

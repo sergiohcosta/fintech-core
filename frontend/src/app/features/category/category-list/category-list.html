@@ -4,15 +4,23 @@
       <h1>Categorias</h1>
       <p class='subtitle'>Gerencie a hierarquia de suas categorias financeiras</p>
     </div>
-    <button mat-flat-button color='primary' routerLink='/categories/new'>
-      <mat-icon>add</mat-icon>
-      Nova Categoria
-    </button>
+    <div class="header-actions">
+      <mat-slide-toggle
+        [checked]="showArchived()"
+        (change)="onToggleArchived($event.checked)"
+        color="primary">
+        Mostrar arquivadas
+      </mat-slide-toggle>
+      <button mat-flat-button color='primary' routerLink='/categories/new'>
+        <mat-icon>add</mat-icon>
+        Nova Categoria
+      </button>
+    </div>
   </header>
 
   <div class='table-container mat-elevation-z2'>
     <table mat-table [dataSource]='categories()'>
-      
+
       <!-- Nome com Indentação Hierárquica -->
       <ng-container matColumnDef='name'>
         <th mat-header-cell *matHeaderCellDef> Nome / Hierarquia </th>
@@ -23,21 +31,19 @@
                 subdirectory_arrow_right
               </mat-icon>
             }
-            <div class='color-dot' [style.background-color]='cat.color' 
-                 style='width: 12px; height: 12px; margin-right: 12px; box-shadow: none;'>
-            </div>
-            <span [style.font-weight]='cat.level === 0 ? "500" : "400"'
-                  [style.font-size.rem]='cat.level === 0 ? 1 : 0.9'>
+            <mat-icon
+              [style.color]='cat.archived ? "#bdbdbd" : cat.color'
+              style='font-size: 20px; width: 20px; height: 20px; margin-right: 8px; flex-shrink: 0;'>
+              {{ cat.icon }}
+            </mat-icon>
+            <span
+              [style.font-weight]='cat.level === 0 ? "500" : "400"'
+              [style.font-size.rem]='cat.level === 0 ? 1 : 0.9'
+              [class.category-archived]='cat.archived'
+              [matTooltip]='cat.archived ? "Categoria arquivada" : ""'>
               {{ cat.name }}
             </span>
           </div>
-        </td>
-      </ng-container>
-
-      <ng-container matColumnDef='icon'>
-        <th mat-header-cell *matHeaderCellDef> Ícone </th>
-        <td mat-cell *matCellDef='let cat'>
-          <mat-icon [style.color]='cat.color'>{{ cat.icon }}</mat-icon>
         </td>
       </ng-container>
 
@@ -45,10 +51,16 @@
         <th mat-header-cell *matHeaderCellDef> </th>
         <td mat-cell *matCellDef='let cat'>
           <div class='actions-group'>
-            <button mat-icon-button color='primary' (click)='onEdit(cat)' matTooltip='Editar'>
+            <button mat-icon-button color='primary'
+                    (click)='onEdit(cat)'
+                    [disabled]='cat.archived'
+                    [matTooltip]='cat.archived ? "Categoria arquivada" : "Editar"'>
               <mat-icon>edit</mat-icon>
             </button>
-            <button mat-icon-button color='warn' (click)='onDelete(cat)' matTooltip='Excluir'>
+            <button mat-icon-button color='warn'
+                    (click)='onDelete(cat)'
+                    [disabled]='cat.archived'
+                    [matTooltip]='cat.archived ? "Categoria arquivada" : "Excluir"'>
               <mat-icon>delete</mat-icon>
             </button>
           </div>
@@ -56,17 +68,18 @@
       </ng-container>
 
       <tr mat-header-row *matHeaderRowDef='displayedColumns'></tr>
-      <tr mat-row *matRowDef='let row; columns: displayedColumns;' 
+      <tr mat-row *matRowDef='let row; columns: displayedColumns;'
           class='element-row'
           [style.background-color]='row.level === 0 ? "rgba(0,0,0,0.01)" : "transparent"'>
       </tr>
 
       <tr class='mat-row' *matNoDataRow>
-        <td class='mat-cell empty-state' colspan='3'>
+        <td class='mat-cell empty-state' colspan='2'>
           <mat-icon>category</mat-icon>
           <p>Nenhuma categoria encontrada.</p>
         </td>
       </tr>
+
     </table>
   </div>
 </div>

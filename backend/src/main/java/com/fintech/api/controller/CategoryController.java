@@ -1,6 +1,7 @@
 package com.fintech.api.controller;
 
 import com.fintech.api.domain.user.User;
+import com.fintech.api.dto.category.CategoryArchiveRequestDTO;
 import com.fintech.api.dto.category.CategoryCreateDTO;
 import com.fintech.api.dto.category.CategoryResponseDTO;
 import com.fintech.api.openapi.CategoriesApi;
@@ -10,7 +11,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -28,9 +28,10 @@ public class CategoryController implements CategoriesApi {
 
     @Override
     @GetMapping
-    public ResponseEntity<List<CategoryResponseDTO>> listCategories() {
+    public ResponseEntity<List<CategoryResponseDTO>> listCategories(
+            @RequestParam(value = "includeArchived", required = false, defaultValue = "false") Boolean includeArchived) {
         User user = getAuthenticatedUser();
-        return ResponseEntity.ok(service.findAllRoots(user));
+        return ResponseEntity.ok(service.findAllRoots(user, Boolean.TRUE.equals(includeArchived)));
     }
 
     @Override
@@ -69,6 +70,17 @@ public class CategoryController implements CategoriesApi {
     public ResponseEntity<Void> deleteCategory(@PathVariable UUID id) {
         User user = getAuthenticatedUser();
         service.delete(id, user);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    @PostMapping("/{id}/archive")
+    public ResponseEntity<Void> archiveCategory(
+            @PathVariable UUID id,
+            @RequestBody(required = false) CategoryArchiveRequestDTO categoryArchiveRequestDTO) {
+        User user = getAuthenticatedUser();
+        UUID targetId = categoryArchiveRequestDTO != null ? categoryArchiveRequestDTO.targetCategoryId() : null;
+        service.archive(id, targetId, user);
         return ResponseEntity.noContent().build();
     }
 

@@ -10,16 +10,25 @@ public record CategoryResponseDTO(
         String icon,
         String color,
         UUID parentId,
+        boolean archived,
         List<CategoryResponseDTO> children) {
+
+    // Sem includeArchived: filtra filhos arquivados (comportamento padrão)
     public static CategoryResponseDTO fromEntity(Category category) {
+        return fromEntity(category, false);
+    }
+
+    public static CategoryResponseDTO fromEntity(Category category, boolean includeArchived) {
         return new CategoryResponseDTO(
                 category.getId(),
                 category.getName(),
                 category.getIcon(),
                 category.getColor(),
                 category.getParent() != null ? category.getParent().getId() : null,
+                category.getDeletedAt() != null,
                 category.getChildren().stream()
-                        .map(CategoryResponseDTO::fromEntity)
+                        .filter(c -> includeArchived || c.getDeletedAt() == null)
+                        .map(c -> fromEntity(c, includeArchived))
                         .toList());
     }
 }

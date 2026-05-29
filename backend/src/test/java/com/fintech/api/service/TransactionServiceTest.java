@@ -9,6 +9,7 @@ import com.fintech.api.domain.transaction.Transaction;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.transaction.TransactionRequestDTO;
 import com.fintech.api.dto.transaction.TransactionResponseDTO;
+import com.fintech.api.dto.transfer.TransferRequestDTO;
 import com.fintech.api.exception.EntityNotFoundException;
 import com.fintech.api.repository.AccountRepository;
 import com.fintech.api.repository.CategoryRepository;
@@ -82,15 +83,16 @@ class TransactionServiceTest {
     void createTransferMirrorsTransactions() {
         User user = buildUser();
         Account from = buildAccount(user);
-        Account to = buildAccount(user);
-        UUID fromId = from.getId();
-        UUID toId = to.getId();
+        Account to   = buildAccount(user);
 
-        when(accountRepository.findByIdAndTenant(fromId, user.getTenant())).thenReturn(Optional.of(from));
-        when(accountRepository.findByIdAndTenant(toId, user.getTenant())).thenReturn(Optional.of(to));
+        when(accountRepository.findByIdAndTenant(from.getId(), user.getTenant())).thenReturn(Optional.of(from));
+        when(accountRepository.findByIdAndTenant(to.getId(), user.getTenant())).thenReturn(Optional.of(to));
         when(repository.save(any(Transaction.class))).thenAnswer(i -> i.getArgument(0));
 
-        service.createTransfer(fromId, toId, new BigDecimal("500.00"), LocalDate.now(), user);
+        TransferRequestDTO dto = new TransferRequestDTO(
+                from.getId(), to.getId(), new BigDecimal("500.00"), LocalDate.now(), null);
+
+        service.createTransfer(dto, user);
 
         ArgumentCaptor<Transaction> captor = ArgumentCaptor.forClass(Transaction.class);
         verify(repository, times(2)).save(captor.capture());
@@ -101,9 +103,80 @@ class TransactionServiceTest {
 
         assertThat(expense.getAccount()).isEqualTo(from);
         assertThat(income.getAccount()).isEqualTo(to);
-        assertThat(expense.getTransferId()).isNotNull();
-        assertThat(expense.getTransferId()).isEqualTo(income.getTransferId());
+        assertThat(expense.getTransferId()).isNotNull().isEqualTo(income.getTransferId());
         assertThat(expense.getAmount()).isEqualByComparingTo(new BigDecimal("500.00"));
+        assertThat(expense.getDescription()).isEqualTo("Transferência");
+    }
+
+    @Test
+    @DisplayName("createTransfer lança IllegalArgumentException quando contas são iguais")
+    void createTransferRejectsEqualAccounts() {
+        User user = buildUser();
+        UUID sameId = UUID.randomUUID();
+        TransferRequestDTO dto = new TransferRequestDTO(
+                sameId, sameId, new BigDecimal("100.00"), LocalDate.now(), null);
+
+        assertThatThrownBy(() -> service.createTransfer(dto, user))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("diferentes");
+    }
+
+    @Test
+    @DisplayName("createTransfer usa descrição customizada quando fornecida")
+    void createTransferUsesCustomDescription() {
+        User user = buildUser();
+        Account from = buildAccount(user);
+        Account to   = buildAccount(user);
+
+        when(accountRepository.findByIdAndTenant(from.getId(), user.getTenant())).thenReturn(Optional.of(from));
+        when(accountRepository.findByIdAndTenant(to.getId(), user.getTenant())).thenReturn(Optional.of(to));
+        when(repository.save(any(Transaction.class))).thenAnswer(i -> i.getArgument(0));
+
+        TransferRequestDTO dto = new TransferRequestDTO(
+                from.getId(), to.getId(), new BigDecimal("200.00"), LocalDate.now(), "Reserva emergência");
+
+        service.createTransfer(dto, user);
+
+        ArgumentCaptor<Transaction> captor = ArgumentCaptor.forClass(Transaction.class);
+        verify(repository, times(2)).save(captor.capture());
+        captor.getAllValues().forEach(t ->
+                assertThat(t.getDescription()).isEqualTo("Reserva emergência"));
+    }
+
+    @Test
+    @DisplayName("deleteTransfer exclui as duas pernas da transferência")
+    void deleteTransferRemovesBothLegs() {
+        User user = buildUser();
+        UUID transferId = UUID.randomUUID();
+        Account from = buildAccount(user);
+        Account to   = buildAccount(user);
+
+        Transaction leg1 = Transaction.builder().id(UUID.randomUUID())
+                .type(TransactionType.EXPENSE).account(from)
+                .transferId(transferId).tenant(user.getTenant()).build();
+        Transaction leg2 = Transaction.builder().id(UUID.randomUUID())
+                .type(TransactionType.INCOME).account(to)
+                .transferId(transferId).tenant(user.getTenant()).build();
+
+        when(repository.findByTransferIdAndTenant(transferId, user.getTenant()))
+                .thenReturn(List.of(leg1, leg2));
+
+        service.deleteTransfer(transferId, user);
+
+        verify(repository).deleteAll(List.of(leg1, leg2));
+    }
+
+    @Test
+    @DisplayName("deleteTransfer lança EntityNotFoundException para transferId inexistente")
+    void deleteTransferThrowsForUnknownId() {
+        User user = buildUser();
+        UUID transferId = UUID.randomUUID();
+
+        when(repository.findByTransferIdAndTenant(transferId, user.getTenant()))
+                .thenReturn(List.of());
+
+        assertThatThrownBy(() -> service.deleteTransfer(transferId, user))
+                .isInstanceOf(EntityNotFoundException.class);
     }
 
     @Test
