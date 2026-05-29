@@ -39,7 +39,7 @@ export class TransactionList implements OnInit {
   private snackBar = inject(MatSnackBar);
 
   transactions = signal<TransactionResponseDTO[]>([]);
-  displayedColumns = ['description', 'amount', 'date', 'type', 'status', 'installment', 'category', 'creditCard', 'actions'];
+  displayedColumns = ['description', 'amount', 'date', 'type', 'status', 'installment', 'category', 'account', 'actions'];
 
   ngOnInit(): void {
     this.loadTransactions();

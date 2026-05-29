@@ -17,7 +17,9 @@ public record TransactionResponseDTO(
         TransactionStatus status,
         String installmentLabel,
         String categoryName,
+        UUID categoryId,
         String accountName,
+        UUID accountId,
         UUID transferId
 ) {
     public static TransactionResponseDTO fromEntity(Transaction t) {
@@ -34,7 +36,9 @@ public record TransactionResponseDTO(
                 t.getStatus(),
                 installLabel,
                 t.getCategory() != null ? t.getCategory().getName() : null,
+                t.getCategory() != null ? t.getCategory().getId() : null,
                 t.getAccount() != null ? t.getAccount().getName() : null,
+                t.getAccount() != null ? t.getAccount().getId() : null,
                 t.getTransferId()
         );
     }

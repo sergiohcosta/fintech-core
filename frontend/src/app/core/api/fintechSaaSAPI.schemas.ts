@@ -119,7 +119,11 @@ export interface TransactionResponseDTO {
   /** @nullable */
   categoryName?: string | null;
   /** @nullable */
+  categoryId?: string | null;
+  /** @nullable */
   accountName?: string | null;
+  /** @nullable */
+  accountId?: string | null;
   /** @nullable */
   transferId?: string | null;
 }
