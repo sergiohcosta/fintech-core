@@ -131,7 +131,7 @@ public class TransactionService {
 
     private Category resolveCategory(UUID categoryId, User user) {
         if (categoryId == null) return null;
-        return categoryRepository.findByIdAndTenantId(categoryId, user.getTenant().getId())
+        return categoryRepository.findByIdAndTenantIdAndDeletedAtIsNull(categoryId, user.getTenant().getId())
                 .orElseThrow(() -> new EntityNotFoundException("Categoria não encontrada."));
     }
 

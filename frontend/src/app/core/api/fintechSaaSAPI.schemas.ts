@@ -75,6 +75,16 @@ export interface CategoryResponseDTO {
   children: CategoryResponseDTO[];
 }
 
+export interface CategoryArchiveRequest {
+  /** @nullable */
+  targetCategoryId?: string | null;
+}
+
+export interface CategoryConflictResponse {
+  transactionCount: number;
+  message: string;
+}
+
 export interface TransactionRequestDTO {
   description: string;
   /** @minimum 0.01 */
