@@ -139,6 +139,27 @@ export interface TransactionResponseDTO {
   transferId?: string | null;
 }
 
+export interface TransferRequest {
+  fromAccountId: string;
+  toAccountId: string;
+  /** @minimum 0.01 */
+  amount: number;
+  date: string;
+  /** @nullable */
+  description?: string | null;
+}
+
+export interface TransferResponse {
+  transferId?: string;
+  fromLegId?: string;
+  toLegId?: string;
+  amount?: number;
+  date?: string;
+  description?: string;
+  fromAccount?: string;
+  toAccount?: string;
+}
+
 export interface DashboardSummaryDTO {
   /** @pattern ^\d{4}-\d{2}$ */
   period?: string;
