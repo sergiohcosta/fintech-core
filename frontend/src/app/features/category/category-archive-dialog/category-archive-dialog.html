@@ -1,0 +1,50 @@
+<h2 mat-dialog-title>Esta categoria possui transações</h2>
+
+<mat-dialog-content>
+  <p class="mat-body-1">
+    <strong>{{ data.category.name }}</strong> e suas subcategorias possuem
+    <strong>{{ data.transactionCount }}</strong> transação(ões) associada(s).
+    O que deseja fazer?
+  </p>
+
+  <mat-divider class="divider"></mat-divider>
+
+  <div class="option">
+    <h3 class="mat-subtitle-2">Arquivar categoria</h3>
+    <p class="mat-body-2 option-description">
+      A categoria e suas subcategorias serão arquivadas. As transações existentes
+      continuarão com o vínculo preservado no histórico.
+    </p>
+    <div class="option-actions">
+      <button mat-stroked-button color="warn" (click)="onArchive()">
+        Arquivar categoria
+      </button>
+    </div>
+  </div>
+
+  <mat-divider class="divider"></mat-divider>
+
+  <div class="option">
+    <h3 class="mat-subtitle-2">Mover para outra categoria</h3>
+    <p class="mat-body-2 option-description">
+      As transações serão reassociadas à categoria de destino antes de arquivar.
+    </p>
+    <mat-form-field appearance="outline" class="category-select">
+      <mat-label>Categoria de destino</mat-label>
+      <mat-select [ngModel]="selectedTargetId()" (ngModelChange)="selectedTargetId.set($event)">
+        @for (cat of data.availableCategories; track cat.id) {
+          <mat-option [value]="cat.id">{{ cat.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <div class="option-actions">
+      <button mat-flat-button color="primary" [disabled]="!selectedTargetId()" (click)="onMove()">
+        Mover e arquivar
+      </button>
+    </div>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()" cdkFocusInitial>Cancelar</button>
+</mat-dialog-actions>
