@@ -40,8 +40,8 @@
       <ng-container matColumnDef="type">
         <th mat-header-cell *matHeaderCellDef>Tipo</th>
         <td mat-cell *matCellDef="let t">
-          <span [class]="'type-badge type-' + t.type.toLowerCase()">
-            {{ typeLabel(t.type) }}
+          <span [class]="'type-badge type-' + (t.transferId ? 'transfer' : (t.type ?? '').toLowerCase())">
+            {{ typeLabel(t) }}
           </span>
         </td>
       </ng-container>
@@ -74,7 +74,10 @@
         <th mat-header-cell *matHeaderCellDef></th>
         <td mat-cell *matCellDef="let t">
           <div class="actions-group">
-            <button mat-icon-button color="primary" (click)="onEdit(t)" matTooltip="Editar">
+            <button mat-icon-button color="primary"
+                    (click)="onEdit(t)"
+                    [disabled]="!!t.transferId"
+                    [matTooltip]="t.transferId ? 'Transferências não podem ser editadas' : 'Editar'">
               <mat-icon>edit</mat-icon>
             </button>
             <button mat-icon-button color="warn" (click)="onDelete(t)" matTooltip="Excluir">

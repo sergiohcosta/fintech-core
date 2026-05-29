@@ -55,6 +55,22 @@ mat-form-field {
   margin-top: 1.5rem;
 }
 
+.mode-toggle-row {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+
+  mat-button-toggle-group {
+    border-radius: 8px;
+  }
+}
+
+.cross-field-error {
+  color: var(--mat-form-field-error-text-color, #b00020);
+  font-size: 0.75rem;
+  margin: 0 0 0.5rem;
+}
+
 @media (max-width: 600px) {
   .page-container { padding: 1rem; }
   .form-card { padding: 1rem; }
