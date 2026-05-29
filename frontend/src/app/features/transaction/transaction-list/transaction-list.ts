@@ -10,6 +10,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 import { TransactionsService } from '../../../core/api/transactions/transactions.service';
+import { TransfersService } from '../../../core/api/transfers/transfers.service';
 import { TransactionResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
 import { ConfirmationDialogComponent } from '../../../components/confirmation-dialog/confirmation-dialog';
 
@@ -34,6 +35,7 @@ import { ConfirmationDialogComponent } from '../../../components/confirmation-di
 })
 export class TransactionList implements OnInit {
   private service = inject(TransactionsService);
+  private transferService = inject(TransfersService);
   private router = inject(Router);
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
@@ -57,17 +59,30 @@ export class TransactionList implements OnInit {
   }
 
   onDelete(t: TransactionResponseDTO): void {
+    const isTransfer = !!t.transferId;
     const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
       width: '400px',
       data: {
-        title: 'Excluir Transação',
-        message: `Deseja excluir "${t.description}"? Esta ação não pode ser desfeita.`,
+        title: isTransfer ? 'Excluir Transferência' : 'Excluir Transação',
+        message: isTransfer
+          ? 'Deseja excluir esta transferência? Os dois lançamentos serão removidos. Esta ação não pode ser desfeita.'
+          : `Deseja excluir "${t.description}"? Esta ação não pode ser desfeita.`,
         confirmText: 'Sim, excluir'
       }
     });
 
     dialogRef.afterClosed().subscribe(confirmed => {
-      if (confirmed === true) {
+      if (confirmed !== true) return;
+
+      if (isTransfer) {
+        this.transferService.deleteTransfer(t.transferId!).subscribe({
+          next: () => {
+            this.snackBar.open('Transferência excluída.', 'OK', { duration: 3000 });
+            this.loadTransactions();
+          },
+          error: () => this.snackBar.open('Erro ao excluir transferência.', 'Fechar', { duration: 5000 })
+        });
+      } else {
         this.service.deleteTransaction(t.id).subscribe({
           next: () => {
             this.snackBar.open('Transação excluída.', 'OK', { duration: 3000 });
@@ -79,13 +94,10 @@ export class TransactionList implements OnInit {
     });
   }
 
-  typeLabel(type: string): string {
-    const labels: Record<string, string> = {
-      INCOME: 'Receita',
-      EXPENSE: 'Despesa',
-      TRANSFER: 'Transferência'
-    };
-    return labels[type] ?? type;
+  typeLabel(t: TransactionResponseDTO): string {
+    if (t.transferId) return 'Transferência';
+    const labels: Record<string, string> = { INCOME: 'Receita', EXPENSE: 'Despesa' };
+    return labels[t.type ?? ''] ?? (t.type ?? '');
   }
 
   statusLabel(status: string): string {

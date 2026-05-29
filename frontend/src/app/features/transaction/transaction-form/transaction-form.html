@@ -1,7 +1,7 @@
 <div class="page-container">
   <header class="page-header">
     <div>
-      <h1>{{ isEditMode() ? 'Editar Transação' : 'Nova Transação' }}</h1>
+      <h1>{{ isEditMode() ? 'Editar Transação' : (mode() === 'TRANSFER' ? 'Nova Transferência' : 'Nova Transação') }}</h1>
       <p class="subtitle">Preencha os dados da transação</p>
     </div>
     <button mat-stroked-button routerLink="/transactions">
@@ -13,9 +13,18 @@
   <div class="form-card mat-elevation-z2">
     <form [formGroup]="form" (ngSubmit)="onSubmit()">
 
+      @if (!isEditMode()) {
+        <div class="form-row mode-toggle-row">
+          <mat-button-toggle-group [value]="mode()" (change)="onModeChange($event.value)" [hideSingleSelectionIndicator]="true">
+            <mat-button-toggle value="TRANSACTION">Receita / Despesa</mat-button-toggle>
+            <mat-button-toggle value="TRANSFER">Transferência</mat-button-toggle>
+          </mat-button-toggle-group>
+        </div>
+      }
+
       <div class="form-row">
         <mat-form-field appearance="outline" class="field-full">
-          <mat-label>Descrição</mat-label>
+          <mat-label>{{ mode() === 'TRANSFER' ? 'Descrição (opcional)' : 'Descrição' }}</mat-label>
           <input matInput formControlName="description" placeholder="Ex: Supermercado, Salário..." />
           @if (form.controls.description.hasError('required')) {
             <mat-error>Descrição obrigatória</mat-error>
@@ -54,57 +63,93 @@
         </mat-form-field>
       </div>
 
-      <div class="form-row form-row-cols">
-        <mat-form-field appearance="outline">
-          <mat-label>Tipo</mat-label>
-          <mat-select formControlName="type">
-            <mat-option value="EXPENSE">Despesa</mat-option>
-            <mat-option value="INCOME">Receita</mat-option>
-          </mat-select>
-        </mat-form-field>
+      @if (mode() === 'TRANSACTION') {
+        <div class="form-row form-row-cols">
+          <mat-form-field appearance="outline">
+            <mat-label>Tipo</mat-label>
+            <mat-select formControlName="type">
+              <mat-option value="EXPENSE">Despesa</mat-option>
+              <mat-option value="INCOME">Receita</mat-option>
+            </mat-select>
+          </mat-form-field>
 
-        <mat-form-field appearance="outline">
-          <mat-label>Status</mat-label>
-          <mat-select formControlName="status">
-            <mat-option value="PENDING">Pendente</mat-option>
-            <mat-option value="PAID">Pago</mat-option>
-            <mat-option value="CANCELLED">Cancelado</mat-option>
-          </mat-select>
-        </mat-form-field>
-      </div>
+          <mat-form-field appearance="outline">
+            <mat-label>Status</mat-label>
+            <mat-select formControlName="status">
+              <mat-option value="PENDING">Pendente</mat-option>
+              <mat-option value="PAID">Pago</mat-option>
+              <mat-option value="CANCELLED">Cancelado</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
 
-      <div class="form-row form-row-cols">
-        <mat-form-field appearance="outline">
-          <mat-label>Nº de Parcelas</mat-label>
-          <input matInput type="number" formControlName="totalInstallments" min="1" max="48" />
-          <mat-hint>1 = à vista. Máx: 48x</mat-hint>
-        </mat-form-field>
+        <div class="form-row form-row-cols">
+          <mat-form-field appearance="outline">
+            <mat-label>Nº de Parcelas</mat-label>
+            <input matInput type="number" formControlName="totalInstallments" min="1" max="48" />
+            <mat-hint>1 = à vista. Máx: 48x</mat-hint>
+          </mat-form-field>
 
-        <mat-form-field appearance="outline">
-          <mat-label>Categoria (opcional)</mat-label>
-          <mat-select formControlName="categoryId">
-            <mat-option [value]="null">Nenhuma</mat-option>
-            @for (cat of categories(); track cat.id) {
-              <mat-option [value]="cat.id">
-                <span [style.padding-left.px]="cat.level * 20">
-                  {{ cat.level > 0 ? '↳ ' : '' }}{{ cat.name }}
-                </span>
-              </mat-option>
+          <mat-form-field appearance="outline">
+            <mat-label>Categoria (opcional)</mat-label>
+            <mat-select formControlName="categoryId">
+              <mat-option [value]="null">Nenhuma</mat-option>
+              @for (cat of categories(); track cat.id) {
+                <mat-option [value]="cat.id">
+                  <span [style.padding-left.px]="cat.level * 20">
+                    {{ cat.level > 0 ? '↳ ' : '' }}{{ cat.name }}
+                  </span>
+                </mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="field-full">
+            <mat-label>Conta *</mat-label>
+            <mat-select formControlName="accountId">
+              @for (a of accounts(); track a.id) {
+                <mat-option [value]="a.id">{{ a.name }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </div>
+      }
+
+      @if (mode() === 'TRANSFER') {
+        <div class="form-row form-row-cols">
+          <mat-form-field appearance="outline">
+            <mat-label>Conta de origem *</mat-label>
+            <mat-select formControlName="fromAccountId">
+              @for (a of accounts(); track a.id) {
+                <mat-option [value]="a.id">{{ a.name }}</mat-option>
+              }
+            </mat-select>
+            @if (form.controls.fromAccountId.hasError('required')) {
+              <mat-error>Conta de origem obrigatória</mat-error>
             }
-          </mat-select>
-        </mat-form-field>
-      </div>
+          </mat-form-field>
 
-      <div class="form-row">
-        <mat-form-field appearance="outline" class="field-full">
-          <mat-label>Conta *</mat-label>
-          <mat-select formControlName="accountId">
-            @for (a of accounts(); track a.id) {
-              <mat-option [value]="a.id">{{ a.name }}</mat-option>
+          <mat-form-field appearance="outline">
+            <mat-label>Conta de destino *</mat-label>
+            <mat-select formControlName="toAccountId">
+              @for (a of accounts(); track a.id) {
+                <mat-option [value]="a.id">{{ a.name }}</mat-option>
+              }
+            </mat-select>
+            @if (form.controls.toAccountId.hasError('required')) {
+              <mat-error>Conta de destino obrigatória</mat-error>
             }
-          </mat-select>
-        </mat-form-field>
-      </div>
+          </mat-form-field>
+        </div>
+
+        @if (form.hasError('sameAccount') && (form.controls.fromAccountId.dirty || form.controls.toAccountId.dirty)) {
+          <div class="form-row">
+            <p class="cross-field-error">As contas de origem e destino devem ser diferentes</p>
+          </div>
+        }
+      }
 
       <div class="form-actions">
         <button mat-stroked-button type="button" routerLink="/transactions">Cancelar</button>
