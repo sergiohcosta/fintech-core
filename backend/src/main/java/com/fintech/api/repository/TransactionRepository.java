@@ -22,6 +22,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
 
     Optional<Transaction> findByIdAndTenant(UUID id, Tenant tenant);
 
+    List<Transaction> findByTransferIdAndTenant(UUID transferId, Tenant tenant);
+
     // Contagem de transações vinculadas a qualquer uma das categorias informadas (subtree)
     long countByCategoryIdInAndTenantId(Collection<UUID> categoryIds, UUID tenantId);
 
