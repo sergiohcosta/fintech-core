@@ -32,28 +32,13 @@
                 }
             </mat-form-field>
 
-            <!-- Ícone (grid expansível) -->
-            <div class='icon-picker' [class.disabled]='inherited()'>
-                <label class='icon-picker-label'>Ícone *</label>
-                <button type='button' class='icon-picker-trigger' (click)='toggleIconPicker()' [disabled]='inherited()'>
-                    <mat-icon>{{ selectedIcon() }}</mat-icon>
-                    <span>{{ selectedIcon() }}</span>
-                    <mat-icon class='chevron'>{{ iconPickerOpen() ? 'expand_less' : 'expand_more' }}</mat-icon>
-                </button>
-                @if (iconPickerOpen()) {
-                    <div class='icon-picker-grid'>
-                        @for (icon of availableIcons; track icon) {
-                            <button
-                                type='button'
-                                class='icon-btn'
-                                [class.selected]="selectedIcon() === icon"
-                                (click)='selectIcon(icon)'
-                                [title]='icon'>
-                                <mat-icon>{{ icon }}</mat-icon>
-                            </button>
-                        }
-                    </div>
-                }
+            <!-- Ícone (componente compartilhado) -->
+            <div class='icon-picker-wrapper'>
+                <app-icon-picker
+                    [selectedIcon]='selectedIcon()'
+                    [disabled]='inherited()'
+                    label='Ícone *'
+                    (iconSelected)='selectIcon($event)' />
                 @if (inherited()) {
                     <span class='inherited-hint'>Herdado de {{ inheritedFromName() }}</span>
                 }
