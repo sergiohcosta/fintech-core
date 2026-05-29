@@ -50,37 +50,18 @@ describe('CategoryForm', () => {
   });
 
   describe('icon picker', () => {
-    it('toggleIconPicker abre o picker quando fechado', () => {
-      component.toggleIconPicker();
-      expect(component.iconPickerOpen()).toBe(true);
-    });
-
-    it('toggleIconPicker fecha o picker quando aberto', () => {
-      component.iconPickerOpen.set(true);
-      component.toggleIconPicker();
-      expect(component.iconPickerOpen()).toBe(false);
-    });
-
-    it('toggleIconPicker não altera o picker quando inherited é true', () => {
-      component.inherited.set(true);
-      component.iconPickerOpen.set(false);
-      component.toggleIconPicker();
-      expect(component.iconPickerOpen()).toBe(false);
-
-      component.iconPickerOpen.set(true);
-      component.toggleIconPicker();
-      expect(component.iconPickerOpen()).toBe(true);
-    });
-
     it('selectIcon define o valor do ícone no formulário', () => {
       component.selectIcon('restaurant');
       expect(component.form.get('icon')?.value).toBe('restaurant');
     });
 
-    it('selectIcon fecha o picker após a seleção', () => {
-      component.iconPickerOpen.set(true);
-      component.selectIcon('restaurant');
-      expect(component.iconPickerOpen()).toBe(false);
+    it('selectIcon atualiza o sinal selectedIcon', () => {
+      component.selectIcon('shopping_cart');
+      expect(component.selectedIcon()).toBe('shopping_cart');
+    });
+
+    it('ícone padrão inicial é "folder"', () => {
+      expect(component.selectedIcon()).toBe('folder');
     });
   });
 
