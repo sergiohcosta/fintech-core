@@ -50,85 +50,91 @@
 // --- Icon Picker ---
 
 .icon-picker {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    &.disabled {
+        .icon-picker-label {
+            color: rgba(0, 0, 0, 0.38);
+        }
+    }
 }
 
 .icon-picker-label {
-  font-size: 0.75rem;
-  color: rgba(0, 0, 0, 0.6);
-  margin-bottom: 2px;
+    font-size: 0.75rem;
+    color: rgba(0, 0, 0, 0.6);
+    margin-bottom: 2px;
 }
 
 .icon-picker-trigger {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 12px;
-  height: 56px;
-  border: 1px solid rgba(0, 0, 0, 0.38);
-  border-radius: 4px;
-  background: white;
-  cursor: pointer;
-  font-size: 1rem;
-  color: inherit;
-  transition: border-color 0.2s;
-  width: 100%;
-  text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px;
+    height: 56px;
+    border: 1px solid rgba(0, 0, 0, 0.38);
+    border-radius: 4px;
+    background: white;
+    cursor: pointer;
+    font-size: 1rem;
+    color: inherit;
+    transition: border-color 0.2s;
+    width: 100%;
+    text-align: left;
 
-  &:hover:not(:disabled) {
-    border-color: rgba(0, 0, 0, 0.87);
-  }
+    &:hover:not(:disabled) {
+        border-color: rgba(0, 0, 0, 0.87);
+    }
 
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    background: rgba(0, 0, 0, 0.04);
-  }
+    &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        background: rgba(0, 0, 0, 0.04);
+    }
 
-  .chevron {
-    margin-left: auto;
-    color: rgba(0, 0, 0, 0.54);
-  }
+    .chevron {
+        margin-left: auto;
+        color: rgba(0, 0, 0, 0.54);
+    }
 }
 
 .icon-picker-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 40px);
-  gap: 6px;
-  padding: 10px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 4px;
-  background: #fafafa;
+    display: grid;
+    grid-template-columns: repeat(5, 40px);
+    gap: 6px;
+    padding: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 4px;
+    background: #fafafa;
 }
 
 .icon-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  background: transparent;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
 
-  &:hover {
-    background: rgba(63, 81, 181, 0.1);
-    border-color: rgba(63, 81, 181, 0.3);
-  }
+    &:hover {
+        background: rgba(63, 81, 181, 0.1);
+        border-color: rgba(63, 81, 181, 0.3);
+    }
 
-  &.selected {
-    background: #3f51b5;
-    color: white;
-    border-color: #3f51b5;
-  }
+    &.selected {
+        background: #3f51b5;
+        color: white;
+        border-color: #3f51b5;
+    }
 }
 
 .inherited-hint {
-  font-size: 0.75rem;
-  color: #3f51b5;
-  margin-top: 2px;
+    font-size: 0.75rem;
+    color: #3f51b5;
+    margin-top: 2px;
 }
