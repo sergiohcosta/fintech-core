@@ -6,7 +6,7 @@
 
     <form [formGroup]='form' (ngSubmit)='onSubmit()'>
         <div class='grid-layout'>
-            
+
             <!-- Categoria Pai -->
             <mat-form-field appearance='outline' class='full-width'>
                 <mat-label>Categoria Pai (Opcional)</mat-label>
@@ -30,31 +30,40 @@
                 <mat-error *ngIf='form.get("name")?.hasError("required")'>Obrigatório</mat-error>
             </mat-form-field>
 
-            <!-- Ícone -->
-            <mat-form-field appearance='outline'>
-                <mat-label>Ícone</mat-label>
-                <mat-select formControlName='icon'>
-                    <mat-select-trigger>
-                        <div style='display: flex; align-items: center; gap: 8px;'>
-                            <mat-icon>{{ form.get('icon')?.value }}</mat-icon>
-                            <span>{{ form.get('icon')?.value }}</span>
-                        </div>
-                    </mat-select-trigger>
-                    @for (icon of availableIcons; track icon) {
-                        <mat-option [value]='icon'>
-                            <div style='display: flex; align-items: center; gap: 12px;'>
+            <!-- Ícone (grid expansível) -->
+            <div class='icon-picker' [class.disabled]='inherited()'>
+                <label class='icon-picker-label'>Ícone *</label>
+                <button type='button' class='icon-picker-trigger' (click)='toggleIconPicker()' [disabled]='inherited()'>
+                    <mat-icon>{{ form.getRawValue().icon }}</mat-icon>
+                    <span>{{ form.getRawValue().icon }}</span>
+                    <mat-icon class='chevron'>{{ iconPickerOpen() ? 'expand_less' : 'expand_more' }}</mat-icon>
+                </button>
+                @if (iconPickerOpen()) {
+                    <div class='icon-picker-grid'>
+                        @for (icon of availableIcons; track icon) {
+                            <button
+                                type='button'
+                                class='icon-btn'
+                                [class.selected]="form.getRawValue().icon === icon"
+                                (click)='selectIcon(icon)'
+                                [title]='icon'>
                                 <mat-icon>{{ icon }}</mat-icon>
-                                <span>{{ icon }}</span>
-                            </div>
-                        </mat-option>
-                    }
-                </mat-select>
-            </mat-form-field>
+                            </button>
+                        }
+                    </div>
+                }
+                @if (inherited()) {
+                    <span class='inherited-hint'>Herdado de {{ inheritedFromName() }}</span>
+                }
+            </div>
 
             <!-- Cor -->
             <mat-form-field appearance='outline'>
                 <mat-label>Cor de Identificação</mat-label>
                 <input matInput type='color' formControlName='color' style='height: 40px; cursor: pointer;'>
+                @if (inherited()) {
+                    <mat-hint>Herdado de {{ inheritedFromName() }}</mat-hint>
+                }
             </mat-form-field>
 
         </div>
