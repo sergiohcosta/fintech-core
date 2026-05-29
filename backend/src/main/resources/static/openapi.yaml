@@ -238,6 +238,52 @@ components:
           format: uuid
           nullable: true
 
+    TransferRequest:
+      type: object
+      required: [fromAccountId, toAccountId, amount, date]
+      properties:
+        fromAccountId:
+          type: string
+          format: uuid
+        toAccountId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+          format: double
+          minimum: 0.01
+        date:
+          type: string
+          format: date
+        description:
+          type: string
+          nullable: true
+
+    TransferResponse:
+      type: object
+      properties:
+        transferId:
+          type: string
+          format: uuid
+        fromLegId:
+          type: string
+          format: uuid
+        toLegId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+          format: double
+        date:
+          type: string
+          format: date
+        description:
+          type: string
+        fromAccount:
+          type: string
+        toAccount:
+          type: string
+
     # --- Dashboard ---
 
     DashboardSummaryDTO:
@@ -762,3 +808,42 @@ paths:
           description: Conta arquivada (soft-delete)
         '404':
           description: Conta não encontrada
+
+  # --- Transfers ---
+
+  /api/transfers:
+    post:
+      tags: [transfers]
+      operationId: createTransfer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferRequest'
+      responses:
+        '201':
+          description: Transferência criada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferResponse'
+        '400':
+          description: Contas iguais ou dados inválidos
+
+  /api/transfers/{transferId}:
+    delete:
+      tags: [transfers]
+      operationId: deleteTransfer
+      parameters:
+        - name: transferId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Transferência excluída
+        '404':
+          description: Transferência não encontrada
