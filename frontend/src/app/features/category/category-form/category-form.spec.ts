@@ -90,6 +90,7 @@ describe('CategoryForm', () => {
       await fixture.whenStable();
       expect(component.form.getRawValue().icon).toBe('restaurant');
       expect(component.form.getRawValue().color).toBe('#e74c3c');
+      expect(component.selectedIcon()).toBe('restaurant');
     });
 
     it('desabilita os campos de ícone e cor ao selecionar pai', async () => {
@@ -126,6 +127,7 @@ describe('CategoryForm', () => {
       component.form.get('parentId')!.setValue(null);
       await fixture.whenStable();
       expect(component.inherited()).toBe(false);
+      expect(component.inheritedFromName()).toBeNull();
     });
 
     it('restaura ícone e cor padrão ao remover o pai', async () => {
@@ -135,6 +137,7 @@ describe('CategoryForm', () => {
       await fixture.whenStable();
       expect(component.form.getRawValue().icon).toBe('folder');
       expect(component.form.getRawValue().color).toBe('#3f51b5');
+      expect(component.selectedIcon()).toBe('folder');
     });
   });
 });
