@@ -156,6 +156,8 @@
 								<schemaMapping>AccountUpdateRequest=AccountUpdateDTO</schemaMapping>
 								<schemaMapping>CreditCardDetailsRequest=CreditCardDetailsDTO</schemaMapping>
 								<schemaMapping>CreditCardDetailsResponse=CreditCardDetailsResponseDTO</schemaMapping>
+								<schemaMapping>TransferRequest=TransferRequestDTO</schemaMapping>
+								<schemaMapping>TransferResponse=TransferResponseDTO</schemaMapping>
 							</schemaMappings>
 							<importMappings>
 								<importMapping>LoginDTO=com.fintech.api.dto.LoginDTO</importMapping>
@@ -173,6 +175,8 @@
 								<importMapping>AccountUpdateDTO=com.fintech.api.dto.account.AccountUpdateDTO</importMapping>
 								<importMapping>CreditCardDetailsDTO=com.fintech.api.dto.account.CreditCardDetailsDTO</importMapping>
 								<importMapping>CreditCardDetailsResponseDTO=com.fintech.api.dto.account.CreditCardDetailsResponseDTO</importMapping>
+								<importMapping>TransferRequestDTO=com.fintech.api.dto.transfer.TransferRequestDTO</importMapping>
+								<importMapping>TransferResponseDTO=com.fintech.api.dto.transfer.TransferResponseDTO</importMapping>
 								<importMapping>AccountType=com.fintech.api.domain.enums.AccountType</importMapping>
 								<importMapping>TransactionType=com.fintech.api.domain.enums.TransactionType</importMapping>
 								<importMapping>TransactionStatus=com.fintech.api.domain.enums.TransactionStatus</importMapping>
