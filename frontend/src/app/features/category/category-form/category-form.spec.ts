@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, ActivatedRoute } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
@@ -138,6 +138,45 @@ describe('CategoryForm', () => {
       expect(component.form.getRawValue().icon).toBe('folder');
       expect(component.form.getRawValue().color).toBe('#3f51b5');
       expect(component.selectedIcon()).toBe('folder');
+    });
+  });
+
+  describe('modo edição com categoria filha', () => {
+    it('aplica herança ao carregar categoria com pai', async () => {
+      const childCat = {
+        id: 'child-1',
+        name: 'Lanches',
+        icon: 'restaurant',
+        color: '#e74c3c',
+        parentId: 'parent-1',
+        children: [],
+      };
+
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [CategoryForm, NoopAnimationsModule],
+        providers: [
+          provideZonelessChangeDetection(),
+          provideRouter([]),
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => 'child-1' } } } },
+        ],
+      }).compileComponents();
+
+      const svc = TestBed.inject(CategoriesService);
+      vi.spyOn(svc, 'listCategories').mockReturnValue(of([mockParent]) as unknown as ReturnType<typeof svc.listCategories>);
+      vi.spyOn(svc, 'getCategory').mockReturnValue(of(childCat) as unknown as ReturnType<typeof svc.getCategory>);
+
+      const editFixture = TestBed.createComponent(CategoryForm);
+      const editComponent = editFixture.componentInstance;
+      editFixture.detectChanges();
+      await editFixture.whenStable();
+
+      expect(editComponent.inherited()).toBe(true);
+      expect(editComponent.form.get('icon')?.disabled).toBe(true);
+      expect(editComponent.form.get('color')?.disabled).toBe(true);
+      expect(editComponent.inheritedFromName()).toBe('Alimentação');
     });
   });
 });
