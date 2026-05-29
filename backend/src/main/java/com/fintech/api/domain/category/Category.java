@@ -53,6 +53,9 @@ public class Category {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     // --- HIERARQUIA (Adjacency List) ---
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")

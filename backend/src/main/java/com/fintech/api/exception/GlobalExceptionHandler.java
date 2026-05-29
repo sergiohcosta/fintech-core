@@ -1,6 +1,7 @@
 package com.fintech.api.exception;
 
 import com.fintech.api.exception.BusinessConflictException;
+import com.fintech.api.exception.CategoryHasTransactionsException;
 import com.fintech.api.exception.InviteAlreadyUsedException;
 import com.fintech.api.exception.InviteExpiredException;
 import org.springframework.http.HttpStatus;
@@ -53,6 +54,18 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessConflictException.class)
     public ResponseEntity<Map<String, Object>> handleConflict(BusinessConflictException ex) {
         return buildErrorResponse(HttpStatus.CONFLICT, ex.getMessage(), null);
+    }
+
+    // 5b. Categoria com transações — 409 com campo extra transactionCount para o frontend
+    @ExceptionHandler(CategoryHasTransactionsException.class)
+    public ResponseEntity<Map<String, Object>> handleCategoryHasTransactions(CategoryHasTransactionsException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("timestamp", LocalDateTime.now());
+        response.put("status", HttpStatus.CONFLICT.value());
+        response.put("error", HttpStatus.CONFLICT.getReasonPhrase());
+        response.put("message", ex.getMessage());
+        response.put("transactionCount", ex.getTransactionCount());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 
     // 6. Trata Convite Já Utilizado (410 Gone)
