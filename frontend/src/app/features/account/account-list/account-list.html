@@ -17,11 +17,8 @@
         <th mat-header-cell *matHeaderCellDef>Nome</th>
         <td mat-cell *matCellDef="let row">
           <div class="account-name">
-            @if (row.color) {
-              <span class="account-color-dot" [style.background]="row.color"></span>
-            }
             @if (row.icon) {
-              <mat-icon class="account-icon">{{ row.icon }}</mat-icon>
+              <mat-icon class="account-icon" [style.color]="row.color">{{ row.icon }}</mat-icon>
             }
             <span class="name-text">{{ row.name }}</span>
           </div>
