@@ -28,9 +28,10 @@ public class CategoryController implements CategoriesApi {
 
     @Override
     @GetMapping
-    public ResponseEntity<List<CategoryResponseDTO>> listCategories() {
+    public ResponseEntity<List<CategoryResponseDTO>> listCategories(
+            @RequestParam(value = "includeArchived", required = false, defaultValue = "false") Boolean includeArchived) {
         User user = getAuthenticatedUser();
-        return ResponseEntity.ok(service.findAllRoots(user));
+        return ResponseEntity.ok(service.findAllRoots(user, Boolean.TRUE.equals(includeArchived)));
     }
 
     @Override

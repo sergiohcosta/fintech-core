@@ -95,8 +95,10 @@
             <mat-select formControlName="categoryId">
               <mat-option [value]="null">Nenhuma</mat-option>
               @for (cat of categories(); track cat.id) {
-                <mat-option [value]="cat.id">
-                  <span [style.padding-left.px]="cat.level * 20">
+                <mat-option [value]="cat.id" [disabled]="cat.archived">
+                  <span [style.padding-left.px]="cat.level * 20"
+                        [class.category-archived]="cat.archived"
+                        [matTooltip]="cat.archived ? 'Categoria arquivada' : ''">
                     {{ cat.level > 0 ? '↳ ' : '' }}{{ cat.name }}
                   </span>
                 </mat-option>
