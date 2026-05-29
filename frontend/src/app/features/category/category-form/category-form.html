@@ -32,26 +32,35 @@
                 }
             </mat-form-field>
 
-            <!-- Ícone (componente compartilhado) -->
-            <div class='icon-picker-wrapper'>
-                <app-icon-picker
-                    [selectedIcon]='selectedIcon()'
-                    [disabled]='inherited()'
-                    label='Ícone *'
-                    (iconSelected)='selectIcon($event)' />
-                @if (inherited()) {
-                    <span class='inherited-hint'>Herdado de {{ inheritedFromName() }}</span>
-                }
-            </div>
+            <!-- Ícone e Cor — em linha com visual consistente -->
+            <div class='pickers-row full-width'>
 
-            <!-- Cor -->
-            <mat-form-field appearance='outline'>
-                <mat-label>Cor de Identificação</mat-label>
-                <input matInput type='color' formControlName='color' style='height: 40px; cursor: pointer;'>
-                @if (inherited()) {
-                    <mat-hint>Herdado de {{ inheritedFromName() }}</mat-hint>
-                }
-            </mat-form-field>
+                <div class='icon-picker-wrapper'>
+                    <app-icon-picker
+                        [selectedIcon]='selectedIcon()'
+                        [disabled]='inherited()'
+                        label='Ícone *'
+                        (iconSelected)='selectIcon($event)' />
+                    @if (inherited()) {
+                        <span class='inherited-hint'>Herdado de {{ inheritedFromName() }}</span>
+                    }
+                </div>
+
+                <div class='color-picker-wrapper' [class.disabled]='inherited()'>
+                    <span class='color-picker-label'>Cor de Identificação</span>
+                    <div class='color-picker-trigger'>
+                        <input
+                            type='color'
+                            formControlName='color'
+                            class='color-input'
+                            title='Escolher cor' />
+                    </div>
+                    @if (inherited()) {
+                        <span class='inherited-hint'>Herdado de {{ inheritedFromName() }}</span>
+                    }
+                </div>
+
+            </div>
 
         </div>
 
