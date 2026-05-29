@@ -26,6 +26,7 @@ import {
 } from 'rxjs';
 
 import type {
+  CategoryArchiveRequest,
   CategoryCreateDTO,
   CategoryResponseDTO
 } from '../fintechSaaSAPI.schemas';
@@ -233,6 +234,43 @@ export class CategoriesService {
 
     return this.http.delete<TData>(
       `/api/categories/${id}`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'body',
+      }
+    );
+  }
+ archiveCategory<TData = void>(id: string,
+    categoryArchiveRequest?: CategoryArchiveRequest, options?: HttpClientBodyOptions): Observable<TData>;
+ archiveCategory<TData = void>(id: string,
+    categoryArchiveRequest?: CategoryArchiveRequest, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ archiveCategory<TData = void>(id: string,
+    categoryArchiveRequest?: CategoryArchiveRequest, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  archiveCategory<TData = void>(
+    id: string,
+    categoryArchiveRequest?: CategoryArchiveRequest, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    if (options?.observe === 'events') {
+      return this.http.post<TData>(
+      `/api/categories/${id}/archive`,
+      categoryArchiveRequest,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'events',
+      }
+    );
+    }
+
+    if (options?.observe === 'response') {
+      return this.http.post<TData>(
+      `/api/categories/${id}/archive`,
+      categoryArchiveRequest,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'response',
+      }
+    );
+    }
+
+    return this.http.post<TData>(
+      `/api/categories/${id}/archive`,
+      categoryArchiveRequest,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'body',
       }

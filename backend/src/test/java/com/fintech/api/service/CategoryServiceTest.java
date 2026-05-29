@@ -5,6 +5,7 @@ import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.category.CategoryCreateDTO;
 import com.fintech.api.repository.CategoryRepository;
+import com.fintech.api.repository.TransactionRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,6 +24,7 @@ import static org.mockito.Mockito.when;
 class CategoryServiceTest {
 
     @Mock CategoryRepository repository;
+    @Mock TransactionRepository transactionRepository;
     @InjectMocks CategoryService service;
 
     // ─── update: propagação de ícone e cor ────────────────────────────────
@@ -36,7 +38,7 @@ class CategoryServiceTest {
         Category parent = buildCategory("Pai", "folder", "#3f51b5");
         parent.getChildren().add(child);
 
-        when(repository.findByIdAndTenantId(parent.getId(), user.getTenant().getId()))
+        when(repository.findByIdAndTenantIdAndDeletedAtIsNull(parent.getId(), user.getTenant().getId()))
                 .thenReturn(Optional.of(parent));
         when(repository.save(any())).thenReturn(parent);
 
@@ -58,7 +60,7 @@ class CategoryServiceTest {
         Category parent = buildCategory("Pai", "folder", "#3f51b5");
         parent.getChildren().add(child);
 
-        when(repository.findByIdAndTenantId(parent.getId(), user.getTenant().getId()))
+        when(repository.findByIdAndTenantIdAndDeletedAtIsNull(parent.getId(), user.getTenant().getId()))
                 .thenReturn(Optional.of(parent));
         when(repository.save(any())).thenReturn(parent);
 
@@ -80,7 +82,7 @@ class CategoryServiceTest {
         Category parent = buildCategory("Pai", "folder", "#3f51b5");
         parent.getChildren().add(child);
 
-        when(repository.findByIdAndTenantId(parent.getId(), user.getTenant().getId()))
+        when(repository.findByIdAndTenantIdAndDeletedAtIsNull(parent.getId(), user.getTenant().getId()))
                 .thenReturn(Optional.of(parent));
         when(repository.save(any())).thenReturn(parent);
 
@@ -98,7 +100,7 @@ class CategoryServiceTest {
         User user = buildUser();
         Category leaf = buildCategory("Folha", "folder", "#3f51b5");
 
-        when(repository.findByIdAndTenantId(leaf.getId(), user.getTenant().getId()))
+        when(repository.findByIdAndTenantIdAndDeletedAtIsNull(leaf.getId(), user.getTenant().getId()))
                 .thenReturn(Optional.of(leaf));
         when(repository.save(any())).thenReturn(leaf);
 

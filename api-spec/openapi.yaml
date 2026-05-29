@@ -116,6 +116,24 @@ components:
           items:
             $ref: '#/components/schemas/CategoryResponseDTO'
 
+    CategoryArchiveRequest:
+      type: object
+      properties:
+        targetCategoryId:
+          type: string
+          format: uuid
+          nullable: true
+
+    CategoryConflictResponse:
+      type: object
+      required: [transactionCount, message]
+      properties:
+        transactionCount:
+          type: integer
+          format: int64
+        message:
+          type: string
+
     # --- Transactions ---
 
     TransactionRequestDTO:
@@ -500,9 +518,36 @@ paths:
             format: uuid
       responses:
         '204':
-          description: Categoria removida
+          description: Categoria removida (soft delete)
         '404':
           description: Categoria não encontrada
+        '409':
+          description: Categoria possui transações — frontend deve exibir modal de escolha (body contém transactionCount)
+
+  /api/categories/{id}/archive:
+    post:
+      tags: [categories]
+      operationId: archiveCategory
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryArchiveRequest'
+      responses:
+        '204':
+          description: Categoria arquivada (com ou sem reassociação de transações)
+        '404':
+          description: Categoria ou categoria destino não encontrada
+        '400':
+          description: targetCategoryId inválido (descendente da categoria sendo arquivada)
 
   # --- Transactions ---
 
