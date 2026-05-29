@@ -72,7 +72,18 @@ export interface CategoryResponseDTO {
   color: string;
   /** @nullable */
   parentId?: string | null;
+  archived: boolean;
   children: CategoryResponseDTO[];
+}
+
+export interface CategoryArchiveRequest {
+  /** @nullable */
+  targetCategoryId?: string | null;
+}
+
+export interface CategoryConflictResponse {
+  transactionCount: number;
+  message: string;
 }
 
 export interface TransactionRequestDTO {
@@ -120,12 +131,34 @@ export interface TransactionResponseDTO {
   categoryName?: string | null;
   /** @nullable */
   categoryId?: string | null;
+  categoryArchived?: boolean;
   /** @nullable */
   accountName?: string | null;
   /** @nullable */
   accountId?: string | null;
   /** @nullable */
   transferId?: string | null;
+}
+
+export interface TransferRequest {
+  fromAccountId: string;
+  toAccountId: string;
+  /** @minimum 0.01 */
+  amount: number;
+  date: string;
+  /** @nullable */
+  description?: string | null;
+}
+
+export interface TransferResponse {
+  transferId?: string;
+  fromLegId?: string;
+  toLegId?: string;
+  amount?: number;
+  date?: string;
+  description?: string;
+  fromAccount?: string;
+  toAccount?: string;
 }
 
 export interface DashboardSummaryDTO {
@@ -231,6 +264,10 @@ export interface AccountResponse {
   balance: number;
   creditCardDetails?: CreditCardDetailsResponse | null;
 }
+
+export type ListCategoriesParams = {
+includeArchived?: boolean;
+};
 
 export type GetDashboardSummaryParams = {
 /**

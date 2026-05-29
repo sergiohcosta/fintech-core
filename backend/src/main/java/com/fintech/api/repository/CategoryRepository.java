@@ -11,12 +11,15 @@ import java.util.UUID;
 @Repository
 public interface CategoryRepository extends JpaRepository<Category, UUID> {
 
-    // Busca raízes apenas do TENANT logado
+    // Busca raízes ativas apenas do TENANT logado
+    List<Category> findAllByTenantIdAndParentIsNullAndDeletedAtIsNull(UUID tenantId);
+
+    // Busca todas as raízes (ativas + arquivadas) — usado quando includeArchived=true
     List<Category> findAllByTenantIdAndParentIsNull(UUID tenantId);
 
-    // Segurança: Garante que só retorna se pertencer ao Tenant
-    Optional<Category> findByIdAndTenantId(UUID id, UUID tenantId);
+    // Segurança: só retorna categorias ativas do Tenant
+    Optional<Category> findByIdAndTenantIdAndDeletedAtIsNull(UUID id, UUID tenantId);
 
-    // Validação de Duplicidade no mesmo nível dentro do Tenant
-    boolean existsByNameAndTenantIdAndParentId(String name, UUID tenantId, UUID parentId);
+    // Validação de duplicidade no mesmo nível — ignora categorias arquivadas
+    boolean existsByNameAndTenantIdAndParentIdAndDeletedAtIsNull(String name, UUID tenantId, UUID parentId);
 }
