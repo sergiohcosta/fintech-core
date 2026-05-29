@@ -72,6 +72,7 @@ export interface CategoryResponseDTO {
   color: string;
   /** @nullable */
   parentId?: string | null;
+  archived: boolean;
   children: CategoryResponseDTO[];
 }
 
@@ -263,6 +264,10 @@ export interface AccountResponse {
   balance: number;
   creditCardDetails?: CreditCardDetailsResponse | null;
 }
+
+export type ListCategoriesParams = {
+includeArchived?: boolean;
+};
 
 export type GetDashboardSummaryParams = {
 /**

@@ -6,6 +6,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 
 import { CategoriesService } from '../../../core/api/categories/categories.service';
@@ -26,12 +28,14 @@ interface FlatCategory extends CategoryResponseDTO {
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     MatTableModule,
     MatButtonModule,
     MatIconModule,
     MatDialogModule,
     MatTooltipModule,
     MatSnackBarModule,
+    MatSlideToggleModule,
     RouterLink,
   ],
   templateUrl: './category-list.html',
@@ -44,14 +48,20 @@ export class CategoryList implements OnInit {
   private snackBar = inject(MatSnackBar);
 
   categories = signal<FlatCategory[]>([]);
+  showArchived = signal(false);
   displayedColumns: string[] = ['name', 'actions'];
 
   ngOnInit(): void {
     this.loadCategories();
   }
 
+  onToggleArchived(value: boolean): void {
+    this.showArchived.set(value);
+    this.loadCategories();
+  }
+
   loadCategories() {
-    this.service.listCategories().subscribe({
+    this.service.listCategories({ includeArchived: this.showArchived() }).subscribe({
       next: (data) => {
         const flattened: FlatCategory[] = [];
         this.flattenCategories(data, flattened, 0);
@@ -74,7 +84,6 @@ export class CategoryList implements OnInit {
     });
   }
 
-  // Coleta todos os IDs da subárvore a partir de uma categoria (com children populados)
   private collectSubtreeIds(category: CategoryResponseDTO): Set<string> {
     const ids = new Set<string>([category.id!]);
     category.children?.forEach((child) =>
@@ -103,9 +112,7 @@ export class CategoryList implements OnInit {
 
       this.service.deleteCategory(category.id!).subscribe({
         next: () => {
-          this.snackBar.open('Categoria excluída com sucesso!', 'OK', {
-            duration: 3000,
-          });
+          this.snackBar.open('Categoria excluída com sucesso!', 'OK', { duration: 3000 });
           this.loadCategories();
         },
         error: (err) => {
@@ -113,9 +120,7 @@ export class CategoryList implements OnInit {
             this.openArchiveDialog(category, err.error?.transactionCount ?? 0);
           } else {
             console.error('Erro ao excluir categoria:', err);
-            this.snackBar.open('Erro ao excluir categoria.', 'Fechar', {
-              duration: 5000,
-            });
+            this.snackBar.open('Erro ao excluir categoria.', 'Fechar', { duration: 5000 });
           }
         },
       });
@@ -125,7 +130,7 @@ export class CategoryList implements OnInit {
   private openArchiveDialog(category: CategoryResponseDTO, transactionCount: number) {
     const subtreeIds = this.collectSubtreeIds(category);
     const availableCategories = this.categories()
-      .filter((c) => !subtreeIds.has(c.id!))
+      .filter((c) => !subtreeIds.has(c.id!) && !c.archived)
       .map(({ level: _, ...cat }) => cat as CategoryResponseDTO);
 
     const archiveRef = this.dialog.open<

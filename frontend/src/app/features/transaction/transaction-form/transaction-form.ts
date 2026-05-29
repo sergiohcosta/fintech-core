@@ -11,6 +11,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatDatepicker, MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { TransactionsService } from '../../../core/api/transactions/transactions.service';
 import { TransfersService } from '../../../core/api/transfers/transfers.service';
@@ -22,6 +23,7 @@ interface TransactionCategoryOption {
   id: string;
   name: string;
   level: number;
+  archived: boolean;
 }
 
 @Component({
@@ -39,7 +41,8 @@ interface TransactionCategoryOption {
     MatIconModule,
     MatDatepickerModule,
     MatNativeDateModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    MatTooltipModule,
   ],
   templateUrl: './transaction-form.html',
   styleUrl: './transaction-form.scss'
@@ -78,7 +81,7 @@ export class TransactionForm implements OnInit {
   }, { validators: this.differentAccountsValidator });
 
   ngOnInit(): void {
-    this.categoryService.listCategories().subscribe({
+    this.categoryService.listCategories({ includeArchived: true }).subscribe({
       next: (data) => this.categories.set(this.flattenCategories(data)),
       error: () => {}
     });
@@ -203,7 +206,7 @@ export class TransactionForm implements OnInit {
 
   private flattenCategories(cats: CategoryResponseDTO[], level = 0): TransactionCategoryOption[] {
     return cats.flatMap(c => [
-      { id: c.id, name: c.name, level },
+      { id: c.id, name: c.name, level, archived: c.archived },
       ...this.flattenCategories(c.children ?? [], level + 1)
     ]);
   }

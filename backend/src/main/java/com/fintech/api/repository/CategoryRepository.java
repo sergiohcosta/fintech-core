@@ -14,6 +14,9 @@ public interface CategoryRepository extends JpaRepository<Category, UUID> {
     // Busca raízes ativas apenas do TENANT logado
     List<Category> findAllByTenantIdAndParentIsNullAndDeletedAtIsNull(UUID tenantId);
 
+    // Busca todas as raízes (ativas + arquivadas) — usado quando includeArchived=true
+    List<Category> findAllByTenantIdAndParentIsNull(UUID tenantId);
+
     // Segurança: só retorna categorias ativas do Tenant
     Optional<Category> findByIdAndTenantIdAndDeletedAtIsNull(UUID id, UUID tenantId);
 

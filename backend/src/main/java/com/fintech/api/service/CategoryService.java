@@ -26,10 +26,13 @@ public class CategoryService {
     private final TransactionRepository transactionRepository;
 
     @Transactional(readOnly = true)
-    public List<CategoryResponseDTO> findAllRoots(User user) {
-        return repository.findAllByTenantIdAndParentIsNullAndDeletedAtIsNull(user.getTenant().getId())
-                .stream()
-                .map(CategoryResponseDTO::fromEntity)
+    public List<CategoryResponseDTO> findAllRoots(User user, boolean includeArchived) {
+        UUID tenantId = user.getTenant().getId();
+        List<Category> roots = includeArchived
+                ? repository.findAllByTenantIdAndParentIsNull(tenantId)
+                : repository.findAllByTenantIdAndParentIsNullAndDeletedAtIsNull(tenantId);
+        return roots.stream()
+                .map(c -> CategoryResponseDTO.fromEntity(c, includeArchived))
                 .toList();
     }
 

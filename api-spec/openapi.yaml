@@ -96,7 +96,7 @@ components:
 
     CategoryResponseDTO:
       type: object
-      required: [id, name, icon, color, children]
+      required: [id, name, icon, color, archived, children]
       properties:
         id:
           type: string
@@ -111,6 +111,8 @@ components:
           type: string
           format: uuid
           nullable: true
+        archived:
+          type: boolean
         children:
           type: array
           items:
@@ -483,6 +485,13 @@ paths:
     get:
       tags: [categories]
       operationId: listCategories
+      parameters:
+        - name: includeArchived
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
       responses:
         '200':
           description: Lista de categorias raiz com filhos aninhados
