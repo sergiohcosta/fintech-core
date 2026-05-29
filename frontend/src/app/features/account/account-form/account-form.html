@@ -19,16 +19,16 @@
 
   <div class="pickers-row">
 
+    <app-icon-picker
+      [selectedIcon]="selectedIconSignal()"
+      (iconSelected)="onIconSelected($event)" />
+
     <div class="color-picker-wrapper">
       <span class="color-picker-label">Cor de Identificação</span>
       <div class="color-picker-trigger">
         <input type="color" formControlName="color" class="color-input" title="Escolher cor" />
       </div>
     </div>
-
-    <app-icon-picker
-      [selectedIcon]="selectedIconSignal()"
-      (iconSelected)="onIconSelected($event)" />
 
   </div>
 
