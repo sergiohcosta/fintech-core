@@ -1,0 +1,37 @@
+<div class="icon-picker" [class.disabled]="disabled()">
+  <label class="icon-picker-label">{{ label() }}</label>
+
+  <button type="button" class="icon-picker-trigger" (click)="toggle()" [disabled]="disabled()">
+    <mat-icon>{{ selectedIcon() }}</mat-icon>
+    <mat-icon class="chevron">{{ isOpen() ? 'expand_less' : 'expand_more' }}</mat-icon>
+  </button>
+
+  @if (isOpen()) {
+    <div class="icon-picker-dropdown">
+      <input
+        class="icon-search"
+        type="text"
+        placeholder="Buscar ícone..."
+        [value]="searchTerm()"
+        (input)="onSearch($event)"
+        autofocus />
+
+      <div class="icon-picker-grid">
+        @for (icon of filteredIcons(); track icon) {
+          <button
+            type="button"
+            class="icon-btn"
+            [class.selected]="selectedIcon() === icon"
+            (click)="select(icon)"
+            [title]="icon">
+            <mat-icon>{{ icon }}</mat-icon>
+          </button>
+        }
+
+        @if (filteredIcons().length === 0) {
+          <p class="no-results">Nenhum ícone encontrado.</p>
+        }
+      </div>
+    </div>
+  }
+</div>

@@ -13,6 +13,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { CategoriesService } from '../../../core/api/categories/categories.service';
 import { CategoryResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
+import { IconPicker } from '../../../components/icon-picker/icon-picker';
 
 interface CategoryOption {
   id: string;
@@ -34,7 +35,8 @@ interface CategoryOption {
     MatSelectModule,
     MatIconModule,
     MatSnackBarModule,
-    RouterLink
+    RouterLink,
+    IconPicker
   ],
   templateUrl: './category-form.html',
   styleUrl: './category-form.scss'
@@ -51,18 +53,9 @@ export class CategoryForm implements OnInit {
   isEditMode = signal(false);
   categoryId = signal<string | null>(null);
   parentOptions = signal<CategoryOption[]>([]);
-  iconPickerOpen = signal(false);
   inherited = signal(false);
   selectedIcon = signal('folder');
   inheritedFromName = signal<string | null>(null);
-
-  availableIcons = [
-    'shopping_cart', 'restaurant', 'directions_car', 'home', 'build',
-    'medical_services', 'school', 'fitness_center', 'flight', 'local_gas_station',
-    'payments', 'account_balance', 'savings', 'trending_up', 'work',
-    'pets', 'redeem', 'videogame_asset', 'subscriptions', 'electrical_services',
-    'face', 'family_restroom', 'celebration', 'movie', 'checkroom'
-  ];
 
   ngOnInit(): void {
     this.initForm();
@@ -164,13 +157,6 @@ export class CategoryForm implements OnInit {
   selectIcon(icon: string) {
     this.form.get('icon')!.setValue(icon);
     this.selectedIcon.set(icon);
-    this.iconPickerOpen.set(false);
-  }
-
-  toggleIconPicker() {
-    if (!this.inherited()) {
-      this.iconPickerOpen.update(open => !open);
-    }
   }
 
   onSubmit() {
