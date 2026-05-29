@@ -39,7 +39,7 @@ export class CategoryList implements OnInit {
   private snackBar = inject(MatSnackBar);
 
   categories = signal<FlatCategory[]>([]);
-  displayedColumns: string[] = ['name', 'icon', 'actions'];
+  displayedColumns: string[] = ['name', 'actions'];
 
   ngOnInit(): void {
     this.loadCategories();
