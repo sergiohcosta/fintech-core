@@ -1,7 +1,7 @@
 [build]
   base    = "frontend"
   command = "npm ci && npm run build -- --configuration=production"
-  publish = "dist/frontend/browser"
+  publish = "dist/frontend"
 
 [[redirects]]
   from   = "/*"
