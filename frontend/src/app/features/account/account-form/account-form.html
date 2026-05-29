@@ -17,14 +17,20 @@
     </mat-select>
   </mat-form-field>
 
-  <mat-form-field appearance="outline">
-    <mat-label>Cor de Identificação</mat-label>
-    <input matInput type="color" formControlName="color" style="height: 40px; cursor: pointer;">
-  </mat-form-field>
+  <div class="pickers-row">
 
-  <app-icon-picker
-    [selectedIcon]="selectedIconSignal()"
-    (iconSelected)="onIconSelected($event)" />
+    <div class="color-picker-wrapper">
+      <span class="color-picker-label">Cor de Identificação</span>
+      <div class="color-picker-trigger">
+        <input type="color" formControlName="color" class="color-input" title="Escolher cor" />
+      </div>
+    </div>
+
+    <app-icon-picker
+      [selectedIcon]="selectedIconSignal()"
+      (iconSelected)="onIconSelected($event)" />
+
+  </div>
 
   <div class="toggle-row">
     <mat-slide-toggle formControlName="countInLiquidBalance">Entra no saldo disponível do dia</mat-slide-toggle>
