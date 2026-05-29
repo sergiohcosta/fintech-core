@@ -63,9 +63,13 @@
       <ng-container matColumnDef="category">
         <th mat-header-cell *matHeaderCellDef>Categoria</th>
         <td mat-cell *matCellDef="let t">
-          {{ t.categoryName ?? '—' }}
-          @if (t.categoryArchived) {
-            <span class="archived-badge">arquivada</span>
+          @if (t.categoryName) {
+            <span
+              [class.category-archived]="t.categoryArchived"
+              [matTooltip]="t.categoryArchived ? 'Categoria arquivada' : ''"
+            >{{ t.categoryName }}</span>
+          } @else {
+            —
           }
         </td>
       </ng-container>
