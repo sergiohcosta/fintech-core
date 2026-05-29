@@ -4,7 +4,6 @@ import { RouterLink } from '@angular/router';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -19,7 +18,7 @@ import { ConfirmationDialogComponent } from '../../../components/confirmation-di
   imports: [
     CommonModule, CurrencyPipe, RouterLink,
     MatTableModule, MatButtonModule, MatIconModule,
-    MatChipsModule, MatTooltipModule, MatSnackBarModule, MatDialogModule
+    MatTooltipModule, MatSnackBarModule, MatDialogModule
   ],
   templateUrl: './account-list.html',
   styleUrl: './account-list.scss'
