@@ -16,6 +16,12 @@ import { CategoriesService } from '../../../core/api/categories/categories.servi
 import { AccountsService } from '../../../core/api/accounts/accounts.service';
 import { CategoryResponseDTO, AccountResponse } from '../../../core/api/fintechSaaSAPI.schemas';
 
+interface TransactionCategoryOption {
+  id: string;
+  name: string;
+  level: number;
+}
+
 @Component({
   selector: 'app-transaction-form',
   standalone: true,
@@ -49,7 +55,7 @@ export class TransactionForm implements OnInit {
   saving = signal(false);
   isEditMode = signal(false);
   transactionId = signal<string | null>(null);
-  categories = signal<CategoryResponseDTO[]>([]);
+  categories = signal<TransactionCategoryOption[]>([]);
   accounts = signal<AccountResponse[]>([]);
   amountDisplay = signal('');
 
@@ -171,10 +177,10 @@ export class TransactionForm implements OnInit {
 
   // --- Utilitários ---
 
-  private flattenCategories(cats: CategoryResponseDTO[], prefix = ''): CategoryResponseDTO[] {
+  private flattenCategories(cats: CategoryResponseDTO[], level = 0): TransactionCategoryOption[] {
     return cats.flatMap(c => [
-      { ...c, name: prefix + c.name },
-      ...this.flattenCategories(c.children ?? [], prefix + '  ')
+      { id: c.id, name: c.name, level },
+      ...this.flattenCategories(c.children ?? [], level + 1)
     ]);
   }
 
