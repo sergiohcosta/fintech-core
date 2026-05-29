@@ -18,6 +18,7 @@ public record TransactionResponseDTO(
         String installmentLabel,
         String categoryName,
         UUID categoryId,
+        boolean categoryArchived,
         String accountName,
         UUID accountId,
         UUID transferId
@@ -37,6 +38,7 @@ public record TransactionResponseDTO(
                 installLabel,
                 t.getCategory() != null ? t.getCategory().getName() : null,
                 t.getCategory() != null ? t.getCategory().getId() : null,
+                t.getCategory() != null && t.getCategory().getDeletedAt() != null,
                 t.getAccount() != null ? t.getAccount().getName() : null,
                 t.getAccount() != null ? t.getAccount().getId() : null,
                 t.getTransferId()

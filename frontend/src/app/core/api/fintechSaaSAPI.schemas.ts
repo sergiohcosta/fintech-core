@@ -130,6 +130,7 @@ export interface TransactionResponseDTO {
   categoryName?: string | null;
   /** @nullable */
   categoryId?: string | null;
+  categoryArchived?: boolean;
   /** @nullable */
   accountName?: string | null;
   /** @nullable */
