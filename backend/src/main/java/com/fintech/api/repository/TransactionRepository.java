@@ -20,6 +20,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
 
     Optional<Transaction> findByIdAndTenant(UUID id, Tenant tenant);
 
+    List<Transaction> findByTransferIdAndTenant(UUID transferId, Tenant tenant);
+
     // COALESCE garante 0 quando não há transações no período (SUM de conjunto vazio = null no SQL)
     @Query("""
             SELECT COALESCE(SUM(t.amount), 0)
