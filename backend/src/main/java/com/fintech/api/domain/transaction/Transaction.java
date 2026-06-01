@@ -4,6 +4,7 @@ import com.fintech.api.domain.account.Account;
 import com.fintech.api.domain.category.Category;
 import com.fintech.api.domain.enums.TransactionStatus;
 import com.fintech.api.domain.enums.TransactionType;
+import com.fintech.api.domain.installment.InstallmentGroup;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.user.User;
 import jakarta.persistence.*;
@@ -78,7 +79,12 @@ public class Transaction {
     private Account account;
 
     // Liga as duas pernas de uma transferência (nullable para transações comuns)
-    private UUID transferId; 
+    private UUID transferId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "installment_group_id")
+    @ToString.Exclude
+    private InstallmentGroup installmentGroup;
 
     @NotNull(message = "O status é obrigatório")
     @Enumerated(EnumType.STRING)
