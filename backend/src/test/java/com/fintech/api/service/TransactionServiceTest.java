@@ -2,12 +2,14 @@ package com.fintech.api.service;
 
 import com.fintech.api.domain.account.Account;
 import com.fintech.api.domain.enums.AccountType;
+import com.fintech.api.domain.enums.DeleteInstallmentScope;
 import com.fintech.api.domain.enums.TransactionStatus;
 import com.fintech.api.domain.enums.TransactionType;
 import com.fintech.api.domain.installment.InstallmentGroup;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.transaction.Transaction;
 import com.fintech.api.domain.user.User;
+import com.fintech.api.dto.installment.DeleteInstallmentResultDTO;
 import com.fintech.api.dto.transaction.TransactionRequestDTO;
 import com.fintech.api.dto.transaction.TransactionResponseDTO;
 import com.fintech.api.dto.transfer.TransferRequestDTO;
@@ -259,6 +261,62 @@ class TransactionServiceTest {
         verify(repository, times(3)).save(captor.capture());
         captor.getAllValues().forEach(t ->
                 assertThat(t.getInstallmentGroup()).isEqualTo(savedGroup));
+    }
+
+    @Test
+    @DisplayName("delete com SINGLE remove apenas a transação informada")
+    void deleteWithSingleScopeRemovesOnlyOne() {
+        User user = buildUser();
+        Account account = buildAccount(user);
+        UUID txId = UUID.randomUUID();
+        Transaction t = Transaction.builder().id(txId)
+                .installmentNumber(2).totalInstallments(3)
+                .status(TransactionStatus.PENDING)
+                .tenant(user.getTenant()).account(account).build();
+
+        when(repository.findByIdAndTenant(txId, user.getTenant())).thenReturn(Optional.of(t));
+
+        DeleteInstallmentResultDTO result = service.delete(txId, DeleteInstallmentScope.SINGLE, user);
+
+        verify(repository).delete(t);
+        assertThat(result.deleted()).isEqualTo(1);
+        assertThat(result.skippedPaid()).isEqualTo(0);
+    }
+
+    @Test
+    @DisplayName("delete com ALL pula parcelas PAID e informa quantidade ignorada")
+    void deleteWithAllScopeSkipsPaidInstallments() {
+        User user = buildUser();
+        Account account = buildAccount(user);
+        UUID groupId = UUID.randomUUID();
+        InstallmentGroup group = InstallmentGroup.builder().id(groupId)
+                .tenant(user.getTenant()).account(account).build();
+        UUID txId = UUID.randomUUID();
+        Transaction t = Transaction.builder().id(txId)
+                .installmentNumber(1).totalInstallments(3)
+                .installmentGroup(group)
+                .status(TransactionStatus.PENDING)
+                .tenant(user.getTenant()).account(account).build();
+        Transaction paid = Transaction.builder().id(UUID.randomUUID())
+                .installmentNumber(2).totalInstallments(3)
+                .installmentGroup(group)
+                .status(TransactionStatus.PAID)
+                .tenant(user.getTenant()).account(account).build();
+        Transaction pending = Transaction.builder().id(UUID.randomUUID())
+                .installmentNumber(3).totalInstallments(3)
+                .installmentGroup(group)
+                .status(TransactionStatus.PENDING)
+                .tenant(user.getTenant()).account(account).build();
+
+        when(repository.findByIdAndTenant(txId, user.getTenant())).thenReturn(Optional.of(t));
+        when(repository.findByInstallmentGroupOrderByInstallmentNumberAsc(group))
+                .thenReturn(List.of(t, paid, pending));
+
+        DeleteInstallmentResultDTO result = service.delete(txId, DeleteInstallmentScope.ALL, user);
+
+        verify(repository).deleteAll(List.of(t, pending));
+        assertThat(result.deleted()).isEqualTo(2);
+        assertThat(result.skippedPaid()).isEqualTo(1);
     }
 
     private User buildUser() {
