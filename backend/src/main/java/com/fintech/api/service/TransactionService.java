@@ -2,11 +2,13 @@ package com.fintech.api.service;
 
 import com.fintech.api.domain.account.Account;
 import com.fintech.api.domain.category.Category;
+import com.fintech.api.domain.enums.DeleteInstallmentScope;
 import com.fintech.api.domain.enums.TransactionStatus;
 import com.fintech.api.domain.enums.TransactionType;
 import com.fintech.api.domain.installment.InstallmentGroup;
 import com.fintech.api.domain.transaction.Transaction;
 import com.fintech.api.domain.user.User;
+import com.fintech.api.dto.installment.DeleteInstallmentResultDTO;
 import com.fintech.api.dto.transaction.TransactionRequestDTO;
 import com.fintech.api.dto.transaction.TransactionResponseDTO;
 import com.fintech.api.dto.transaction.TransactionUpdateDTO;
@@ -156,21 +158,56 @@ public class TransactionService {
         if (dto.date() != null)        t.setDate(dto.date());
         if (dto.type() != null)        t.setType(dto.type());
         if (dto.status() != null)      t.setStatus(dto.status());
+        if (dto.categoryId() != null)  t.setCategory(resolveCategory(dto.categoryId(), user));
+        if (dto.accountId() != null)   t.setAccount(resolveAccount(dto.accountId(), user));
 
-        if (dto.categoryId() != null) {
-            t.setCategory(resolveCategory(dto.categoryId(), user));
+        List<String> propagate = dto.propagate();
+        if (propagate != null && !propagate.isEmpty() && t.getInstallmentGroup() != null) {
+            List<Transaction> futures = repository.findFuturePendingInGroup(
+                    t.getInstallmentGroup(), t.getInstallmentNumber(), TransactionStatus.PENDING);
+            for (Transaction future : futures) {
+                if (propagate.contains("description") && dto.description() != null)
+                    future.setDescription(dto.description());
+                if (propagate.contains("amount") && dto.amount() != null)
+                    future.setAmount(dto.amount());
+                if (propagate.contains("categoryId") && dto.categoryId() != null)
+                    future.setCategory(resolveCategory(dto.categoryId(), user));
+                if (propagate.contains("accountId") && dto.accountId() != null)
+                    future.setAccount(resolveAccount(dto.accountId(), user));
+                if (propagate.contains("status") && dto.status() != null)
+                    future.setStatus(dto.status());
+            }
         }
-        if (dto.accountId() != null) {
-            t.setAccount(resolveAccount(dto.accountId(), user));
-        }
+
         return TransactionResponseDTO.fromEntity(t);
     }
 
     @Transactional
-    public void delete(UUID id, User user) {
-        repository.delete(
-                repository.findByIdAndTenant(id, user.getTenant())
-                        .orElseThrow(() -> new EntityNotFoundException("Transação não encontrada.")));
+    public DeleteInstallmentResultDTO delete(UUID id, DeleteInstallmentScope scope, User user) {
+        Transaction t = repository.findByIdAndTenant(id, user.getTenant())
+                .orElseThrow(() -> new EntityNotFoundException("Transação não encontrada."));
+
+        if (scope == DeleteInstallmentScope.SINGLE || t.getInstallmentGroup() == null) {
+            repository.delete(t);
+            return new DeleteInstallmentResultDTO(1, 0);
+        }
+
+        InstallmentGroup group = t.getInstallmentGroup();
+        List<Transaction> candidates = switch (scope) {
+            case THIS_AND_NEXT -> repository
+                    .findByInstallmentGroupAndInstallmentNumberGreaterThanEqualOrderByInstallmentNumberAsc(
+                            group, t.getInstallmentNumber());
+            case ALL -> repository.findByInstallmentGroupOrderByInstallmentNumberAsc(group);
+            default -> List.of(t);
+        };
+
+        List<Transaction> toDelete = candidates.stream()
+                .filter(tx -> tx.getStatus() != TransactionStatus.PAID)
+                .toList();
+        int skipped = candidates.size() - toDelete.size();
+
+        repository.deleteAll(toDelete);
+        return new DeleteInstallmentResultDTO(toDelete.size(), skipped);
     }
 
     private Category resolveCategory(UUID categoryId, User user) {
