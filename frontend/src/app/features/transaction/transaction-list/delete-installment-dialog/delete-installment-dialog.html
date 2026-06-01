@@ -1,0 +1,35 @@
+<h2 mat-dialog-title>Excluir parcela</h2>
+
+<mat-dialog-content>
+  <p class="installment-title">
+    <strong>{{ transaction.description }}</strong>
+    @if (transaction.installmentLabel) {
+      <span class="label-chip">{{ transaction.installmentLabel }}</span>
+    }
+  </p>
+
+  <mat-radio-group [ngModel]="scope()" (ngModelChange)="scope.set($event)" class="scope-group">
+    <mat-radio-button value="SINGLE">
+      Somente esta parcela
+    </mat-radio-button>
+    <mat-radio-button value="THIS_AND_NEXT">
+      Esta e as próximas
+    </mat-radio-button>
+    <mat-radio-button value="ALL">
+      Todo o grupo de parcelamento
+    </mat-radio-button>
+  </mat-radio-group>
+
+  @if (showPaidWarning()) {
+    <div class="paid-warning">
+      <mat-icon>info_outline</mat-icon>
+      <span>Parcelas já pagas não serão excluídas — elas fazem parte do histórico financeiro.
+        Para excluí-las, use "Somente esta parcela" em cada uma.</span>
+    </div>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancel()">Cancelar</button>
+  <button mat-flat-button color="warn" (click)="confirm()">Confirmar</button>
+</mat-dialog-actions>
