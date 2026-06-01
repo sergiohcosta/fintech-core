@@ -195,6 +195,17 @@ npm start
 - OpenAPI spec-first (documentação automática + geração de código backend + frontend via Orval)
 - Gestão de Contas — Account Management (4 tipos, transferências double-entry, frontend TDD)
 - Melhorias UX no formulário de categorias (grid de ícones + herança de cor/ícone do pai)
+- **Soft delete de categorias com fluxo de archive** (issue #25, 2026-05-29):
+  - `DELETE /categories/{id}` retorna 409 com `transactionCount` se subárvore tem transações
+  - `POST /categories/{id}/archive` — soft delete em cascata + reassociação opcional de transações
+  - `CategoryArchiveDialog` no frontend com duas ações: arquivar ou mover+arquivar
+  - Migration V7: coluna `deleted_at` em `categories`
+- **Visibilidade de categorias arquivadas** (2026-05-29):
+  - `GET /api/categories?includeArchived=true` — retorna árvore completa incluindo arquivadas
+  - Listagem de categorias: toggle "Mostrar arquivadas" (default off); arquivadas com ícone desbotado, nome taxado, botões disabled
+  - `TransactionResponseDTO.categoryArchived: boolean` — listagem de transações exibe nome taxado com tooltip
+  - Formulário de transação: categorias arquivadas aparecem disabled no select ao editar transações históricas
+  - Bug fix: filhos arquivados não apareciam filtrados no `@OneToMany children`
 
 **Próximos passos:**
 - Filtros na listagem de transações (por período, tipo, status, conta)
