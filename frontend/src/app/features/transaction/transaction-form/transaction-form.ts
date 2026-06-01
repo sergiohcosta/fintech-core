@@ -1,4 +1,5 @@
 import { Component, inject, OnInit, signal, computed, ViewChild } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
@@ -81,14 +82,6 @@ export class TransactionForm implements OnInit {
   valueMode = signal<'total' | 'per-installment'>('total');
   propagateFields = signal<Set<string>>(new Set());
 
-  installmentPreview = computed(() => {
-    if (!this.isInstallment()) return [];
-    const amount = this.form.controls.amount.value ?? 0;
-    const installments = this.form.controls.totalInstallments.value ?? 1;
-    const date = this.form.controls.date.value ?? new Date();
-    return buildInstallmentPreview(amount, installments, date, this.valueMode());
-  });
-
   form = this.fb.group({
     description: ['', [Validators.required, Validators.minLength(2)]],
     amount: [null as number | null, [Validators.required, Validators.min(0.01)]],
@@ -101,6 +94,18 @@ export class TransactionForm implements OnInit {
     fromAccountId: [null as string | null],
     toAccountId: [null as string | null]
   }, { validators: this.differentAccountsValidator });
+
+  // Sinais derivados dos FormControls para reatividade em Zoneless
+  private amountSignal = toSignal(this.form.controls.amount.valueChanges, { initialValue: this.form.controls.amount.value ?? 0 });
+  private installmentsSignal = toSignal(this.form.controls.totalInstallments.valueChanges, { initialValue: this.form.controls.totalInstallments.value ?? 1 });
+
+  installmentPreview = computed(() => {
+    if (!this.isInstallment()) return [];
+    const amount = this.amountSignal() ?? 0;
+    const installments = this.installmentsSignal() ?? 1;
+    const date = this.form.controls.date.value ?? new Date();
+    return buildInstallmentPreview(amount, installments, date, this.valueMode());
+  });
 
   ngOnInit(): void {
     this.categoryService.listCategories({ includeArchived: true }).subscribe({
