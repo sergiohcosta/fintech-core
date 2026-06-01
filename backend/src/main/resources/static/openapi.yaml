@@ -304,6 +304,14 @@ components:
         balance:
           type: number
           format: double
+        transactionCount:
+          type: integer
+          format: int64
+          description: Quantidade de transações não canceladas no período. Zero indica mês sem movimentação.
+        totalAccountBalance:
+          type: number
+          format: double
+          description: Saldo líquido acumulado (todas as contas com countInLiquidBalance=true, sem filtro de período).
 
     # --- Accounts ---
 
