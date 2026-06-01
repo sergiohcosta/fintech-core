@@ -196,6 +196,11 @@ components:
           type: string
           format: uuid
           nullable: true
+        propagate:
+          type: array
+          items:
+            type: string
+          nullable: true
 
     TransactionResponseDTO:
       type: object
@@ -239,6 +244,103 @@ components:
           type: string
           format: uuid
           nullable: true
+        installmentGroupId:
+          type: string
+          format: uuid
+          nullable: true
+        installmentGroupDescription:
+          type: string
+          nullable: true
+        installmentNumber:
+          type: integer
+          nullable: true
+        totalInstallments:
+          type: integer
+          nullable: true
+
+    DeleteInstallmentScope:
+      type: string
+      enum: [SINGLE, THIS_AND_NEXT, ALL]
+      default: SINGLE
+
+    DeleteInstallmentResultDTO:
+      type: object
+      required: [deleted, skippedPaid]
+      properties:
+        deleted:
+          type: integer
+        skippedPaid:
+          type: integer
+
+    InstallmentGroupPatchDTO:
+      type: object
+      properties:
+        description:
+          type: string
+          nullable: true
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
+        accountId:
+          type: string
+          format: uuid
+          nullable: true
+        installmentAmount:
+          type: number
+          format: double
+          nullable: true
+        status:
+          $ref: '#/components/schemas/TransactionStatus'
+          nullable: true
+        fields:
+          type: array
+          items:
+            type: string
+
+    InstallmentGroupResponseDTO:
+      type: object
+      required: [id, description, totalAmount, installmentAmount, totalInstallments, paidInstallments, pendingInstallments, accountName, transactions]
+      properties:
+        id:
+          type: string
+          format: uuid
+        description:
+          type: string
+        totalAmount:
+          type: number
+          format: double
+        installmentAmount:
+          type: number
+          format: double
+        totalInstallments:
+          type: integer
+        paidInstallments:
+          type: integer
+          format: int64
+        pendingInstallments:
+          type: integer
+          format: int64
+        nextDueDate:
+          type: string
+          format: date
+          nullable: true
+        categoryName:
+          type: string
+          nullable: true
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
+        accountName:
+          type: string
+        accountId:
+          type: string
+          format: uuid
+        transactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransactionResponseDTO'
 
     TransferRequest:
       type: object
@@ -703,9 +805,18 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: scope
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/DeleteInstallmentScope'
       responses:
-        '204':
-          description: Transação removida
+        '200':
+          description: Resultado da exclusão
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteInstallmentResultDTO'
         '404':
           description: Transação não encontrada
 
@@ -864,3 +975,80 @@ paths:
           description: Transferência excluída
         '404':
           description: Transferência não encontrada
+
+  /api/installment-groups:
+    get:
+      tags: [installment-groups]
+      operationId: listInstallmentGroups
+      responses:
+        '200':
+          description: Lista de grupos de parcelamento
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InstallmentGroupResponseDTO'
+
+  /api/installment-groups/{id}:
+    get:
+      tags: [installment-groups]
+      operationId: getInstallmentGroup
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detalhe do grupo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstallmentGroupResponseDTO'
+        '404':
+          description: Grupo não encontrado
+    delete:
+      tags: [installment-groups]
+      operationId: deleteInstallmentGroup
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Resultado da exclusão
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteInstallmentResultDTO'
+        '404':
+          description: Grupo não encontrado
+    patch:
+      tags: [installment-groups]
+      operationId: patchInstallmentGroup
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InstallmentGroupPatchDTO'
+      responses:
+        '200':
+          description: Grupo atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstallmentGroupResponseDTO'
