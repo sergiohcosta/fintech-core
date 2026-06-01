@@ -26,10 +26,13 @@ public class DashboardService {
 
         BigDecimal income = transactionRepository.sumByTenantAndTypeAndPeriod(
                 tenant, TransactionType.INCOME, TransactionStatus.CANCELLED, start, end);
-
         BigDecimal expense = transactionRepository.sumByTenantAndTypeAndPeriod(
                 tenant, TransactionType.EXPENSE, TransactionStatus.CANCELLED, start, end);
+        long count = transactionRepository.countByTenantAndPeriod(
+                tenant, TransactionStatus.CANCELLED, start, end);
+        BigDecimal totalAccountBalance = transactionRepository.sumNetLiquidBalanceByTenant(
+                tenant, TransactionType.INCOME, TransactionStatus.CANCELLED);
 
-        return DashboardSummaryDTO.of(period, income, expense);
+        return DashboardSummaryDTO.of(period, income, expense, count, totalAccountBalance);
     }
 }
