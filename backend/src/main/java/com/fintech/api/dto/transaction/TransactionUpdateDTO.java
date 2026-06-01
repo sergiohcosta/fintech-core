@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 public record TransactionUpdateDTO(
@@ -20,5 +21,6 @@ public record TransactionUpdateDTO(
         TransactionType type,
         TransactionStatus status,
         UUID categoryId,
-        UUID accountId
+        UUID accountId,
+        List<String> propagate
 ) {}
