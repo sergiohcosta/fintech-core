@@ -15,6 +15,7 @@ import { InstallmentGroupsService } from '../../../core/api/installment-groups/i
 import { TransfersService } from '../../../core/api/transfers/transfers.service';
 import { TransactionResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
 import { ConfirmationDialogComponent } from '../../../components/confirmation-dialog/confirmation-dialog';
+import { DeleteInstallmentDialogComponent, DeleteInstallmentDialogResult } from './delete-installment-dialog/delete-installment-dialog';
 
 export type GroupRow = {
   kind: 'group';
@@ -166,7 +167,29 @@ export class TransactionList implements OnInit {
 
   onDelete(t: TransactionResponseDTO | undefined): void {
     if (!t) return;
+    const isInstallment = !!t.installmentGroupId;
     const isTransfer = !!t.transferId;
+
+    if (!isTransfer && isInstallment) {
+      const dialogRef = this.dialog.open(DeleteInstallmentDialogComponent, {
+        width: '460px',
+        data: { transaction: t }
+      });
+      dialogRef.afterClosed().subscribe((result: DeleteInstallmentDialogResult | undefined) => {
+        if (!result) return;
+        this.service.deleteTransaction(t.id, { scope: result.scope }).subscribe({
+          next: (res: any) => {
+            const msg = res?.skippedPaid > 0
+              ? `${res.deleted} parcela(s) excluída(s). ${res.skippedPaid} pagas foram mantidas.`
+              : `${res?.deleted ?? 1} parcela(s) excluída(s).`;
+            this.snackBar.open(msg, 'OK', { duration: 4000 });
+            this.loadTransactions();
+          },
+          error: () => this.snackBar.open('Erro ao excluir parcela.', 'Fechar', { duration: 5000 })
+        });
+      });
+      return;
+    }
 
     if (isTransfer) {
       const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
