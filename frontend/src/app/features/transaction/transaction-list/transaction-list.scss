@@ -115,3 +115,53 @@ table {
   .mat-column-account,
   .mat-column-installment { display: none; }
 }
+
+.group-header-cell {
+  padding: 0 !important;
+}
+
+.group-row-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--mat-sys-surface-container-low, #f5f5f5);
+  border-left: 4px solid var(--mat-sys-primary, #1976d2);
+
+  .group-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+
+    .group-description {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .group-meta {
+      font-size: 0.8rem;
+      color: rgba(0, 0, 0, 0.6);
+    }
+  }
+
+  .group-progress {
+    width: 100px;
+    border-radius: 4px;
+  }
+
+  .group-badge {
+    font-size: 0.8rem;
+    color: rgba(0, 0, 0, 0.6);
+    white-space: nowrap;
+  }
+}
+
+.group-row-tr td {
+  border-bottom: none;
+}
+
+.installment-indent {
+  margin-right: 6px;
+  color: rgba(0, 0, 0, 0.4);
+  font-size: 0.85rem;
+}
