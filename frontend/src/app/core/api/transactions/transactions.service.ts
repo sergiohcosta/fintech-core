@@ -26,6 +26,8 @@ import {
 } from 'rxjs';
 
 import type {
+  DeleteInstallmentResultDTO,
+  DeleteTransactionParams,
   TransactionRequestDTO,
   TransactionResponseDTO,
   TransactionUpdateDTO
@@ -70,7 +72,69 @@ type HttpClientObserveOptions = HttpClientOptions & {
   readonly observe?: 'body' | 'events' | 'response';
 };
 
+type AngularHttpParamValue = string | number | boolean | Array<string | number | boolean>;
+type AngularHttpParamValueWithNullable = AngularHttpParamValue | null;
 
+function filterParams(
+  params: Record<string, unknown>,
+  requiredNullableKeys?: ReadonlySet<string>,
+  preserveRequiredNullables?: false,
+  passthroughKeys?: undefined,
+): Record<string, AngularHttpParamValue>;
+function filterParams(
+  params: Record<string, unknown>,
+  requiredNullableKeys: ReadonlySet<string> | undefined,
+  preserveRequiredNullables: true,
+  passthroughKeys?: undefined,
+): Record<string, AngularHttpParamValueWithNullable>;
+function filterParams(
+  params: Record<string, unknown>,
+  requiredNullableKeys: ReadonlySet<string> | undefined,
+  preserveRequiredNullables: boolean | undefined,
+  passthroughKeys: ReadonlySet<string>,
+): Record<string, unknown>;
+function filterParams(
+  params: Record<string, unknown>,
+  requiredNullableKeys: ReadonlySet<string> = new Set(),
+  preserveRequiredNullables = false,
+  passthroughKeys: ReadonlySet<string> = new Set(),
+): Record<string, unknown> {
+  const filteredParams: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(params)) {
+    if (passthroughKeys.has(key)) {
+      if (value !== undefined) {
+        filteredParams[key] = value;
+      }
+      continue;
+    }
+    if (Array.isArray(value)) {
+      const filtered = value.filter(
+        (item) =>
+          item != null &&
+          (typeof item === 'string' ||
+            typeof item === 'number' ||
+            typeof item === 'boolean'),
+      ) as Array<string | number | boolean>;
+      if (filtered.length) {
+        filteredParams[key] = filtered;
+      }
+    } else if (
+      preserveRequiredNullables &&
+      value === null &&
+      requiredNullableKeys.has(key)
+    ) {
+      filteredParams[key] = null;
+    } else if (
+      value != null &&
+      (typeof value === 'string' ||
+        typeof value === 'number' ||
+        typeof value === 'boolean')
+    ) {
+      filteredParams[key] = value;
+    }
+  }
+  return filteredParams;
+}
 
 
 
@@ -209,34 +273,40 @@ export class TransactionsService {
       }
     );
   }
- deleteTransaction<TData = void>(id: string, options?: HttpClientBodyOptions): Observable<TData>;
- deleteTransaction<TData = void>(id: string, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
- deleteTransaction<TData = void>(id: string, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
-  deleteTransaction<TData = void>(
-    id: string, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+ deleteTransaction<TData = DeleteInstallmentResultDTO>(id: string,
+    params?: DeleteTransactionParams, options?: HttpClientBodyOptions): Observable<TData>;
+ deleteTransaction<TData = DeleteInstallmentResultDTO>(id: string,
+    params?: DeleteTransactionParams, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ deleteTransaction<TData = DeleteInstallmentResultDTO>(id: string,
+    params?: DeleteTransactionParams, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  deleteTransaction<TData = DeleteInstallmentResultDTO>(
+    id: string,
+    params?: DeleteTransactionParams, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    const filteredParams = filterParams({...params, ...options?.params}, new Set<string>([]));
+
     if (options?.observe === 'events') {
       return this.http.delete<TData>(
       `/api/transactions/${id}`,{
-        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+    ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'events',
-      }
+        params: filteredParams,}
     );
     }
 
     if (options?.observe === 'response') {
       return this.http.delete<TData>(
       `/api/transactions/${id}`,{
-        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+    ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'response',
-      }
+        params: filteredParams,}
     );
     }
 
     return this.http.delete<TData>(
       `/api/transactions/${id}`,{
-        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+    ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'body',
-      }
+        params: filteredParams,}
     );
   }
 };

@@ -116,6 +116,8 @@ export interface TransactionUpdateDTO {
   categoryId?: string | null;
   /** @nullable */
   accountId?: string | null;
+  /** @nullable */
+  propagate?: string[] | null;
 }
 
 export interface TransactionResponseDTO {
@@ -138,6 +140,60 @@ export interface TransactionResponseDTO {
   accountId?: string | null;
   /** @nullable */
   transferId?: string | null;
+  /** @nullable */
+  installmentGroupId?: string | null;
+  /** @nullable */
+  installmentGroupDescription?: string | null;
+  /** @nullable */
+  installmentNumber?: number | null;
+  /** @nullable */
+  totalInstallments?: number | null;
+}
+
+export type DeleteInstallmentScope = typeof DeleteInstallmentScope[keyof typeof DeleteInstallmentScope];
+
+
+export const DeleteInstallmentScope = {
+  SINGLE: 'SINGLE',
+  THIS_AND_NEXT: 'THIS_AND_NEXT',
+  ALL: 'ALL',
+} as const;
+
+export interface DeleteInstallmentResultDTO {
+  deleted: number;
+  skippedPaid: number;
+}
+
+export interface InstallmentGroupPatchDTO {
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  categoryId?: string | null;
+  /** @nullable */
+  accountId?: string | null;
+  /** @nullable */
+  installmentAmount?: number | null;
+  status?: TransactionStatus | null;
+  fields?: string[];
+}
+
+export interface InstallmentGroupResponseDTO {
+  id: string;
+  description: string;
+  totalAmount: number;
+  installmentAmount: number;
+  totalInstallments: number;
+  paidInstallments: number;
+  pendingInstallments: number;
+  /** @nullable */
+  nextDueDate?: string | null;
+  /** @nullable */
+  categoryName?: string | null;
+  /** @nullable */
+  categoryId?: string | null;
+  accountName: string;
+  accountId?: string;
+  transactions: TransactionResponseDTO[];
 }
 
 export interface TransferRequest {
@@ -271,6 +327,10 @@ export interface AccountResponse {
 
 export type ListCategoriesParams = {
 includeArchived?: boolean;
+};
+
+export type DeleteTransactionParams = {
+scope?: DeleteInstallmentScope;
 };
 
 export type GetDashboardSummaryParams = {
