@@ -2,6 +2,7 @@ package com.fintech.api.repository;
 
 import com.fintech.api.domain.enums.TransactionStatus;
 import com.fintech.api.domain.enums.TransactionType;
+import com.fintech.api.domain.installment.InstallmentGroup;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.transaction.Transaction;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -23,6 +24,37 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
     Optional<Transaction> findByIdAndTenant(UUID id, Tenant tenant);
 
     List<Transaction> findByTransferIdAndTenant(UUID transferId, Tenant tenant);
+
+    // Usado na listagem — evita N+1 para category, account e installmentGroup
+    @Query("""
+            SELECT t FROM Transaction t
+            LEFT JOIN FETCH t.installmentGroup
+            LEFT JOIN FETCH t.category
+            LEFT JOIN FETCH t.account
+            WHERE t.tenant = :tenant
+            ORDER BY t.date DESC
+            """)
+    List<Transaction> findAllByTenantWithDetails(@Param("tenant") Tenant tenant);
+
+    // Todas as parcelas do grupo, ordenadas por número da parcela
+    List<Transaction> findByInstallmentGroupOrderByInstallmentNumberAsc(InstallmentGroup group);
+
+    // Parcelas a partir de um número (inclusive), para escopo THIS_AND_NEXT no delete
+    List<Transaction> findByInstallmentGroupAndInstallmentNumberGreaterThanEqualOrderByInstallmentNumberAsc(
+            InstallmentGroup group, int installmentNumber);
+
+    // Parcelas futuras com status PENDING — usadas na propagação do update
+    @Query("""
+            SELECT t FROM Transaction t
+            WHERE t.installmentGroup = :group
+              AND t.installmentNumber > :number
+              AND t.status = :status
+            ORDER BY t.installmentNumber ASC
+            """)
+    List<Transaction> findFuturePendingInGroup(
+            @Param("group") InstallmentGroup group,
+            @Param("number") int installmentNumber,
+            @Param("status") TransactionStatus status);
 
     // Contagem de transações vinculadas a qualquer uma das categorias informadas (subtree)
     long countByCategoryIdInAndTenantId(Collection<UUID> categoryIds, UUID tenantId);
