@@ -16,6 +16,7 @@ const mockParent: CategoryResponseDTO = {
   name: 'Alimentação',
   icon: 'restaurant',
   color: '#e74c3c',
+  archived: false,
   children: [],
 };
 

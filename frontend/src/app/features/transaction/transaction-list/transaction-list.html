@@ -11,85 +11,113 @@
   </header>
 
   <div class="table-container mat-elevation-z2">
-    <table mat-table [dataSource]="transactions()">
+    <table mat-table [dataSource]="displayRows()">
 
+      <!-- Coluna de cabeçalho de grupo (linha colapsável) -->
+      <ng-container matColumnDef="group-header">
+        <td mat-cell *matCellDef="let row" [attr.colspan]="displayedColumns.length" class="group-header-cell">
+          <div class="group-row-content">
+            <button mat-icon-button (click)="toggleGroup(row.groupId)" class="expand-btn">
+              <mat-icon>{{ expandedGroups().has(row.groupId) ? 'expand_less' : 'expand_more' }}</mat-icon>
+            </button>
+            <div class="group-info">
+              <span class="group-description">{{ row.description }}</span>
+              <span class="group-meta">
+                {{ row.totalInstallments }}x {{ row.installmentAmount | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}
+                &nbsp;·&nbsp; {{ row.paidInstallments }}/{{ row.totalInstallments }} pagas
+              </span>
+            </div>
+            <mat-progress-bar
+              mode="determinate"
+              [value]="(row.paidInstallments / row.totalInstallments) * 100"
+              class="group-progress">
+            </mat-progress-bar>
+            <span class="group-badge">{{ row.categoryName ?? '—' }}</span>
+            <span class="group-badge">{{ row.accountName ?? '—' }}</span>
+            <div class="actions-group">
+              <button mat-icon-button color="warn" (click)="onDeleteGroup(row)" matTooltip="Excluir grupo">
+                <mat-icon>delete_sweep</mat-icon>
+              </button>
+            </div>
+          </div>
+        </td>
+      </ng-container>
+
+      <!-- Colunas de transação -->
       <ng-container matColumnDef="description">
         <th mat-header-cell *matHeaderCellDef>Descrição</th>
-        <td mat-cell *matCellDef="let t">
-          <span class="description-text">{{ t.description }}</span>
-          @if (t.installmentLabel) {
-            <span class="installment-badge">{{ t.installmentLabel }}</span>
+        <td mat-cell *matCellDef="let row">
+          @if (row.kind === 'transaction') {
+            <span class="installment-indent">↳</span>
+          }
+          <span class="description-text">{{ $any(row).data?.description }}</span>
+          @if ($any(row).data?.installmentLabel) {
+            <span class="installment-badge">{{ $any(row).data.installmentLabel }}</span>
           }
         </td>
       </ng-container>
 
       <ng-container matColumnDef="amount">
         <th mat-header-cell *matHeaderCellDef>Valor</th>
-        <td mat-cell *matCellDef="let t">
-          <span [class]="'amount ' + t.type.toLowerCase()">
-            {{ t.amount | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}
+        <td mat-cell *matCellDef="let row">
+          <span [class]="'amount ' + ($any(row).data?.type ?? '').toLowerCase()">
+            {{ $any(row).data?.amount | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}
           </span>
         </td>
       </ng-container>
 
       <ng-container matColumnDef="date">
         <th mat-header-cell *matHeaderCellDef>Data</th>
-        <td mat-cell *matCellDef="let t">{{ t.date | date:'dd/MM/yyyy' }}</td>
+        <td mat-cell *matCellDef="let row">{{ $any(row).data?.date | date:'dd/MM/yyyy' }}</td>
       </ng-container>
 
       <ng-container matColumnDef="type">
         <th mat-header-cell *matHeaderCellDef>Tipo</th>
-        <td mat-cell *matCellDef="let t">
-          <span [class]="'type-badge type-' + (t.transferId ? 'transfer' : (t.type ?? '').toLowerCase())">
-            {{ typeLabel(t) }}
+        <td mat-cell *matCellDef="let row">
+          <span [class]="'type-badge type-' + ($any(row).data?.transferId ? 'transfer' : ($any(row).data?.type ?? '').toLowerCase())">
+            {{ typeLabel($any(row).data) }}
           </span>
         </td>
       </ng-container>
 
       <ng-container matColumnDef="status">
         <th mat-header-cell *matHeaderCellDef>Status</th>
-        <td mat-cell *matCellDef="let t">
-          <span [class]="'status-badge status-' + t.status.toLowerCase()">
-            {{ statusLabel(t.status) }}
+        <td mat-cell *matCellDef="let row">
+          <span [class]="'status-badge status-' + ($any(row).data?.status ?? '').toLowerCase()">
+            {{ statusLabel($any(row).data?.status ?? '') }}
           </span>
         </td>
       </ng-container>
 
-      <ng-container matColumnDef="installment">
-        <th mat-header-cell *matHeaderCellDef>Parcela</th>
-        <td mat-cell *matCellDef="let t">{{ t.installmentLabel ?? '—' }}</td>
-      </ng-container>
-
       <ng-container matColumnDef="category">
         <th mat-header-cell *matHeaderCellDef>Categoria</th>
-        <td mat-cell *matCellDef="let t">
-          @if (t.categoryName) {
+        <td mat-cell *matCellDef="let row">
+          @if ($any(row).data?.categoryName) {
             <span
-              [class.category-archived]="t.categoryArchived"
-              [matTooltip]="t.categoryArchived ? 'Categoria arquivada' : ''"
-            >{{ t.categoryName }}</span>
-          } @else {
-            —
-          }
+              [class.category-archived]="$any(row).data.categoryArchived"
+              [matTooltip]="$any(row).data.categoryArchived ? 'Categoria arquivada' : ''">
+              {{ $any(row).data.categoryName }}
+            </span>
+          } @else { — }
         </td>
       </ng-container>
 
       <ng-container matColumnDef="account">
         <th mat-header-cell *matHeaderCellDef>Conta</th>
-        <td mat-cell *matCellDef="let t">{{ t.accountName ?? '—' }}</td>
+        <td mat-cell *matCellDef="let row">{{ $any(row).data?.accountName ?? '—' }}</td>
       </ng-container>
 
       <ng-container matColumnDef="actions">
         <th mat-header-cell *matHeaderCellDef></th>
-        <td mat-cell *matCellDef="let t">
+        <td mat-cell *matCellDef="let row">
           <div class="actions-group">
             <button mat-icon-button color="primary"
-                    (click)="onEdit(t)"
-                    [disabled]="!!t.transferId"
-                    [matTooltip]="t.transferId ? 'Transferências não podem ser editadas' : 'Editar'">
+                    (click)="onEdit($any(row).data)"
+                    [disabled]="!!$any(row).data?.transferId"
+                    [matTooltip]="$any(row).data?.transferId ? 'Transferências não podem ser editadas' : 'Editar'">
               <mat-icon>edit</mat-icon>
             </button>
-            <button mat-icon-button color="warn" (click)="onDelete(t)" matTooltip="Excluir">
+            <button mat-icon-button color="warn" (click)="onDelete($any(row).data)" matTooltip="Excluir">
               <mat-icon>delete</mat-icon>
             </button>
           </div>
@@ -97,10 +125,11 @@
       </ng-container>
 
       <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="element-row"></tr>
+      <tr mat-row *matRowDef="let row; columns: groupColumns; when: isGroupRow" class="group-row-tr"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns; when: isDataRow" class="element-row"></tr>
 
       <tr class="mat-row" *matNoDataRow>
-        <td class="mat-cell empty-state" colspan="9">
+        <td class="mat-cell empty-state" [attr.colspan]="displayedColumns.length">
           <mat-icon>receipt_long</mat-icon>
           <p>Nenhuma transação encontrada.</p>
         </td>
