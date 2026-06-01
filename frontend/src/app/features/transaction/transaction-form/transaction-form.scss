@@ -81,3 +81,62 @@ mat-form-field {
   .form-card { padding: 1rem; }
   .form-row-cols { grid-template-columns: 1fr !important; }
 }
+
+.installment-toggle {
+  margin: 8px 0 16px;
+}
+
+.installment-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  background: var(--mat-sys-surface-container-low, #f5f5f5);
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.value-mode-toggle {
+  width: 100%;
+  mat-button-toggle { flex: 1; }
+}
+
+.installment-preview {
+  .preview-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: rgba(0, 0, 0, 0.7);
+  }
+
+  .preview-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+
+    th, td {
+      padding: 4px 8px;
+      text-align: left;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    th { font-weight: 600; }
+    tr:last-child td { border-bottom: none; }
+  }
+}
+
+.propagate-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 0;
+
+  .propagate-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: rgba(0, 0, 0, 0.7);
+    margin-bottom: 4px;
+  }
+
+  small { color: rgba(0, 0, 0, 0.5); margin-left: 4px; }
+}

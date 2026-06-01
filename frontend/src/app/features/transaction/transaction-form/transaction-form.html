@@ -83,14 +83,51 @@
           </mat-form-field>
         </div>
 
-        <div class="form-row form-row-cols">
-          <mat-form-field appearance="outline">
-            <mat-label>Nº de Parcelas</mat-label>
-            <input matInput type="number" formControlName="totalInstallments" min="1" max="48" />
-            <mat-hint>1 = à vista. Máx: 48x</mat-hint>
-          </mat-form-field>
+        <!-- Parcelamento — apenas no modo criação (TRANSACTION) -->
+        @if (!isEditMode() && mode() === 'TRANSACTION') {
+          <div class="installment-toggle">
+            <mat-slide-toggle [checked]="isInstallment()" (change)="isInstallment.set($event.checked)">
+              É uma compra parcelada?
+            </mat-slide-toggle>
+          </div>
 
-          <mat-form-field appearance="outline">
+          @if (isInstallment()) {
+            <div class="installment-section">
+              <mat-button-toggle-group [value]="valueMode()" (change)="valueMode.set($event.value)" class="value-mode-toggle">
+                <mat-button-toggle value="total">Valor total</mat-button-toggle>
+                <mat-button-toggle value="per-installment">Valor da parcela</mat-button-toggle>
+              </mat-button-toggle-group>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Número de parcelas</mat-label>
+                <input matInput type="number" formControlName="totalInstallments" min="2" max="48">
+              </mat-form-field>
+
+              @if (installmentPreview().length > 0) {
+                <div class="installment-preview">
+                  <p class="preview-label">Prévia das parcelas</p>
+                  <table class="preview-table">
+                    <thead>
+                      <tr><th>Parcela</th><th>Data</th><th>Valor</th></tr>
+                    </thead>
+                    <tbody>
+                      @for (row of installmentPreview(); track row.number) {
+                        <tr>
+                          <td>{{ row.number }}/{{ installmentPreview().length }}</td>
+                          <td>{{ row.date }}</td>
+                          <td>{{ row.amount | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              }
+            </div>
+          }
+        }
+
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="field-full">
             <mat-label>Categoria (opcional)</mat-label>
             <mat-select formControlName="categoryId">
               <mat-option [value]="null">Nenhuma</mat-option>
@@ -117,6 +154,23 @@
             </mat-select>
           </mat-form-field>
         </div>
+
+        <!-- Propagação — apenas no modo edição -->
+        @if (isEditMode()) {
+          <mat-divider></mat-divider>
+          <div class="propagate-section">
+            <p class="propagate-label">Propagar para parcelas futuras pendentes:</p>
+            <mat-checkbox [checked]="isPropagating('description')" (change)="togglePropagate('description')">Descrição</mat-checkbox>
+            <mat-checkbox [checked]="isPropagating('categoryId')" (change)="togglePropagate('categoryId')">Categoria</mat-checkbox>
+            <mat-checkbox [checked]="isPropagating('accountId')" (change)="togglePropagate('accountId')">Conta</mat-checkbox>
+            <mat-checkbox [checked]="isPropagating('amount')" (change)="togglePropagate('amount')">
+              Valor <small>(apenas pendentes)</small>
+            </mat-checkbox>
+            <mat-checkbox [checked]="isPropagating('status')" (change)="togglePropagate('status')">
+              Status <small>(apenas pendentes)</small>
+            </mat-checkbox>
+          </div>
+        }
       }
 
       @if (mode() === 'TRANSFER') {
