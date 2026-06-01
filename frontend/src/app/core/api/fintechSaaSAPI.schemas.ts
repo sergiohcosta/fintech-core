@@ -167,6 +167,10 @@ export interface DashboardSummaryDTO {
   totalIncome?: number;
   totalExpense?: number;
   balance?: number;
+  /** Quantidade de transações não canceladas no período. Zero indica mês sem movimentação. */
+  transactionCount?: number;
+  /** Saldo líquido acumulado (todas as contas com countInLiquidBalance=true, sem filtro de período). */
+  totalAccountBalance?: number;
 }
 
 export type AccountType = typeof AccountType[keyof typeof AccountType];
