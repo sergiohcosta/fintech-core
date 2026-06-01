@@ -261,6 +261,53 @@ Duas melhorias de usabilidade no `category-form`, puramente frontend, sem altera
 
 ---
 
+## Issue #25 — Soft delete de categorias com fluxo de archive (2026-05-29)
+
+### Problema
+`DELETE /categories/{id}` lançava `DataIntegrityViolationException` (500 genérico) ao tentar excluir categorias com transações vinculadas. A FK `transactions.category_id` não tinha `ON DELETE CASCADE` ou `ON DELETE SET NULL`.
+
+### Solução — Soft delete + fluxo de escolha
+Em vez de hard delete ou ON DELETE SET NULL silencioso, o sistema agora dá ao usuário controle explícito:
+
+**Backend:**
+- **Migration V7**: coluna `deleted_at TIMESTAMP` em `categories`.
+- **`CategoryHasTransactionsException`**: exceção específica com campo `transactionCount`, mapeada para 409 no `GlobalExceptionHandler`.
+- **`CategoryRepository`**: queries renomeadas para `...AndDeletedAtIsNull`; novo `countByCategoryIdInAndTenantId` e `reassignCategories` (bulk UPDATE nativo) em `TransactionRepository`.
+- **`CategoryService.delete()`**: conta transações na subárvore completa (`collectSubtreeIds` recursivo); lança 409 se count > 0; soft delete em cascata via `softDeleteSubtree()` se limpo.
+- **`CategoryService.archive()`**: soft delete em cascata + `reassignCategories` opcional quando `targetCategoryId` fornecido; valida que destino não é descendente da categoria sendo arquivada.
+- **Novo endpoint** `POST /api/categories/{id}/archive` com body opcional `{ targetCategoryId }`.
+
+**Frontend:**
+- **`CategoryArchiveDialog`**: abre quando DELETE retorna 409; duas ações — "Arquivar categoria" (mantém vínculo histórico via soft delete) ou "Mover e arquivar" (reassocia transações à categoria destino antes de arquivar). O dropdown de destino filtra arquivadas e a própria subárvore.
+
+### Decisão de design
+Soft delete (e não ON DELETE SET NULL) porque o FK continua íntegro no banco — permite restauração futura. A categoria desaparece das listagens mas transações históricas continuam referenciando a linha existente.
+
+---
+
+## Visibilidade de categorias arquivadas (2026-05-29)
+
+### Bug corrigido
+Filhos arquivados apareciam na listagem porque `CategoryResponseDTO.fromEntity()` mapeava `category.getChildren()` sem filtrar `deleted_at`. O `@OneToMany` retorna todos os filhos da relação, arquivados ou não.
+
+**Fix:** `fromEntity(category, includeArchived)` — filtra filhos com `deletedAt != null` por padrão via stream filter antes de mapear recursivamente.
+
+### Novas funcionalidades
+
+**Backend:**
+- `CategoryResponseDTO` ganhou campo `archived: boolean` (`deletedAt != null`).
+- `CategoryRepository`: novo `findAllByTenantIdAndParentIsNull` (sem filtro) para uso com `includeArchived=true`.
+- `CategoryService.findAllRoots(user, includeArchived)`: seleciona método de query e flag de mapeamento conforme parâmetro.
+- `GET /api/categories?includeArchived=false` (default): query param documentado no spec.
+- `TransactionResponseDTO.categoryArchived: boolean`: indica se a categoria vinculada está arquivada.
+
+**Frontend:**
+- **Listagem de categorias**: toggle "Mostrar arquivadas" (default off); arquivadas exibem ícone desbotado em cinza, nome taxado com tooltip "Categoria arquivada", botões Editar/Excluir disabled.
+- **Listagem de transações**: categoria arquivada exibe nome taxado em cinza com tooltip (via `categoryArchived`).
+- **Formulário de transação**: carrega com `includeArchived=true` para que a categoria arquivada já vinculada apareça no `mat-select` com strikethrough e `[disabled]="true"` — usuário vê o que era e pode trocar para uma ativa.
+
+---
+
 ## 📅 Status Atual
 - [x] Estrutura de Pastas e Projetos.
 - [x] Banco de Dados e Migrations Iniciais.
@@ -275,6 +322,7 @@ Duas melhorias de usabilidade no `category-form`, puramente frontend, sem altera
 - [x] Adoção OpenAPI spec-first (documentação + geração de código backend + frontend).
 - [x] Gestão de Contas — Account Management (4 tipos, transferências double-entry, frontend TDD).
 - [x] Melhorias UX no formulário de categorias (grid de ícones + herança de cor/ícone do pai).
+- [x] Soft delete de categorias com fluxo de archive (issue #25) + visibilidade de arquivadas.
 - [ ] Filtros na listagem de transações (por período, tipo, status, conta).
 - [ ] Gráficos no dashboard (evolução mensal, breakdown por categoria/conta).
 - [ ] Tela de Transferências (fluxo específico para criar os dois lançamentos espelhados).
