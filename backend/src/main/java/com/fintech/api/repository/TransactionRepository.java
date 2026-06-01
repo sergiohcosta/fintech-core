@@ -57,4 +57,38 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             @Param("start") LocalDate start,
             @Param("end") LocalDate end
     );
+
+    // Conta transações não canceladas no período (independente de tipo).
+    // Retorna 0 quando o período não tem movimentação — usado para detectar empty state.
+    @Query("""
+            SELECT COUNT(t)
+            FROM Transaction t
+            WHERE t.tenant = :tenant
+              AND t.status <> :excluded
+              AND t.date BETWEEN :start AND :end
+            """)
+    long countByTenantAndPeriod(
+            @Param("tenant") Tenant tenant,
+            @Param("excluded") TransactionStatus excluded,
+            @Param("start") LocalDate start,
+            @Param("end") LocalDate end
+    );
+
+    // Saldo líquido acumulado: soma income e subtrai expense de TODAS as transações
+    // não canceladas, filtradas pelas contas marcadas como countInLiquidBalance.
+    // Sem filtro de período — representa a posição financeira atual.
+    @Query("""
+            SELECT COALESCE(SUM(
+                CASE WHEN t.type = :incomeType THEN t.amount ELSE -t.amount END
+            ), 0)
+            FROM Transaction t
+            WHERE t.tenant = :tenant
+              AND t.status <> :excluded
+              AND t.account.countInLiquidBalance = true
+            """)
+    BigDecimal sumNetLiquidBalanceByTenant(
+            @Param("tenant") Tenant tenant,
+            @Param("incomeType") TransactionType incomeType,
+            @Param("excluded") TransactionStatus excluded
+    );
 }
