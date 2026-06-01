@@ -4,6 +4,7 @@ import com.fintech.api.domain.account.Account;
 import com.fintech.api.domain.category.Category;
 import com.fintech.api.domain.enums.TransactionStatus;
 import com.fintech.api.domain.enums.TransactionType;
+import com.fintech.api.domain.installment.InstallmentGroup;
 import com.fintech.api.domain.transaction.Transaction;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.transaction.TransactionRequestDTO;
@@ -14,6 +15,7 @@ import com.fintech.api.dto.transfer.TransferResponseDTO;
 import com.fintech.api.exception.EntityNotFoundException;
 import com.fintech.api.repository.AccountRepository;
 import com.fintech.api.repository.CategoryRepository;
+import com.fintech.api.repository.InstallmentGroupRepository;
 import com.fintech.api.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -32,6 +34,7 @@ public class TransactionService {
     private final TransactionRepository repository;
     private final CategoryRepository categoryRepository;
     private final AccountRepository accountRepository;
+    private final InstallmentGroupRepository installmentGroupRepository;
 
     @Transactional(readOnly = true)
     public List<TransactionResponseDTO> findAll(User user) {
@@ -53,10 +56,24 @@ public class TransactionService {
         Category category = resolveCategory(dto.categoryId(), user);
         Account account = resolveAccount(dto.accountId(), user);
 
-        int installments = (dto.totalInstallments() != null && dto.totalInstallments() > 0)
+        int installments = (dto.totalInstallments() != null && dto.totalInstallments() > 1)
                 ? dto.totalInstallments() : 1;
-        BigDecimal installmentAmount = dto.amount().divide(BigDecimal.valueOf(installments), 2, RoundingMode.HALF_EVEN);
+        BigDecimal installmentAmount = dto.amount()
+                .divide(BigDecimal.valueOf(installments), 2, RoundingMode.HALF_EVEN);
 
+        InstallmentGroup group = null;
+        if (installments > 1) {
+            group = installmentGroupRepository.save(InstallmentGroup.builder()
+                    .description(dto.description())
+                    .totalAmount(dto.amount())
+                    .totalInstallments(installments)
+                    .account(account)
+                    .category(category)
+                    .tenant(user.getTenant())
+                    .build());
+        }
+
+        final InstallmentGroup finalGroup = group;
         List<Transaction> created = new ArrayList<>();
         for (int i = 0; i < installments; i++) {
             created.add(repository.save(Transaction.builder()
@@ -67,6 +84,7 @@ public class TransactionService {
                     .status(dto.status() != null ? dto.status() : TransactionStatus.PENDING)
                     .installmentNumber(i + 1)
                     .totalInstallments(installments)
+                    .installmentGroup(finalGroup)
                     .tenant(user.getTenant())
                     .user(user)
                     .category(category)

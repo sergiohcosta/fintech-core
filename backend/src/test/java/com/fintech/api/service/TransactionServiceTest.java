@@ -4,6 +4,7 @@ import com.fintech.api.domain.account.Account;
 import com.fintech.api.domain.enums.AccountType;
 import com.fintech.api.domain.enums.TransactionStatus;
 import com.fintech.api.domain.enums.TransactionType;
+import com.fintech.api.domain.installment.InstallmentGroup;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.transaction.Transaction;
 import com.fintech.api.domain.user.User;
@@ -13,6 +14,7 @@ import com.fintech.api.dto.transfer.TransferRequestDTO;
 import com.fintech.api.exception.EntityNotFoundException;
 import com.fintech.api.repository.AccountRepository;
 import com.fintech.api.repository.CategoryRepository;
+import com.fintech.api.repository.InstallmentGroupRepository;
 import com.fintech.api.repository.TransactionRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -38,6 +40,7 @@ class TransactionServiceTest {
     @Mock TransactionRepository repository;
     @Mock CategoryRepository categoryRepository;
     @Mock AccountRepository accountRepository;
+    @Mock InstallmentGroupRepository installmentGroupRepository;
     @InjectMocks TransactionService service;
 
     @Test
@@ -187,6 +190,75 @@ class TransactionServiceTest {
 
         assertThatThrownBy(() -> service.findById(UUID.randomUUID(), user))
                 .isInstanceOf(EntityNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("create cria InstallmentGroup quando totalInstallments > 1")
+    void createBuildsInstallmentGroup() {
+        User user = buildUser();
+        Account account = buildAccount(user);
+        TransactionRequestDTO dto = new TransactionRequestDTO(
+                "Notebook", new BigDecimal("3000.00"), LocalDate.now(),
+                TransactionType.EXPENSE, null, 3, null, account.getId());
+
+        when(accountRepository.findByIdAndTenant(account.getId(), user.getTenant()))
+                .thenReturn(Optional.of(account));
+        when(installmentGroupRepository.save(any(InstallmentGroup.class)))
+                .thenAnswer(i -> i.getArgument(0));
+        when(repository.save(any(Transaction.class))).thenAnswer(i -> i.getArgument(0));
+
+        service.create(dto, user);
+
+        ArgumentCaptor<InstallmentGroup> captor = ArgumentCaptor.forClass(InstallmentGroup.class);
+        verify(installmentGroupRepository, times(1)).save(captor.capture());
+        InstallmentGroup group = captor.getValue();
+        assertThat(group.getDescription()).isEqualTo("Notebook");
+        assertThat(group.getTotalAmount()).isEqualByComparingTo(new BigDecimal("3000.00"));
+        assertThat(group.getTotalInstallments()).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("create não cria InstallmentGroup para transação única")
+    void createDoesNotBuildGroupForSingleTransaction() {
+        User user = buildUser();
+        Account account = buildAccount(user);
+        TransactionRequestDTO dto = new TransactionRequestDTO(
+                "Salário", new BigDecimal("5000.00"), LocalDate.now(),
+                TransactionType.INCOME, null, 1, null, account.getId());
+
+        when(accountRepository.findByIdAndTenant(account.getId(), user.getTenant()))
+                .thenReturn(Optional.of(account));
+        when(repository.save(any(Transaction.class))).thenAnswer(i -> i.getArgument(0));
+
+        service.create(dto, user);
+
+        verify(installmentGroupRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("create associa installmentGroup a cada parcela criada")
+    void createAssociatesGroupToEachInstallment() {
+        User user = buildUser();
+        Account account = buildAccount(user);
+        InstallmentGroup savedGroup = InstallmentGroup.builder()
+                .id(UUID.randomUUID()).description("Notebook")
+                .totalAmount(new BigDecimal("3000.00")).totalInstallments(3)
+                .account(account).tenant(user.getTenant()).build();
+        TransactionRequestDTO dto = new TransactionRequestDTO(
+                "Notebook", new BigDecimal("3000.00"), LocalDate.now(),
+                TransactionType.EXPENSE, null, 3, null, account.getId());
+
+        when(accountRepository.findByIdAndTenant(account.getId(), user.getTenant()))
+                .thenReturn(Optional.of(account));
+        when(installmentGroupRepository.save(any(InstallmentGroup.class))).thenReturn(savedGroup);
+        when(repository.save(any(Transaction.class))).thenAnswer(i -> i.getArgument(0));
+
+        service.create(dto, user);
+
+        ArgumentCaptor<Transaction> captor = ArgumentCaptor.forClass(Transaction.class);
+        verify(repository, times(3)).save(captor.capture());
+        captor.getAllValues().forEach(t ->
+                assertThat(t.getInstallmentGroup()).isEqualTo(savedGroup));
     }
 
     private User buildUser() {
