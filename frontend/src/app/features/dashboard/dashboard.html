@@ -16,43 +16,69 @@
 
   <!-- Cards de resumo -->
   @if (summary(); as s) {
-    <div class="summary-cards">
-      <mat-card class="summary-card income-card">
-        <mat-card-content>
-          <div class="card-icon">
-            <mat-icon>trending_up</mat-icon>
-          </div>
-          <div class="card-info">
-            <span class="card-label">Receita</span>
-            <span class="card-value">{{ s.totalIncome | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
-          </div>
-        </mat-card-content>
-      </mat-card>
 
-      <mat-card class="summary-card expense-card">
+    <!-- Posição atual — exibida sempre, independente de haver movimentação no período -->
+    <div class="position-wrapper">
+      <mat-card class="summary-card position-card">
         <mat-card-content>
           <div class="card-icon">
-            <mat-icon>trending_down</mat-icon>
+            <mat-icon>account_balance</mat-icon>
           </div>
           <div class="card-info">
-            <span class="card-label">Despesa</span>
-            <span class="card-value">{{ s.totalExpense | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
-          </div>
-        </mat-card-content>
-      </mat-card>
-
-      <mat-card class="summary-card" [class.balance-positive]="(s.balance ?? 0) >= 0" [class.balance-negative]="(s.balance ?? 0) < 0">
-        <mat-card-content>
-          <div class="card-icon">
-            <mat-icon>account_balance_wallet</mat-icon>
-          </div>
-          <div class="card-info">
-            <span class="card-label">Saldo</span>
-            <span class="card-value">{{ s.balance | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
+            <span class="card-label">Posição atual</span>
+            <span class="card-value">{{ s.totalAccountBalance | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
           </div>
         </mat-card-content>
       </mat-card>
     </div>
+
+    <!-- Movimentações do período: cards quando há dados, empty state quando não há -->
+    @if (hasTransactions()) {
+      <div class="summary-cards">
+        <mat-card class="summary-card income-card">
+          <mat-card-content>
+            <div class="card-icon">
+              <mat-icon>trending_up</mat-icon>
+            </div>
+            <div class="card-info">
+              <span class="card-label">Receita</span>
+              <span class="card-value">{{ s.totalIncome | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card class="summary-card expense-card">
+          <mat-card-content>
+            <div class="card-icon">
+              <mat-icon>trending_down</mat-icon>
+            </div>
+            <div class="card-info">
+              <span class="card-label">Despesa</span>
+              <span class="card-value">{{ s.totalExpense | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card class="summary-card" [class.balance-positive]="(s.balance ?? 0) >= 0" [class.balance-negative]="(s.balance ?? 0) < 0">
+          <mat-card-content>
+            <div class="card-icon">
+              <mat-icon>account_balance_wallet</mat-icon>
+            </div>
+            <div class="card-info">
+              <span class="card-label">Saldo do período</span>
+              <span class="card-value">{{ s.balance | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    } @else {
+      <div class="empty-state">
+        <mat-icon class="empty-icon">inbox</mat-icon>
+        <p class="empty-message">Nenhuma movimentação em {{ monthLabel() }}.</p>
+        <a mat-stroked-button routerLink="/transactions">+ Lançar transação</a>
+      </div>
+    }
+
   } @else {
     <div class="loading-cards">
       <mat-spinner diameter="40" />
