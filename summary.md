@@ -308,6 +308,57 @@ Filhos arquivados apareciam na listagem porque `CategoryResponseDTO.fromEntity()
 
 ---
 
+---
+
+## 💳 15. Gerenciamento de Transações Parceladas (2026-06-02)
+
+Implementação fullstack do gerenciamento completo de parcelamentos — da criação vinculada até exclusão/edição em massa com proteção de histórico financeiro.
+
+### Problema resolvido
+
+Parcelas criadas anteriormente eram "órfãs" — sem vínculo entre si. Impossível identificar quais transações pertenciam à mesma compra, excluir todas de uma vez ou editar em massa.
+
+### Modelo de dados
+
+* **Migration V8** — tabela `installment_groups` (id, description, total_amount, total_installments, account_id, category_id, tenant_id, created_at, updated_at) + coluna FK nullable `installment_group_id` em `transactions` + dois índices compostos.
+* **`InstallmentGroup` entity** — `@ManyToOne` para account, category e tenant; `@CreationTimestamp` + `@UpdateTimestamp`. FK nullable preserva zero impacto em dados históricos.
+
+### Backend
+
+* **`TransactionService.create()`** — quando `totalInstallments > 1`, persiste `InstallmentGroup` antes do loop de parcelas e associa cada `Transaction` via `.installmentGroup(group)`.
+* **`DELETE /api/transactions/{id}?scope=`** — três escopos: `SINGLE` (padrão, comportamento anterior), `THIS_AND_NEXT` (esta e as com `installmentNumber >= atual`), `ALL` (todo o grupo). Parcelas com `status=PAID` são ignoradas automaticamente; resposta retorna `{deleted, skippedPaid}`.
+* **`PUT /api/transactions/{id}`** com `propagate: string[]` — propaga os campos selecionados (description, categoryId, accountId, amount, status) para parcelas futuras `PENDING` do mesmo grupo. Status nunca reverte `PAID → PENDING` via propagação.
+* **`InstallmentGroupService`** — `findAll`, `findById`, `deleteGroup` (protege PAID), `patch` (bulk edit, só PENDING). `toDTO()` calcula `paidInstallments`, `pendingInstallments`, `nextDueDate` e `installmentAmount` a partir das transações.
+* **`InstallmentGroupController`** — `GET /api/installment-groups`, `GET /{id}`, `DELETE /{id}`, `PATCH /{id}`. Implementa `InstallmentGroupsApi` gerada pelo OpenAPI Generator.
+* **59 testes backend, 0 falhas**.
+
+### OpenAPI spec
+
+* Novos schemas: `DeleteInstallmentScope`, `DeleteInstallmentResultDTO`, `InstallmentGroupResponseDTO`, `InstallmentGroupPatchDTO`.
+* `TransactionResponseDTO` ganhou `installmentGroupId`, `installmentGroupDescription`, `installmentNumber`, `totalInstallments`.
+* `TransactionUpdateDTO` ganhou `propagate: string[]`.
+* `pom.xml` atualizado com `importMappings` para os novos tipos.
+* `npm run api:generate` (Orval) gerou `installment-groups.service.ts` + atualizou `transactions.service.ts`.
+
+### Frontend
+
+* **Listagem (`transaction-list`)** — lista "mista": transações avulsas como linhas simples; grupos como linhas colapsáveis com progress bar, nome do grupo, N×valor/parcela e botão "Excluir grupo". Lógica de agrupamento extraída em `transaction-list.utils.ts` (sem deps Angular) para testabilidade.
+* **`DeleteInstallmentDialogComponent`** — radio group para selecionar escopo (esta / esta e próximas / todas); aviso inline quando escopo inclui múltiplas parcelas explicando que pagas não serão excluídas.
+* **`transaction-form` melhorias**:
+  * Toggle "É uma compra parcelada?" — oculto no modo edição e em transferências.
+  * Seção expandível com: mode radio (valor total / valor da parcela), campo `totalInstallments`, tabela de prévia live.
+  * Preview live usa `toSignal(control.valueChanges)` para reatividade real em Zoneless Angular (sem `toSignal`, `computed()` não reage a `FormControl.value`).
+  * Seção de propagação no modo edição: 5 checkboxes opt-in (description, categoria, conta, valor, status).
+
+### Lições técnicas
+
+* **`finalGroup` em lambda**: Java exige effective final em closures; variável `group` que começa null precisa ser copiada para `finalGroup` antes do loop de `repository.save()`.
+* **`computed()` + FormControls em Zoneless**: `computed()` só rastreia reads de signals. `form.controls.amount.value` não é signal — não dispara re-avaliação. Solução: `toSignal(control.valueChanges, { initialValue: ... })`.
+* **Re-export de types com `isolatedModules`**: `export { SomeType }` falha — usar `export type { SomeType }`.
+* **Flyway checksum mismatch**: migration amendada após ser aplicada ao banco local gera mismatch. Em dev com tabela vazia: remover a linha do `flyway_schema_history` e recriar o schema é mais limpo que `flyway:repair`.
+
+---
+
 ## 📅 Status Atual
 - [x] Estrutura de Pastas e Projetos.
 - [x] Banco de Dados e Migrations Iniciais.
@@ -323,6 +374,8 @@ Filhos arquivados apareciam na listagem porque `CategoryResponseDTO.fromEntity()
 - [x] Gestão de Contas — Account Management (4 tipos, transferências double-entry, frontend TDD).
 - [x] Melhorias UX no formulário de categorias (grid de ícones + herança de cor/ícone do pai).
 - [x] Soft delete de categorias com fluxo de archive (issue #25) + visibilidade de arquivadas.
+- [x] Dashboard empty state + posição financeira atual (2026-06-01).
+- [x] Gerenciamento de transações parceladas — InstallmentGroup, delete por escopo, propagação de campos (2026-06-02).
 - [ ] Filtros na listagem de transações (por período, tipo, status, conta).
 - [ ] Gráficos no dashboard (evolução mensal, breakdown por categoria/conta).
 - [ ] Tela de Transferências (fluxo específico para criar os dois lançamentos espelhados).

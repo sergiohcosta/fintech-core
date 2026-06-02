@@ -206,6 +206,16 @@ npm start
   - `TransactionResponseDTO.categoryArchived: boolean` — listagem de transações exibe nome taxado com tooltip
   - Formulário de transação: categorias arquivadas aparecem disabled no select ao editar transações históricas
   - Bug fix: filhos arquivados não apareciam filtrados no `@OneToMany children`
+- **Dashboard empty state + posição financeira** (2026-06-01):
+  - `DashboardSummaryDTO` ganhou `transactionCount` e `totalAccountBalance`
+  - Card "Posição atual" sempre visível; meses sem movimentação exibem empty state
+- **Gerenciamento de transações parceladas** (2026-06-02):
+  - Migration V8: tabela `installment_groups` + FK nullable em `transactions`
+  - `TransactionService.create()` cria `InstallmentGroup` ao parcelar
+  - `DELETE /api/transactions/{id}?scope=SINGLE|THIS_AND_NEXT|ALL` com proteção de parcelas pagas
+  - `PUT /api/transactions/{id}` com `propagate: string[]` para propagar campos a parcelas futuras pendentes
+  - `InstallmentGroupService` + `InstallmentGroupController` (list, get, delete, patch)
+  - Frontend: listagem com grupos colapsáveis + progress bar; `DeleteInstallmentDialog`; formulário com toggle parcelamento + preview live + propagação na edição
 
 **Próximos passos:**
 - Filtros na listagem de transações (por período, tipo, status, conta)
