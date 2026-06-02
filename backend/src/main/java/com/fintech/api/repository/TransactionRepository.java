@@ -98,14 +98,19 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
 
     long countByInvoice(Invoice invoice);
 
-    // COALESCE garante 0 quando não há transações no período (SUM de conjunto vazio = null no SQL)
+    // Para transações de cartão, usa invoice.dueDate como referência de mês.
+    // Para demais contas (sem fatura), usa transaction.date.
     @Query("""
             SELECT COALESCE(SUM(t.amount), 0)
             FROM Transaction t
             WHERE t.tenant = :tenant
               AND t.type = :type
               AND t.status <> :excluded
-              AND t.date BETWEEN :start AND :end
+              AND (
+                (t.invoice IS NOT NULL AND t.invoice.dueDate BETWEEN :start AND :end)
+                OR
+                (t.invoice IS NULL AND t.date BETWEEN :start AND :end)
+              )
             """)
     BigDecimal sumByTenantAndTypeAndPeriod(
             @Param("tenant") Tenant tenant,
@@ -115,14 +120,16 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             @Param("end") LocalDate end
     );
 
-    // Conta transações não canceladas no período (independente de tipo).
-    // Retorna 0 quando o período não tem movimentação — usado para detectar empty state.
     @Query("""
             SELECT COUNT(t)
             FROM Transaction t
             WHERE t.tenant = :tenant
               AND t.status <> :excluded
-              AND t.date BETWEEN :start AND :end
+              AND (
+                (t.invoice IS NOT NULL AND t.invoice.dueDate BETWEEN :start AND :end)
+                OR
+                (t.invoice IS NULL AND t.date BETWEEN :start AND :end)
+              )
             """)
     long countByTenantAndPeriod(
             @Param("tenant") Tenant tenant,
