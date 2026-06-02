@@ -2,10 +2,12 @@ package com.fintech.api.service;
 
 import com.fintech.api.domain.account.Account;
 import com.fintech.api.domain.category.Category;
+import com.fintech.api.domain.enums.AccountType;
 import com.fintech.api.domain.enums.DeleteInstallmentScope;
 import com.fintech.api.domain.enums.TransactionStatus;
 import com.fintech.api.domain.enums.TransactionType;
 import com.fintech.api.domain.installment.InstallmentGroup;
+import com.fintech.api.domain.invoice.Invoice;
 import com.fintech.api.domain.transaction.Transaction;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.installment.DeleteInstallmentResultDTO;
@@ -17,6 +19,7 @@ import com.fintech.api.dto.transfer.TransferResponseDTO;
 import com.fintech.api.exception.EntityNotFoundException;
 import com.fintech.api.repository.AccountRepository;
 import com.fintech.api.repository.CategoryRepository;
+import com.fintech.api.repository.CreditCardDetailsRepository;
 import com.fintech.api.repository.InstallmentGroupRepository;
 import com.fintech.api.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +28,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -37,13 +42,18 @@ public class TransactionService {
     private final CategoryRepository categoryRepository;
     private final AccountRepository accountRepository;
     private final InstallmentGroupRepository installmentGroupRepository;
+    private final CreditCardDetailsRepository creditCardDetailsRepository;
+    private final InvoiceService invoiceService;
 
     @Transactional(readOnly = true)
-    public List<TransactionResponseDTO> findAll(User user) {
-        return repository.findAllByTenantOrderByDateDesc(user.getTenant())
-                .stream()
-                .map(TransactionResponseDTO::fromEntity)
-                .toList();
+    public List<TransactionResponseDTO> findAll(User user, UUID invoiceId) {
+        if (invoiceId != null) {
+            Invoice invoice = invoiceService.findByIdAndTenant(invoiceId, user.getTenant());
+            return repository.findAllByTenantAndInvoiceWithDetails(user.getTenant(), invoice)
+                    .stream().map(TransactionResponseDTO::fromEntity).toList();
+        }
+        return repository.findAllByTenantWithDetails(user.getTenant())
+                .stream().map(TransactionResponseDTO::fromEntity).toList();
     }
 
     @Transactional(readOnly = true)
@@ -63,6 +73,16 @@ public class TransactionService {
         BigDecimal installmentAmount = dto.amount()
                 .divide(BigDecimal.valueOf(installments), 2, RoundingMode.HALF_EVEN);
 
+        boolean isCreditCard = AccountType.CREDIT_CARD.equals(account.getType());
+        int closingDay = 0;
+        if (isCreditCard) {
+            closingDay = creditCardDetailsRepository.findByAccount(account)
+                    .orElseThrow(() -> new EntityNotFoundException(
+                            "Detalhes do cartão não encontrados para a conta."))
+                    .getClosingDay();
+        }
+        final int finalClosingDay = closingDay;
+
         InstallmentGroup group = null;
         if (installments > 1) {
             group = installmentGroupRepository.save(InstallmentGroup.builder()
@@ -78,15 +98,27 @@ public class TransactionService {
         final InstallmentGroup finalGroup = group;
         List<Transaction> created = new ArrayList<>();
         for (int i = 0; i < installments; i++) {
+            Invoice invoice = null;
+            LocalDate transactionDate;
+
+            if (isCreditCard) {
+                YearMonth invoiceMonth = resolveInvoiceMonth(dto.date(), finalClosingDay).plusMonths(i);
+                invoice = invoiceService.getOrCreate(account, invoiceMonth.getYear(), invoiceMonth.getMonthValue());
+                transactionDate = dto.date(); // data de compra igual em todas as parcelas
+            } else {
+                transactionDate = dto.date().plusMonths(i);
+            }
+
             created.add(repository.save(Transaction.builder()
                     .description(dto.description())
                     .amount(installmentAmount)
-                    .date(dto.date().plusMonths(i))
+                    .date(transactionDate)
                     .type(dto.type())
                     .status(dto.status() != null ? dto.status() : TransactionStatus.PENDING)
                     .installmentNumber(i + 1)
                     .totalInstallments(installments)
                     .installmentGroup(finalGroup)
+                    .invoice(invoice)
                     .tenant(user.getTenant())
                     .user(user)
                     .category(category)
@@ -128,15 +160,9 @@ public class TransactionService {
                 .build());
 
         return new TransferResponseDTO(
-                transferId,
-                expense.getId(),
-                income.getId(),
-                dto.amount(),
-                dto.date(),
-                description,
-                from.getName(),
-                to.getName()
-        );
+                transferId, expense.getId(), income.getId(),
+                dto.amount(), dto.date(), description,
+                from.getName(), to.getName());
     }
 
     @Transactional
@@ -208,6 +234,13 @@ public class TransactionService {
 
         repository.deleteAll(toDelete);
         return new DeleteInstallmentResultDTO(toDelete.size(), skipped);
+    }
+
+    // Compras até o fechamento ficam na fatura do mesmo mês; após o fechamento, vão para o próximo.
+    private YearMonth resolveInvoiceMonth(LocalDate purchaseDate, int closingDay) {
+        return purchaseDate.getDayOfMonth() <= closingDay
+                ? YearMonth.from(purchaseDate)
+                : YearMonth.from(purchaseDate).plusMonths(1);
     }
 
     private Category resolveCategory(UUID categoryId, User user) {
