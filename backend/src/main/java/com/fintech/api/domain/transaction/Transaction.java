@@ -5,6 +5,7 @@ import com.fintech.api.domain.category.Category;
 import com.fintech.api.domain.enums.TransactionStatus;
 import com.fintech.api.domain.enums.TransactionType;
 import com.fintech.api.domain.installment.InstallmentGroup;
+import com.fintech.api.domain.invoice.Invoice;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.user.User;
 import jakarta.persistence.*;
@@ -85,6 +86,11 @@ public class Transaction {
     @JoinColumn(name = "installment_group_id")
     @ToString.Exclude
     private InstallmentGroup installmentGroup;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "invoice_id")
+    @ToString.Exclude
+    private Invoice invoice;
 
     @NotNull(message = "O status é obrigatório")
     @Enumerated(EnumType.STRING)
