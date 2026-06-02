@@ -232,6 +232,11 @@ npm start
     - Qualquer transação de conta regular: exibe `t.date`
   - Rationale: `t.date` de parcelas de cartão é sempre a data da compra (idêntica em todas as parcelas do grupo); o `dueDate` distribui cada parcela no mês em que impacta o orçamento. Para transações avulsas (incluindo avulsas de cartão), a data real da compra é a informação relevante.
 
+- **Bug fix: dashboard excluía transações sem fatura** (2026-06-02):
+  - `countByTenantAndPeriod` e `sumByTenantAndTypeAndPeriod` em `TransactionRepository` usavam `t.invoice.dueDate` no WHERE, o que fazia o Hibernate gerar um INNER JOIN implícito com `invoices`
+  - O INNER JOIN excluía todas as transações sem `invoice_id` (contas corrente, dinheiro, investimento), fazendo o branch `t.invoice IS NULL` ser sempre falso
+  - Correção: `LEFT JOIN t.invoice inv` explícito no JPQL; usar `inv` em vez de `t.invoice` nas condições
+
 **Próximos passos:**
 - Filtros na listagem de transações (por período, tipo, status, conta)
 - Gráficos no dashboard (evolução mensal, breakdown por categoria/conta)
