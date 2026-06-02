@@ -6,7 +6,6 @@ import com.fintech.api.dto.installment.DeleteInstallmentResultDTO;
 import com.fintech.api.dto.transaction.TransactionRequestDTO;
 import com.fintech.api.dto.transaction.TransactionResponseDTO;
 import com.fintech.api.dto.transaction.TransactionUpdateDTO;
-import com.fintech.api.openapi.TransactionsApi;
 import com.fintech.api.repository.UserRepository;
 import com.fintech.api.service.TransactionService;
 import jakarta.validation.Valid;
@@ -22,35 +21,22 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/transactions")
 @RequiredArgsConstructor
-public class TransactionController implements TransactionsApi {
+public class TransactionController {
 
     private final TransactionService service;
     private final UserRepository userRepository;
 
-    /**
-     * Lista todas as transações do Tenant do usuário logado.
-     * Ordenadas por data (mais recentes primeiro).
-     */
-    @Override
     @GetMapping
-    public ResponseEntity<List<TransactionResponseDTO>> listTransactions() {
-        return ResponseEntity.ok(service.findAll(getAuthenticatedUser()));
+    public ResponseEntity<List<TransactionResponseDTO>> listTransactions(
+            @RequestParam(value = "invoiceId", required = false) UUID invoiceId) {
+        return ResponseEntity.ok(service.findAll(getAuthenticatedUser(), invoiceId));
     }
 
-    /**
-     * Busca uma transação pelo ID, escopada ao Tenant do usuário logado.
-     */
-    @Override
     @GetMapping("/{id}")
     public ResponseEntity<TransactionResponseDTO> getTransaction(@PathVariable UUID id) {
         return ResponseEntity.ok(service.findById(id, getAuthenticatedUser()));
     }
 
-    /**
-     * Cria uma ou múltiplas transações (caso seja parcelado).
-     * Retorna HTTP 201 e a lista dos itens criados.
-     */
-    @Override
     @PostMapping
     public ResponseEntity<List<TransactionResponseDTO>> createTransaction(
             @RequestBody @Valid TransactionRequestDTO transactionRequestDTO) {
@@ -59,7 +45,6 @@ public class TransactionController implements TransactionsApi {
         return ResponseEntity.status(HttpStatus.CREATED).body(newTransactions);
     }
 
-    @Override
     @PutMapping("/{id}")
     public ResponseEntity<TransactionResponseDTO> updateTransaction(
             @PathVariable UUID id,
@@ -67,7 +52,6 @@ public class TransactionController implements TransactionsApi {
         return ResponseEntity.ok(service.update(id, transactionUpdateDTO, getAuthenticatedUser()));
     }
 
-    @Override
     @DeleteMapping("/{id}")
     public ResponseEntity<DeleteInstallmentResultDTO> deleteTransaction(
             @PathVariable UUID id,
@@ -76,8 +60,6 @@ public class TransactionController implements TransactionsApi {
         return ResponseEntity.ok(result);
     }
 
-    // Obtém o usuário autenticado via SecurityContextHolder em vez de @AuthenticationPrincipal,
-    // pois a interface OpenAPI não inclui esse parâmetro extra nas assinaturas dos métodos.
     private User getAuthenticatedUser() {
         return (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     }
