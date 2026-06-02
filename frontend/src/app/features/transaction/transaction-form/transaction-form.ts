@@ -23,9 +23,9 @@ import { TransfersService } from '../../../core/api/transfers/transfers.service'
 import { CategoriesService } from '../../../core/api/categories/categories.service';
 import { AccountsService } from '../../../core/api/accounts/accounts.service';
 import { CategoryResponseDTO, AccountResponse } from '../../../core/api/fintechSaaSAPI.schemas';
-import { buildInstallmentPreview } from './installment-preview';
+import { buildInstallmentPreview, CreditCardPreviewConfig } from './installment-preview';
 export { buildInstallmentPreview } from './installment-preview';
-export type { InstallmentPreviewRow } from './installment-preview';
+export type { InstallmentPreviewRow, CreditCardPreviewConfig } from './installment-preview';
 
 interface TransactionCategoryOption {
   id: string;
@@ -98,13 +98,21 @@ export class TransactionForm implements OnInit {
   // Sinais derivados dos FormControls para reatividade em Zoneless
   private amountSignal = toSignal(this.form.controls.amount.valueChanges, { initialValue: this.form.controls.amount.value ?? 0 });
   private installmentsSignal = toSignal(this.form.controls.totalInstallments.valueChanges, { initialValue: this.form.controls.totalInstallments.value ?? 1 });
+  private accountIdSignal = toSignal(this.form.controls.accountId.valueChanges, { initialValue: this.form.controls.accountId.value });
 
   installmentPreview = computed(() => {
     if (!this.isInstallment()) return [];
     const amount = this.amountSignal() ?? 0;
     const installments = this.installmentsSignal() ?? 1;
     const date = this.form.controls.date.value ?? new Date();
-    return buildInstallmentPreview(amount, installments, date, this.valueMode());
+
+    const selectedAccount = this.accounts().find(a => a.id === this.accountIdSignal());
+    const creditCard: CreditCardPreviewConfig | undefined =
+      selectedAccount?.type === 'CREDIT_CARD' && selectedAccount.creditCardDetails
+        ? { closingDay: selectedAccount.creditCardDetails.closingDay, dueDay: selectedAccount.creditCardDetails.dueDay }
+        : undefined;
+
+    return buildInstallmentPreview(amount, installments, date, this.valueMode(), creditCard);
   });
 
   ngOnInit(): void {
