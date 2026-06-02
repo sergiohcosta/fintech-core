@@ -22,6 +22,15 @@ export const TransactionStatus = {
   CANCELLED: 'CANCELLED',
 } as const;
 
+export type InvoiceStatus = typeof InvoiceStatus[keyof typeof InvoiceStatus];
+
+
+export const InvoiceStatus = {
+  OPEN: 'OPEN',
+  CLOSED: 'CLOSED',
+  PAID: 'PAID',
+} as const;
+
 export type CardBrand = typeof CardBrand[keyof typeof CardBrand];
 
 
@@ -148,6 +157,25 @@ export interface TransactionResponseDTO {
   installmentNumber?: number | null;
   /** @nullable */
   totalInstallments?: number | null;
+  /** @nullable */
+  invoiceId?: string | null;
+  /** @nullable */
+  invoiceDueDate?: string | null;
+  invoiceStatus?: InvoiceStatus | null;
+}
+
+export interface InvoiceResponseDTO {
+  id: string;
+  accountId: string;
+  accountName: string;
+  referenceMonth: number;
+  referenceYear: number;
+  label: string;
+  closingDate: string;
+  dueDate: string;
+  status: InvoiceStatus;
+  totalAmount: number;
+  transactionCount: number;
 }
 
 export type DeleteInstallmentScope = typeof DeleteInstallmentScope[keyof typeof DeleteInstallmentScope];
@@ -329,6 +357,10 @@ export type ListCategoriesParams = {
 includeArchived?: boolean;
 };
 
+export type ListTransactionsParams = {
+invoiceId?: string;
+};
+
 export type DeleteTransactionParams = {
 scope?: DeleteInstallmentScope;
 };
@@ -338,5 +370,9 @@ export type GetDashboardSummaryParams = {
  * Mês no formato yyyy-MM
  */
 month: string;
+};
+
+export type ListInvoicesParams = {
+accountId: string;
 };
 
