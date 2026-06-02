@@ -87,6 +87,17 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             @Param("tenantId") UUID tenantId
     );
 
+    @Query("""
+            SELECT COALESCE(SUM(t.amount), 0)
+            FROM Transaction t
+            WHERE t.invoice = :invoice AND t.status <> :excluded
+            """)
+    BigDecimal sumAmountByInvoice(
+            @Param("invoice") Invoice invoice,
+            @Param("excluded") TransactionStatus excluded);
+
+    long countByInvoice(Invoice invoice);
+
     // COALESCE garante 0 quando não há transações no período (SUM de conjunto vazio = null no SQL)
     @Query("""
             SELECT COALESCE(SUM(t.amount), 0)
