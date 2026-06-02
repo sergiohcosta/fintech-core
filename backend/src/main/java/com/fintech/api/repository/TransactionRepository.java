@@ -26,7 +26,9 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
 
     List<Transaction> findByTransferIdAndTenant(UUID transferId, Tenant tenant);
 
-    // Usado na listagem — evita N+1 para category, account, installmentGroup e invoice
+    // Usado na listagem — evita N+1 para category, account, installmentGroup e invoice.
+    // Ordenação final (por mês de referência vs. data da transação) é feita em memória
+    // no TransactionService, pois JPQL não computa LocalDate.of(referenceYear, referenceMonth, 1).
     @Query("""
             SELECT t FROM Transaction t
             LEFT JOIN FETCH t.installmentGroup

@@ -31,6 +31,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -53,7 +54,20 @@ public class TransactionService {
                     .stream().map(TransactionResponseDTO::fromEntity).toList();
         }
         return repository.findAllByTenantWithDetails(user.getTenant())
-                .stream().map(TransactionResponseDTO::fromEntity).toList();
+                .stream()
+                .sorted(Comparator.comparing(this::effectiveSortDate, Comparator.reverseOrder()))
+                .map(TransactionResponseDTO::fromEntity)
+                .toList();
+    }
+
+    // Para cartão de crédito, a posição na linha do tempo é o dueDate da fatura:
+    // é quando o valor será cobrado de fato. Para demais contas, é a data da transação.
+    private LocalDate effectiveSortDate(Transaction t) {
+        Invoice invoice = t.getInvoice();
+        if (invoice != null) {
+            return invoice.getDueDate();
+        }
+        return t.getDate();
     }
 
     @Transactional(readOnly = true)
