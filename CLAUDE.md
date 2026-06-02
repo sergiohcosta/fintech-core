@@ -212,10 +212,25 @@ npm start
 - **Gerenciamento de transações parceladas** (2026-06-02):
   - Migration V8: tabela `installment_groups` + FK nullable em `transactions`
   - `TransactionService.create()` cria `InstallmentGroup` ao parcelar
-  - `DELETE /api/transactions/{id}?scope=SINGLE|THIS_AND_NEXT|ALL` com proteção de parcelas pagas
+  - `DELETE /api/transactions/{id}?scope=SINGLE|THIS_AND_NEXT|ALL` com proteção de parcelas paidas
   - `PUT /api/transactions/{id}` com `propagate: string[]` para propagar campos a parcelas futuras pendentes
   - `InstallmentGroupService` + `InstallmentGroupController` (list, get, delete, patch)
-  - Frontend: listagem com grupos colapsáveis + progress bar; `DeleteInstallmentDialog`; formulário com toggle parcelamento + preview live + propagação na edição
+  - Frontend: cada parcela como linha individual na listagem (não mais grupo colapsável); expandir linha exibe detalhes do grupo (progress bar, pagas/total, botão excluir pendentes); `DeleteInstallmentDialog`; formulário com toggle parcelamento + preview live + propagação na edição
+- **Fatura (Invoice) para cartão de crédito** (2026-06-02):
+  - Migration V9: tabela `invoices` + FK nullable `invoice_id` em `transactions`
+  - Ciclo de vida: `OPEN → CLOSED → PAID`; criação lazy na primeira transação do período (`getOrCreate`)
+  - `closingDay` / `dueDay`: compras até o dia de fechamento → fatura do mês corrente; após → próximo mês. `dueDay >= closingDay` → vencimento no mesmo mês; caso contrário → mês seguinte
+  - Parcelas de cartão: todas com `date = data da compra`; cada uma associada à fatura do seu mês (`invoiceMonth.plusMonths(i)`)
+  - Dashboard: queries usam `invoice.dueDate` como referência de período para transações de cartão, `t.date` para as demais
+  - `InvoiceController`: `GET /api/invoices?accountId=`, `GET /api/invoices/{id}`, `POST /{id}/close`, `POST /{id}/pay`
+  - Frontend: chip de fatura na listagem de transações; preview de parcelas exibe mês da fatura e vencimento
+- **Ordenação e exibição de datas na listagem de transações** (2026-06-02):
+  - **Regra de sort** (`TransactionService.effectiveSortDate()`): parcelas de cartão → `invoice.dueDate`; todas as demais → `t.date`
+  - **Regra de exibição da coluna "Data"**:
+    - Parcela de cartão (`installmentGroupId != null`): exibe `invoiceDueDate` — todas as parcelas têm a mesma data de compra; o `dueDate` é o que as distingue e é coerente com a posição na lista
+    - Transação avulsa de cartão (`installmentGroupId == null`, mesmo com fatura): exibe `t.date` — data de compra é única e relevante
+    - Qualquer transação de conta regular: exibe `t.date`
+  - Rationale: `t.date` de parcelas de cartão é sempre a data da compra (idêntica em todas as parcelas do grupo); o `dueDate` distribui cada parcela no mês em que impacta o orçamento. Para transações avulsas (incluindo avulsas de cartão), a data real da compra é a informação relevante.
 
 **Próximos passos:**
 - Filtros na listagem de transações (por período, tipo, status, conta)
