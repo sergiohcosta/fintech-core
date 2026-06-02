@@ -6,6 +6,7 @@ import com.fintech.api.dto.installment.DeleteInstallmentResultDTO;
 import com.fintech.api.dto.transaction.TransactionRequestDTO;
 import com.fintech.api.dto.transaction.TransactionResponseDTO;
 import com.fintech.api.dto.transaction.TransactionUpdateDTO;
+import com.fintech.api.openapi.TransactionsApi;
 import com.fintech.api.repository.UserRepository;
 import com.fintech.api.service.TransactionService;
 import jakarta.validation.Valid;
@@ -21,11 +22,12 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/transactions")
 @RequiredArgsConstructor
-public class TransactionController {
+public class TransactionController implements TransactionsApi {
 
     private final TransactionService service;
     private final UserRepository userRepository;
 
+    @Override
     @GetMapping
     public ResponseEntity<List<TransactionResponseDTO>> listTransactions(
             @RequestParam(value = "invoiceId", required = false) UUID invoiceId) {

@@ -30,6 +30,10 @@ components:
       type: string
       enum: [PENDING, PAID, CANCELLED]
 
+    InvoiceStatus:
+      type: string
+      enum: [OPEN, CLOSED, PAID]
+
     CardBrand:
       type: string
       enum: [VISA, MASTERCARD, ELO, AMEX, HIPERCARD, OTHER]
@@ -257,6 +261,53 @@ components:
         totalInstallments:
           type: integer
           nullable: true
+        invoiceId:
+          type: string
+          format: uuid
+          nullable: true
+        invoiceDueDate:
+          type: string
+          format: date
+          nullable: true
+        invoiceStatus:
+          $ref: '#/components/schemas/InvoiceStatus'
+          nullable: true
+
+    # --- Invoices ---
+
+    InvoiceResponseDTO:
+      type: object
+      required: [id, accountId, accountName, referenceMonth, referenceYear, label, closingDate, dueDate, status, totalAmount, transactionCount]
+      properties:
+        id:
+          type: string
+          format: uuid
+        accountId:
+          type: string
+          format: uuid
+        accountName:
+          type: string
+        referenceMonth:
+          type: integer
+        referenceYear:
+          type: integer
+        label:
+          type: string
+          example: "Janeiro/2027"
+        closingDate:
+          type: string
+          format: date
+        dueDate:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/InvoiceStatus'
+        totalAmount:
+          type: number
+          format: double
+        transactionCount:
+          type: integer
+          format: int64
 
     DeleteInstallmentScope:
       type: string
@@ -722,6 +773,13 @@ paths:
     get:
       tags: [transactions]
       operationId: listTransactions
+      parameters:
+        - name: invoiceId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
       responses:
         '200':
           description: Lista de transações do tenant
@@ -1052,3 +1110,83 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/InstallmentGroupResponseDTO'
+
+  # --- Invoices ---
+
+  /api/invoices:
+    get:
+      tags: [invoices]
+      operationId: listInvoices
+      parameters:
+        - name: accountId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Lista de faturas da conta
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InvoiceResponseDTO'
+
+  /api/invoices/{id}:
+    get:
+      tags: [invoices]
+      operationId: getInvoice
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detalhe da fatura
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceResponseDTO'
+
+  /api/invoices/{id}/close:
+    post:
+      tags: [invoices]
+      operationId: closeInvoice
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Fatura fechada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceResponseDTO'
+
+  /api/invoices/{id}/pay:
+    post:
+      tags: [invoices]
+      operationId: payInvoice
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Fatura paga
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceResponseDTO'

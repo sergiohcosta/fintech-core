@@ -5,6 +5,7 @@ import com.fintech.api.domain.invoice.Invoice;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.invoice.InvoiceResponseDTO;
 import com.fintech.api.exception.EntityNotFoundException;
+import com.fintech.api.openapi.InvoicesApi;
 import com.fintech.api.repository.AccountRepository;
 import com.fintech.api.repository.TransactionRepository;
 import com.fintech.api.service.InvoiceService;
@@ -20,7 +21,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/invoices")
 @RequiredArgsConstructor
-public class InvoiceController {
+public class InvoiceController implements InvoicesApi {
 
     private final InvoiceService invoiceService;
     private final AccountRepository accountRepository;
