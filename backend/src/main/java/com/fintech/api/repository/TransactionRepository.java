@@ -2,6 +2,8 @@ package com.fintech.api.repository;
 
 import com.fintech.api.domain.enums.TransactionStatus;
 import com.fintech.api.domain.enums.TransactionType;
+import com.fintech.api.domain.installment.InstallmentGroup;
+import com.fintech.api.domain.invoice.Invoice;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.transaction.Transaction;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -24,6 +26,52 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
 
     List<Transaction> findByTransferIdAndTenant(UUID transferId, Tenant tenant);
 
+    // Usado na listagem — evita N+1 para category, account, installmentGroup e invoice.
+    // Ordenação final (por mês de referência vs. data da transação) é feita em memória
+    // no TransactionService, pois JPQL não computa LocalDate.of(referenceYear, referenceMonth, 1).
+    @Query("""
+            SELECT t FROM Transaction t
+            LEFT JOIN FETCH t.installmentGroup
+            LEFT JOIN FETCH t.category
+            LEFT JOIN FETCH t.account
+            LEFT JOIN FETCH t.invoice
+            WHERE t.tenant = :tenant
+            ORDER BY t.date DESC
+            """)
+    List<Transaction> findAllByTenantWithDetails(@Param("tenant") Tenant tenant);
+
+    @Query("""
+            SELECT t FROM Transaction t
+            LEFT JOIN FETCH t.installmentGroup
+            LEFT JOIN FETCH t.category
+            LEFT JOIN FETCH t.account
+            WHERE t.tenant = :tenant AND t.invoice = :invoice
+            ORDER BY t.date DESC
+            """)
+    List<Transaction> findAllByTenantAndInvoiceWithDetails(
+            @Param("tenant") Tenant tenant,
+            @Param("invoice") Invoice invoice);
+
+    // Todas as parcelas do grupo, ordenadas por número da parcela
+    List<Transaction> findByInstallmentGroupOrderByInstallmentNumberAsc(InstallmentGroup group);
+
+    // Parcelas a partir de um número (inclusive), para escopo THIS_AND_NEXT no delete
+    List<Transaction> findByInstallmentGroupAndInstallmentNumberGreaterThanEqualOrderByInstallmentNumberAsc(
+            InstallmentGroup group, int installmentNumber);
+
+    // Parcelas futuras com status PENDING — usadas na propagação do update
+    @Query("""
+            SELECT t FROM Transaction t
+            WHERE t.installmentGroup = :group
+              AND t.installmentNumber > :number
+              AND t.status = :status
+            ORDER BY t.installmentNumber ASC
+            """)
+    List<Transaction> findFuturePendingInGroup(
+            @Param("group") InstallmentGroup group,
+            @Param("number") int installmentNumber,
+            @Param("status") TransactionStatus status);
+
     // Contagem de transações vinculadas a qualquer uma das categorias informadas (subtree)
     long countByCategoryIdInAndTenantId(Collection<UUID> categoryIds, UUID tenantId);
 
@@ -41,14 +89,30 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             @Param("tenantId") UUID tenantId
     );
 
-    // COALESCE garante 0 quando não há transações no período (SUM de conjunto vazio = null no SQL)
+    @Query("""
+            SELECT COALESCE(SUM(t.amount), 0)
+            FROM Transaction t
+            WHERE t.invoice = :invoice AND t.status <> :excluded
+            """)
+    BigDecimal sumAmountByInvoice(
+            @Param("invoice") Invoice invoice,
+            @Param("excluded") TransactionStatus excluded);
+
+    long countByInvoice(Invoice invoice);
+
+    // Para transações de cartão, usa invoice.dueDate como referência de mês.
+    // Para demais contas (sem fatura), usa transaction.date.
     @Query("""
             SELECT COALESCE(SUM(t.amount), 0)
             FROM Transaction t
             WHERE t.tenant = :tenant
               AND t.type = :type
               AND t.status <> :excluded
-              AND t.date BETWEEN :start AND :end
+              AND (
+                (t.invoice IS NOT NULL AND t.invoice.dueDate BETWEEN :start AND :end)
+                OR
+                (t.invoice IS NULL AND t.date BETWEEN :start AND :end)
+              )
             """)
     BigDecimal sumByTenantAndTypeAndPeriod(
             @Param("tenant") Tenant tenant,
@@ -56,5 +120,41 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             @Param("excluded") TransactionStatus excluded,
             @Param("start") LocalDate start,
             @Param("end") LocalDate end
+    );
+
+    @Query("""
+            SELECT COUNT(t)
+            FROM Transaction t
+            WHERE t.tenant = :tenant
+              AND t.status <> :excluded
+              AND (
+                (t.invoice IS NOT NULL AND t.invoice.dueDate BETWEEN :start AND :end)
+                OR
+                (t.invoice IS NULL AND t.date BETWEEN :start AND :end)
+              )
+            """)
+    long countByTenantAndPeriod(
+            @Param("tenant") Tenant tenant,
+            @Param("excluded") TransactionStatus excluded,
+            @Param("start") LocalDate start,
+            @Param("end") LocalDate end
+    );
+
+    // Saldo líquido acumulado: soma income e subtrai expense de TODAS as transações
+    // não canceladas, filtradas pelas contas marcadas como countInLiquidBalance.
+    // Sem filtro de período — representa a posição financeira atual.
+    @Query("""
+            SELECT COALESCE(SUM(
+                CASE WHEN t.type = :incomeType THEN t.amount ELSE -t.amount END
+            ), 0)
+            FROM Transaction t
+            WHERE t.tenant = :tenant
+              AND t.status <> :excluded
+              AND t.account.countInLiquidBalance = true
+            """)
+    BigDecimal sumNetLiquidBalanceByTenant(
+            @Param("tenant") Tenant tenant,
+            @Param("incomeType") TransactionType incomeType,
+            @Param("excluded") TransactionStatus excluded
     );
 }

@@ -49,6 +49,19 @@ npm start
 
 ---
 
+## 🔄 Sincronização (Neon -> Local)
+
+Para manter o banco de dados local sincronizado com a Neon.tech (fonte da verdade):
+
+1.  **Configuração:** Crie um arquivo \`.env\` ou \`.env.local\` na raiz do projeto baseado no \`scripts/.env.template\` e preencha a variável \`DATABASE_URL_NEON\` com a string de conexão da Neon.
+2.  **Execução:**
+    \`\`\`bash
+    ./scripts/sync-db.sh
+    \`\`\`
+    *Nota: Certifique-se de que o Docker está rodando e que você tem \`pg_dump\` instalado localmente.*
+
+---
+
 ## 📏 Development Conventions
 
 ### Backend Guidelines

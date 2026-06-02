@@ -59,6 +59,7 @@ export class DashboardComponent {
     switchMap(month => this.dashboardService.getDashboardSummary({ month }))
   );
   summary = toSignal(this.summary$, { initialValue: null });
+  hasTransactions = computed(() => (this.summary()?.transactionCount ?? 0) > 0);
 
   // Transações recentes: reaproveitamos o service existente, exibimos as 5 primeiras
   recentTransactions = toSignal(this.transactionService.listTransactions(), { initialValue: [] });

@@ -1,4 +1,5 @@
-import { Component, inject, OnInit, signal, ViewChild } from '@angular/core';
+import { Component, inject, OnInit, signal, computed, effect, ViewChild } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
@@ -12,12 +13,20 @@ import { MatDatepicker, MatDatepickerModule } from '@angular/material/datepicker
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatRadioModule } from '@angular/material/radio';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 import { TransactionsService } from '../../../core/api/transactions/transactions.service';
 import { TransfersService } from '../../../core/api/transfers/transfers.service';
 import { CategoriesService } from '../../../core/api/categories/categories.service';
 import { AccountsService } from '../../../core/api/accounts/accounts.service';
 import { CategoryResponseDTO, AccountResponse } from '../../../core/api/fintechSaaSAPI.schemas';
+import { buildInstallmentPreview, CreditCardPreviewConfig } from './installment-preview';
+export { buildInstallmentPreview } from './installment-preview';
+export type { InstallmentPreviewRow, CreditCardPreviewConfig } from './installment-preview';
 
 interface TransactionCategoryOption {
   id: string;
@@ -43,6 +52,11 @@ interface TransactionCategoryOption {
     MatNativeDateModule,
     MatSnackBarModule,
     MatTooltipModule,
+    MatSlideToggleModule,
+    MatRadioModule,
+    MatCheckboxModule,
+    MatDividerModule,
+    MatProgressSpinnerModule,
   ],
   templateUrl: './transaction-form.html',
   styleUrl: './transaction-form.scss'
@@ -57,7 +71,8 @@ export class TransactionForm implements OnInit {
   private accountService = inject(AccountsService);
   private snackBar = inject(MatSnackBar);
 
-  @ViewChild('picker') private picker!: MatDatepicker<Date>;
+  @ViewChild('picker') private picker?: MatDatepicker<Date>;
+  @ViewChild('transferPicker') private transferPicker?: MatDatepicker<Date>;
 
   saving = signal(false);
   isEditMode = signal(false);
@@ -66,6 +81,9 @@ export class TransactionForm implements OnInit {
   accounts = signal<AccountResponse[]>([]);
   amountDisplay = signal('');
   mode = signal<'TRANSACTION' | 'TRANSFER'>('TRANSACTION');
+  isInstallment = signal(false);
+  valueMode = signal<'total' | 'per-installment'>('total');
+  propagateFields = signal<Set<string>>(new Set());
 
   form = this.fb.group({
     description: ['', [Validators.required, Validators.minLength(2)]],
@@ -79,6 +97,42 @@ export class TransactionForm implements OnInit {
     fromAccountId: [null as string | null],
     toAccountId: [null as string | null]
   }, { validators: this.differentAccountsValidator });
+
+  // Sinais derivados dos FormControls para reatividade em Zoneless
+  private amountSignal = toSignal(this.form.controls.amount.valueChanges, { initialValue: this.form.controls.amount.value ?? 0 });
+  private installmentsSignal = toSignal(this.form.controls.totalInstallments.valueChanges, { initialValue: this.form.controls.totalInstallments.value ?? 1 });
+  private accountIdSignal = toSignal(this.form.controls.accountId.valueChanges, { initialValue: this.form.controls.accountId.value });
+  private typeSignal = toSignal(this.form.controls.type.valueChanges, { initialValue: this.form.controls.type.value ?? 'EXPENSE' });
+
+  formCardClass = computed(() => ({
+    'card-expense': this.mode() === 'TRANSACTION' && this.typeSignal() === 'EXPENSE',
+    'card-income':  this.mode() === 'TRANSACTION' && this.typeSignal() === 'INCOME',
+    'card-transfer': this.mode() === 'TRANSFER',
+  }));
+
+  isCreditCard = computed(() =>
+    this.accounts().find(a => a.id === this.accountIdSignal())?.type === 'CREDIT_CARD'
+  );
+
+  // Quando o usuário troca para uma conta que não é cartão, limpa o estado de parcelamento
+  private readonly _resetInstallmentOnAccountChange = effect(() => {
+    if (!this.isCreditCard()) this.isInstallment.set(false);
+  });
+
+  installmentPreview = computed(() => {
+    if (!this.isInstallment()) return [];
+    const amount = this.amountSignal() ?? 0;
+    const installments = this.installmentsSignal() ?? 1;
+    const date = this.form.controls.date.value ?? new Date();
+
+    const selectedAccount = this.accounts().find(a => a.id === this.accountIdSignal());
+    const creditCard: CreditCardPreviewConfig | undefined =
+      selectedAccount?.type === 'CREDIT_CARD' && selectedAccount.creditCardDetails
+        ? { closingDay: selectedAccount.creditCardDetails.closingDay, dueDay: selectedAccount.creditCardDetails.dueDay }
+        : undefined;
+
+    return buildInstallmentPreview(amount, installments, date, this.valueMode(), creditCard);
+  });
 
   ngOnInit(): void {
     this.categoryService.listCategories({ includeArchived: true }).subscribe({
@@ -139,6 +193,18 @@ export class TransactionForm implements OnInit {
     descCtrl.updateValueAndValidity();
   }
 
+  togglePropagate(field: string): void {
+    this.propagateFields.update(set => {
+      const next = new Set(set);
+      next.has(field) ? next.delete(field) : next.add(field);
+      return next;
+    });
+  }
+
+  isPropagating(field: string): boolean {
+    return this.propagateFields().has(field);
+  }
+
   // --- Máscara de moeda (#17) ---
 
   private formatAmount(value: number): string {
@@ -188,7 +254,7 @@ export class TransactionForm implements OnInit {
   onDateBlur(event: FocusEvent): void {
     const relatedTarget = event.relatedTarget as HTMLElement | null;
     if (relatedTarget?.closest('mat-datepicker-toggle')) return;
-    if (this.picker?.opened) return;
+    if (this.picker?.opened || this.transferPicker?.opened) return;
 
     const input = event.target as HTMLInputElement;
     const val = input.value;
@@ -209,6 +275,16 @@ export class TransactionForm implements OnInit {
       { id: c.id, name: c.name, level, archived: c.archived },
       ...this.flattenCategories(c.children ?? [], level + 1)
     ]);
+  }
+
+  getAccountIcon(type: string): string {
+    const icons: Record<string, string> = {
+      CHECKING: 'account_balance_wallet',
+      CREDIT_CARD: 'credit_card',
+      INVESTMENT: 'savings',
+      CASH: 'payments',
+    };
+    return icons[type] ?? 'account_balance';
   }
 
   private toDateString(date: Date): string {
@@ -237,7 +313,8 @@ export class TransactionForm implements OnInit {
         type: raw.type as 'INCOME' | 'EXPENSE',
         status: raw.status as 'PENDING' | 'PAID' | 'CANCELLED' ?? undefined,
         categoryId: raw.categoryId ?? undefined,
-        accountId: raw.accountId!
+        accountId: raw.accountId!,
+        propagate: this.propagateFields().size > 0 ? Array.from(this.propagateFields()) : undefined
       }).subscribe({
         next: () => {
           this.snackBar.open('Transação atualizada com sucesso!', 'OK', { duration: 3000 });
@@ -271,15 +348,20 @@ export class TransactionForm implements OnInit {
       return;
     }
 
+    const rawAmount = raw.amount!;
+    const totalAmount = this.isInstallment() && this.valueMode() === 'per-installment'
+      ? rawAmount * (raw.totalInstallments ?? 1)
+      : rawAmount;
+
     this.transactionService.createTransaction({
       description: raw.description!,
-      amount: raw.amount!,
+      amount: totalAmount,
       date: this.toDateString(raw.date as Date),
       type: raw.type as 'INCOME' | 'EXPENSE',
       status: raw.status as 'PENDING' | 'PAID' | 'CANCELLED' ?? undefined,
       categoryId: raw.categoryId ?? undefined,
       accountId: raw.accountId!,
-      totalInstallments: raw.totalInstallments ?? 1
+      totalInstallments: this.isInstallment() ? (raw.totalInstallments ?? 1) : 1
     }).subscribe({
       next: (created) => {
         const msg = created.length > 1

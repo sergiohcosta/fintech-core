@@ -42,6 +42,22 @@ table {
   }
 }
 
+.installment-row {
+  cursor: pointer;
+
+  &:hover {
+    background-color: rgba(25, 118, 210, 0.04);
+  }
+}
+
+.expanded-row {
+  background-color: rgba(25, 118, 210, 0.06);
+
+  &:hover {
+    background-color: rgba(25, 118, 210, 0.08);
+  }
+}
+
 .description-text {
   font-weight: 500;
   font-size: 0.95rem;
@@ -91,6 +107,17 @@ table {
 .status-paid      { background: #e8f5e9; color: #2e7d32; }
 .status-cancelled { background: #f5f5f5; color: #757575; }
 
+.actions-group {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.expand-active {
+  color: var(--mat-sys-primary, #1976d2);
+}
+
 .empty-state {
   text-align: center;
   padding: 3rem !important;
@@ -109,6 +136,98 @@ table {
     font-size: 1rem;
   }
 }
+
+// --- Linha de detalhe expandível ---
+
+.detail-row td {
+  padding: 0 !important;
+  border-bottom: none;
+}
+
+.detail-cell {
+  padding: 0 !important;
+}
+
+.installment-detail-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 24px 16px 32px;
+  background: rgba(25, 118, 210, 0.04);
+  border-left: 4px solid var(--mat-sys-primary, #1976d2);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.detail-group-info {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+
+  .detail-group-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+
+  .detail-group-meta {
+    font-size: 0.8rem;
+    color: rgba(0, 0, 0, 0.6);
+  }
+}
+
+.detail-progress {
+  height: 6px;
+  border-radius: 3px;
+  max-width: 320px;
+}
+
+.detail-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.detail-meta-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: rgba(0, 0, 0, 0.6);
+
+  .chip-icon {
+    font-size: 14px;
+    height: 14px;
+    width: 14px;
+    vertical-align: middle;
+  }
+}
+
+.delete-group-btn {
+  margin-left: auto;
+  font-size: 0.8rem;
+  height: 32px;
+  line-height: 32px;
+}
+
+// --- Conta + fatura ---
+
+.account-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.invoice-chip {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  width: fit-content;
+  font-weight: 500;
+}
+
+.invoice-open   { background: #e0e0e0; color: #555; }
+.invoice-closed { background: #fff3e0; color: #e65100; }
+.invoice-paid   { background: #e8f5e9; color: #2e7d32; }
 
 @media (max-width: 768px) {
   .page-container { padding: 1rem; }

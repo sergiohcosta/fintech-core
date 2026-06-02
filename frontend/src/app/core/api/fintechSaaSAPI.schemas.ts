@@ -22,6 +22,15 @@ export const TransactionStatus = {
   CANCELLED: 'CANCELLED',
 } as const;
 
+export type InvoiceStatus = typeof InvoiceStatus[keyof typeof InvoiceStatus];
+
+
+export const InvoiceStatus = {
+  OPEN: 'OPEN',
+  CLOSED: 'CLOSED',
+  PAID: 'PAID',
+} as const;
+
 export type CardBrand = typeof CardBrand[keyof typeof CardBrand];
 
 
@@ -116,6 +125,8 @@ export interface TransactionUpdateDTO {
   categoryId?: string | null;
   /** @nullable */
   accountId?: string | null;
+  /** @nullable */
+  propagate?: string[] | null;
 }
 
 export interface TransactionResponseDTO {
@@ -138,6 +149,79 @@ export interface TransactionResponseDTO {
   accountId?: string | null;
   /** @nullable */
   transferId?: string | null;
+  /** @nullable */
+  installmentGroupId?: string | null;
+  /** @nullable */
+  installmentGroupDescription?: string | null;
+  /** @nullable */
+  installmentNumber?: number | null;
+  /** @nullable */
+  totalInstallments?: number | null;
+  /** @nullable */
+  invoiceId?: string | null;
+  /** @nullable */
+  invoiceDueDate?: string | null;
+  invoiceStatus?: InvoiceStatus | null;
+}
+
+export interface InvoiceResponseDTO {
+  id: string;
+  accountId: string;
+  accountName: string;
+  referenceMonth: number;
+  referenceYear: number;
+  label: string;
+  closingDate: string;
+  dueDate: string;
+  status: InvoiceStatus;
+  totalAmount: number;
+  transactionCount: number;
+}
+
+export type DeleteInstallmentScope = typeof DeleteInstallmentScope[keyof typeof DeleteInstallmentScope];
+
+
+export const DeleteInstallmentScope = {
+  SINGLE: 'SINGLE',
+  THIS_AND_NEXT: 'THIS_AND_NEXT',
+  ALL: 'ALL',
+} as const;
+
+export interface DeleteInstallmentResultDTO {
+  deleted: number;
+  skippedPaid: number;
+}
+
+export interface InstallmentGroupPatchDTO {
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  categoryId?: string | null;
+  /** @nullable */
+  accountId?: string | null;
+  /** @nullable */
+  installmentAmount?: number | null;
+  status?: TransactionStatus | null;
+  fields?: string[];
+}
+
+export interface InstallmentGroupResponseDTO {
+  id: string;
+  description: string;
+  totalAmount: number;
+  installmentAmount: number;
+  totalInstallments: number;
+  paidInstallments: number;
+  pendingInstallments: number;
+  /** @nullable */
+  nextDueDate?: string | null;
+  /** @nullable */
+  categoryName?: string | null;
+  /** @nullable */
+  categoryId?: string | null;
+  accountName: string;
+  accountId?: string;
+  transactions: TransactionResponseDTO[];
 }
 
 export interface TransferRequest {
@@ -167,6 +251,10 @@ export interface DashboardSummaryDTO {
   totalIncome?: number;
   totalExpense?: number;
   balance?: number;
+  /** Quantidade de transações não canceladas no período. Zero indica mês sem movimentação. */
+  transactionCount?: number;
+  /** Saldo líquido acumulado (todas as contas com countInLiquidBalance=true, sem filtro de período). */
+  totalAccountBalance?: number;
 }
 
 export type AccountType = typeof AccountType[keyof typeof AccountType];
@@ -269,10 +357,22 @@ export type ListCategoriesParams = {
 includeArchived?: boolean;
 };
 
+export type ListTransactionsParams = {
+invoiceId?: string;
+};
+
+export type DeleteTransactionParams = {
+scope?: DeleteInstallmentScope;
+};
+
 export type GetDashboardSummaryParams = {
 /**
  * Mês no formato yyyy-MM
  */
 month: string;
+};
+
+export type ListInvoicesParams = {
+accountId: string;
 };
 
