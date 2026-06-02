@@ -165,3 +165,21 @@ table {
   color: rgba(0, 0, 0, 0.4);
   font-size: 0.85rem;
 }
+
+.account-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.invoice-chip {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  width: fit-content;
+  font-weight: 500;
+}
+
+.invoice-open   { background: #e0e0e0; color: #555; }
+.invoice-closed { background: #fff3e0; color: #e65100; }
+.invoice-paid   { background: #e8f5e9; color: #2e7d32; }
