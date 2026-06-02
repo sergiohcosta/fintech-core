@@ -183,6 +183,12 @@
 								<importMapping>TransactionType=com.fintech.api.domain.enums.TransactionType</importMapping>
 								<importMapping>TransactionStatus=com.fintech.api.domain.enums.TransactionStatus</importMapping>
 								<importMapping>CardBrand=com.fintech.api.domain.enums.CardBrand</importMapping>
+								<importMapping>InstallmentGroupResponseDTO=com.fintech.api.dto.installment.InstallmentGroupResponseDTO</importMapping>
+								<importMapping>InstallmentGroupPatchDTO=com.fintech.api.dto.installment.InstallmentGroupPatchDTO</importMapping>
+								<importMapping>DeleteInstallmentResultDTO=com.fintech.api.dto.installment.DeleteInstallmentResultDTO</importMapping>
+								<importMapping>DeleteInstallmentScope=com.fintech.api.domain.enums.DeleteInstallmentScope</importMapping>
+								<importMapping>InvoiceResponseDTO=com.fintech.api.dto.invoice.InvoiceResponseDTO</importMapping>
+								<importMapping>InvoiceStatus=com.fintech.api.domain.enums.InvoiceStatus</importMapping>
 							</importMappings>
 							<configOptions>
 								<interfaceOnly>true</interfaceOnly>

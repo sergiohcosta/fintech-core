@@ -1,0 +1,41 @@
+.installment-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-size: 0.95rem;
+
+  .label-chip {
+    background: rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+    padding: 2px 8px;
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+}
+
+.scope-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.paid-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #fff8e1;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: #5f4000;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: #f9a825;
+    flex-shrink: 0;
+  }
+}
