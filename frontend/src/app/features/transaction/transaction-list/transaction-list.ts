@@ -180,4 +180,20 @@ export class TransactionList implements OnInit {
     const labels: Record<string, string> = { PENDING: 'Pendente', PAID: 'Pago', CANCELLED: 'Cancelado' };
     return labels[status] ?? status;
   }
+
+  invoiceChipClass(status: string | undefined): string {
+    const map: Record<string, string> = {
+      OPEN: 'invoice-open',
+      CLOSED: 'invoice-closed',
+      PAID: 'invoice-paid'
+    };
+    return 'invoice-chip ' + (map[status ?? ''] ?? '');
+  }
+
+  invoiceLabel(t: TransactionResponseDTO | undefined): string | null {
+    if (!t?.invoiceId || !t.invoiceDueDate) return null;
+    const d = new Date(t.invoiceDueDate + 'T00:00:00');
+    const month = d.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
+    return `Fatura ${month}`;
+  }
 }
