@@ -4,3 +4,5 @@
 target/
 *.jar
 .superpowers/
+.env
+.env.local
