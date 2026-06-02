@@ -1,11 +1,14 @@
 package com.fintech.api.service;
 
 import com.fintech.api.domain.account.Account;
+import com.fintech.api.domain.account.CreditCardDetails;
 import com.fintech.api.domain.enums.AccountType;
 import com.fintech.api.domain.enums.DeleteInstallmentScope;
+import com.fintech.api.domain.enums.InvoiceStatus;
 import com.fintech.api.domain.enums.TransactionStatus;
 import com.fintech.api.domain.enums.TransactionType;
 import com.fintech.api.domain.installment.InstallmentGroup;
+import com.fintech.api.domain.invoice.Invoice;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.transaction.Transaction;
 import com.fintech.api.domain.user.User;
@@ -16,6 +19,7 @@ import com.fintech.api.dto.transfer.TransferRequestDTO;
 import com.fintech.api.exception.EntityNotFoundException;
 import com.fintech.api.repository.AccountRepository;
 import com.fintech.api.repository.CategoryRepository;
+import com.fintech.api.repository.CreditCardDetailsRepository;
 import com.fintech.api.repository.InstallmentGroupRepository;
 import com.fintech.api.repository.TransactionRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -43,6 +47,8 @@ class TransactionServiceTest {
     @Mock CategoryRepository categoryRepository;
     @Mock AccountRepository accountRepository;
     @Mock InstallmentGroupRepository installmentGroupRepository;
+    @Mock CreditCardDetailsRepository creditCardDetailsRepository;
+    @Mock InvoiceService invoiceService;
     @InjectMocks TransactionService service;
 
     @Test
@@ -319,6 +325,132 @@ class TransactionServiceTest {
         assertThat(result.skippedPaid()).isEqualTo(1);
     }
 
+    @Test
+    @DisplayName("Cria transação em CREDIT_CARD atribuindo fatura corretamente")
+    void createsCreditCardTransactionWithInvoice() {
+        User user = buildUser();
+        Account account = buildCreditCardAccount(user);
+        CreditCardDetails details = new CreditCardDetails();
+        details.setClosingDay(5);
+        details.setDueDay(15);
+
+        Invoice invoice = Invoice.builder()
+                .id(UUID.randomUUID()).account(account)
+                .referenceYear(2026).referenceMonth(6)
+                .closingDate(LocalDate.of(2026, 6, 5))
+                .dueDate(LocalDate.of(2026, 6, 15))
+                .status(InvoiceStatus.OPEN).build();
+
+        TransactionRequestDTO dto = new TransactionRequestDTO(
+                "Mercado", new BigDecimal("100.00"), LocalDate.of(2026, 6, 3),
+                TransactionType.EXPENSE, null, 1, null, account.getId());
+
+        when(accountRepository.findByIdAndTenant(account.getId(), user.getTenant()))
+                .thenReturn(Optional.of(account));
+        when(creditCardDetailsRepository.findByAccount(account)).thenReturn(Optional.of(details));
+        when(invoiceService.getOrCreate(account, 2026, 6)).thenReturn(invoice);
+        when(repository.save(any(Transaction.class))).thenAnswer(i -> i.getArgument(0));
+
+        List<TransactionResponseDTO> result = service.create(dto, user);
+
+        assertThat(result).hasSize(1);
+        verify(invoiceService).getOrCreate(account, 2026, 6);
+    }
+
+    @Test
+    @DisplayName("Parcelas em CREDIT_CARD têm todas a mesma data de compra mas faturas diferentes")
+    void installmentsOnCreditCardHaveSameDateDifferentInvoices() {
+        User user = buildUser();
+        Account account = buildCreditCardAccount(user);
+        CreditCardDetails details = new CreditCardDetails();
+        details.setClosingDay(5);
+        details.setDueDay(15);
+
+        LocalDate purchaseDate = LocalDate.of(2026, 6, 3);
+
+        TransactionRequestDTO dto = new TransactionRequestDTO(
+                "Notebook", new BigDecimal("3000.00"), purchaseDate,
+                TransactionType.EXPENSE, null, 3, null, account.getId());
+
+        when(accountRepository.findByIdAndTenant(account.getId(), user.getTenant()))
+                .thenReturn(Optional.of(account));
+        when(creditCardDetailsRepository.findByAccount(account)).thenReturn(Optional.of(details));
+        when(installmentGroupRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(invoiceService.getOrCreate(any(), anyInt(), anyInt()))
+                .thenAnswer(i -> Invoice.builder()
+                        .id(UUID.randomUUID()).account(account)
+                        .referenceYear(i.getArgument(1))
+                        .referenceMonth(i.getArgument(2))
+                        .closingDate(LocalDate.of(i.<Integer>getArgument(1), i.<Integer>getArgument(2), 5))
+                        .dueDate(LocalDate.of(i.<Integer>getArgument(1), i.<Integer>getArgument(2), 15))
+                        .status(InvoiceStatus.OPEN).build());
+        when(repository.save(any(Transaction.class))).thenAnswer(i -> i.getArgument(0));
+
+        service.create(dto, user);
+
+        verify(invoiceService).getOrCreate(account, 2026, 6);
+        verify(invoiceService).getOrCreate(account, 2026, 7);
+        verify(invoiceService).getOrCreate(account, 2026, 8);
+    }
+
+    @Test
+    @DisplayName("Compra pós-fechamento em CREDIT_CARD vai para o mês seguinte")
+    void purchaseAfterClosingGoesToNextMonth() {
+        User user = buildUser();
+        Account account = buildCreditCardAccount(user);
+        CreditCardDetails details = new CreditCardDetails();
+        details.setClosingDay(5);
+        details.setDueDay(15);
+
+        LocalDate purchaseDate = LocalDate.of(2026, 6, 8); // APÓS fechamento dia 5
+
+        TransactionRequestDTO dto = new TransactionRequestDTO(
+                "Janta", new BigDecimal("80.00"), purchaseDate,
+                TransactionType.EXPENSE, null, 1, null, account.getId());
+
+        when(accountRepository.findByIdAndTenant(account.getId(), user.getTenant()))
+                .thenReturn(Optional.of(account));
+        when(creditCardDetailsRepository.findByAccount(account)).thenReturn(Optional.of(details));
+        when(invoiceService.getOrCreate(any(), anyInt(), anyInt()))
+                .thenReturn(Invoice.builder().id(UUID.randomUUID()).account(account)
+                        .referenceYear(2026).referenceMonth(7)
+                        .closingDate(LocalDate.of(2026, 7, 5))
+                        .dueDate(LocalDate.of(2026, 7, 15))
+                        .status(InvoiceStatus.OPEN).build());
+        when(repository.save(any(Transaction.class))).thenAnswer(i -> i.getArgument(0));
+
+        service.create(dto, user);
+
+        // Compra do dia 8 (pós-fechamento dia 5) → fatura de julho (mês 7)
+        verify(invoiceService).getOrCreate(account, 2026, 7);
+    }
+
+    @Test
+    @DisplayName("Parcelas em conta não-CREDIT_CARD mantêm date + i meses")
+    void nonCreditCardInstallmentsKeepDatePlusMonths() {
+        User user = buildUser();
+        Account account = buildAccount(user); // CHECKING
+        TransactionRequestDTO dto = new TransactionRequestDTO(
+                "Parcela", new BigDecimal("600.00"), LocalDate.of(2026, 6, 1),
+                TransactionType.EXPENSE, null, 3, null, account.getId());
+
+        when(accountRepository.findByIdAndTenant(account.getId(), user.getTenant()))
+                .thenReturn(Optional.of(account));
+        when(installmentGroupRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(repository.save(any(Transaction.class))).thenAnswer(i -> i.getArgument(0));
+
+        service.create(dto, user);
+
+        ArgumentCaptor<Transaction> captor = ArgumentCaptor.forClass(Transaction.class);
+        verify(repository, times(3)).save(captor.capture());
+        List<Transaction> saved = captor.getAllValues();
+
+        assertThat(saved.get(0).getDate()).isEqualTo(LocalDate.of(2026, 6, 1));
+        assertThat(saved.get(1).getDate()).isEqualTo(LocalDate.of(2026, 7, 1));
+        assertThat(saved.get(2).getDate()).isEqualTo(LocalDate.of(2026, 8, 1));
+        saved.forEach(t -> assertThat(t.getInvoice()).isNull());
+    }
+
     private User buildUser() {
         Tenant tenant = new Tenant();
         tenant.setId(UUID.randomUUID());
@@ -331,6 +463,14 @@ class TransactionServiceTest {
         return Account.builder()
                 .id(UUID.randomUUID())
                 .type(AccountType.CHECKING)
+                .tenant(user.getTenant())
+                .build();
+    }
+
+    private Account buildCreditCardAccount(User user) {
+        return Account.builder()
+                .id(UUID.randomUUID())
+                .type(AccountType.CREDIT_CARD)
                 .tenant(user.getTenant())
                 .build();
     }
