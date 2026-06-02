@@ -3,6 +3,7 @@ package com.fintech.api.repository;
 import com.fintech.api.domain.enums.TransactionStatus;
 import com.fintech.api.domain.enums.TransactionType;
 import com.fintech.api.domain.installment.InstallmentGroup;
+import com.fintech.api.domain.invoice.Invoice;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.transaction.Transaction;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -25,16 +26,29 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
 
     List<Transaction> findByTransferIdAndTenant(UUID transferId, Tenant tenant);
 
-    // Usado na listagem — evita N+1 para category, account e installmentGroup
+    // Usado na listagem — evita N+1 para category, account, installmentGroup e invoice
     @Query("""
             SELECT t FROM Transaction t
             LEFT JOIN FETCH t.installmentGroup
             LEFT JOIN FETCH t.category
             LEFT JOIN FETCH t.account
+            LEFT JOIN FETCH t.invoice
             WHERE t.tenant = :tenant
             ORDER BY t.date DESC
             """)
     List<Transaction> findAllByTenantWithDetails(@Param("tenant") Tenant tenant);
+
+    @Query("""
+            SELECT t FROM Transaction t
+            LEFT JOIN FETCH t.installmentGroup
+            LEFT JOIN FETCH t.category
+            LEFT JOIN FETCH t.account
+            WHERE t.tenant = :tenant AND t.invoice = :invoice
+            ORDER BY t.date DESC
+            """)
+    List<Transaction> findAllByTenantAndInvoiceWithDetails(
+            @Param("tenant") Tenant tenant,
+            @Param("invoice") Invoice invoice);
 
     // Todas as parcelas do grupo, ordenadas por número da parcela
     List<Transaction> findByInstallmentGroupOrderByInstallmentNumberAsc(InstallmentGroup group);
