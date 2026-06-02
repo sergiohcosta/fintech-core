@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildDisplayRows, GroupRow, DisplayRow } from './transaction-list';
+import { buildDisplayRows, GroupRow, DisplayRow } from './transaction-list.utils';
 
 describe('buildDisplayRows', () => {
   it('agrupa transações do mesmo installmentGroupId em uma única linha group', () => {
