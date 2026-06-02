@@ -16,9 +16,9 @@ import { TransfersService } from '../../../core/api/transfers/transfers.service'
 import { TransactionResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
 import { ConfirmationDialogComponent } from '../../../components/confirmation-dialog/confirmation-dialog';
 import { DeleteInstallmentDialogComponent, DeleteInstallmentDialogResult } from './delete-installment-dialog/delete-installment-dialog';
-import { buildDisplayRows, GroupRow, DisplayRow } from './transaction-list.utils';
+import { buildDisplayRows, InstallmentGroupInfo, DisplayRow } from './transaction-list.utils';
 export { buildDisplayRows } from './transaction-list.utils';
-export type { GroupRow, DisplayRow } from './transaction-list.utils';
+export type { InstallmentGroupInfo, DisplayRow } from './transaction-list.utils';
 
 @Component({
   selector: 'app-transaction-list',
@@ -49,15 +49,14 @@ export class TransactionList implements OnInit {
   private snackBar = inject(MatSnackBar);
 
   transactions = signal<TransactionResponseDTO[]>([]);
-  expandedGroups = signal(new Set<string>());
+  expandedTransactions = signal(new Set<string>());
 
   displayedColumns = ['description', 'amount', 'date', 'type', 'status', 'category', 'account', 'actions'];
-  groupColumns = ['group-header'];
 
-  displayRows = computed(() => buildDisplayRows(this.transactions(), this.expandedGroups()));
+  displayRows = computed(() => buildDisplayRows(this.transactions(), this.expandedTransactions()));
 
-  isGroupRow = (_: number, row: DisplayRow) => row.kind === 'group';
-  isDataRow = (_: number, row: DisplayRow) => row.kind === 'transaction' || row.kind === 'single';
+  isDataRow   = (_: number, row: DisplayRow) => row.kind === 'single' || row.kind === 'installment';
+  isDetailRow = (_: number, row: DisplayRow) => row.kind === 'installment-detail';
 
   ngOnInit(): void {
     this.loadTransactions();
@@ -70,10 +69,10 @@ export class TransactionList implements OnInit {
     });
   }
 
-  toggleGroup(groupId: string): void {
-    this.expandedGroups.update(set => {
+  toggleExpand(id: string): void {
+    this.expandedTransactions.update(set => {
       const next = new Set(set);
-      next.has(groupId) ? next.delete(groupId) : next.add(groupId);
+      next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
   }
@@ -83,18 +82,19 @@ export class TransactionList implements OnInit {
     this.router.navigate(['/transactions', t.id]);
   }
 
-  onDeleteGroup(row: GroupRow): void {
+  onDeleteGroup(group: InstallmentGroupInfo, event: Event): void {
+    event.stopPropagation();
     const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
       width: '400px',
       data: {
         title: 'Excluir grupo de parcelamento',
-        message: `Deseja excluir o grupo "${row.description}"? Parcelas já pagas serão mantidas no histórico.`,
+        message: `Deseja excluir o grupo "${group.description}"? Parcelas já pagas serão mantidas no histórico.`,
         confirmText: 'Sim, excluir pendentes'
       }
     });
     dialogRef.afterClosed().subscribe(confirmed => {
       if (confirmed !== true) return;
-      this.groupService.deleteInstallmentGroup(row.groupId).subscribe({
+      this.groupService.deleteInstallmentGroup(group.groupId).subscribe({
         next: (result) => {
           const msg = result.skippedPaid > 0
             ? `${result.deleted} parcela(s) excluída(s). ${result.skippedPaid} pagas foram mantidas.`
