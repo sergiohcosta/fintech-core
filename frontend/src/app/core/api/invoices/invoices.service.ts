@@ -26,12 +26,8 @@ import {
 } from 'rxjs';
 
 import type {
-  DeleteInstallmentResultDTO,
-  DeleteTransactionParams,
-  ListTransactionsParams,
-  TransactionRequestDTO,
-  TransactionResponseDTO,
-  TransactionUpdateDTO
+  InvoiceResponseDTO,
+  ListInvoicesParams
 } from '../fintechSaaSAPI.schemas';
 
 
@@ -142,18 +138,18 @@ function filterParams(
 
 
 @Injectable({ providedIn: 'root' })
-export class TransactionsService {
+export class InvoicesService {
   private readonly http = inject(HttpClient);
- listTransactions<TData = TransactionResponseDTO[]>(params?: ListTransactionsParams, options?: HttpClientBodyOptions): Observable<TData>;
- listTransactions<TData = TransactionResponseDTO[]>(params?: ListTransactionsParams, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
- listTransactions<TData = TransactionResponseDTO[]>(params?: ListTransactionsParams, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
-  listTransactions<TData = TransactionResponseDTO[]>(
-    params?: ListTransactionsParams, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+ listInvoices<TData = InvoiceResponseDTO[]>(params: ListInvoicesParams, options?: HttpClientBodyOptions): Observable<TData>;
+ listInvoices<TData = InvoiceResponseDTO[]>(params: ListInvoicesParams, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ listInvoices<TData = InvoiceResponseDTO[]>(params: ListInvoicesParams, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  listInvoices<TData = InvoiceResponseDTO[]>(
+    params: ListInvoicesParams, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
     const filteredParams = filterParams({...params, ...options?.params}, new Set<string>([]));
 
     if (options?.observe === 'events') {
       return this.http.get<TData>(
-      `/api/transactions`,{
+      `/api/invoices`,{
     ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'events',
         params: filteredParams,}
@@ -162,7 +158,7 @@ export class TransactionsService {
 
     if (options?.observe === 'response') {
       return this.http.get<TData>(
-      `/api/transactions`,{
+      `/api/invoices`,{
     ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'response',
         params: filteredParams,}
@@ -170,21 +166,51 @@ export class TransactionsService {
     }
 
     return this.http.get<TData>(
-      `/api/transactions`,{
+      `/api/invoices`,{
     ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'body',
         params: filteredParams,}
     );
   }
- createTransaction<TData = TransactionResponseDTO[]>(transactionRequestDTO: TransactionRequestDTO, options?: HttpClientBodyOptions): Observable<TData>;
- createTransaction<TData = TransactionResponseDTO[]>(transactionRequestDTO: TransactionRequestDTO, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
- createTransaction<TData = TransactionResponseDTO[]>(transactionRequestDTO: TransactionRequestDTO, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
-  createTransaction<TData = TransactionResponseDTO[]>(
-    transactionRequestDTO: TransactionRequestDTO, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+ getInvoice<TData = InvoiceResponseDTO>(id: string, options?: HttpClientBodyOptions): Observable<TData>;
+ getInvoice<TData = InvoiceResponseDTO>(id: string, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ getInvoice<TData = InvoiceResponseDTO>(id: string, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  getInvoice<TData = InvoiceResponseDTO>(
+    id: string, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    if (options?.observe === 'events') {
+      return this.http.get<TData>(
+      `/api/invoices/${id}`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'events',
+      }
+    );
+    }
+
+    if (options?.observe === 'response') {
+      return this.http.get<TData>(
+      `/api/invoices/${id}`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'response',
+      }
+    );
+    }
+
+    return this.http.get<TData>(
+      `/api/invoices/${id}`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'body',
+      }
+    );
+  }
+ closeInvoice<TData = InvoiceResponseDTO>(id: string, options?: HttpClientBodyOptions): Observable<TData>;
+ closeInvoice<TData = InvoiceResponseDTO>(id: string, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ closeInvoice<TData = InvoiceResponseDTO>(id: string, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  closeInvoice<TData = InvoiceResponseDTO>(
+    id: string, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
     if (options?.observe === 'events') {
       return this.http.post<TData>(
-      `/api/transactions`,
-      transactionRequestDTO,{
+      `/api/invoices/${id}/close`,
+      undefined,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'events',
       }
@@ -193,8 +219,8 @@ export class TransactionsService {
 
     if (options?.observe === 'response') {
       return this.http.post<TData>(
-      `/api/transactions`,
-      transactionRequestDTO,{
+      `/api/invoices/${id}/close`,
+      undefined,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'response',
       }
@@ -202,21 +228,22 @@ export class TransactionsService {
     }
 
     return this.http.post<TData>(
-      `/api/transactions`,
-      transactionRequestDTO,{
+      `/api/invoices/${id}/close`,
+      undefined,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'body',
       }
     );
   }
- getTransaction<TData = TransactionResponseDTO>(id: string, options?: HttpClientBodyOptions): Observable<TData>;
- getTransaction<TData = TransactionResponseDTO>(id: string, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
- getTransaction<TData = TransactionResponseDTO>(id: string, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
-  getTransaction<TData = TransactionResponseDTO>(
+ payInvoice<TData = InvoiceResponseDTO>(id: string, options?: HttpClientBodyOptions): Observable<TData>;
+ payInvoice<TData = InvoiceResponseDTO>(id: string, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ payInvoice<TData = InvoiceResponseDTO>(id: string, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  payInvoice<TData = InvoiceResponseDTO>(
     id: string, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
     if (options?.observe === 'events') {
-      return this.http.get<TData>(
-      `/api/transactions/${id}`,{
+      return this.http.post<TData>(
+      `/api/invoices/${id}/pay`,
+      undefined,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'events',
       }
@@ -224,92 +251,21 @@ export class TransactionsService {
     }
 
     if (options?.observe === 'response') {
-      return this.http.get<TData>(
-      `/api/transactions/${id}`,{
+      return this.http.post<TData>(
+      `/api/invoices/${id}/pay`,
+      undefined,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'response',
       }
     );
     }
 
-    return this.http.get<TData>(
-      `/api/transactions/${id}`,{
+    return this.http.post<TData>(
+      `/api/invoices/${id}/pay`,
+      undefined,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'body',
       }
-    );
-  }
- updateTransaction<TData = TransactionResponseDTO>(id: string,
-    transactionUpdateDTO: TransactionUpdateDTO, options?: HttpClientBodyOptions): Observable<TData>;
- updateTransaction<TData = TransactionResponseDTO>(id: string,
-    transactionUpdateDTO: TransactionUpdateDTO, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
- updateTransaction<TData = TransactionResponseDTO>(id: string,
-    transactionUpdateDTO: TransactionUpdateDTO, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
-  updateTransaction<TData = TransactionResponseDTO>(
-    id: string,
-    transactionUpdateDTO: TransactionUpdateDTO, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
-    if (options?.observe === 'events') {
-      return this.http.put<TData>(
-      `/api/transactions/${id}`,
-      transactionUpdateDTO,{
-        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
-        observe: 'events',
-      }
-    );
-    }
-
-    if (options?.observe === 'response') {
-      return this.http.put<TData>(
-      `/api/transactions/${id}`,
-      transactionUpdateDTO,{
-        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
-        observe: 'response',
-      }
-    );
-    }
-
-    return this.http.put<TData>(
-      `/api/transactions/${id}`,
-      transactionUpdateDTO,{
-        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
-        observe: 'body',
-      }
-    );
-  }
- deleteTransaction<TData = DeleteInstallmentResultDTO>(id: string,
-    params?: DeleteTransactionParams, options?: HttpClientBodyOptions): Observable<TData>;
- deleteTransaction<TData = DeleteInstallmentResultDTO>(id: string,
-    params?: DeleteTransactionParams, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
- deleteTransaction<TData = DeleteInstallmentResultDTO>(id: string,
-    params?: DeleteTransactionParams, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
-  deleteTransaction<TData = DeleteInstallmentResultDTO>(
-    id: string,
-    params?: DeleteTransactionParams, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
-    const filteredParams = filterParams({...params, ...options?.params}, new Set<string>([]));
-
-    if (options?.observe === 'events') {
-      return this.http.delete<TData>(
-      `/api/transactions/${id}`,{
-    ...(options as Omit<NonNullable<typeof options>, 'observe'>),
-        observe: 'events',
-        params: filteredParams,}
-    );
-    }
-
-    if (options?.observe === 'response') {
-      return this.http.delete<TData>(
-      `/api/transactions/${id}`,{
-    ...(options as Omit<NonNullable<typeof options>, 'observe'>),
-        observe: 'response',
-        params: filteredParams,}
-    );
-    }
-
-    return this.http.delete<TData>(
-      `/api/transactions/${id}`,{
-    ...(options as Omit<NonNullable<typeof options>, 'observe'>),
-        observe: 'body',
-        params: filteredParams,}
     );
   }
 };
