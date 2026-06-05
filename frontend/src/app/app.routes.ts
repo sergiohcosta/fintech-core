@@ -69,6 +69,14 @@ export const routes: Routes = [
         path: 'team',
         loadComponent: () => import('./features/team/team/team').then(m => m.TeamComponent)
       },
+      {
+        path: 'invoices',
+        loadComponent: () => import('./features/invoice/invoice-list/invoice-list').then(m => m.InvoiceList)
+      },
+      {
+        path: 'invoices/:id',
+        loadComponent: () => import('./features/invoice/invoice-detail/invoice-detail').then(m => m.InvoiceDetail)
+      },
     ]
   }
 ];

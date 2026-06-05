@@ -88,7 +88,9 @@
           <div class="account-cell">
             <span>{{ $any(row).data?.accountName ?? '—' }}</span>
             @if (invoiceLabel($any(row).data); as label) {
-              <span [class]="invoiceChipClass($any(row).data?.invoiceStatus)">{{ label }}</span>
+              <a [routerLink]="['/invoices', $any(row).data?.invoiceId]"
+                 [class]="invoiceChipClass($any(row).data?.invoiceStatus)"
+                 style="text-decoration: none;">{{ label }}</a>
             }
           </div>
         </td>
