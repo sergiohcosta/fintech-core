@@ -1,0 +1,93 @@
+<div class="page-header">
+  <h1>Equipe</h1>
+  @if (isAdmin()) {
+    <button mat-flat-button color="primary" data-testid="invite-btn" (click)="openInviteDialog()">
+      <mat-icon>person_add</mat-icon>
+      Convidar
+    </button>
+  }
+</div>
+
+@if (loading()) {
+  <div class="loading-center">
+    <mat-spinner diameter="40" />
+  </div>
+} @else if (error()) {
+  <div class="error-state">
+    <p>{{ error() }}</p>
+    <button mat-stroked-button (click)="loadAll()">Tentar novamente</button>
+  </div>
+} @else {
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>Membros ({{ members().length }})</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <table mat-table [dataSource]="members()" class="full-width">
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef>Nome</th>
+          <td mat-cell *matCellDef="let m">{{ m.name }}</td>
+        </ng-container>
+        <ng-container matColumnDef="email">
+          <th mat-header-cell *matHeaderCellDef>E-mail</th>
+          <td mat-cell *matCellDef="let m">{{ m.email }}</td>
+        </ng-container>
+        <ng-container matColumnDef="role">
+          <th mat-header-cell *matHeaderCellDef>Papel</th>
+          <td mat-cell *matCellDef="let m">{{ m.role === 'ADMIN' ? 'Admin' : 'Membro' }}</td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="memberColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: memberColumns"></tr>
+      </table>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card class="invites-card">
+    <mat-card-header>
+      <mat-card-title>Convites ({{ invitations().length }})</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      @if (invitations().length === 0) {
+        <p class="empty-state">Nenhum convite enviado ainda.</p>
+      } @else {
+        <table mat-table [dataSource]="invitations()" class="full-width">
+          <ng-container matColumnDef="email">
+            <th mat-header-cell *matHeaderCellDef>E-mail</th>
+            <td mat-cell *matCellDef="let i">{{ i.email }}</td>
+          </ng-container>
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef>Status</th>
+            <td mat-cell *matCellDef="let i">
+              <mat-chip [color]="statusColor(i.status)" highlighted>
+                {{ statusLabel(i.status) }}
+              </mat-chip>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="expiresAt">
+            <th mat-header-cell *matHeaderCellDef>Expira em</th>
+            <td mat-cell *matCellDef="let i">
+              {{ i.status === 'PENDING' ? (i.expiresAt | date: 'dd/MM/yyyy') : '—' }}
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef></th>
+            <td mat-cell *matCellDef="let i">
+              @if (isAdmin() && i.status === 'PENDING') {
+                <button
+                  mat-icon-button
+                  color="warn"
+                  matTooltip="Revogar convite"
+                  (click)="revoke(i.id)"
+                >
+                  <mat-icon>delete</mat-icon>
+                </button>
+              }
+            </td>
+          </ng-container>
+          <tr mat-header-row *matHeaderRowDef="inviteColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: inviteColumns"></tr>
+        </table>
+      }
+    </mat-card-content>
+  </mat-card>
+}
