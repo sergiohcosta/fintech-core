@@ -65,7 +65,8 @@
               <a mat-icon-button color="accent"
                  [routerLink]="['/invoices']"
                  [queryParams]="{ accountId: row.id }"
-                 matTooltip="Ver Faturas">
+                 matTooltip="Ver Faturas"
+                 aria-label="Ver faturas desta conta">
                 <mat-icon>receipt_long</mat-icon>
               </a>
             }
