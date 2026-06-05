@@ -1,6 +1,7 @@
 package com.fintech.api.service;
 
 import com.fintech.api.config.TokenService;
+import com.fintech.api.domain.enums.InvitationStatus;
 import com.fintech.api.domain.invitation.Invitation;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.domain.enums.UserRole;
@@ -8,6 +9,7 @@ import com.fintech.api.dto.AcceptInviteDTO;
 import com.fintech.api.dto.CreateInvitationDTO;
 import com.fintech.api.dto.InvitationInfoDTO;
 import com.fintech.api.dto.InvitationResponseDTO;
+import com.fintech.api.dto.InvitationSummaryDTO;
 import com.fintech.api.exception.BusinessConflictException;
 import com.fintech.api.exception.EntityNotFoundException;
 import com.fintech.api.exception.InviteAlreadyUsedException;
@@ -21,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -82,6 +85,43 @@ public class InvitationService {
         invitationRepository.save(invitation);
 
         return tokenService.generateToken(user);
+    }
+
+    @Transactional(readOnly = true)
+    public List<InvitationSummaryDTO> list(User admin) {
+        return invitationRepository
+                .findAllByTenantIdOrderByCreatedAtDesc(admin.getTenant().getId())
+                .stream()
+                .map(this::toSummary)
+                .toList();
+    }
+
+    @Transactional
+    public void revoke(UUID id, User admin) {
+        Invitation invitation = invitationRepository.findById(id)
+                .filter(inv -> inv.getTenant().getId().equals(admin.getTenant().getId()))
+                .orElseThrow(() -> new EntityNotFoundException("Convite não encontrado"));
+        if (invitation.isUsed()) {
+            throw new BusinessConflictException("Convite já aceito não pode ser revogado");
+        }
+        invitationRepository.delete(invitation);
+    }
+
+    private InvitationSummaryDTO toSummary(Invitation inv) {
+        InvitationStatus status;
+        if (inv.isUsed()) {
+            status = InvitationStatus.ACCEPTED;
+        } else if (inv.getExpiresAt().isBefore(LocalDateTime.now())) {
+            status = InvitationStatus.EXPIRED;
+        } else {
+            status = InvitationStatus.PENDING;
+        }
+        String link = status == InvitationStatus.PENDING
+                ? frontendUrl + "/accept-invite?token=" + inv.getToken()
+                : null;
+        return new InvitationSummaryDTO(
+                inv.getId(), inv.getEmail(), status,
+                inv.getCreatedAt(), inv.getExpiresAt(), link);
     }
 
     private Invitation findValidInvitation(String token) {
