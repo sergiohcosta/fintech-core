@@ -1,0 +1,96 @@
+.page-container {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.invoice-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 24px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+
+  .account-name { margin: 0 0 4px; color: #666; font-size: 14px; }
+  h1 { margin: 0 0 8px; }
+
+  .header-dates {
+    display: flex;
+    gap: 8px;
+    color: #666;
+    font-size: 14px;
+    .separator { color: #ccc; }
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+}
+
+.summary-section { margin-bottom: 32px; }
+
+.summary-cards {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.summary-card {
+  flex: 1;
+
+  .card-label { margin: 0 0 8px; color: #666; font-size: 13px; }
+  .card-value {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 600;
+    &.negative { color: #c62828; }
+  }
+}
+
+.income-card  mat-card-content .card-value { color: #2e7d32; }
+.expense-card mat-card-content .card-value { color: #c62828; }
+
+.breakdown-container, .table-container {
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.section-title { margin: 0 0 16px; font-size: 16px; font-weight: 500; }
+.transactions-section { margin-bottom: 24px; }
+
+table { width: 100%; }
+
+.status-chip {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.status-open   { background: #e3f2fd; color: #1565c0; }
+.status-closed { background: #fff3e0; color: #e65100; }
+.status-paid   { background: #e8f5e9; color: #2e7d32; }
+
+.amount {
+  font-weight: 500;
+  &.income  { color: #2e7d32; }
+  &.expense { color: #c62828; }
+}
+
+.type-badge, .status-badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+.type-income  { background: #e8f5e9; color: #2e7d32; }
+.type-expense { background: #ffebee; color: #c62828; }
+
+.status-pending   { background: #fff8e1; color: #f57f17; }
+.status-paid      { background: #e8f5e9; color: #2e7d32; }
+.status-cancelled { background: #f5f5f5; color: #9e9e9e; }
+
+.empty-state { text-align: center; padding: 24px; color: #999; }
+.loading-state { display: flex; justify-content: center; padding: 48px; color: #666; }
