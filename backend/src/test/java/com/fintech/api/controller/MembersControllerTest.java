@@ -82,4 +82,14 @@ class MembersControllerTest {
         mockMvc.perform(get("/api/members"))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    @DisplayName("GET /api/members retorna 403 para role USER")
+    void listMembers_withUserRole_returns403() throws Exception {
+        authenticatedUser.setRole(UserRole.USER);
+
+        mockMvc.perform(get("/api/members")
+                        .header("Authorization", "Bearer token"))
+                .andExpect(status().isForbidden());
+    }
 }
