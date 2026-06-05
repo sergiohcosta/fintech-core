@@ -14,6 +14,7 @@ import { AuthService } from '../../../core/services/auth';
   standalone: true,
   imports: [
     CommonModule,
+    RouterLink,
     ReactiveFormsModule,
     MatCardModule,
     MatFormFieldModule,
@@ -43,7 +44,6 @@ export class RegisterComponent implements OnInit {
 
   form = this.fb.group({
     name: ['', [Validators.required]],
-    document: [''],
     adminName: ['', [Validators.required]],
     adminEmail: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required, Validators.minLength(6)]]
