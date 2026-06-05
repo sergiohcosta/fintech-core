@@ -5,12 +5,14 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fintech.api.config.SecurityConfigurations;
 import com.fintech.api.config.SecurityFilter;
 import com.fintech.api.config.TokenService;
+import com.fintech.api.domain.enums.InvitationStatus;
 import com.fintech.api.domain.enums.UserRole;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.CreateInvitationDTO;
 import com.fintech.api.dto.InvitationInfoDTO;
 import com.fintech.api.dto.InvitationResponseDTO;
+import com.fintech.api.dto.InvitationSummaryDTO;
 import com.fintech.api.exception.EntityNotFoundException;
 import com.fintech.api.exception.InviteAlreadyUsedException;
 import com.fintech.api.repository.UserRepository;
@@ -28,13 +30,17 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -144,5 +150,66 @@ class InvitationControllerTest {
 
         mockMvc.perform(get("/invites/used-token"))
                 .andExpect(status().isGone());
+    }
+
+    // --- LISTAR CONVITES ---
+
+    @Test
+    @DisplayName("GET /invites retorna 200 com lista para ADMIN autenticado")
+    void listInvites_returnsOk() throws Exception {
+        UUID id = UUID.randomUUID();
+        InvitationSummaryDTO summary = new InvitationSummaryDTO(
+                id, "x@test.com", InvitationStatus.PENDING,
+                LocalDateTime.now().minusDays(1),
+                LocalDateTime.now().plusDays(6),
+                "http://localhost:4200/accept-invite?token=tok");
+
+        when(invitationService.list(any())).thenReturn(List.of(summary));
+
+        mockMvc.perform(get("/invites")
+                        .header("Authorization", "Bearer admin-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].email").value("x@test.com"))
+                .andExpect(jsonPath("$[0].status").value("PENDING"));
+    }
+
+    @Test
+    @DisplayName("GET /invites retorna 403 sem autenticação")
+    void listInvites_withoutAuth_returns403() throws Exception {
+        mockMvc.perform(get("/invites"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("GET /invites retorna 403 para role USER")
+    void listInvites_withUserRole_returns403() throws Exception {
+        adminUser.setRole(UserRole.USER);
+
+        mockMvc.perform(get("/invites")
+                        .header("Authorization", "Bearer user-token"))
+                .andExpect(status().isForbidden());
+    }
+
+    // --- REVOGAR CONVITE ---
+
+    @Test
+    @DisplayName("DELETE /invites/{id} retorna 204 para ADMIN")
+    void revokeInvite_returnsNoContent() throws Exception {
+        UUID id = UUID.randomUUID();
+        doNothing().when(invitationService).revoke(eq(id), any());
+
+        mockMvc.perform(delete("/invites/" + id)
+                        .header("Authorization", "Bearer admin-token"))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @DisplayName("DELETE /invites/{id} retorna 403 para role USER")
+    void revokeInvite_withUserRole_returns403() throws Exception {
+        adminUser.setRole(UserRole.USER);
+
+        mockMvc.perform(delete("/invites/" + UUID.randomUUID())
+                        .header("Authorization", "Bearer user-token"))
+                .andExpect(status().isForbidden());
     }
 }
