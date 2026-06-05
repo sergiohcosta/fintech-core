@@ -29,7 +29,6 @@ public class TenantRegistrationService {
         // 2. Criar e Salvar o Tenant (A "Empresa/Família")
         Tenant tenant = new Tenant();
         tenant.setName(dto.name());
-        tenant.setDocument(dto.document());
 
         // O método save atualiza o objeto 'tenant' com o ID gerado pelo banco
         tenant = tenantRepository.save(tenant);

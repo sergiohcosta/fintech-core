@@ -25,6 +25,25 @@
       <!-- ═══ TRANSACTION ═══ -->
       @if (mode() === 'TRANSACTION') {
 
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="field-full">
+            <mat-label>Conta *</mat-label>
+            <mat-select formControlName="accountId">
+              @for (a of accounts(); track a.id) {
+                <mat-option [value]="a.id">
+                  <span class="account-option">
+                    <mat-icon class="account-icon">{{ getAccountIcon(a.type) }}</mat-icon>
+                    {{ a.name }}
+                  </span>
+                </mat-option>
+              }
+            </mat-select>
+            @if (form.controls.accountId.hasError('required')) {
+              <mat-error>Conta obrigatória</mat-error>
+            }
+          </mat-form-field>
+        </div>
+
         <div class="section-divider"><span>Classificação</span></div>
 
         <div class="form-row">
@@ -64,25 +83,6 @@
         </div>
 
         <div class="section-divider"><span>Detalhes</span></div>
-
-        <div class="form-row">
-          <mat-form-field appearance="outline" class="field-full">
-            <mat-label>Conta *</mat-label>
-            <mat-select formControlName="accountId">
-              @for (a of accounts(); track a.id) {
-                <mat-option [value]="a.id">
-                  <span class="account-option">
-                    <mat-icon class="account-icon">{{ getAccountIcon(a.type) }}</mat-icon>
-                    {{ a.name }}
-                  </span>
-                </mat-option>
-              }
-            </mat-select>
-            @if (form.controls.accountId.hasError('required')) {
-              <mat-error>Conta obrigatória</mat-error>
-            }
-          </mat-form-field>
-        </div>
 
         <div class="form-row">
           <mat-form-field appearance="outline" class="field-full">
