@@ -7,6 +7,7 @@ import com.fintech.api.domain.invoice.Invoice;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.repository.CreditCardDetailsRepository;
 import com.fintech.api.repository.InvoiceRepository;
+import com.fintech.api.repository.TransactionRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +16,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Optional;
 import java.util.UUID;
@@ -28,6 +30,7 @@ class InvoiceServiceTest {
 
     @Mock InvoiceRepository repository;
     @Mock CreditCardDetailsRepository creditCardDetailsRepository;
+    @Mock TransactionRepository transactionRepository;
     @InjectMocks InvoiceService service;
 
     // ---- getOrCreate ----
@@ -123,6 +126,8 @@ class InvoiceServiceTest {
         Invoice invoice = buildInvoice(InvoiceStatus.OPEN);
         when(repository.findById(invoice.getId())).thenReturn(Optional.of(invoice));
         when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(transactionRepository.sumAmountByInvoice(any(), any())).thenReturn(BigDecimal.ZERO);
+        when(transactionRepository.countByInvoice(any())).thenReturn(0L);
 
         service.close(invoice.getId(), buildTenant(invoice));
 
@@ -148,6 +153,8 @@ class InvoiceServiceTest {
         Invoice invoice = buildInvoice(InvoiceStatus.CLOSED);
         when(repository.findById(invoice.getId())).thenReturn(Optional.of(invoice));
         when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(transactionRepository.sumAmountByInvoice(any(), any())).thenReturn(BigDecimal.ZERO);
+        when(transactionRepository.countByInvoice(any())).thenReturn(0L);
 
         service.pay(invoice.getId(), buildTenant(invoice));
 
