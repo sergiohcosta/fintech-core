@@ -44,6 +44,7 @@ export class ShellComponent {
     { label: 'Transações', icon: 'swap_horiz',  route: '/transactions' },
     { label: 'Contas',    icon: 'credit_card', route: '/accounts' },
     { label: 'Categorias', icon: 'category',    route: '/categories' },
+    { label: 'Equipe',     icon: 'group',       route: '/team' },
   ];
 
   toggleSidenav() {
