@@ -88,7 +88,6 @@ public class GlobalExceptionHandler {
         if (ex instanceof NoResourceFoundException nrfe) {
             throw nrfe;
         }
-        // Em produção, é bom logar o 'ex' aqui
         return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Ocorreu um erro interno no servidor.", null);
     }
 
