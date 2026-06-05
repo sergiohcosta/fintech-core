@@ -84,7 +84,7 @@ export class InvoiceDetail implements OnInit {
       data: { title: 'Fechar Fatura', message: 'Confirma o fechamento desta fatura? Não será mais possível adicionar transações.', confirmText: 'Fechar Fatura' }
     });
     ref.afterClosed().subscribe(confirmed => {
-      if (!confirmed) return;
+      if (!confirmed || !this.invoice()) return;
       this.invoicesService.closeInvoice(this.invoice()!.id).subscribe({
         next: (inv) => { this.invoice.set(inv); this.snackBar.open('Fatura fechada.', 'OK', { duration: 3000 }); },
         error: () => this.snackBar.open('Erro ao fechar fatura.', 'Fechar', { duration: 5000 })
@@ -97,7 +97,7 @@ export class InvoiceDetail implements OnInit {
       data: { title: 'Pagar Fatura', message: 'Confirma o pagamento desta fatura?', confirmText: 'Pagar Fatura' }
     });
     ref.afterClosed().subscribe(confirmed => {
-      if (!confirmed) return;
+      if (!confirmed || !this.invoice()) return;
       this.invoicesService.payInvoice(this.invoice()!.id).subscribe({
         next: (inv) => { this.invoice.set(inv); this.snackBar.open('Fatura paga.', 'OK', { duration: 3000 }); },
         error: () => this.snackBar.open('Erro ao pagar fatura.', 'Fechar', { duration: 5000 })
