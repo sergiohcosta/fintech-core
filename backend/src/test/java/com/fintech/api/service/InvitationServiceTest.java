@@ -26,7 +26,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import com.fintech.api.domain.enums.InvitationStatus;
+import com.fintech.api.dto.InvitationSummaryDTO;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -201,5 +204,78 @@ class InvitationServiceTest {
         assertThatThrownBy(() -> service.accept(dto))
                 .isInstanceOf(BusinessConflictException.class)
                 .hasMessage("Este email já possui uma conta");
+    }
+
+    // --- LISTAR CONVITES ---
+
+    @Test
+    @DisplayName("list retorna convites do tenant com status calculado")
+    void list_returnsInvitationsWithStatus() {
+        Invitation pending = buildInvitation(false, LocalDateTime.now().plusDays(3));
+        Invitation accepted = buildInvitation(true, LocalDateTime.now().plusDays(1));
+        Invitation expired = buildInvitation(false, LocalDateTime.now().minusDays(1));
+        ReflectionTestUtils.setField(service, "frontendUrl", "http://localhost:4200");
+
+        when(invitationRepository.findAllByTenantIdOrderByCreatedAtDesc(tenant.getId()))
+                .thenReturn(List.of(pending, accepted, expired));
+
+        List<InvitationSummaryDTO> result = service.list(admin);
+
+        assertThat(result).hasSize(3);
+        assertThat(result.get(0).status()).isEqualTo(InvitationStatus.PENDING);
+        assertThat(result.get(0).link()).isNotNull();
+        assertThat(result.get(1).status()).isEqualTo(InvitationStatus.ACCEPTED);
+        assertThat(result.get(1).link()).isNull();
+        assertThat(result.get(2).status()).isEqualTo(InvitationStatus.EXPIRED);
+        assertThat(result.get(2).link()).isNull();
+    }
+
+    @Test
+    @DisplayName("list retorna apenas convites do tenant do admin")
+    void list_filtersOnlyAdminTenant() {
+        when(invitationRepository.findAllByTenantIdOrderByCreatedAtDesc(tenant.getId()))
+                .thenReturn(List.of());
+
+        List<InvitationSummaryDTO> result = service.list(admin);
+
+        assertThat(result).isEmpty();
+        verify(invitationRepository).findAllByTenantIdOrderByCreatedAtDesc(tenant.getId());
+    }
+
+    // --- REVOGAR CONVITE ---
+
+    @Test
+    @DisplayName("revoke exclui convite pendente")
+    void revoke_deletesPendingInvitation() {
+        Invitation pending = buildInvitation(false, LocalDateTime.now().plusDays(3));
+        when(invitationRepository.findById(pending.getId())).thenReturn(Optional.of(pending));
+
+        service.revoke(pending.getId(), admin);
+
+        verify(invitationRepository).delete(pending);
+    }
+
+    @Test
+    @DisplayName("revoke lança BusinessConflictException para convite aceito")
+    void revoke_throwsConflictForAcceptedInvitation() {
+        Invitation accepted = buildInvitation(true, LocalDateTime.now().plusDays(1));
+        when(invitationRepository.findById(accepted.getId())).thenReturn(Optional.of(accepted));
+
+        assertThatThrownBy(() -> service.revoke(accepted.getId(), admin))
+                .isInstanceOf(BusinessConflictException.class)
+                .hasMessage("Convite já aceito não pode ser revogado");
+    }
+
+    @Test
+    @DisplayName("revoke lança EntityNotFoundException para convite de outro tenant")
+    void revoke_throwsNotFoundForDifferentTenant() {
+        Tenant other = new Tenant();
+        other.setId(UUID.randomUUID());
+        Invitation foreign = buildInvitation(false, LocalDateTime.now().plusDays(3));
+        foreign.setTenant(other);
+        when(invitationRepository.findById(foreign.getId())).thenReturn(Optional.of(foreign));
+
+        assertThatThrownBy(() -> service.revoke(foreign.getId(), admin))
+                .isInstanceOf(EntityNotFoundException.class);
     }
 }
