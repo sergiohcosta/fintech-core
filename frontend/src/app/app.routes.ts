@@ -65,6 +65,10 @@ export const routes: Routes = [
         path: 'transactions/:id',
         loadComponent: () => import('./features/transaction/transaction-form/transaction-form').then(m => m.TransactionForm)
       },
+      {
+        path: 'team',
+        loadComponent: () => import('./features/team/team/team').then(m => m.TeamComponent)
+      },
     ]
   }
 ];
