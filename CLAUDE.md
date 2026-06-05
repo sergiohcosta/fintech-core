@@ -236,11 +236,14 @@ npm start
   - `countByTenantAndPeriod` e `sumByTenantAndTypeAndPeriod` em `TransactionRepository` usavam `t.invoice.dueDate` no WHERE, o que fazia o Hibernate gerar um INNER JOIN implícito com `invoices`
   - O INNER JOIN excluía todas as transações sem `invoice_id` (contas corrente, dinheiro, investimento), fazendo o branch `t.invoice IS NULL` ser sempre falso
   - Correção: `LEFT JOIN t.invoice inv` explícito no JPQL; usar `inv` em vez de `t.invoice` nas condições
+- **Correções e melhorias de UX** (2026-06-05, PR #40 — issues #34, #38, #39):
+  - **fix #34:** `RouterLink` adicionado ao `imports[]` do `RegisterComponent` standalone — sem isso, `routerLink` era ignorado e o botão "Ir para login" pós-cadastro não navegava
+  - **fix #38:** campo `document` (CPF/CNPJ) removido do fluxo de cadastro de tenant (`TenantRegistrationDTO`, `TenantRegistrationService`, formulário frontend); coluna permanece nullable no banco para uso futuro adequado
+  - **feat #39:** seleção de conta movida para o topo do formulário de transação, antes de tipo e status — conta determina campos disponíveis (parcelamento só aparece para CREDIT_CARD)
 
 **Próximos passos:**
 - Filtros na listagem de transações (por período, tipo, status, conta)
 - Gráficos no dashboard (evolução mensal, breakdown por categoria/conta)
-- Tela de Transferências (fluxo específico para os dois lançamentos espelhados)
 
 ---
 
