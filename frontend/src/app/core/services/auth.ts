@@ -9,7 +9,7 @@ export interface TokenPayload {
   sub: string;       // Email
   name: string;      // Nome do usuário
   tenant_id: string; // ID da empresa
-  role: string;      // "ADMIN" | "USER"
+  role: 'ADMIN' | 'USER';
   exp: number;       // Expiração (Unix timestamp)
 }
 
