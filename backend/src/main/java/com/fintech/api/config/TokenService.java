@@ -24,7 +24,7 @@ public class TokenService {
                     .withIssuer("fintech-api")
                     .withClaim("id", user.getId().toString())
                     .withClaim("name", user.getName())
-                    .withClaim("role", "ROLE_USER")
+                    .withClaim("role", user.getRole().name())
                     .withSubject(user.getEmail())
                     .withClaim("tenant_id", user.getTenant().getId().toString())
                     .withExpiresAt(genExpirationDate())
