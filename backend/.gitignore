@@ -35,3 +35,6 @@ build/
 .idea/
 *.env
 .DS_Store
+
+### Credenciais locais — nunca commitar ###
+src/main/resources/application-local.properties
