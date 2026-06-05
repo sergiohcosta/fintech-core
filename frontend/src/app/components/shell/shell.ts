@@ -42,11 +42,12 @@ export class ShellComponent {
   isAdmin = this.authService.isAdmin;
 
   readonly navItems: NavItem[] = [
-    { label: 'Dashboard',  icon: 'dashboard',   route: '/dashboard' },
-    { label: 'Transações', icon: 'swap_horiz',  route: '/transactions' },
-    { label: 'Contas',    icon: 'credit_card', route: '/accounts' },
-    { label: 'Categorias', icon: 'category',    route: '/categories' },
-    { label: 'Equipe',     icon: 'group',       route: '/team', adminOnly: true },
+    { label: 'Dashboard',  icon: 'dashboard',    route: '/dashboard' },
+    { label: 'Transações', icon: 'swap_horiz',   route: '/transactions' },
+    { label: 'Faturas',    icon: 'receipt_long', route: '/invoices' },
+    { label: 'Contas',     icon: 'credit_card',  route: '/accounts' },
+    { label: 'Categorias', icon: 'category',     route: '/categories' },
+    { label: 'Equipe',     icon: 'group',        route: '/team', adminOnly: true },
   ];
 
   toggleSidenav() {
