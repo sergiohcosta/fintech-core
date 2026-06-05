@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import { forkJoin } from 'rxjs';
+import { forkJoin, of } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
@@ -58,7 +58,7 @@ export class TeamComponent implements OnInit {
 
     forkJoin({
       members: this.membersService.list(),
-      invitations: this.invitationService.list(),
+      invitations: this.isAdmin() ? this.invitationService.list() : of([]),
     }).subscribe({
       next: ({ members, invitations }) => {
         this.members.set(members);
