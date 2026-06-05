@@ -168,6 +168,19 @@ npm start
 - **Redirecionamento:** usuários autenticados em `/login` ou `/register` vão direto pro dashboard
 - **Senhas:** sempre `BCrypt`. Nunca logar, nunca retornar em DTO de resposta.
 
+**Regra inviolável — defesa em profundidade para controle de acesso:**
+
+Toda alteração que envolva permissões de acesso, visibilidade de recursos ou restrição por role **deve ser validada em ambas as camadas**:
+
+| Camada | O que fazer |
+|--------|-------------|
+| **Backend** | Adicionar (ou confirmar) regra em `SecurityConfigurations.java` com `hasRole(...)` para o endpoint afetado. Cobrir com teste de controller que verifica 403 para a role não autorizada. |
+| **Frontend** | Ocultar elemento/rota via `@if (isAdmin())` ou equivalente. Não chamar endpoints que o usuário não tem permissão de acessar (evita 403 desnecessário). |
+
+Ocultar no frontend **não substitui** proteção no backend. O frontend é contornável; o backend é a última linha de defesa. A consistência entre as duas camadas evita tanto falhas de segurança quanto erros de UX (tela quebrando com 403 inesperado).
+
+**Exemplo concreto (issue #24):** `GET /api/members` e `GET /invites` são exclusivos de ADMIN — protegidos em `SecurityConfigurations.java` com `hasRole("ADMIN")` **e** ocultos no frontend via `isAdmin()` no sidenav e no `forkJoin` do `TeamComponent`.
+
 ---
 
 ## 📂 Estrutura de Diretórios
@@ -175,7 +188,7 @@ npm start
 - `backend/` — aplicação Spring Boot
 - `frontend/` — aplicação Angular
 - `.docker/` — dados persistentes do banco (gitignored)
-- `summary.md` — histórico de evolução do projeto (referência histórica)
+- `summary.md` — referência de especificação técnica (domínio, contratos de API, regras de negócio)
 
 ---
 
@@ -193,7 +206,10 @@ npm start
 - Shell de Navegação (Shell Pattern — toolbar + sidenav)
 - Dashboard com resumo financeiro (receita / despesa / saldo por período)
 - OpenAPI spec-first (documentação automática + geração de código backend + frontend via Orval)
-- Gestão de Contas — Account Management (4 tipos, transferências double-entry, frontend TDD)
+- Gestão de Contas — Account Management (4 tipos, transferências double-entry, frontend TDD):
+  - **`countInLiquidBalance`:** inclui a conta no saldo líquido disponível (dinheiro acessível imediatamente). Default `true` para CHECKING e CASH; `false` para INVESTMENT e CREDIT_CARD. Alimenta `totalAccountBalance` no Dashboard via `sumNetLiquidBalanceByTenant()`.
+  - **`countInNetWorth`:** inclui a conta no patrimônio líquido total (visão ampla, incluindo investimentos). Default `true` para todos os tipos. Campo armazenado, **ainda não consumido por query** — reservado para futura tela de Patrimônio Total.
+  - Frontend auto-ajusta `countInLiquidBalance` ao trocar tipo de conta; usuário pode sobrescrever.
 - Melhorias UX no formulário de categorias (grid de ícones + herança de cor/ícone do pai)
 - **Soft delete de categorias com fluxo de archive** (issue #25, 2026-05-29):
   - `DELETE /categories/{id}` retorna 409 com `transactionCount` se subárvore tem transações
@@ -244,6 +260,7 @@ npm start
 **Próximos passos:**
 - Filtros na listagem de transações (por período, tipo, status, conta)
 - Gráficos no dashboard (evolução mensal, breakdown por categoria/conta)
+- Tela de Patrimônio Total — consome `countInNetWorth` (campo já existe em `accounts`)
 
 ---
 
