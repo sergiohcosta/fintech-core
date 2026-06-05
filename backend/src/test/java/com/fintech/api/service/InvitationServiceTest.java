@@ -214,7 +214,6 @@ class InvitationServiceTest {
         Invitation pending = buildInvitation(false, LocalDateTime.now().plusDays(3));
         Invitation accepted = buildInvitation(true, LocalDateTime.now().plusDays(1));
         Invitation expired = buildInvitation(false, LocalDateTime.now().minusDays(1));
-        ReflectionTestUtils.setField(service, "frontendUrl", "http://localhost:4200");
 
         when(invitationRepository.findAllByTenantIdOrderByCreatedAtDesc(tenant.getId()))
                 .thenReturn(List.of(pending, accepted, expired));
@@ -276,6 +275,7 @@ class InvitationServiceTest {
         when(invitationRepository.findById(foreign.getId())).thenReturn(Optional.of(foreign));
 
         assertThatThrownBy(() -> service.revoke(foreign.getId(), admin))
-                .isInstanceOf(EntityNotFoundException.class);
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessage("Convite não encontrado");
     }
 }
