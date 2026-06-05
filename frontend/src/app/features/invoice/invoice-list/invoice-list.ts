@@ -8,6 +8,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
+import { finalize } from 'rxjs/operators';
+
 import { AccountsService } from '../../../core/api/accounts/accounts.service';
 import { InvoicesService } from '../../../core/api/invoices/invoices.service';
 import { AccountResponse, InvoiceResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
@@ -46,13 +48,12 @@ export class InvoiceList implements OnInit {
         return;
       }
       this.loading.set(true);
-      const sub = this.invoicesService.listInvoices({ accountId: id }).subscribe({
-        next: (data) => { this.invoices.set(data); this.loading.set(false); },
-        error: () => {
-          this.snackBar.open('Erro ao carregar faturas.', 'Fechar', { duration: 5000 });
-          this.loading.set(false);
-        }
-      });
+      const sub = this.invoicesService.listInvoices({ accountId: id })
+        .pipe(finalize(() => this.loading.set(false)))
+        .subscribe({
+          next: (data) => this.invoices.set(data),
+          error: () => this.snackBar.open('Erro ao carregar faturas.', 'Fechar', { duration: 5000 })
+        });
       onCleanup(() => sub.unsubscribe());
     });
   }
