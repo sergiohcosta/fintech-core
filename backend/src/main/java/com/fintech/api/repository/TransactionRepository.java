@@ -102,16 +102,19 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
 
     // Para transações de cartão, usa invoice.dueDate como referência de mês.
     // Para demais contas (sem fatura), usa transaction.date.
+    // LEFT JOIN explícito é obrigatório: t.invoice.dueDate em WHERE gera INNER JOIN implícito
+    // no Hibernate, excluindo transações sem fatura e quebrando o branch invoice IS NULL.
     @Query("""
             SELECT COALESCE(SUM(t.amount), 0)
             FROM Transaction t
+            LEFT JOIN t.invoice inv
             WHERE t.tenant = :tenant
               AND t.type = :type
               AND t.status <> :excluded
               AND (
-                (t.invoice IS NOT NULL AND t.invoice.dueDate BETWEEN :start AND :end)
+                (inv IS NOT NULL AND inv.dueDate BETWEEN :start AND :end)
                 OR
-                (t.invoice IS NULL AND t.date BETWEEN :start AND :end)
+                (inv IS NULL AND t.date BETWEEN :start AND :end)
               )
             """)
     BigDecimal sumByTenantAndTypeAndPeriod(
@@ -125,12 +128,13 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
     @Query("""
             SELECT COUNT(t)
             FROM Transaction t
+            LEFT JOIN t.invoice inv
             WHERE t.tenant = :tenant
               AND t.status <> :excluded
               AND (
-                (t.invoice IS NOT NULL AND t.invoice.dueDate BETWEEN :start AND :end)
+                (inv IS NOT NULL AND inv.dueDate BETWEEN :start AND :end)
                 OR
-                (t.invoice IS NULL AND t.date BETWEEN :start AND :end)
+                (inv IS NULL AND t.date BETWEEN :start AND :end)
               )
             """)
     long countByTenantAndPeriod(
