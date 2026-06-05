@@ -99,6 +99,7 @@ public class InvitationService {
     @Transactional
     public void revoke(UUID id, User admin) {
         Invitation invitation = invitationRepository.findById(id)
+                // Filtro dentro da transação ativa — getTenant() é lazy, só pode ser acessado com session aberta
                 .filter(inv -> inv.getTenant().getId().equals(admin.getTenant().getId()))
                 .orElseThrow(() -> new EntityNotFoundException("Convite não encontrado"));
         if (invitation.isUsed()) {
