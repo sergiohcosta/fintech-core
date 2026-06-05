@@ -1,0 +1,54 @@
+<h2 mat-dialog-title>Convidar membro</h2>
+
+@if (state() === 'form' || state() === 'submitting') {
+  <mat-dialog-content>
+    <form [formGroup]="form">
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>E-mail</mat-label>
+        <input matInput formControlName="email" type="email" placeholder="fulano@empresa.com" />
+        @if (form.get('email')?.hasError('required')) {
+          <mat-error>E-mail obrigatório</mat-error>
+        }
+        @if (form.get('email')?.hasError('email')) {
+          <mat-error>E-mail inválido</mat-error>
+        }
+      </mat-form-field>
+    </form>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button (click)="close()">Cancelar</button>
+    <button
+      mat-flat-button
+      color="primary"
+      [disabled]="form.invalid || state() === 'submitting'"
+      (click)="submit()"
+    >
+      @if (state() === 'submitting') {
+        <mat-spinner diameter="20" />
+      } @else {
+        Convidar
+      }
+    </button>
+  </mat-dialog-actions>
+}
+
+@if (state() === 'success') {
+  <mat-dialog-content>
+    <p>Convite criado com sucesso! Compartilhe o link abaixo:</p>
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Link do convite</mat-label>
+      <input matInput [value]="inviteLink()" readonly />
+      <button matSuffix mat-icon-button (click)="copyLink()" aria-label="Copiar link">
+        <mat-icon>{{ copied() ? 'check' : 'content_copy' }}</mat-icon>
+      </button>
+    </mat-form-field>
+    @if (copied()) {
+      <p class="copied-feedback">Copiado!</p>
+    }
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-flat-button (click)="close()">Fechar</button>
+  </mat-dialog-actions>
+}
