@@ -63,9 +63,13 @@
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef></th>
           <td mat-cell *matCellDef="let row">
-            <a mat-button color="primary" [routerLink]="['/invoices', row.id]">
-              Ver detalhes
-            </a>
+            @if (row.status === 'OPEN') {
+              <button mat-button color="accent" (click)="onClose(row)">Fechar</button>
+            }
+            @if (row.status === 'CLOSED') {
+              <button mat-flat-button color="primary" (click)="onPay(row)">Pagar</button>
+            }
+            <a mat-button [routerLink]="['/invoices', row.id]">Ver detalhes</a>
           </td>
         </ng-container>
 
