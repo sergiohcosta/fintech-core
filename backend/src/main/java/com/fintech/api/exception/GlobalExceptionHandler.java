@@ -45,6 +45,12 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), null);
     }
 
+    // 2b. Trata violações de estado de negócio (ex: pagar fatura não fechada) — 422
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalState(IllegalStateException ex) {
+        return buildErrorResponse(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), null);
+    }
+
     // 3. NOVO CÓDIGO (A implementação refinada que você pediu)
     // Trata Entidade Não Encontrada (404)
     @ExceptionHandler(EntityNotFoundException.class)
