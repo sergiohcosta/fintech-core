@@ -100,6 +100,21 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
 
     long countByInvoice(Invoice invoice);
 
+    // Atualiza em batch todas as transações de uma fatura com status específico.
+    // @Modifying exige @Transactional no caller — evita loop N+1 de saves.
+    @Modifying
+    @Query("""
+        UPDATE Transaction t
+           SET t.status = :newStatus
+         WHERE t.invoice = :invoice
+           AND t.status = :currentStatus
+        """)
+    int updateStatusByInvoiceAndStatus(
+        @Param("invoice") Invoice invoice,
+        @Param("currentStatus") TransactionStatus currentStatus,
+        @Param("newStatus") TransactionStatus newStatus
+    );
+
     // Para transações de cartão, usa invoice.dueDate como referência de mês.
     // Para demais contas (sem fatura), usa transaction.date.
     // LEFT JOIN explícito é obrigatório: t.invoice.dueDate em WHERE gera INNER JOIN implícito
