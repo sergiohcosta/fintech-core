@@ -3,7 +3,6 @@ package com.fintech.api.controller;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.invoice.InvoiceResponseDTO;
 import com.fintech.api.exception.EntityNotFoundException;
-import com.fintech.api.openapi.InvoicesApi;
 import com.fintech.api.repository.AccountRepository;
 import com.fintech.api.service.InvoiceService;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +16,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/invoices")
 @RequiredArgsConstructor
-public class InvoiceController implements InvoicesApi {
+public class InvoiceController {
 
     private final InvoiceService invoiceService;
     private final AccountRepository accountRepository;
@@ -42,8 +41,12 @@ public class InvoiceController implements InvoicesApi {
         return ResponseEntity.ok(invoiceService.close(id, user.getTenant()));
     }
 
-    @Override
-    public ResponseEntity<InvoiceResponseDTO> payInvoice(UUID id, UUID sourceAccountId) {
+    // sourceAccountId via @RequestParam é temporário — Task 5 migrará para @RequestBody
+    // após atualização da spec OpenAPI com InvoicePayDTO
+    @PostMapping("/{id}/pay")
+    public ResponseEntity<InvoiceResponseDTO> payInvoice(
+            @PathVariable UUID id,
+            @RequestParam UUID sourceAccountId) {
         User user = getAuthenticatedUser();
         return ResponseEntity.ok(invoiceService.pay(id, user.getTenant(), user, sourceAccountId));
     }
