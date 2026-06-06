@@ -115,7 +115,7 @@ public class InvoiceService {
                 .orElseThrow(() -> new EntityNotFoundException("Conta de origem não encontrada."));
 
         if (sourceAccount.getType() == AccountType.CREDIT_CARD) {
-            throw new IllegalArgumentException(
+            throw new IllegalStateException(
                     "Não é possível pagar uma fatura com outra conta de cartão de crédito.");
         }
 
