@@ -1,5 +1,6 @@
 package com.fintech.api.dto.transaction;
 
+import com.fintech.api.domain.category.Category;
 import com.fintech.api.domain.enums.InvoiceStatus;
 import com.fintech.api.domain.enums.TransactionStatus;
 import com.fintech.api.domain.enums.TransactionType;
@@ -7,6 +8,7 @@ import com.fintech.api.domain.transaction.Transaction;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayDeque;
 import java.util.UUID;
 
 public record TransactionResponseDTO(
@@ -22,6 +24,8 @@ public record TransactionResponseDTO(
         String categoryName,
         UUID categoryId,
         boolean categoryArchived,
+        String categoryPath,
+        String categoryIcon,
         String accountName,
         UUID accountId,
         UUID transferId,
@@ -36,6 +40,7 @@ public record TransactionResponseDTO(
         if (t.getTotalInstallments() != null && t.getTotalInstallments() > 1) {
             installLabel = t.getInstallmentNumber() + "/" + t.getTotalInstallments();
         }
+        var cat = t.getCategory();
         var group = t.getInstallmentGroup();
         var invoice = t.getInvoice();
         return new TransactionResponseDTO(
@@ -48,9 +53,11 @@ public record TransactionResponseDTO(
                 installLabel,
                 t.getInstallmentNumber(),
                 t.getTotalInstallments(),
-                t.getCategory() != null ? t.getCategory().getName() : null,
-                t.getCategory() != null ? t.getCategory().getId() : null,
-                t.getCategory() != null && t.getCategory().getDeletedAt() != null,
+                cat != null ? cat.getName() : null,
+                cat != null ? cat.getId() : null,
+                cat != null && cat.getDeletedAt() != null,
+                cat != null ? buildCategoryPath(cat) : null,
+                cat != null ? cat.getIcon() : null,
                 t.getAccount() != null ? t.getAccount().getName() : null,
                 t.getAccount() != null ? t.getAccount().getId() : null,
                 t.getTransferId(),
@@ -60,5 +67,17 @@ public record TransactionResponseDTO(
                 invoice != null ? invoice.getDueDate() : null,
                 invoice != null ? invoice.getStatus() : null
         );
+    }
+
+    // Percorre a cadeia pai→filho e monta "Avô → Pai → Filho".
+    // Funciona com lazy loading pois é chamado dentro de @Transactional.
+    private static String buildCategoryPath(Category category) {
+        var parts = new ArrayDeque<String>();
+        var curr = category;
+        while (curr != null) {
+            parts.addFirst(curr.getName());
+            curr = curr.getParent();
+        }
+        return String.join(" → ", parts);
     }
 }

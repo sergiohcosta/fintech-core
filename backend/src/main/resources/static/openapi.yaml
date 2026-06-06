@@ -237,6 +237,12 @@ components:
           nullable: true
         categoryArchived:
           type: boolean
+        categoryPath:
+          type: string
+          nullable: true
+        categoryIcon:
+          type: string
+          nullable: true
         accountName:
           type: string
           nullable: true
