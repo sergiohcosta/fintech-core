@@ -87,7 +87,7 @@ class TransactionControllerTest {
                 // Arrange
                 TransactionResponseDTO responseDTO = new TransactionResponseDTO(
                                 UUID.randomUUID(), "Test", new BigDecimal("100.00"), LocalDate.now(), null, null, null,
-                                null, null, null, null, false, null, null, null, null, null, null, null, null);
+                                null, null, null, null, false, null, null, null, null, null, null, null, null, null, null);
 
                 when(transactionService.findAll(any(User.class), any())).thenReturn(List.of(responseDTO));
 
@@ -109,7 +109,7 @@ class TransactionControllerTest {
 
                 TransactionResponseDTO responseDTO = new TransactionResponseDTO(
                                 UUID.randomUUID(), "New Transaction", new BigDecimal("50.00"), LocalDate.now(), null,
-                                null, null, null, null, null, null, false, null, null, null, null, null, null, null, null);
+                                null, null, null, null, null, null, false, null, null, null, null, null, null, null, null, null, null);
 
                 when(transactionService.create(any(TransactionRequestDTO.class), any(User.class)))
                                 .thenReturn(List.of(responseDTO));

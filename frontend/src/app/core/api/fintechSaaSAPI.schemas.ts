@@ -144,6 +144,10 @@ export interface TransactionResponseDTO {
   categoryId?: string | null;
   categoryArchived?: boolean;
   /** @nullable */
+  categoryPath?: string | null;
+  /** @nullable */
+  categoryIcon?: string | null;
+  /** @nullable */
   accountName?: string | null;
   /** @nullable */
   accountId?: string | null;
@@ -176,6 +180,10 @@ export interface InvoiceResponseDTO {
   status: InvoiceStatus;
   totalAmount: number;
   transactionCount: number;
+}
+
+export interface InvoicePayDTO {
+  sourceAccountId: string;
 }
 
 export type DeleteInstallmentScope = typeof DeleteInstallmentScope[keyof typeof DeleteInstallmentScope];

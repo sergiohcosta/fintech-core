@@ -6,7 +6,8 @@ const makeTransaction = (overrides: Partial<TransactionResponseDTO>): Transactio
   id: 't1', description: 'Test', amount: 100, date: '2026-06-01',
   type: 'EXPENSE', status: 'PAID',
   installmentLabel: null, categoryName: 'Alimentação', categoryId: 'cat-1',
-  categoryArchived: false, accountName: 'Nubank', accountId: 'cc-1',
+  categoryArchived: false, categoryPath: 'Alimentação', categoryIcon: 'restaurant',
+  accountName: 'Nubank', accountId: 'cc-1',
   transferId: null, installmentGroupId: null, installmentGroupDescription: null,
   installmentNumber: null, totalInstallments: null,
   invoiceId: 'inv-1', invoiceDueDate: '2026-07-05', invoiceStatus: 'OPEN',
@@ -16,25 +17,25 @@ const makeTransaction = (overrides: Partial<TransactionResponseDTO>): Transactio
 describe('computeBreakdown', () => {
   it('agrupa transações por categoria e soma valores', () => {
     const txs = [
-      makeTransaction({ id: 't1', categoryName: 'Alimentação', amount: 300 }),
-      makeTransaction({ id: 't2', categoryName: 'Alimentação', amount: 200 }),
-      makeTransaction({ id: 't3', categoryName: 'Transporte',  amount: 100 })
+      makeTransaction({ id: 't1', categoryPath: 'Alimentação', amount: 300 }),
+      makeTransaction({ id: 't2', categoryPath: 'Alimentação', amount: 200 }),
+      makeTransaction({ id: 't3', categoryPath: 'Transporte',  amount: 100 })
     ];
     const result = computeBreakdown(txs, 600);
     expect(result).toHaveLength(2);
-    const alimentacao = result.find(r => r.categoryName === 'Alimentação')!;
+    const alimentacao = result.find(r => r.categoryPath === 'Alimentação')!;
     expect(alimentacao.count).toBe(2);
     expect(alimentacao.total).toBe(500);
   });
 
-  it('trata null/undefined em categoryName como "Sem categoria"', () => {
+  it('trata null/undefined em categoryPath como "Sem categoria"', () => {
     const txs = [
-      makeTransaction({ id: 't1', categoryName: null, amount: 150 }),
-      makeTransaction({ id: 't2', categoryName: undefined, amount: 50 })
+      makeTransaction({ id: 't1', categoryPath: null, categoryName: null, amount: 150 }),
+      makeTransaction({ id: 't2', categoryPath: null, categoryName: undefined, amount: 50 })
     ];
     const result = computeBreakdown(txs, 200);
     expect(result).toHaveLength(1);
-    expect(result[0].categoryName).toBe('Sem categoria');
+    expect(result[0].categoryPath).toBe('Sem categoria');
     expect(result[0].total).toBe(200);
   });
 
@@ -49,19 +50,19 @@ describe('computeBreakdown', () => {
 
   it('ordena por valor absoluto decrescente', () => {
     const txs = [
-      makeTransaction({ id: 't1', categoryName: 'Pequena', amount: 50 }),
-      makeTransaction({ id: 't2', categoryName: 'Grande', amount: 500 }),
-      makeTransaction({ id: 't3', categoryName: 'Média', amount: 200 })
+      makeTransaction({ id: 't1', categoryPath: 'Pequena', amount: 50 }),
+      makeTransaction({ id: 't2', categoryPath: 'Grande', amount: 500 }),
+      makeTransaction({ id: 't3', categoryPath: 'Média', amount: 200 })
     ];
     const result = computeBreakdown(txs, 750);
-    expect(result[0].categoryName).toBe('Grande');
-    expect(result[1].categoryName).toBe('Média');
-    expect(result[2].categoryName).toBe('Pequena');
+    expect(result[0].categoryPath).toBe('Grande');
+    expect(result[1].categoryPath).toBe('Média');
+    expect(result[2].categoryPath).toBe('Pequena');
   });
 
   it('calcula porcentagem em relação ao totalExpense', () => {
     const txs = [
-      makeTransaction({ id: 't1', categoryName: 'Alimentação', amount: 250 })
+      makeTransaction({ id: 't1', categoryPath: 'Alimentação', amount: 250 })
     ];
     const result = computeBreakdown(txs, 500);
     expect(result[0].percentage).toBeCloseTo(50, 1);
@@ -77,5 +78,17 @@ describe('computeBreakdown', () => {
     const txs = [makeTransaction({ id: 't1', status: 'CANCELLED' })];
     const result = computeBreakdown(txs, 0);
     expect(result).toHaveLength(0);
+  });
+
+  it('usa categoryPath completo para agrupar subcategorias', () => {
+    const txs = [
+      makeTransaction({ id: 't1', categoryPath: 'Pets → Ração', categoryName: 'Ração', amount: 100 }),
+      makeTransaction({ id: 't2', categoryPath: 'Pets → Ração', categoryName: 'Ração', amount: 50 }),
+      makeTransaction({ id: 't3', categoryPath: 'Pets → Veterinário', categoryName: 'Veterinário', amount: 200 })
+    ];
+    const result = computeBreakdown(txs, 350);
+    expect(result).toHaveLength(2);
+    expect(result.find(r => r.categoryPath === 'Pets → Ração')?.count).toBe(2);
+    expect(result.find(r => r.categoryPath === 'Pets → Veterinário')?.count).toBe(1);
   });
 });

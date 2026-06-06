@@ -60,7 +60,14 @@
           <table mat-table [dataSource]="breakdown()">
             <ng-container matColumnDef="categoryName">
               <th mat-header-cell *matHeaderCellDef>Categoria</th>
-              <td mat-cell *matCellDef="let row">{{ row.categoryName }}</td>
+              <td mat-cell *matCellDef="let row">
+                <span class="category-cell">
+                  @if (row.categoryIcon) {
+                    <mat-icon class="category-icon">{{ row.categoryIcon }}</mat-icon>
+                  }
+                  {{ row.categoryPath }}
+                </span>
+              </td>
             </ng-container>
             <ng-container matColumnDef="count">
               <th mat-header-cell *matHeaderCellDef>Transações</th>
