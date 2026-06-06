@@ -287,6 +287,10 @@ export class TransactionForm implements OnInit {
     return icons[type] ?? 'account_balance';
   }
 
+  getAccountName(id: string | null): string {
+    return this.accounts().find(a => a.id === id)?.name ?? '';
+  }
+
   private toDateString(date: Date): string {
     return date.toISOString().split('T')[0];
   }
