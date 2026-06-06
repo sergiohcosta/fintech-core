@@ -44,6 +44,9 @@ public class SecurityConfigurations {
                         .requestMatchers(HttpMethod.GET, "/invites/*").permitAll()
                         .requestMatchers("/openapi.yaml", "/swagger-ui.html", "/swagger-ui/**", "/webjars/**", "/v3/api-docs/**", "/actuator/health").permitAll()
                         .requestMatchers(HttpMethod.POST, "/invites").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/invites").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/invites/*").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/members").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
