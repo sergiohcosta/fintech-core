@@ -270,6 +270,11 @@ Ocultar no frontend **não substitui** proteção no backend. O frontend é cont
   - dev: padrão legível com `requestId`/`userId` visíveis; prod: JSON estruturado (`logstash`)
 
 **Próximos passos:**
+- **Comportamento de fechar e pagar fatura (issue #45)** — spec em `docs/superpowers/specs/2026-06-05-invoice-close-pay-behavior-design.md`:
+  - Fechar: marcador administrativo, sem side effects; novas transações ainda permitidas com aviso visual no frontend
+  - Pagar: `@Transactional` com três efeitos: transações `PENDING` → `PAID` (batch), criação de `EXPENSE` na conta de origem, status da fatura → `PAID`
+  - Novo `InvoicePayDTO { sourceAccountId }` + validação: conta não pode ser `CREDIT_CARD`
+  - Frontend: `InvoicePayDialog` com `mat-select` de contas elegíveis; chip/badge de status na listagem
 - Filtros na listagem de transações (por período, tipo, status, conta)
 - Gráficos no dashboard (evolução mensal, breakdown por categoria/conta)
 - Tela de Patrimônio Total — consome `countInNetWorth` (campo já existe em `accounts`)
