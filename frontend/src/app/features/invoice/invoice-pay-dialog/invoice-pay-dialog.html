@@ -1,0 +1,36 @@
+<h2 mat-dialog-title>Pagar fatura</h2>
+
+<mat-dialog-content>
+  <p>
+    <strong>{{ invoice.accountName }}</strong> — {{ invoice.label }}<br>
+    Total: <strong>{{ invoice.totalAmount | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong>
+  </p>
+
+  @if (hasNoEligibleAccounts()) {
+    <p style="color: #e65100; margin-top: 12px;">
+      Nenhuma conta disponível para pagamento. Cadastre uma conta corrente ou carteira.
+    </p>
+  } @else {
+    <mat-form-field appearance="outline" style="width: 100%; margin-top: 8px;">
+      <mat-label>Conta de origem</mat-label>
+      <mat-select
+        [ngModel]="selectedAccountId()"
+        (ngModelChange)="selectedAccountId.set($event)">
+        @for (acc of eligibleAccounts(); track acc.id) {
+          <mat-option [value]="acc.id">{{ acc.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancel()">Cancelar</button>
+  <button
+    mat-flat-button
+    color="primary"
+    [disabled]="!selectedAccountId() || hasNoEligibleAccounts()"
+    (click)="confirm()">
+    Confirmar pagamento
+  </button>
+</mat-dialog-actions>
