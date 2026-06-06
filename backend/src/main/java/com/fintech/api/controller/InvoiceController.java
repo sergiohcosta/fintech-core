@@ -42,10 +42,10 @@ public class InvoiceController implements InvoicesApi {
         return ResponseEntity.ok(invoiceService.close(id, user.getTenant()));
     }
 
-    @PostMapping("/{id}/pay")
-    public ResponseEntity<InvoiceResponseDTO> payInvoice(@PathVariable UUID id) {
+    @Override
+    public ResponseEntity<InvoiceResponseDTO> payInvoice(UUID id, UUID sourceAccountId) {
         User user = getAuthenticatedUser();
-        return ResponseEntity.ok(invoiceService.pay(id, user.getTenant()));
+        return ResponseEntity.ok(invoiceService.pay(id, user.getTenant(), user, sourceAccountId));
     }
 
     private User getAuthenticatedUser() {
