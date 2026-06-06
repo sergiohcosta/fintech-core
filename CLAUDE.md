@@ -268,9 +268,18 @@ Ocultar no frontend **não substitui** proteção no backend. O frontend é cont
   - `GlobalExceptionHandler`: `log.error()` com stack trace em erros 5xx
   - `InvoiceService`: `log.info()` em transições de estado (fechar/pagar fatura)
   - dev: padrão legível com `requestId`/`userId` visíveis; prod: JSON estruturado (`logstash`)
+- **Comportamento de fechar e pagar fatura (issue #45, 2026-06-06)**:
+  - Fechar (`OPEN → CLOSED`): marcador administrativo, sem side effects; novas transações ainda permitidas com aviso visual
+  - Pagar (`CLOSED → PAID`): em `@Transactional` única — transações `PENDING` → `PAID` via `@Modifying` batch; cria `EXPENSE` na conta de origem se `total > 0`; fatura → `PAID`
+  - `InvoicePayDTO { sourceAccountId }` + validações: conta não pode ser `CREDIT_CARD` (422), fatura deve estar `CLOSED` (422)
+  - `GlobalExceptionHandler`: `IllegalStateException` → 422 (antes caía no handler genérico → 500)
+  - `InvoicePayDialog`: `mat-select` de contas elegíveis (sem `CREDIT_CARD`); edge case sem contas disponíveis
+  - Botão "Fechar" só em `OPEN`; botão "Pagar" só em `CLOSED` — tanto em `InvoiceList` quanto em `InvoiceDetail`
+  - `TransactionResponseDTO` ganhou `categoryPath` (ex: `"Pets → Ração"`) e `categoryIcon` — breakdown da fatura exibe path completo + ícone
+  - Fix: `mat-select` exibia nome da ligatura do ícone (ex: `"credit_card Nubank"`) — corrigido com `<mat-select-trigger>` no formulário de transação
 
 **Próximos passos:**
-- Filtros na listagem de transações (por período, tipo, status, conta)
+- **Filtros na listagem de transações (issue #41)** — por período, tipo, status, conta; com agrupamento por período e saldo por grupo
 - Gráficos no dashboard (evolução mensal, breakdown por categoria/conta)
 - Tela de Patrimônio Total — consome `countInNetWorth` (campo já existe em `accounts`)
 

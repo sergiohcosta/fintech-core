@@ -1,7 +1,7 @@
 # Fintech SaaS Multi-Tenant — Referência de Especificação
 
 > Documento de referência técnica para Spec-Driven Development. Serve como fonte de verdade para domínio, contratos de API e regras de negócio implementadas.
-> Última atualização: 2026-06-05
+> Última atualização: 2026-06-06
 
 ---
 
@@ -188,6 +188,8 @@ WHERE account = :account AND status <> CANCELLED
 - Validação anti-circular: não é possível definir um descendente como pai.
 - `archived: boolean` em `CategoryResponseDTO` — `deletedAt != null`.
 - `TransactionResponseDTO.categoryArchived: boolean` — transações com categoria arquivada exibem nome taxado com tooltip.
+- `TransactionResponseDTO.categoryPath: string` — path completo da categoria (ex: `"Pets → Ração"`), construído percorrendo a cadeia `parent` dentro de `@Transactional`. Usado no breakdown de faturas para agrupar subcategorias com contexto hierárquico.
+- `TransactionResponseDTO.categoryIcon: string` — ícone da categoria folha. Exibido no breakdown de faturas ao lado do path.
 
 ---
 
@@ -256,12 +258,36 @@ Retorna `{ deleted: int, skippedPaid: int }`.
 
 ### Faturas (`/api/invoices`)
 
-| Método | Rota | Descrição |
-|--------|------|-----------|
-| GET | `/api/invoices?accountId={uuid}` | Lista faturas de uma conta CREDIT_CARD |
-| GET | `/api/invoices/{id}` | Detalha fatura (inclui `totalAmount`, `transactionCount`) |
-| POST | `/api/invoices/{id}/close` | `OPEN → CLOSED` |
-| POST | `/api/invoices/{id}/pay` | `CLOSED → PAID` |
+| Método | Rota | Body | Descrição |
+|--------|------|------|-----------|
+| GET | `/api/invoices?accountId={uuid}` | — | Lista faturas de uma conta CREDIT_CARD |
+| GET | `/api/invoices/{id}` | — | Detalha fatura (inclui `totalAmount`, `transactionCount`) |
+| POST | `/api/invoices/{id}/close` | — | `OPEN → CLOSED` — marcador administrativo, sem side effects |
+| POST | `/api/invoices/{id}/pay` | `{ sourceAccountId }` | `CLOSED → PAID` — ver ciclo de pagamento abaixo |
+
+**Ciclo de vida completo:**
+```
+OPEN → [fechar] → CLOSED   (novas transações ainda aceitas; frontend exibe aviso)
+CLOSED → [pagar] → PAID    (ponto de não-retorno)
+```
+
+**Fechar (`OPEN → CLOSED`):** apenas muda o status. Nenhuma transação é afetada. Novas transações do período ainda podem ser associadas à fatura fechada — útil para cobranças atrasadas.
+
+**Pagar (`CLOSED → PAID`) — dentro de uma única `@Transactional`:**
+1. Todas as transações `PENDING` da fatura → `PAID` via `@Modifying` batch (sem N+1).
+2. Se `total > 0`: cria `EXPENSE` na conta de origem (`sourceAccountId`) com:
+   - `amount = soma das transações não canceladas`
+   - `date = LocalDate.now()` ← data real do pagamento, não o `dueDate`
+   - `description = "Pagamento fatura {accountName} {MM}/{yyyy}"`
+   - `invoice = null`, `installmentGroup = null`
+3. Status da fatura → `PAID`.
+
+**Por que criar a EXPENSE?** `CREDIT_CARD` tem `countInLiquidBalance = false`. Sem o débito, os gastos do cartão nunca impactam o saldo líquido. O débito fecha o ciclo: compra (sem impacto imediato) → pagamento da fatura (saída de caixa real).
+
+**Validações em `pay`:**
+- `sourceAccountId` deve pertencer ao tenant → 404
+- Tipo da conta de origem `≠ CREDIT_CARD` → 422
+- Status da fatura deve ser `CLOSED` → 422
 
 **Criação lazy (`InvoiceService.getOrCreate`):**
 - Chamada automaticamente ao criar transações de cartão.

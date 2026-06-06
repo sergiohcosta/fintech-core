@@ -188,6 +188,7 @@
 								<importMapping>DeleteInstallmentResultDTO=com.fintech.api.dto.installment.DeleteInstallmentResultDTO</importMapping>
 								<importMapping>DeleteInstallmentScope=com.fintech.api.domain.enums.DeleteInstallmentScope</importMapping>
 								<importMapping>InvoiceResponseDTO=com.fintech.api.dto.invoice.InvoiceResponseDTO</importMapping>
+								<importMapping>InvoicePayDTO=com.fintech.api.dto.invoice.InvoicePayDTO</importMapping>
 								<importMapping>InvoiceStatus=com.fintech.api.domain.enums.InvoiceStatus</importMapping>
 							</importMappings>
 							<configOptions>
