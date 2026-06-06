@@ -15,6 +15,7 @@ import {
   TransactionStatus, TransactionType, InvoiceStatus
 } from '../../../core/api/fintechSaaSAPI.schemas';
 import { ConfirmationDialogComponent } from '../../../components/confirmation-dialog/confirmation-dialog';
+import { InvoicePayDialogComponent, InvoicePayDialogResult } from '../invoice-pay-dialog/invoice-pay-dialog';
 import { computeBreakdown, CategoryBreakdownRow } from './invoice-detail.utils';
 
 @Component({
@@ -93,12 +94,15 @@ export class InvoiceDetail implements OnInit {
   }
 
   onPay(): void {
-    const ref = this.dialog.open(ConfirmationDialogComponent, {
-      data: { title: 'Pagar Fatura', message: 'Confirma o pagamento desta fatura?', confirmText: 'Pagar Fatura' }
+    const invoice = this.invoice();
+    if (!invoice) return;
+    const ref = this.dialog.open(InvoicePayDialogComponent, {
+      data: { invoice },
+      width: '480px'
     });
-    ref.afterClosed().subscribe(confirmed => {
-      if (!confirmed || !this.invoice()) return;
-      this.invoicesService.payInvoice(this.invoice()!.id).subscribe({
+    ref.afterClosed().subscribe((result: InvoicePayDialogResult | undefined) => {
+      if (!result) return;
+      this.invoicesService.payInvoice(invoice.id, { sourceAccountId: result.sourceAccountId }).subscribe({
         next: (inv) => { this.invoice.set(inv); this.snackBar.open('Fatura paga.', 'OK', { duration: 3000 }); },
         error: () => this.snackBar.open('Erro ao pagar fatura.', 'Fechar', { duration: 5000 })
       });
