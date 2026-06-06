@@ -4,6 +4,7 @@ import com.fintech.api.exception.BusinessConflictException;
 import com.fintech.api.exception.CategoryHasTransactionsException;
 import com.fintech.api.exception.InviteAlreadyUsedException;
 import com.fintech.api.exception.InviteExpiredException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -88,7 +90,7 @@ public class GlobalExceptionHandler {
         if (ex instanceof NoResourceFoundException nrfe) {
             throw nrfe;
         }
-        // Em produção, é bom logar o 'ex' aqui
+        log.error("Erro não tratado [tipo={}]: {}", ex.getClass().getSimpleName(), ex.getMessage(), ex);
         return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Ocorreu um erro interno no servidor.", null);
     }
 

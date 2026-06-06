@@ -67,7 +67,7 @@ class AuthControllerTest {
     void shouldRegisterTenant() throws Exception {
         // Arrange
         TenantRegistrationDTO dto = new TenantRegistrationDTO(
-                "My Tenant", "12345678900", "Admin", "admin@email.com", "123456");
+                "My Tenant", "Admin", "admin@email.com", "123456");
 
         Tenant tenant = new Tenant();
         tenant.setId(UUID.randomUUID());

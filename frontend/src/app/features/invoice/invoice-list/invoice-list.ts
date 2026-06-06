@@ -1,0 +1,88 @@
+import { Component, inject, OnInit, signal, effect } from '@angular/core';
+import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { MatTableModule } from '@angular/material/table';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatSelectModule } from '@angular/material/select';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+
+import { finalize } from 'rxjs/operators';
+
+import { AccountsService } from '../../../core/api/accounts/accounts.service';
+import { InvoicesService } from '../../../core/api/invoices/invoices.service';
+import { AccountResponse, InvoiceResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
+
+@Component({
+  selector: 'app-invoice-list',
+  standalone: true,
+  imports: [
+    CommonModule, CurrencyPipe, DatePipe, RouterLink,
+    MatTableModule, MatButtonModule, MatIconModule,
+    MatSelectModule, MatFormFieldModule, MatSnackBarModule
+  ],
+  templateUrl: './invoice-list.html',
+  styleUrl: './invoice-list.scss'
+})
+export class InvoiceList implements OnInit {
+  private accountsService = inject(AccountsService);
+  private invoicesService = inject(InvoicesService);
+  private route = inject(ActivatedRoute);
+  private snackBar = inject(MatSnackBar);
+
+  creditCardAccounts = signal<AccountResponse[]>([]);
+  selectedId = signal<string | null>(null);
+  invoices = signal<InvoiceResponseDTO[]>([]);
+  loading = signal(false);
+
+  displayedColumns = ['label', 'closingDate', 'dueDate', 'transactionCount', 'totalAmount', 'status', 'actions'];
+
+  constructor() {
+    // Recarrega faturas sempre que a conta selecionada muda.
+    // onCleanup cancela a subscription anterior se o usuário trocar de conta rapidamente.
+    effect((onCleanup) => {
+      const id = this.selectedId();
+      if (!id) {
+        this.invoices.set([]);
+        return;
+      }
+      this.loading.set(true);
+      const sub = this.invoicesService.listInvoices({ accountId: id })
+        .pipe(finalize(() => this.loading.set(false)))
+        .subscribe({
+          next: (data) => this.invoices.set(data),
+          error: () => this.snackBar.open('Erro ao carregar faturas.', 'Fechar', { duration: 5000 })
+        });
+      onCleanup(() => sub.unsubscribe());
+    });
+  }
+
+  ngOnInit(): void {
+    this.accountsService.listAccounts().subscribe({
+      next: (data) => {
+        const cc = data.filter(a => a.type === 'CREDIT_CARD');
+        this.creditCardAccounts.set(cc);
+        const preselect = this.route.snapshot.queryParamMap.get('accountId');
+        if (preselect && cc.some(a => a.id === preselect)) {
+          this.selectedId.set(preselect);
+        }
+      },
+      error: () => this.snackBar.open('Erro ao carregar contas.', 'Fechar', { duration: 5000 })
+    });
+  }
+
+  statusChipClass(status: string): string {
+    const map: Record<string, string> = {
+      OPEN:   'status-chip status-open',
+      CLOSED: 'status-chip status-closed',
+      PAID:   'status-chip status-paid'
+    };
+    return map[status] ?? 'status-chip';
+  }
+
+  statusLabel(status: string): string {
+    const map: Record<string, string> = { OPEN: 'Aberta', CLOSED: 'Fechada', PAID: 'Paga' };
+    return map[status] ?? status;
+  }
+}

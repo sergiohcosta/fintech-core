@@ -12,6 +12,7 @@ interface NavItem {
   label: string;
   icon: string;
   route: string;
+  adminOnly?: boolean;
 }
 
 @Component({
@@ -38,12 +39,15 @@ export class ShellComponent {
   // computed() relê o signal do AuthService automaticamente.
   // No modelo Zoneless, isso garante que a toolbar atualiza sem zone.js.
   userName = computed(() => this.authService.currentUser()?.name ?? '');
+  isAdmin = this.authService.isAdmin;
 
   readonly navItems: NavItem[] = [
-    { label: 'Dashboard',  icon: 'dashboard',   route: '/dashboard' },
-    { label: 'Transações', icon: 'swap_horiz',  route: '/transactions' },
-    { label: 'Contas',    icon: 'credit_card', route: '/accounts' },
-    { label: 'Categorias', icon: 'category',    route: '/categories' },
+    { label: 'Dashboard',  icon: 'dashboard',    route: '/dashboard' },
+    { label: 'Transações', icon: 'swap_horiz',   route: '/transactions' },
+    { label: 'Faturas',    icon: 'receipt_long', route: '/invoices' },
+    { label: 'Contas',     icon: 'credit_card',  route: '/accounts' },
+    { label: 'Categorias', icon: 'category',     route: '/categories' },
+    { label: 'Equipe',     icon: 'group',        route: '/team', adminOnly: true },
   ];
 
   toggleSidenav() {

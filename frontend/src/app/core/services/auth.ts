@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router'; // Precisamos disso para mandar o usuário pro Login ao sair
 import { Observable, tap } from 'rxjs';
 import { jwtDecode } from 'jwt-decode'; // A ferramenta que instalamos
@@ -9,6 +9,7 @@ export interface TokenPayload {
   sub: string;       // Email
   name: string;      // Nome do usuário
   tenant_id: string; // ID da empresa
+  role: 'ADMIN' | 'USER';
   exp: number;       // Expiração (Unix timestamp)
 }
 
@@ -34,6 +35,7 @@ export class AuthService {
   // qualquer tela que estiver usando ela atualiza sozinha.
   // Começa como 'null' (ninguém logado).
   currentUser = signal<TokenPayload | null>(null);
+  isAdmin = computed(() => this.currentUser()?.role === 'ADMIN');
 
   constructor() {
     // Quando o serviço nasce (no F5), tentamos ver se já tem token salvo
