@@ -263,7 +263,7 @@ class InvoiceServiceTest {
     }
 
     @Test
-    @DisplayName("pay: lança IllegalArgumentException se conta de origem for CREDIT_CARD")
+    @DisplayName("pay: lança IllegalStateException se conta de origem for CREDIT_CARD")
     void payRejectsCreditCardSourceAccount() {
         Invoice invoice = buildInvoice(InvoiceStatus.CLOSED);
         Account creditCard = buildAccount();
@@ -275,7 +275,7 @@ class InvoiceServiceTest {
                 .thenReturn(Optional.of(creditCard));
 
         assertThatThrownBy(() -> service.pay(invoice.getId(), invoice.getTenant(), user, creditCard.getId()))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("cartão de crédito");
     }
 
