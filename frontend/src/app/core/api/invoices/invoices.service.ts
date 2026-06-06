@@ -26,6 +26,7 @@ import {
 } from 'rxjs';
 
 import type {
+  InvoicePayDTO,
   InvoiceResponseDTO,
   ListInvoicesParams
 } from '../fintechSaaSAPI.schemas';
@@ -235,15 +236,19 @@ export class InvoicesService {
       }
     );
   }
- payInvoice<TData = InvoiceResponseDTO>(id: string, options?: HttpClientBodyOptions): Observable<TData>;
- payInvoice<TData = InvoiceResponseDTO>(id: string, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
- payInvoice<TData = InvoiceResponseDTO>(id: string, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+ payInvoice<TData = InvoiceResponseDTO>(id: string,
+    invoicePayDTO: InvoicePayDTO, options?: HttpClientBodyOptions): Observable<TData>;
+ payInvoice<TData = InvoiceResponseDTO>(id: string,
+    invoicePayDTO: InvoicePayDTO, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ payInvoice<TData = InvoiceResponseDTO>(id: string,
+    invoicePayDTO: InvoicePayDTO, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
   payInvoice<TData = InvoiceResponseDTO>(
-    id: string, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    id: string,
+    invoicePayDTO: InvoicePayDTO, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
     if (options?.observe === 'events') {
       return this.http.post<TData>(
       `/api/invoices/${id}/pay`,
-      undefined,{
+      invoicePayDTO,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'events',
       }
@@ -253,7 +258,7 @@ export class InvoicesService {
     if (options?.observe === 'response') {
       return this.http.post<TData>(
       `/api/invoices/${id}/pay`,
-      undefined,{
+      invoicePayDTO,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'response',
       }
@@ -262,7 +267,7 @@ export class InvoicesService {
 
     return this.http.post<TData>(
       `/api/invoices/${id}/pay`,
-      undefined,{
+      invoicePayDTO,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'body',
       }
