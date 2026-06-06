@@ -7,12 +7,14 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 
 import { finalize } from 'rxjs/operators';
 
 import { AccountsService } from '../../../core/api/accounts/accounts.service';
 import { InvoicesService } from '../../../core/api/invoices/invoices.service';
 import { AccountResponse, InvoiceResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
+import { InvoicePayDialogComponent, InvoicePayDialogResult } from '../invoice-pay-dialog/invoice-pay-dialog';
 
 @Component({
   selector: 'app-invoice-list',
@@ -20,7 +22,7 @@ import { AccountResponse, InvoiceResponseDTO } from '../../../core/api/fintechSa
   imports: [
     CommonModule, CurrencyPipe, DatePipe, RouterLink,
     MatTableModule, MatButtonModule, MatIconModule,
-    MatSelectModule, MatFormFieldModule, MatSnackBarModule
+    MatSelectModule, MatFormFieldModule, MatSnackBarModule, MatDialogModule
   ],
   templateUrl: './invoice-list.html',
   styleUrl: './invoice-list.scss'
@@ -30,6 +32,7 @@ export class InvoiceList implements OnInit {
   private invoicesService = inject(InvoicesService);
   private route = inject(ActivatedRoute);
   private snackBar = inject(MatSnackBar);
+  private dialog = inject(MatDialog);
 
   creditCardAccounts = signal<AccountResponse[]>([]);
   selectedId = signal<string | null>(null);
@@ -69,6 +72,39 @@ export class InvoiceList implements OnInit {
         }
       },
       error: () => this.snackBar.open('Erro ao carregar contas.', 'Fechar', { duration: 5000 })
+    });
+  }
+
+  onClose(invoice: InvoiceResponseDTO): void {
+    this.loading.set(true);
+    this.invoicesService.closeInvoice(invoice.id)
+      .pipe(finalize(() => this.loading.set(false)))
+      .subscribe({
+        next: (updated) => {
+          this.invoices.update(list => list.map(inv => inv.id === updated.id ? updated : inv));
+          this.snackBar.open('Fatura fechada com sucesso.', 'Fechar', { duration: 3000 });
+        },
+        error: () => this.snackBar.open('Erro ao fechar fatura.', 'Fechar', { duration: 5000 })
+      });
+  }
+
+  onPay(invoice: InvoiceResponseDTO): void {
+    const dialogRef = this.dialog.open(InvoicePayDialogComponent, {
+      data: { invoice },
+      width: '480px'
+    });
+    dialogRef.afterClosed().subscribe((result: InvoicePayDialogResult | undefined) => {
+      if (!result) return;
+      this.loading.set(true);
+      this.invoicesService.payInvoice(invoice.id, { sourceAccountId: result.sourceAccountId })
+        .pipe(finalize(() => this.loading.set(false)))
+        .subscribe({
+          next: (updated) => {
+            this.invoices.update(list => list.map(inv => inv.id === updated.id ? updated : inv));
+            this.snackBar.open('Fatura paga com sucesso.', 'Fechar', { duration: 3000 });
+          },
+          error: () => this.snackBar.open('Erro ao pagar fatura.', 'Fechar', { duration: 5000 })
+        });
     });
   }
 

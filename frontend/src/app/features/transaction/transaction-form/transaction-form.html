@@ -29,6 +29,7 @@
           <mat-form-field appearance="outline" class="field-full">
             <mat-label>Conta *</mat-label>
             <mat-select formControlName="accountId">
+              <mat-select-trigger>{{ getAccountName(form.controls.accountId.value) }}</mat-select-trigger>
               @for (a of accounts(); track a.id) {
                 <mat-option [value]="a.id">
                   <span class="account-option">
@@ -253,6 +254,7 @@
           <mat-form-field appearance="outline">
             <mat-label>Conta de origem *</mat-label>
             <mat-select formControlName="fromAccountId">
+              <mat-select-trigger>{{ getAccountName(form.controls.fromAccountId.value) }}</mat-select-trigger>
               @for (a of accounts(); track a.id) {
                 <mat-option [value]="a.id">
                   <span class="account-option">
@@ -270,6 +272,7 @@
           <mat-form-field appearance="outline">
             <mat-label>Conta de destino *</mat-label>
             <mat-select formControlName="toAccountId">
+              <mat-select-trigger>{{ getAccountName(form.controls.toAccountId.value) }}</mat-select-trigger>
               @for (a of accounts(); track a.id) {
                 <mat-option [value]="a.id">
                   <span class="account-option">
