@@ -256,6 +256,18 @@ Ocultar no frontend **não substitui** proteção no backend. O frontend é cont
   - **fix #34:** `RouterLink` adicionado ao `imports[]` do `RegisterComponent` standalone — sem isso, `routerLink` era ignorado e o botão "Ir para login" pós-cadastro não navegava
   - **fix #38:** campo `document` (CPF/CNPJ) removido do fluxo de cadastro de tenant (`TenantRegistrationDTO`, `TenantRegistrationService`, formulário frontend); coluna permanece nullable no banco para uso futuro adequado
   - **feat #39:** seleção de conta movida para o topo do formulário de transação, antes de tipo e status — conta determina campos disponíveis (parcelamento só aparece para CREDIT_CARD)
+- **Gerenciamento de faturas — frontend** (issue #42):
+  - Rota `/invoices` com lazy loading; item no sidenav visível apenas para contas `CREDIT_CARD`
+  - `InvoiceListComponent`: seletor de conta, listagem com status/valores/datas, ações fechar/pagar
+  - `computeBreakdown`: utilitário de lógica pura (testável sem TestBed) para breakdown por categoria
+  - `InvoiceDetailComponent`: resumo financeiro + breakdown por categoria
+  - Fixes: `LazyInitializationException` em `GET /api/invoices/{id}`, projeção de `mat-icon`, null-check em `onClose`/`onPay`, reset de loading via `finalize`, `aria-label` em links
+- **Logging estruturado com MDC** (issue #43):
+  - `RequestIdFilter`: UUID por requisição no MDC + header `X-Request-ID` na resposta
+  - `SecurityFilter`: `userId` e `tenantId` no MDC após autenticação; `WARN` em token inválido
+  - `GlobalExceptionHandler`: `log.error()` com stack trace em erros 5xx
+  - `InvoiceService`: `log.info()` em transições de estado (fechar/pagar fatura)
+  - dev: padrão legível com `requestId`/`userId` visíveis; prod: JSON estruturado (`logstash`)
 
 **Próximos passos:**
 - Filtros na listagem de transações (por período, tipo, status, conta)
