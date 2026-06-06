@@ -295,13 +295,12 @@
       <div class="form-actions">
         <button mat-stroked-button type="button" routerLink="/transactions">Cancelar</button>
         <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid || saving()">
-          @if (saving()) {
-            <mat-progress-spinner diameter="18" mode="indeterminate" class="btn-spinner" />
-            Salvando...
-          } @else {
+          @if (!saving()) {
             <mat-icon>save</mat-icon>
-            Salvar
+          } @else {
+            <mat-progress-spinner diameter="18" mode="indeterminate" class="btn-spinner" />
           }
+          {{ saving() ? 'Salvando...' : 'Salvar' }}
         </button>
       </div>
     </form>
