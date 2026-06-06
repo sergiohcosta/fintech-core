@@ -1,10 +1,13 @@
 package com.fintech.api.controller;
 
 import com.fintech.api.domain.user.User;
+import com.fintech.api.dto.invoice.InvoicePayDTO;
 import com.fintech.api.dto.invoice.InvoiceResponseDTO;
 import com.fintech.api.exception.EntityNotFoundException;
+import com.fintech.api.openapi.InvoicesApi;
 import com.fintech.api.repository.AccountRepository;
 import com.fintech.api.service.InvoiceService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -16,7 +19,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/invoices")
 @RequiredArgsConstructor
-public class InvoiceController {
+public class InvoiceController implements InvoicesApi {
 
     private final InvoiceService invoiceService;
     private final AccountRepository accountRepository;
@@ -41,14 +44,14 @@ public class InvoiceController {
         return ResponseEntity.ok(invoiceService.close(id, user.getTenant()));
     }
 
-    // sourceAccountId via @RequestParam é temporário — Task 5 migrará para @RequestBody
-    // após atualização da spec OpenAPI com InvoicePayDTO
     @PostMapping("/{id}/pay")
     public ResponseEntity<InvoiceResponseDTO> payInvoice(
             @PathVariable UUID id,
-            @RequestParam UUID sourceAccountId) {
+            @Valid @RequestBody InvoicePayDTO invoicePayDTO) {
         User user = getAuthenticatedUser();
-        return ResponseEntity.ok(invoiceService.pay(id, user.getTenant(), user, sourceAccountId));
+        return ResponseEntity.ok(
+            invoiceService.pay(id, user.getTenant(), user, invoicePayDTO.sourceAccountId())
+        );
     }
 
     private User getAuthenticatedUser() {

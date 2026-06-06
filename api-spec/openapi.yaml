@@ -309,6 +309,15 @@ components:
           type: integer
           format: int64
 
+    InvoicePayDTO:
+      type: object
+      required:
+        - sourceAccountId
+      properties:
+        sourceAccountId:
+          type: string
+          format: uuid
+
     DeleteInstallmentScope:
       type: string
       enum: [SINGLE, THIS_AND_NEXT, ALL]
@@ -1183,6 +1192,12 @@ paths:
           schema:
             type: string
             format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoicePayDTO'
       responses:
         '200':
           description: Fatura paga
