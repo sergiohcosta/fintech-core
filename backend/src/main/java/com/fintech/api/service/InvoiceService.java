@@ -11,6 +11,7 @@ import com.fintech.api.repository.CreditCardDetailsRepository;
 import com.fintech.api.repository.InvoiceRepository;
 import com.fintech.api.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +19,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class InvoiceService {
@@ -89,6 +91,8 @@ public class InvoiceService {
                     "Só é possível fechar faturas com status OPEN. Status atual: " + invoice.getStatus());
         }
         invoice.setStatus(InvoiceStatus.CLOSED);
+        log.info("Fatura fechada [invoiceId={} referencia={}/{} tenantId={}]",
+                id, invoice.getReferenceMonth(), invoice.getReferenceYear(), tenant.getId());
         return buildDTO(repository.save(invoice));
     }
 
@@ -100,6 +104,8 @@ public class InvoiceService {
                     "Só é possível pagar faturas com status CLOSED. Status atual: " + invoice.getStatus());
         }
         invoice.setStatus(InvoiceStatus.PAID);
+        log.info("Fatura paga [invoiceId={} referencia={}/{} tenantId={}]",
+                id, invoice.getReferenceMonth(), invoice.getReferenceYear(), tenant.getId());
         return buildDTO(repository.save(invoice));
     }
 
