@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, computed, effect, ViewChild } from '@angular/core';
+import { Component, ElementRef, inject, OnInit, signal, computed, effect, ViewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Observable } from 'rxjs';
 import { CommonModule } from '@angular/common';
@@ -74,6 +74,7 @@ export class TransactionForm implements OnInit {
 
   @ViewChild('picker') private picker?: MatDatepicker<Date>;
   @ViewChild('transferPicker') private transferPicker?: MatDatepicker<Date>;
+  @ViewChild('descriptionInput') private descriptionInput?: ElementRef<HTMLInputElement>;
 
   saving = signal(false);
   isEditMode = signal(false);
