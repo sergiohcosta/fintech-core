@@ -376,7 +376,7 @@ export class TransactionForm implements OnInit {
   }
 
   onSaveAndAddMore(): void {
-    if (this.form.invalid) return;
+    if (this.form.invalid || this.isEditMode()) return;
     this.saving.set(true);
 
     this.doSave().subscribe({
@@ -400,6 +400,7 @@ export class TransactionForm implements OnInit {
     this.form.controls.amount.reset();
     this.amountDisplay.set('');
     this.isInstallment.set(false);
+    this.valueMode.set('total');
     this.propagateFields.set(new Set());
     this.saving.set(false);
     // setTimeout garante que o foco ocorre após o Angular processar o reset do form
