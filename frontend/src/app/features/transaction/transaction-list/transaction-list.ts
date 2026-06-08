@@ -20,7 +20,7 @@ import { ConfirmationDialogComponent } from '../../../components/confirmation-di
 import { DeleteInstallmentDialogComponent, DeleteInstallmentDialogResult } from './delete-installment-dialog/delete-installment-dialog';
 import { TransactionFiltersComponent } from './transaction-filters/transaction-filters';
 import { TransactionFilters, DEFAULT_FILTERS } from './transaction-filters/transaction-filters.types';
-import { buildDisplayRows, InstallmentGroupInfo, DisplayRow } from './transaction-list.utils';
+import { buildDisplayRows, InstallmentGroupInfo, DisplayRow, resolveMonthKey, formatMonthLabel } from './transaction-list.utils';
 export { buildDisplayRows } from './transaction-list.utils';
 export type { InstallmentGroupInfo, DisplayRow } from './transaction-list.utils';
 
@@ -66,23 +66,24 @@ export class TransactionList implements OnInit {
     buildDisplayRows(this.transactions(), this.expandedTransactions(), this.filters().groupByPeriod)
   );
 
-  activeFilterChips = computed((): Array<{ label: string; field: string }> => {
+  activeFilterChips = computed((): Array<{ label: string; field: string; colorClass: string }> => {
     const f = this.filters();
-    const chips: Array<{ label: string; field: string }> = [];
+    const chips: Array<{ label: string; field: string; colorClass: string }> = [];
     if (f.accountId) {
       const account = this.accounts().find(a => a.id === f.accountId);
-      chips.push({ label: `Conta: ${account?.name ?? f.accountId}`, field: 'accountId' });
+      chips.push({ label: account?.name ?? 'Conta', field: 'accountId', colorClass: 'chip-account' });
     }
-    if (f.status) {
-      const labels: Record<string, string> = { PENDING: 'Pendente', PAID: 'Pago', CANCELLED: 'Cancelado' };
-      chips.push({ label: `Status: ${labels[f.status]}`, field: 'status' });
-    }
-    if (f.type) {
-      const labels: Record<string, string> = { INCOME: 'Receita', EXPENSE: 'Despesa' };
-      chips.push({ label: `Tipo: ${labels[f.type]}`, field: 'type' });
-    }
-    if (f.startDate || f.endDate) {
-      chips.push({ label: `Período: ${f.startDate ?? '?'} – ${f.endDate ?? '?'}`, field: 'period' });
+    if (f.status === 'PENDING')   chips.push({ label: 'Pendente',  field: 'status', colorClass: 'chip-pending' });
+    if (f.status === 'PAID')      chips.push({ label: 'Pago',      field: 'status', colorClass: 'chip-paid' });
+    if (f.status === 'CANCELLED') chips.push({ label: 'Cancelado', field: 'status', colorClass: 'chip-cancelled' });
+    if (f.type === 'EXPENSE') chips.push({ label: 'Despesa', field: 'type', colorClass: 'chip-expense' });
+    if (f.type === 'INCOME')  chips.push({ label: 'Receita', field: 'type', colorClass: 'chip-income' });
+    if (f.startDate && f.endDate) {
+      const key = resolveMonthKey(f.startDate, f.endDate);
+      const label = key && key !== 'custom'
+        ? formatMonthLabel(key)
+        : `${f.startDate} – ${f.endDate}`;
+      chips.push({ label, field: 'period', colorClass: 'chip-period' });
     }
     return chips;
   });
