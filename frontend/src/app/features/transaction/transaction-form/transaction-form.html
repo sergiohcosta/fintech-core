@@ -106,7 +106,7 @@
         <div class="form-row">
           <mat-form-field appearance="outline" class="field-full">
             <mat-label>Descrição</mat-label>
-            <input matInput formControlName="description" placeholder="Ex: Supermercado, Salário..." />
+            <input #descriptionInput matInput formControlName="description" placeholder="Ex: Supermercado, Salário..." />
             @if (form.controls.description.hasError('required')) {
               <mat-error>Descrição obrigatória</mat-error>
             }
