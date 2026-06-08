@@ -1,68 +1,89 @@
 <div class="filters-panel">
-  <div class="filter-row">
 
-    <mat-form-field appearance="outline" class="filter-field">
-      <mat-label>Conta</mat-label>
-      <mat-select [ngModel]="accountId()" (ngModelChange)="onAccountChange($event)">
-        <mat-option [value]="null">Todas</mat-option>
+  <div class="filter-section">
+    <span class="section-label">Conta</span>
+    <mat-form-field appearance="outline" class="conta-field">
+      <mat-select [multiple]="true" [ngModel]="accountIds()" (ngModelChange)="onAccountChange($event)" placeholder="Todas as contas">
         @for (account of accounts(); track account.id) {
           <mat-option [value]="account.id">{{ account.name }}</mat-option>
         }
       </mat-select>
     </mat-form-field>
-
-    <mat-form-field appearance="outline" class="filter-field">
-      <mat-label>Status</mat-label>
-      <mat-select [ngModel]="status()" (ngModelChange)="onStatusChange($event)">
-        <mat-option [value]="null">Todos</mat-option>
-        <mat-option value="PENDING">Pendente</mat-option>
-        <mat-option value="PAID">Pago</mat-option>
-        <mat-option value="CANCELLED">Cancelado</mat-option>
-      </mat-select>
-    </mat-form-field>
-
-    <mat-form-field appearance="outline" class="filter-field">
-      <mat-label>Tipo</mat-label>
-      <mat-select [ngModel]="type()" (ngModelChange)="onTypeChange($event)">
-        <mat-option [value]="null">Todos</mat-option>
-        <mat-option value="INCOME">Receita</mat-option>
-        <mat-option value="EXPENSE">Despesa</mat-option>
-      </mat-select>
-    </mat-form-field>
-
-    <div class="period-group">
-      <div class="month-nav">
-        <button mat-icon-button type="button" (click)="goToPreviousMonth()" matTooltip="Mês anterior">
-          <mat-icon>chevron_left</mat-icon>
-        </button>
-        <span class="month-label">{{ monthLabel() || 'Todos os períodos' }}</span>
-        <button mat-icon-button type="button" (click)="goToNextMonth()" matTooltip="Próximo mês">
-          <mat-icon>chevron_right</mat-icon>
-        </button>
-      </div>
-      <div class="date-range">
-        <mat-form-field appearance="outline" class="date-field">
-          <mat-label>De</mat-label>
-          <input matInput type="date" [ngModel]="startDate() ?? ''" (ngModelChange)="onStartDateChange($event)">
-        </mat-form-field>
-        <mat-form-field appearance="outline" class="date-field">
-          <mat-label>Até</mat-label>
-          <input matInput type="date" [ngModel]="endDate() ?? ''" (ngModelChange)="onEndDateChange($event)">
-        </mat-form-field>
-      </div>
-    </div>
-
   </div>
 
-  <div class="filter-actions">
+  <div class="tipo-status-row">
+    <div class="filter-section">
+      <span class="section-label">Tipo</span>
+      <div class="chip-group">
+        <button type="button" class="fchip"
+                [class.active]="type() === null"
+                (click)="onTypeChange(null)">Todos</button>
+        <button type="button" class="fchip expense"
+                [class.active]="type() === 'EXPENSE'"
+                (click)="onTypeChange('EXPENSE')">Despesa</button>
+        <button type="button" class="fchip income"
+                [class.active]="type() === 'INCOME'"
+                (click)="onTypeChange('INCOME')">Receita</button>
+      </div>
+    </div>
+    <div class="filter-section">
+      <span class="section-label">Status</span>
+      <div class="chip-group">
+        <button type="button" class="fchip"
+                [class.active]="status() === null"
+                (click)="onStatusChange(null)">Todos</button>
+        <button type="button" class="fchip pending"
+                [class.active]="status() === 'PENDING'"
+                (click)="onStatusChange('PENDING')">Pendente</button>
+        <button type="button" class="fchip paid"
+                [class.active]="status() === 'PAID'"
+                (click)="onStatusChange('PAID')">Pago</button>
+        <button type="button" class="fchip cancelled"
+                [class.active]="status() === 'CANCELLED'"
+                (click)="onStatusChange('CANCELLED')">Cancelado</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="filter-section">
+    <span class="section-label">Período</span>
+    <div class="month-chips-row">
+      @for (chip of monthChipStates(); track chip.key) {
+        <button type="button" class="mchip"
+                [class.active]="chip.active"
+                [disabled]="chip.disabled"
+                (click)="onMonthChipClick(chip.key, $event.ctrlKey || $event.metaKey)">
+          {{ chip.label }}
+        </button>
+      }
+      <button type="button" class="mchip custom"
+              [class.active]="showCustomInterval()"
+              (click)="onCustomIntervalToggle()">
+        + Intervalo
+      </button>
+    </div>
+    @if (showCustomInterval()) {
+      <div class="custom-interval">
+        <input type="date" class="date-input"
+               [ngModel]="startDate() ?? ''"
+               (ngModelChange)="onStartDateChange($event)">
+        <span class="interval-sep">–</span>
+        <input type="date" class="date-input"
+               [ngModel]="endDate() ?? ''"
+               (ngModelChange)="onEndDateChange($event)">
+      </div>
+    }
+  </div>
+
+  <div class="panel-footer">
     <mat-slide-toggle
       [ngModel]="groupByPeriod()"
       (ngModelChange)="onGroupByPeriodChange($event)">
       Agrupar por período
     </mat-slide-toggle>
-    <button mat-button type="button" (click)="clearFilters()">
-      <mat-icon>clear_all</mat-icon>
-      Limpar filtros
+    <button mat-button type="button" class="clear-btn" (click)="clearFilters()">
+      <mat-icon>close</mat-icon> Limpar filtros
     </button>
   </div>
+
 </div>
