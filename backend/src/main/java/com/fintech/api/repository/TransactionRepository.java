@@ -45,6 +45,32 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             LEFT JOIN FETCH t.installmentGroup
             LEFT JOIN FETCH t.category
             LEFT JOIN FETCH t.account
+            LEFT JOIN FETCH t.invoice inv
+            WHERE t.tenant = :tenant
+              AND (:accountId IS NULL OR t.account.id = :accountId)
+              AND (:status    IS NULL OR t.status = :status)
+              AND (:type      IS NULL OR t.type = :type)
+              AND (
+                :startDate IS NULL OR :endDate IS NULL
+                OR (t.installmentGroup IS NOT NULL AND inv IS NOT NULL AND inv.dueDate BETWEEN :startDate AND :endDate)
+                OR ((t.installmentGroup IS NULL OR inv IS NULL) AND t.date BETWEEN :startDate AND :endDate)
+              )
+            ORDER BY t.date DESC
+            """)
+    List<Transaction> findAllByTenantWithFilters(
+            @Param("tenant")    Tenant tenant,
+            @Param("accountId") UUID accountId,
+            @Param("status")    TransactionStatus status,
+            @Param("type")      TransactionType type,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate")   LocalDate endDate
+    );
+
+    @Query("""
+            SELECT t FROM Transaction t
+            LEFT JOIN FETCH t.installmentGroup
+            LEFT JOIN FETCH t.category
+            LEFT JOIN FETCH t.account
             WHERE t.tenant = :tenant AND t.invoice = :invoice
             ORDER BY t.date DESC
             """)
