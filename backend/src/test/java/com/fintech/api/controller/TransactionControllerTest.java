@@ -108,15 +108,15 @@ class TransactionControllerTest {
         }
 
         @Test
-        @DisplayName("Deve repassar accountId ao service quando informado")
+        @DisplayName("Deve repassar accountIds ao service quando informado")
         void shouldPassAccountIdFilter() throws Exception {
                 UUID accountId = UUID.randomUUID();
                 when(transactionService.findAll(
-                                any(User.class), isNull(), eq(accountId), isNull(), isNull(), isNull(), isNull()))
+                                any(User.class), isNull(), eq(List.of(accountId)), isNull(), isNull(), isNull(), isNull()))
                                 .thenReturn(List.of(buildSampleDto("Nubank")));
 
                 mockMvc.perform(get("/api/transactions")
-                                .param("accountId", accountId.toString())
+                                .param("accountIds", accountId.toString())
                                 .header("Authorization", "Bearer " + token))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$[0].description").value("Nubank"));
