@@ -3,6 +3,7 @@ package com.fintech.api.controller;
 import com.fintech.api.config.SecurityConfigurations;
 import com.fintech.api.config.SecurityFilter;
 import com.fintech.api.config.TokenService;
+import com.fintech.api.domain.enums.TransactionStatus;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.transaction.TransactionRequestDTO;
@@ -32,6 +33,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.isNull;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -81,15 +84,20 @@ class TransactionControllerTest {
                 when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
         }
 
+        private TransactionResponseDTO buildSampleDto(String description) {
+                return new TransactionResponseDTO(
+                                UUID.randomUUID(), description, new BigDecimal("100.00"), LocalDate.now(),
+                                null, null, null, null, null, null, null, false,
+                                null, null, null, null, null, null, null, null, null, null);
+        }
+
         @Test
         @DisplayName("Should list all transactions for authenticated user")
         void shouldListAllTransactions() throws Exception {
                 // Arrange
-                TransactionResponseDTO responseDTO = new TransactionResponseDTO(
-                                UUID.randomUUID(), "Test", new BigDecimal("100.00"), LocalDate.now(), null, null, null,
-                                null, null, null, null, false, null, null, null, null, null, null, null, null, null, null);
-
-                when(transactionService.findAll(any(User.class), any())).thenReturn(List.of(responseDTO));
+                when(transactionService.findAll(
+                                any(User.class), isNull(), isNull(), isNull(), isNull(), isNull(), isNull()))
+                                .thenReturn(List.of(buildSampleDto("Test")));
 
                 // Act & Assert
                 mockMvc.perform(get("/api/transactions")
@@ -97,6 +105,52 @@ class TransactionControllerTest {
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$[0].description").value("Test"))
                                 .andExpect(jsonPath("$[0].amount").value(100.00));
+        }
+
+        @Test
+        @DisplayName("Deve repassar accountId ao service quando informado")
+        void shouldPassAccountIdFilter() throws Exception {
+                UUID accountId = UUID.randomUUID();
+                when(transactionService.findAll(
+                                any(User.class), isNull(), eq(accountId), isNull(), isNull(), isNull(), isNull()))
+                                .thenReturn(List.of(buildSampleDto("Nubank")));
+
+                mockMvc.perform(get("/api/transactions")
+                                .param("accountId", accountId.toString())
+                                .header("Authorization", "Bearer " + token))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$[0].description").value("Nubank"));
+        }
+
+        @Test
+        @DisplayName("Deve repassar status ao service quando informado")
+        void shouldPassStatusFilter() throws Exception {
+                when(transactionService.findAll(
+                                any(User.class), isNull(), isNull(), eq(TransactionStatus.PENDING), isNull(), isNull(), isNull()))
+                                .thenReturn(List.of(buildSampleDto("Pendente")));
+
+                mockMvc.perform(get("/api/transactions")
+                                .param("status", "PENDING")
+                                .header("Authorization", "Bearer " + token))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$[0].description").value("Pendente"));
+        }
+
+        @Test
+        @DisplayName("Deve repassar período ao service quando informado")
+        void shouldPassDateRangeFilter() throws Exception {
+                LocalDate start = LocalDate.of(2026, 6, 1);
+                LocalDate end   = LocalDate.of(2026, 6, 30);
+                when(transactionService.findAll(
+                                any(User.class), isNull(), isNull(), isNull(), isNull(), eq(start), eq(end)))
+                                .thenReturn(List.of(buildSampleDto("Junho")));
+
+                mockMvc.perform(get("/api/transactions")
+                                .param("startDate", "2026-06-01")
+                                .param("endDate",   "2026-06-30")
+                                .header("Authorization", "Bearer " + token))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$[0].description").value("Junho"));
         }
 
         @Test
