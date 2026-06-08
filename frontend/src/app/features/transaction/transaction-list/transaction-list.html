@@ -34,7 +34,7 @@
       @for (chip of activeFilterChips(); track chip.field) {
         <span [class]="'filter-chip ' + chip.colorClass">
           {{ chip.label }}
-          <button mat-icon-button class="chip-remove" (click)="clearFilterChip(chip.field)" matTooltip="Remover filtro">
+          <button type="button" class="chip-remove" (click)="clearFilterChip(chip.field)" matTooltip="Remover filtro">
             <mat-icon>close</mat-icon>
           </button>
         </span>
