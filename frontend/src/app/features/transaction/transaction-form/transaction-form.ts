@@ -395,9 +395,9 @@ export class TransactionForm implements OnInit {
   }
 
   private partialReset(): void {
-    this.form.patchValue({ description: null, amount: null, totalInstallments: 1 });
     this.form.controls.description.reset();
     this.form.controls.amount.reset();
+    this.form.controls.totalInstallments.reset(1);
     this.amountDisplay.set('');
     this.isInstallment.set(false);
     this.valueMode.set('total');
