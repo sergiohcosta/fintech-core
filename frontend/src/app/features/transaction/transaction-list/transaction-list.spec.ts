@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   buildDisplayRows, DisplayRow, InstallmentGroupInfo,
   effectiveMonth, groupByEffectiveMonth, resolveMonthKey, monthBounds, formatMonthLabel,
-  PeriodGroup,
+  PeriodGroup, computeMonthChipStates,
 } from './transaction-list.utils';
 
 describe('buildDisplayRows', () => {
@@ -193,5 +193,55 @@ describe('buildDisplayRows com groupByPeriod', () => {
     ];
     const rows = buildDisplayRows(txs, new Set());
     expect(rows.every(r => r.kind !== 'period-header')).toBe(true);
+  });
+});
+
+describe('computeMonthChipStates', () => {
+  it('retorna exatamente 12 chips para o ano informado', () => {
+    const chips = computeMonthChipStates(2026, 6, null, null);
+    expect(chips).toHaveLength(12);
+  });
+
+  it('labels são abreviações pt-BR: Jan, Fev, Mar...', () => {
+    const chips = computeMonthChipStates(2026, 6, null, null);
+    expect(chips[0].label).toBe('Jan');
+    expect(chips[1].label).toBe('Fev');
+    expect(chips[5].label).toBe('Jun');
+    expect(chips[11].label).toBe('Dez');
+  });
+
+  it('keys são no formato YYYY-MM', () => {
+    const chips = computeMonthChipStates(2026, 6, null, null);
+    expect(chips[0].key).toBe('2026-01');
+    expect(chips[5].key).toBe('2026-06');
+    expect(chips[11].key).toBe('2026-12');
+  });
+
+  it('meses futuros (> nowMonth) ficam disabled', () => {
+    const chips = computeMonthChipStates(2026, 6, null, null); // nowMonth = 6 = junho
+    expect(chips[5].disabled).toBe(false); // junho: não desabilitado
+    expect(chips[6].disabled).toBe(true);  // julho: desabilitado
+    expect(chips[11].disabled).toBe(true); // dezembro: desabilitado
+  });
+
+  it('meses passados e o mês atual não ficam disabled', () => {
+    const chips = computeMonthChipStates(2026, 6, null, null);
+    chips.slice(0, 6).forEach(c => expect(c.disabled).toBe(false));
+  });
+
+  it('chip do mês que coincide com startDate/endDate fica active', () => {
+    const chips = computeMonthChipStates(2026, 6, '2026-06-01', '2026-06-30');
+    expect(chips[5].active).toBe(true);  // junho: ativo
+    expect(chips[4].active).toBe(false); // maio: inativo
+  });
+
+  it('sem datas selecionadas: nenhum chip fica active', () => {
+    const chips = computeMonthChipStates(2026, 6, null, null);
+    expect(chips.every(c => !c.active)).toBe(true);
+  });
+
+  it('intervalo personalizado (não exato de mês): nenhum chip fica active', () => {
+    const chips = computeMonthChipStates(2026, 6, '2026-06-05', '2026-06-20');
+    expect(chips.every(c => !c.active)).toBe(true);
   });
 });

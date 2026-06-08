@@ -164,3 +164,31 @@ export function monthBounds(key: string): { startDate: string; endDate: string }
     endDate:   `${lastDay.getFullYear()}-${pad(lastDay.getMonth() + 1)}-${pad(lastDay.getDate())}`,
   };
 }
+
+export type MonthChipState = {
+  label: string;
+  key: string;
+  active: boolean;
+  disabled: boolean;
+};
+
+const MONTH_LABELS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+export function computeMonthChipStates(
+  year: number,
+  nowMonth: number,
+  startDate: string | null,
+  endDate: string | null
+): MonthChipState[] {
+  const activeKey = resolveMonthKey(startDate, endDate);
+  return Array.from({ length: 12 }, (_, i) => {
+    const monthNum = i + 1;
+    const key = `${year}-${String(monthNum).padStart(2, '0')}`;
+    return {
+      label: MONTH_LABELS[i],
+      key,
+      active: activeKey === key,
+      disabled: monthNum > nowMonth,
+    };
+  });
+}
