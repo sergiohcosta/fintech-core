@@ -1,6 +1,8 @@
 package com.fintech.api.controller;
 
 import com.fintech.api.domain.enums.DeleteInstallmentScope;
+import com.fintech.api.domain.enums.TransactionStatus;
+import com.fintech.api.domain.enums.TransactionType;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.installment.DeleteInstallmentResultDTO;
 import com.fintech.api.dto.transaction.TransactionRequestDTO;
@@ -11,11 +13,13 @@ import com.fintech.api.repository.UserRepository;
 import com.fintech.api.service.TransactionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -30,8 +34,14 @@ public class TransactionController implements TransactionsApi {
     @Override
     @GetMapping
     public ResponseEntity<List<TransactionResponseDTO>> listTransactions(
-            @RequestParam(value = "invoiceId", required = false) UUID invoiceId) {
-        return ResponseEntity.ok(service.findAll(getAuthenticatedUser(), invoiceId));
+            @RequestParam(value = "invoiceId",  required = false) UUID invoiceId,
+            @RequestParam(value = "accountId",  required = false) UUID accountId,
+            @RequestParam(value = "status",     required = false) TransactionStatus status,
+            @RequestParam(value = "type",       required = false) TransactionType type,
+            @RequestParam(value = "startDate",  required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(value = "endDate",    required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        return ResponseEntity.ok(
+                service.findAll(getAuthenticatedUser(), invoiceId, accountId, status, type, startDate, endDate));
     }
 
     @GetMapping("/{id}")

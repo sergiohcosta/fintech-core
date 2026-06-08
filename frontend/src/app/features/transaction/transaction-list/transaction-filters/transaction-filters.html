@@ -1,0 +1,68 @@
+<div class="filters-panel">
+  <div class="filter-row">
+
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>Conta</mat-label>
+      <mat-select [ngModel]="accountId()" (ngModelChange)="onAccountChange($event)">
+        <mat-option [value]="null">Todas</mat-option>
+        @for (account of accounts(); track account.id) {
+          <mat-option [value]="account.id">{{ account.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>Status</mat-label>
+      <mat-select [ngModel]="status()" (ngModelChange)="onStatusChange($event)">
+        <mat-option [value]="null">Todos</mat-option>
+        <mat-option value="PENDING">Pendente</mat-option>
+        <mat-option value="PAID">Pago</mat-option>
+        <mat-option value="CANCELLED">Cancelado</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>Tipo</mat-label>
+      <mat-select [ngModel]="type()" (ngModelChange)="onTypeChange($event)">
+        <mat-option [value]="null">Todos</mat-option>
+        <mat-option value="INCOME">Receita</mat-option>
+        <mat-option value="EXPENSE">Despesa</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <div class="period-group">
+      <div class="month-nav">
+        <button mat-icon-button type="button" (click)="goToPreviousMonth()" matTooltip="Mês anterior">
+          <mat-icon>chevron_left</mat-icon>
+        </button>
+        <span class="month-label">{{ monthLabel() || 'Todos os períodos' }}</span>
+        <button mat-icon-button type="button" (click)="goToNextMonth()" matTooltip="Próximo mês">
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      </div>
+      <div class="date-range">
+        <mat-form-field appearance="outline" class="date-field">
+          <mat-label>De</mat-label>
+          <input matInput type="date" [ngModel]="startDate() ?? ''" (ngModelChange)="onStartDateChange($event)">
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="date-field">
+          <mat-label>Até</mat-label>
+          <input matInput type="date" [ngModel]="endDate() ?? ''" (ngModelChange)="onEndDateChange($event)">
+        </mat-form-field>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="filter-actions">
+    <mat-slide-toggle
+      [ngModel]="groupByPeriod()"
+      (ngModelChange)="onGroupByPeriodChange($event)">
+      Agrupar por período
+    </mat-slide-toggle>
+    <button mat-button type="button" (click)="clearFilters()">
+      <mat-icon>clear_all</mat-icon>
+      Limpar filtros
+    </button>
+  </div>
+</div>

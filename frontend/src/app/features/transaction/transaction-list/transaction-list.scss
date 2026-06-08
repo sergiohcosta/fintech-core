@@ -234,3 +234,108 @@ table {
   .mat-column-account,
   .mat-column-installment { display: none; }
 }
+
+// --- Header actions ---
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.filter-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--mat-sys-primary, #1976d2);
+  color: #fff;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  margin-left: 4px;
+}
+
+// --- Painel de filtros ---
+
+.filters-wrapper {
+  background: #fff;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+// --- Chips de filtros ativos ---
+
+.active-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  background: #e3f2fd;
+  color: #1565c0;
+  border-radius: 16px;
+  padding: 4px 8px 4px 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  gap: 4px;
+
+  .chip-remove {
+    width: 20px;
+    height: 20px;
+    line-height: 20px;
+
+    mat-icon {
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
+    }
+  }
+}
+
+// --- Period header row ---
+
+.period-header-row td {
+  padding: 0 !important;
+}
+
+.period-header-cell {
+  padding: 0 !important;
+}
+
+.period-header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: #e3f2fd;
+  border-top: 2px solid #90caf9;
+  border-bottom: 1px solid #90caf9;
+}
+
+.period-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #1565c0;
+}
+
+.period-totals {
+  display: flex;
+  gap: 16px;
+  font-size: 0.82rem;
+}
+
+.period-income  { color: #2e7d32; }
+.period-expense { color: #c62828; }
+.period-balance {
+  font-weight: 600;
+  &.positive { color: #1565c0; }
+  &.negative { color: #c62828; }
+}

@@ -367,6 +367,11 @@ includeArchived?: boolean;
 
 export type ListTransactionsParams = {
 invoiceId?: string;
+accountId?: string;
+status?: TransactionStatus;
+type?: TransactionType;
+startDate?: string;
+endDate?: string;
 };
 
 export type DeleteTransactionParams = {
