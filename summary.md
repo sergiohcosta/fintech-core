@@ -1,7 +1,7 @@
 # Fintech SaaS Multi-Tenant — Referência de Especificação
 
 > Documento de referência técnica para Spec-Driven Development. Serve como fonte de verdade para domínio, contratos de API e regras de negócio implementadas.
-> Última atualização: 2026-06-06
+> Última atualização: 2026-06-08
 
 ---
 
@@ -197,11 +197,27 @@ WHERE account = :account AND status <> CANCELLED
 
 | Método | Rota | Descrição |
 |--------|------|-----------|
-| GET | `/api/transactions?invoiceId={uuid}` | Lista transações do tenant (com filtro opcional por fatura) |
+| GET | `/api/transactions` | Lista transações do tenant (query params opcionais abaixo) |
 | GET | `/api/transactions/{id}` | Detalha transação |
 | POST | `/api/transactions` | Cria 1..N transações (parcelamento gera N) |
 | PUT | `/api/transactions/{id}` | Atualiza (com propagação opcional para parcelas futuras) |
 | DELETE | `/api/transactions/{id}?scope=SINGLE\|THIS_AND_NEXT\|ALL` | Exclui por escopo |
+
+**Query params de filtro (todos opcionais, combinam livremente):**
+
+| Param | Tipo | Descrição |
+|-------|------|-----------|
+| `invoiceId` | UUID | Filtra por fatura específica |
+| `accountId` | UUID | Filtra por conta |
+| `status` | `TransactionStatus` | Filtra por status (`PENDING`, `PAID`, `CANCELLED`) |
+| `type` | `TransactionType` | Filtra por tipo (`INCOME`, `EXPENSE`) |
+| `startDate` | `YYYY-MM-DD` | Início do intervalo de datas (obrigatório com `endDate`) |
+| `endDate` | `YYYY-MM-DD` | Fim do intervalo de datas (obrigatório com `startDate`) |
+
+**Regra de data para filtro por período:**
+- Parcela de cartão (`installmentGroup IS NOT NULL AND inv IS NOT NULL`) → filtra por `inv.dueDate`
+- Demais (incluindo avulsa de cartão) → filtra por `t.date`
+- `startDate` e `endDate` devem ser informados juntos; parcial → `400 Bad Request`
 
 **Regra de ordenação (`effectiveSortDate`):**
 - Parcela de cartão (`installmentGroup != null` e `invoice != null`) → `invoice.dueDate`
@@ -387,6 +403,36 @@ Comportamento reativo:
 - `isCreditCard = computed(() => selectedAccount?.type === 'CREDIT_CARD')`
 - `effect()` desativa `isInstallment` ao trocar para conta não-cartão
 - `installmentPreview = computed(() => buildInstallmentPreview(amount, N, date, valueMode, creditCard))`
+
+### Listagem de Transações com Filtros (issue #41)
+
+**Componente de filtros (`TransactionFiltersComponent`):**
+- `accounts = input<AccountResponse[]>([])` + `filterChange = output<TransactionFilters>()`
+- Signals internos para cada campo; nenhum emit no init — `TransactionList` faz a carga inicial
+- Seletor de mês integrado: ◀/▶ preenche `startDate`/`endDate`; edição manual → `resolveMonthKey()` retorna `'custom'` → label "Personalizado"
+
+**`TransactionList` — padrão de reatividade:**
+```ts
+filters = signal<TransactionFilters>(DEFAULT_FILTERS);
+
+onFilterChange(newFilters: TransactionFilters): void {
+  this.filters.set(newFilters);
+  untracked(() => this.loadTransactions(newFilters)); // evita rastrear signals lidos dentro de loadTransactions
+}
+```
+`untracked()` é necessário porque `loadTransactions` pode ler signals internamente; sem ele, qualquer mudança de signal dentro da função dispararia o efeito novamente em loop.
+
+**Agrupamento por período — single `mat-table` com múltiplos `*matRowDef`:**
+- `buildDisplayRows(txs, expandedIds, groupByPeriod)` insere linhas `period-header` entre grupos
+- `isPeriodHeader = (_, row) => row.kind === 'period-header'`
+- `<tr mat-row *matRowDef="...; when: isPeriodHeader">` — Angular avalia `when` em ordem; primeiro `true` vence
+- `period-header` usa `[attr.colspan]="displayedColumns.length"` para ocupar toda a largura sem duplicar colunas
+
+**Utilitários puros (`transaction-list.utils.ts`):**
+- `effectiveMonth(t)`: `installmentGroupId && invoiceDueDate` → mês do `invoiceDueDate`; demais → mês do `date`
+- `groupByEffectiveMonth(txs)`: single-pass reduce para `totalIncome`/`totalExpense`/`balance`; sort descrescente
+- `resolveMonthKey(start, end)`: `'YYYY-MM'` se range é exatamente um mês, `'custom'` se parcial, `''` se null
+- `monthBounds(key)`: primeiro e último dia do mês (usa `new Date(y, m, 0)` para último dia correto em qualquer mês)
 
 ### Testes — estratégia de isolamento
 Funções de lógica pura em arquivos sem imports Angular (ex: `transaction-list.utils.ts`, `installment-preview.ts`) para compatibilidade com Vitest sem `TestBed`.
