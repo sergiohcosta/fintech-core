@@ -297,6 +297,16 @@
 
       <div class="form-actions">
         <button mat-stroked-button type="button" routerLink="/transactions">Cancelar</button>
+
+        @if (!isEditMode() && mode() === 'TRANSACTION') {
+          <button mat-stroked-button type="button" color="primary"
+                  [disabled]="form.invalid || saving()"
+                  (click)="onSaveAndAddMore()">
+            <mat-icon>add</mat-icon>
+            Salvar e lançar outra
+          </button>
+        }
+
         <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid || saving()">
           @if (!saving()) {
             <mat-icon>save</mat-icon>
