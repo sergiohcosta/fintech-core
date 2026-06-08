@@ -40,6 +40,14 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             """)
     List<Transaction> findAllByTenantWithDetails(@Param("tenant") Tenant tenant);
 
+    // startDate e endDate nunca são null aqui — o service substitui por sentinelas (1000-01-01 /
+    // 9999-12-31) quando o usuário não filtra por período. Isso evita o padrão ":param IS NULL"
+    // para LocalDate no JPQL, que faz o PostgreSQL emitir "could not determine data type of
+    // parameter $N" (sem contexto de tipo em IS NULL). Com sentinelas, os parâmetros sempre
+    // aparecem em comparações com colunas DATE, fornecendo o contexto necessário.
+    // accountIdCount = 0 significa "sem filtro de conta"; accountIdCount > 0 ativa o IN.
+    // Essa abordagem evita ":accountIds IS NULL" no JPQL, que não é suportado pelo Hibernate 6
+    // para coleções — a inferência de tipo falha da mesma forma que LocalDate IS NULL.
     @Query("""
             SELECT t FROM Transaction t
             LEFT JOIN FETCH t.installmentGroup
@@ -47,23 +55,23 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             LEFT JOIN FETCH t.account
             LEFT JOIN FETCH t.invoice inv
             WHERE t.tenant = :tenant
-              AND (:accountId IS NULL OR t.account.id = :accountId)
+              AND (:accountIdCount = 0 OR t.account.id IN :accountIds)
               AND (:status    IS NULL OR t.status = :status)
               AND (:type      IS NULL OR t.type = :type)
               AND (
-                :startDate IS NULL OR :endDate IS NULL
-                OR (t.installmentGroup IS NOT NULL AND inv IS NOT NULL AND inv.dueDate BETWEEN :startDate AND :endDate)
-                OR ((t.installmentGroup IS NULL OR inv IS NULL) AND t.date BETWEEN :startDate AND :endDate)
+                (t.installmentGroup IS NOT NULL AND inv IS NOT NULL AND inv.dueDate >= :startDate AND inv.dueDate <= :endDate)
+                OR ((t.installmentGroup IS NULL OR inv IS NULL) AND t.date >= :startDate AND t.date <= :endDate)
               )
             ORDER BY t.date DESC
             """)
     List<Transaction> findAllByTenantWithFilters(
-            @Param("tenant")    Tenant tenant,
-            @Param("accountId") UUID accountId,
-            @Param("status")    TransactionStatus status,
-            @Param("type")      TransactionType type,
-            @Param("startDate") LocalDate startDate,
-            @Param("endDate")   LocalDate endDate
+            @Param("tenant")         Tenant tenant,
+            @Param("accountIds")     List<UUID> accountIds,
+            @Param("accountIdCount") int accountIdCount,
+            @Param("status")         TransactionStatus status,
+            @Param("type")           TransactionType type,
+            @Param("startDate")      LocalDate startDate,
+            @Param("endDate")        LocalDate endDate
     );
 
     @Query("""

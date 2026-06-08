@@ -1,4 +1,4 @@
-import { Component, input, output, signal } from '@angular/core';
+import { Component, computed, input, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -10,7 +10,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AccountResponse } from '../../../../core/api/fintechSaaSAPI.schemas';
 import { TransactionFilters, DEFAULT_FILTERS } from './transaction-filters.types';
-import { resolveMonthKey, monthBounds, formatMonthLabel } from '../transaction-list.utils';
+import { monthBounds, computeMonthChipStates } from '../transaction-list.utils';
 
 @Component({
   selector: 'app-transaction-filters',
@@ -27,38 +27,50 @@ export class TransactionFiltersComponent {
   accounts     = input<AccountResponse[]>([]);
   filterChange = output<TransactionFilters>();
 
-  accountId     = signal<string | null>(null);
-  status        = signal<'PENDING' | 'PAID' | 'CANCELLED' | null>(null);
-  type          = signal<'INCOME' | 'EXPENSE' | null>(null);
-  startDate     = signal<string | null>(null);
-  endDate       = signal<string | null>(null);
-  groupByPeriod = signal(false);
-  monthLabel    = signal('');
+  accountIds         = signal<string[]>([]);
+  status             = signal<'PENDING' | 'PAID' | 'CANCELLED' | null>(null);
+  type               = signal<'INCOME' | 'EXPENSE' | null>(null);
+  startDate          = signal<string | null>(null);
+  endDate            = signal<string | null>(null);
+  groupByPeriod      = signal(false);
+  showCustomInterval = signal(false);
+  selectedMonths     = signal<string[]>([]);
 
-  onAccountChange(val: string | null): void {
-    this.accountId.set(val);
+  readonly monthChipStates = computed(() => {
+    const now = new Date();
+    const selected = new Set(this.selectedMonths());
+    return computeMonthChipStates(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      null,
+      null,
+    ).map(chip => ({ ...chip, active: selected.has(chip.key) }));
+  });
+
+  onAccountChange(val: string[]): void {
+    this.accountIds.set(val ?? []);
     this.emit();
   }
 
   onStatusChange(val: 'PENDING' | 'PAID' | 'CANCELLED' | null): void {
-    this.status.set(val);
+    this.status.set(val !== null && this.status() === val ? null : val);
     this.emit();
   }
 
   onTypeChange(val: 'INCOME' | 'EXPENSE' | null): void {
-    this.type.set(val);
+    this.type.set(val !== null && this.type() === val ? null : val);
     this.emit();
   }
 
   onStartDateChange(val: string): void {
     this.startDate.set(val || null);
-    this.syncMonthLabel();
+    this.selectedMonths.set([]);
     this.emit();
   }
 
   onEndDateChange(val: string): void {
     this.endDate.set(val || null);
-    this.syncMonthLabel();
+    this.selectedMonths.set([]);
     this.emit();
   }
 
@@ -67,59 +79,60 @@ export class TransactionFiltersComponent {
     this.emit();
   }
 
-  goToPreviousMonth(): void {
-    const key = this.resolveCurrentKey();
-    const [year, month] = key.split('-').map(Number);
-    const prev = new Date(year, month - 2, 1);
-    this.applyMonth(`${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`);
+  onMonthChipClick(key: string, ctrl: boolean): void {
+    const current = this.selectedMonths();
+
+    let next: string[];
+    if (ctrl) {
+      next = current.includes(key)
+        ? current.filter(k => k !== key)
+        : [...current, key];
+    } else {
+      next = current.length === 1 && current[0] === key ? [] : [key];
+    }
+
+    this.selectedMonths.set(next);
+    this.applyMonthSelection(next);
   }
 
-  goToNextMonth(): void {
-    const key = this.resolveCurrentKey();
-    const [year, month] = key.split('-').map(Number);
-    const next = new Date(year, month, 1);
-    this.applyMonth(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`);
+  private applyMonthSelection(keys: string[]): void {
+    if (keys.length === 0) {
+      this.startDate.set(null);
+      this.endDate.set(null);
+    } else {
+      const sorted = [...keys].sort();
+      this.startDate.set(monthBounds(sorted[0]).startDate);
+      this.endDate.set(monthBounds(sorted[sorted.length - 1]).endDate);
+      this.showCustomInterval.set(false);
+    }
+    this.emit();
+  }
+
+  onCustomIntervalToggle(): void {
+    const next = !this.showCustomInterval();
+    this.showCustomInterval.set(next);
+    if (!next) {
+      this.startDate.set(null);
+      this.endDate.set(null);
+      this.emit();
+    }
+    this.selectedMonths.set([]);
   }
 
   clearFilters(): void {
-    this.accountId.set(null);
+    this.accountIds.set([]);
     this.status.set(null);
     this.type.set(null);
     this.startDate.set(null);
     this.endDate.set(null);
-    this.monthLabel.set('');
+    this.showCustomInterval.set(false);
+    this.selectedMonths.set([]);
     this.emit();
-  }
-
-  private applyMonth(key: string): void {
-    const bounds = monthBounds(key);
-    this.startDate.set(bounds.startDate);
-    this.endDate.set(bounds.endDate);
-    this.monthLabel.set(formatMonthLabel(key));
-    this.emit();
-  }
-
-  private syncMonthLabel(): void {
-    const key = resolveMonthKey(this.startDate(), this.endDate());
-    if (!key) {
-      this.monthLabel.set('');
-    } else if (key === 'custom') {
-      this.monthLabel.set('Personalizado');
-    } else {
-      this.monthLabel.set(formatMonthLabel(key));
-    }
-  }
-
-  private resolveCurrentKey(): string {
-    const key = resolveMonthKey(this.startDate(), this.endDate());
-    if (key && key !== 'custom') return key;
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   }
 
   private emit(): void {
     this.filterChange.emit({
-      accountId:     this.accountId(),
+      accountIds:    this.accountIds(),
       status:        this.status(),
       type:          this.type(),
       startDate:     this.startDate(),

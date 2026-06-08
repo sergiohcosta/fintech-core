@@ -795,12 +795,14 @@ paths:
           schema:
             type: string
             format: uuid
-        - name: accountId
+        - name: accountIds
           in: query
           required: false
           schema:
-            type: string
-            format: uuid
+            type: array
+            items:
+              type: string
+              format: uuid
         - name: status
           in: query
           required: false
