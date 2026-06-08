@@ -34,15 +34,17 @@ export class TransactionFiltersComponent {
   endDate            = signal<string | null>(null);
   groupByPeriod      = signal(false);
   showCustomInterval = signal(false);
+  selectedMonths     = signal<string[]>([]);
 
   readonly monthChipStates = computed(() => {
     const now = new Date();
+    const selected = new Set(this.selectedMonths());
     return computeMonthChipStates(
       now.getFullYear(),
       now.getMonth() + 1,
-      this.startDate(),
-      this.endDate(),
-    );
+      null,
+      null,
+    ).map(chip => ({ ...chip, active: selected.has(chip.key) }));
   });
 
   onAccountChange(val: string | null): void {
@@ -62,11 +64,13 @@ export class TransactionFiltersComponent {
 
   onStartDateChange(val: string): void {
     this.startDate.set(val || null);
+    this.selectedMonths.set([]);
     this.emit();
   }
 
   onEndDateChange(val: string): void {
     this.endDate.set(val || null);
+    this.selectedMonths.set([]);
     this.emit();
   }
 
@@ -75,16 +79,30 @@ export class TransactionFiltersComponent {
     this.emit();
   }
 
-  onMonthChipClick(key: string): void {
-    const currentStart = this.startDate();
-    const currentEnd   = this.endDate();
-    const bounds = monthBounds(key);
-    if (currentStart === bounds.startDate && currentEnd === bounds.endDate) {
+  onMonthChipClick(key: string, ctrl: boolean): void {
+    const current = this.selectedMonths();
+
+    let next: string[];
+    if (ctrl) {
+      next = current.includes(key)
+        ? current.filter(k => k !== key)
+        : [...current, key];
+    } else {
+      next = current.length === 1 && current[0] === key ? [] : [key];
+    }
+
+    this.selectedMonths.set(next);
+    this.applyMonthSelection(next);
+  }
+
+  private applyMonthSelection(keys: string[]): void {
+    if (keys.length === 0) {
       this.startDate.set(null);
       this.endDate.set(null);
     } else {
-      this.startDate.set(bounds.startDate);
-      this.endDate.set(bounds.endDate);
+      const sorted = [...keys].sort();
+      this.startDate.set(monthBounds(sorted[0]).startDate);
+      this.endDate.set(monthBounds(sorted[sorted.length - 1]).endDate);
       this.showCustomInterval.set(false);
     }
     this.emit();
@@ -98,6 +116,7 @@ export class TransactionFiltersComponent {
       this.endDate.set(null);
       this.emit();
     }
+    this.selectedMonths.set([]);
   }
 
   clearFilters(): void {
@@ -107,6 +126,7 @@ export class TransactionFiltersComponent {
     this.startDate.set(null);
     this.endDate.set(null);
     this.showCustomInterval.set(false);
+    this.selectedMonths.set([]);
     this.emit();
   }
 
