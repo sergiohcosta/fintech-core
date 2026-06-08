@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Dúvida técnica
+    url: https://github.com/sergiohcosta/fintech-core/discussions
+    about: Para perguntas e discussões sobre arquitetura ou decisões técnicas, use as Discussions.
