@@ -47,7 +47,7 @@ public class TransactionService {
     private final InvoiceService invoiceService;
 
     @Transactional(readOnly = true)
-    public List<TransactionResponseDTO> findAll(User user, UUID invoiceId, UUID accountId,
+    public List<TransactionResponseDTO> findAll(User user, UUID invoiceId, List<UUID> accountIds,
             TransactionStatus status, TransactionType type, LocalDate startDate, LocalDate endDate) {
         if ((startDate == null) != (endDate == null)) {
             throw new IllegalArgumentException("startDate e endDate devem ser informados juntos ou omitidos juntos");
@@ -61,8 +61,14 @@ public class TransactionService {
         // PostgreSQL não consegue inferir o tipo de "? IS NULL" sem contexto de coluna.
         LocalDate effectiveStart = startDate != null ? startDate : LocalDate.of(1000, 1, 1);
         LocalDate effectiveEnd   = endDate   != null ? endDate   : LocalDate.of(9999, 12, 31);
+
+        // Lista vazia ou null = sem filtro de conta (accountIdCount = 0 → condição ignorada no JPQL).
+        // Lista com itens = filtra pelas contas informadas (accountIdCount > 0 → IN ativado).
+        List<UUID> effectiveAccountIds = (accountIds == null || accountIds.isEmpty()) ? List.of() : accountIds;
+        int accountIdCount = effectiveAccountIds.size();
+
         return repository.findAllByTenantWithFilters(
-                        user.getTenant(), accountId, status, type, effectiveStart, effectiveEnd)
+                        user.getTenant(), effectiveAccountIds, accountIdCount, status, type, effectiveStart, effectiveEnd)
                 .stream()
                 .sorted(Comparator.comparing(this::effectiveSortDate, Comparator.reverseOrder()))
                 .map(TransactionResponseDTO::fromEntity)

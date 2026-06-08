@@ -34,14 +34,14 @@ public class TransactionController implements TransactionsApi {
     @Override
     @GetMapping
     public ResponseEntity<List<TransactionResponseDTO>> listTransactions(
-            @RequestParam(value = "invoiceId",  required = false) UUID invoiceId,
-            @RequestParam(value = "accountId",  required = false) UUID accountId,
-            @RequestParam(value = "status",     required = false) TransactionStatus status,
-            @RequestParam(value = "type",       required = false) TransactionType type,
-            @RequestParam(value = "startDate",  required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam(value = "endDate",    required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+            @RequestParam(value = "invoiceId",   required = false) UUID invoiceId,
+            @RequestParam(value = "accountIds",  required = false) List<UUID> accountIds,
+            @RequestParam(value = "status",      required = false) TransactionStatus status,
+            @RequestParam(value = "type",        required = false) TransactionType type,
+            @RequestParam(value = "startDate",   required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(value = "endDate",     required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         return ResponseEntity.ok(
-                service.findAll(getAuthenticatedUser(), invoiceId, accountId, status, type, startDate, endDate));
+                service.findAll(getAuthenticatedUser(), invoiceId, accountIds, status, type, startDate, endDate));
     }
 
     @GetMapping("/{id}")
