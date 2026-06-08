@@ -1,65 +1,204 @@
 .filters-panel {
-  padding: 16px 20px;
-  background: #fafafa;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  background: #fff;
+  border-bottom: 2px solid #e8f0fe;
 }
 
-.filter-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: flex-start;
+.filter-section {
+  padding: 12px 20px;
+  border-bottom: 1px solid #f1f3f4;
+
+  &:last-of-type {
+    border-bottom: none;
+  }
 }
 
-.filter-field {
-  min-width: 160px;
-  flex: 1 1 160px;
+.section-label {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  color: #9aa0a6;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 8px;
+}
+
+// --- Conta ---
+
+.conta-field {
+  width: 220px;
 
   ::ng-deep .mat-mdc-form-field-subscript-wrapper {
     display: none;
   }
 }
 
-.period-group {
+// --- Tipo + Status lado a lado ---
+
+.tipo-status-row {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  flex: 2 1 320px;
-}
+  border-bottom: 1px solid #f1f3f4;
 
-.month-nav {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-
-  .month-label {
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: #333;
-    min-width: 130px;
-    text-align: center;
-  }
-}
-
-.date-range {
-  display: flex;
-  gap: 8px;
-
-  .date-field {
+  .filter-section {
     flex: 1;
+    border-bottom: none;
 
-    ::ng-deep .mat-mdc-form-field-subscript-wrapper {
-      display: none;
+    &:first-child {
+      border-right: 1px solid #f1f3f4;
     }
   }
 }
 
-.filter-actions {
+// --- Chips de filtro (Tipo / Status) ---
+
+.chip-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.fchip {
+  display: inline-flex;
+  align-items: center;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 400;
+  color: #5f6368;
+  background: #fff;
+  cursor: pointer;
+  line-height: 1.4;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+
+  &:focus { outline: none; }
+
+  &.active {
+    font-weight: 600;
+  }
+
+  // Neutro (Todos)
+  &:not(.income):not(.expense):not(.pending):not(.paid):not(.cancelled) {
+    &.active {
+      background: #f1f3f4;
+      border-color: #bdc1c6;
+      color: #3c4043;
+    }
+  }
+
+  &.expense {
+    &:hover, &.active { background: #fce8e6; border-color: #f28b82; color: #c5221f; }
+  }
+
+  &.income {
+    &:hover, &.active { background: #e6f4ea; border-color: #81c995; color: #1e8e3e; }
+  }
+
+  &.pending {
+    &:hover, &.active { background: #fef7e0; border-color: #fbcc64; color: #f29900; }
+  }
+
+  &.paid {
+    &:hover, &.active { background: #e6f4ea; border-color: #81c995; color: #1e8e3e; }
+  }
+
+  &.cancelled {
+    &:hover, &.active { background: #f1f3f4; border-color: #bdc1c6; color: #80868b; }
+  }
+}
+
+// --- Chips de mês ---
+
+.month-chips-row {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-bottom: 2px;
+}
+
+.mchip {
+  display: inline-flex;
+  align-items: center;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 400;
+  color: #5f6368;
+  background: #fff;
+  cursor: pointer;
+  line-height: 1.4;
+  transition: background 0.12s, border-color 0.12s;
+
+  &:focus { outline: none; }
+
+  &.active {
+    background: #e8f0fe;
+    border-color: #4285f4;
+    color: #1a73e8;
+    font-weight: 600;
+  }
+
+  &[disabled] {
+    opacity: 0.32;
+    cursor: default;
+    pointer-events: none;
+  }
+
+  &.custom {
+    border-style: dashed;
+    color: #9aa0a6;
+    font-size: 10px;
+
+    &.active {
+      background: #f8f9fa;
+      border-style: solid;
+      border-color: #9aa0a6;
+      color: #5f6368;
+    }
+  }
+}
+
+// --- Intervalo personalizado ---
+
+.custom-interval {
   display: flex;
   align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.date-input {
+  border: 1.5px solid #ccc;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 11px;
+  color: #3c4043;
+  background: #fafafa;
+  flex: 1;
+  max-width: 160px;
+
+  &:focus {
+    outline: none;
+    border-color: #4285f4;
+  }
+}
+
+.interval-sep {
+  font-size: 12px;
+  color: #9aa0a6;
+}
+
+// --- Footer ---
+
+.panel-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px 12px;
+  border-top: 1px solid #f1f3f4;
+}
+
+.clear-btn {
+  font-size: 11px;
+  color: #5f6368;
 }

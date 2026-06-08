@@ -11,6 +11,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.sql.Connection;
+import java.sql.DriverManager;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -24,8 +26,9 @@ import java.util.Properties;
  */
 public class NeonFallbackEnvironmentPostProcessor implements EnvironmentPostProcessor, Ordered {
 
-    private static final int NEON_PORT = 5432;
-    private static final int TIMEOUT_MS = 2000;
+    private static final int NEON_PORT    = 5432;
+    private static final int TIMEOUT_MS   = 2000;
+    private static final int JDBC_TIMEOUT = 3;   // segundos — cobre TCP + SSL + auth
 
     @Override
     public int getOrder() {
@@ -45,23 +48,33 @@ public class NeonFallbackEnvironmentPostProcessor implements EnvironmentPostProc
             return;
         }
 
-        String host = extractHost(neonUrl);
+        String host     = extractHost(neonUrl);
+        String username = localProps.getProperty("neon.datasource.username");
+        String password = localProps.getProperty("neon.datasource.password");
 
-        if (isReachable(host, NEON_PORT, TIMEOUT_MS)) {
-            Map<String, Object> neonProps = new LinkedHashMap<>();
-            neonProps.put("spring.datasource.url", neonUrl);
-            neonProps.put("spring.datasource.username", localProps.getProperty("neon.datasource.username"));
-            neonProps.put("spring.datasource.password", localProps.getProperty("neon.datasource.password"));
-            // Neon é serverless: conexões podem cair quando idle. Esses valores evitam timeouts silenciosos.
-            neonProps.put("spring.datasource.hikari.max-lifetime", 600000);
-            neonProps.put("spring.datasource.hikari.keepalive-time", 300000);
-
-            environment.getPropertySources().addFirst(new MapPropertySource("neon-datasource", neonProps));
-
-            System.out.println(">>> [NeonFallback] Neon acessível — usando branch develop da Neon");
-        } else {
-            System.out.println(">>> [NeonFallback] Neon inacessível — usando banco local (Docker Compose)");
+        if (!isReachable(host, NEON_PORT, TIMEOUT_MS)) {
+            System.out.println(">>> [NeonFallback] Neon inacessível (TCP) — usando banco local (Docker Compose)");
+            return;
         }
+
+        // TCP abriu, mas redes com restrição de SSL podem bloquear o handshake.
+        // Testa a conexão JDBC completa (TCP + SSL + autenticação) antes de confirmar o Neon.
+        if (!canConnectViaJdbc(neonUrl, username, password)) {
+            System.out.println(">>> [NeonFallback] Neon TCP ok mas SSL/JDBC bloqueado — usando banco local (Docker Compose)");
+            return;
+        }
+
+        Map<String, Object> neonProps = new LinkedHashMap<>();
+        neonProps.put("spring.datasource.url", neonUrl);
+        neonProps.put("spring.datasource.username", username);
+        neonProps.put("spring.datasource.password", password);
+        // Neon é serverless: conexões podem cair quando idle. Esses valores evitam timeouts silenciosos.
+        neonProps.put("spring.datasource.hikari.max-lifetime", 600000);
+        neonProps.put("spring.datasource.hikari.keepalive-time", 300000);
+
+        environment.getPropertySources().addFirst(new MapPropertySource("neon-datasource", neonProps));
+
+        System.out.println(">>> [NeonFallback] Neon acessível — usando branch develop da Neon");
     }
 
     private Properties loadLocalProperties() {
@@ -83,6 +96,21 @@ public class NeonFallbackEnvironmentPostProcessor implements EnvironmentPostProc
             socket.connect(new InetSocketAddress(host, port), timeoutMs);
             return true;
         } catch (IOException e) {
+            return false;
+        }
+    }
+
+    private boolean canConnectViaJdbc(String url, String username, String password) {
+        Properties props = new Properties();
+        props.setProperty("user", username);
+        props.setProperty("password", password);
+        // loginTimeout cobre todo o handshake: TCP + SSL + autenticação Postgres
+        props.setProperty("loginTimeout", String.valueOf(JDBC_TIMEOUT));
+        props.setProperty("socketTimeout", String.valueOf(JDBC_TIMEOUT));
+        props.setProperty("connectTimeout", String.valueOf(JDBC_TIMEOUT));
+        try (Connection ignored = DriverManager.getConnection(url, props)) {
+            return true;
+        } catch (Exception e) {
             return false;
         }
     }
