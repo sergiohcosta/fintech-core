@@ -129,6 +129,15 @@ describe('groupByEffectiveMonth', () => {
     const groups = groupByEffectiveMonth(txs);
     expect(groups[0].key).toBe('2026-07');
   });
+
+  it('calcula balance negativo quando despesas superam receitas', () => {
+    const txs: any[] = [
+      { id: '1', installmentGroupId: null, date: '2026-06-10', type: 'INCOME',  amount: 500, status: 'PAID' },
+      { id: '2', installmentGroupId: null, date: '2026-06-20', type: 'EXPENSE', amount: 800, status: 'PAID' },
+    ];
+    const [group] = groupByEffectiveMonth(txs);
+    expect(group.balance).toBe(-300);
+  });
 });
 
 describe('resolveMonthKey', () => {
@@ -156,6 +165,11 @@ describe('monthBounds', () => {
   it('retorna último dia correto para fevereiro 2026 (não-bissexto)', () => {
     const bounds = monthBounds('2026-02');
     expect(bounds.endDate).toBe('2026-02-28');
+  });
+
+  it('retorna último dia correto para fevereiro 2024 (bissexto)', () => {
+    const bounds = monthBounds('2024-02');
+    expect(bounds.endDate).toBe('2024-02-29');
   });
 });
 
