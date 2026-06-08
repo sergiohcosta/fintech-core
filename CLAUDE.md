@@ -278,8 +278,18 @@ Ocultar no frontend **não substitui** proteção no backend. O frontend é cont
   - `TransactionResponseDTO` ganhou `categoryPath` (ex: `"Pets → Ração"`) e `categoryIcon` — breakdown da fatura exibe path completo + ícone
   - Fix: `mat-select` exibia nome da ligatura do ícone (ex: `"credit_card Nubank"`) — corrigido com `<mat-select-trigger>` no formulário de transação
 
+- **Filtros na listagem de transações (issue #41, 2026-06-08)**:
+  - 5 query params opcionais na OpenAPI spec + codegen: `accountId`, `status`, `type`, `startDate`, `endDate`
+  - `findAllByTenantWithFilters` no `TransactionRepository` com JPQL dinâmico (`(:param IS NULL OR condição)`)
+  - Regra de data: parcelas de cartão (`installmentGroup IS NOT NULL AND inv IS NOT NULL`) filtram por `inv.dueDate`; demais por `t.date`
+  - Validação no service: `startDate`/`endDate` devem ser informados juntos ou omitidos (`IllegalArgumentException` → 400)
+  - `effectiveSortDate` corrigido para `installmentGroup != null && invoice != null` (alinhado com a regra do JPQL)
+  - Frontend: `TransactionFiltersComponent` com seletor de mês (◀/▶ preenche start/end), filtros de conta/status/tipo, toggle de agrupamento
+  - Agrupamento por período: `period-header` row kind no `buildDisplayRows`; mesma `mat-table` com row predicates distintos
+  - `groupByEffectiveMonth`: agrupa por mês efetivo (parcelas → `invoiceDueDate`, demais → `date`), calcula totais em single-pass
+  - Chips de filtros ativos com remoção individual; `forkJoin` carrega contas + transações em paralelo no `ngOnInit`
+
 **Próximos passos:**
-- **Filtros na listagem de transações (issue #41)** — por período, tipo, status, conta; com agrupamento por período e saldo por grupo
 - Gráficos no dashboard (evolução mensal, breakdown por categoria/conta)
 - Tela de Patrimônio Total — consome `countInNetWorth` (campo já existe em `accounts`)
 
