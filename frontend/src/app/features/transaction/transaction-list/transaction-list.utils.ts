@@ -119,16 +119,25 @@ export function groupByEffectiveMonth(transactions: TransactionResponseDTO[]): P
 
   return [...map.entries()]
     .sort(([a], [b]) => b.localeCompare(a))
-    .map(([key, txs]) => ({
-      key,
-      label: formatMonthLabel(key),
-      transactions: txs,
-      totalIncome:  txs.filter(t => t.type === 'INCOME').reduce((s, t) => s + (t.amount ?? 0), 0),
-      totalExpense: txs.filter(t => t.type === 'EXPENSE').reduce((s, t) => s + (t.amount ?? 0), 0),
-      balance:      txs.filter(t => t.type === 'INCOME').reduce((s, t) => s + (t.amount ?? 0), 0)
-                  - txs.filter(t => t.type === 'EXPENSE').reduce((s, t) => s + (t.amount ?? 0), 0),
-      isCurrentMonth: key === currentKey,
-    }));
+    .map(([key, txs]) => {
+      const [totalIncome, totalExpense] = txs.reduce(
+        ([inc, exp], t) => {
+          if (t.type === 'INCOME')  return [inc + (t.amount ?? 0), exp];
+          if (t.type === 'EXPENSE') return [inc, exp + (t.amount ?? 0)];
+          return [inc, exp];
+        },
+        [0, 0] as [number, number]
+      );
+      return {
+        key,
+        label: formatMonthLabel(key),
+        transactions: txs,
+        totalIncome,
+        totalExpense,
+        balance: totalIncome - totalExpense,
+        isCurrentMonth: key === currentKey,
+      };
+    });
 }
 
 export function resolveMonthKey(startDate: string | null, endDate: string | null): string {
