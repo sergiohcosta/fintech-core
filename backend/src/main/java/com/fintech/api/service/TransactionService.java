@@ -49,6 +49,9 @@ public class TransactionService {
     @Transactional(readOnly = true)
     public List<TransactionResponseDTO> findAll(User user, UUID invoiceId, UUID accountId,
             TransactionStatus status, TransactionType type, LocalDate startDate, LocalDate endDate) {
+        if ((startDate == null) != (endDate == null)) {
+            throw new IllegalArgumentException("startDate e endDate devem ser informados juntos ou omitidos juntos");
+        }
         if (invoiceId != null) {
             Invoice invoice = invoiceService.findByIdAndTenant(invoiceId, user.getTenant());
             return repository.findAllByTenantAndInvoiceWithDetails(user.getTenant(), invoice)
@@ -62,12 +65,13 @@ public class TransactionService {
                 .toList();
     }
 
-    // Para cartão de crédito, a posição na linha do tempo é o dueDate da fatura:
-    // é quando o valor será cobrado de fato. Para demais contas, é a data da transação.
+    // Para parcelas de cartão de crédito (installmentGroup presente), a posição na linha
+    // do tempo é o dueDate da fatura — alinhado com a regra JPQL de filtro de período.
+    // Transações avulsas de cartão (sem installmentGroup) usam t.date: a data de compra
+    // é única e é a informação relevante, assim como qualquer conta regular.
     private LocalDate effectiveSortDate(Transaction t) {
-        Invoice invoice = t.getInvoice();
-        if (invoice != null) {
-            return invoice.getDueDate();
+        if (t.getInstallmentGroup() != null && t.getInvoice() != null) {
+            return t.getInvoice().getDueDate();
         }
         return t.getDate();
     }
