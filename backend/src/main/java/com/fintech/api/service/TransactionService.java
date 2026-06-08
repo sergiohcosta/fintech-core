@@ -57,8 +57,12 @@ public class TransactionService {
             return repository.findAllByTenantAndInvoiceWithDetails(user.getTenant(), invoice)
                     .stream().map(TransactionResponseDTO::fromEntity).toList();
         }
+        // Sentinelas substituem null para evitar IS NULL no JPQL com LocalDate.
+        // PostgreSQL não consegue inferir o tipo de "? IS NULL" sem contexto de coluna.
+        LocalDate effectiveStart = startDate != null ? startDate : LocalDate.of(1000, 1, 1);
+        LocalDate effectiveEnd   = endDate   != null ? endDate   : LocalDate.of(9999, 12, 31);
         return repository.findAllByTenantWithFilters(
-                        user.getTenant(), accountId, status, type, startDate, endDate)
+                        user.getTenant(), accountId, status, type, effectiveStart, effectiveEnd)
                 .stream()
                 .sorted(Comparator.comparing(this::effectiveSortDate, Comparator.reverseOrder()))
                 .map(TransactionResponseDTO::fromEntity)

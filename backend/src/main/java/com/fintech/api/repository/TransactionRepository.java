@@ -40,6 +40,11 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             """)
     List<Transaction> findAllByTenantWithDetails(@Param("tenant") Tenant tenant);
 
+    // startDate e endDate nunca são null aqui — o service substitui por sentinelas (1000-01-01 /
+    // 9999-12-31) quando o usuário não filtra por período. Isso evita o padrão ":param IS NULL"
+    // para LocalDate no JPQL, que faz o PostgreSQL emitir "could not determine data type of
+    // parameter $N" (sem contexto de tipo em IS NULL). Com sentinelas, os parâmetros sempre
+    // aparecem em comparações com colunas DATE, fornecendo o contexto necessário.
     @Query("""
             SELECT t FROM Transaction t
             LEFT JOIN FETCH t.installmentGroup
@@ -51,9 +56,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
               AND (:status    IS NULL OR t.status = :status)
               AND (:type      IS NULL OR t.type = :type)
               AND (
-                :startDate IS NULL OR :endDate IS NULL
-                OR (t.installmentGroup IS NOT NULL AND inv IS NOT NULL AND inv.dueDate BETWEEN :startDate AND :endDate)
-                OR ((t.installmentGroup IS NULL OR inv IS NULL) AND t.date BETWEEN :startDate AND :endDate)
+                (t.installmentGroup IS NOT NULL AND inv IS NOT NULL AND inv.dueDate >= :startDate AND inv.dueDate <= :endDate)
+                OR ((t.installmentGroup IS NULL OR inv IS NULL) AND t.date >= :startDate AND t.date <= :endDate)
               )
             ORDER BY t.date DESC
             """)
