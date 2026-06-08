@@ -27,7 +27,7 @@ export class TransactionFiltersComponent {
   accounts     = input<AccountResponse[]>([]);
   filterChange = output<TransactionFilters>();
 
-  accountId          = signal<string | null>(null);
+  accountIds         = signal<string[]>([]);
   status             = signal<'PENDING' | 'PAID' | 'CANCELLED' | null>(null);
   type               = signal<'INCOME' | 'EXPENSE' | null>(null);
   startDate          = signal<string | null>(null);
@@ -47,8 +47,8 @@ export class TransactionFiltersComponent {
     ).map(chip => ({ ...chip, active: selected.has(chip.key) }));
   });
 
-  onAccountChange(val: string | null): void {
-    this.accountId.set(val);
+  onAccountChange(val: string[]): void {
+    this.accountIds.set(val ?? []);
     this.emit();
   }
 
@@ -120,7 +120,7 @@ export class TransactionFiltersComponent {
   }
 
   clearFilters(): void {
-    this.accountId.set(null);
+    this.accountIds.set([]);
     this.status.set(null);
     this.type.set(null);
     this.startDate.set(null);
@@ -132,7 +132,7 @@ export class TransactionFiltersComponent {
 
   private emit(): void {
     this.filterChange.emit({
-      accountId:     this.accountId(),
+      accountIds:    this.accountIds(),
       status:        this.status(),
       type:          this.type(),
       startDate:     this.startDate(),

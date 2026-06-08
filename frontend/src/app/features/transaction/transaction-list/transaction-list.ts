@@ -69,9 +69,11 @@ export class TransactionList implements OnInit {
   activeFilterChips = computed((): Array<{ label: string; field: string; colorClass: string }> => {
     const f = this.filters();
     const chips: Array<{ label: string; field: string; colorClass: string }> = [];
-    if (f.accountId) {
-      const account = this.accounts().find(a => a.id === f.accountId);
-      chips.push({ label: account?.name ?? 'Conta', field: 'accountId', colorClass: 'chip-account' });
+    if (f.accountIds.length === 1) {
+      const account = this.accounts().find(a => a.id === f.accountIds[0]);
+      chips.push({ label: account?.name ?? 'Conta', field: 'accountIds', colorClass: 'chip-account' });
+    } else if (f.accountIds.length > 1) {
+      chips.push({ label: `${f.accountIds.length} contas`, field: 'accountIds', colorClass: 'chip-account' });
     }
     if (f.status === 'PENDING')   chips.push({ label: 'Pendente',  field: 'status', colorClass: 'chip-pending' });
     if (f.status === 'PAID')      chips.push({ label: 'Pago',      field: 'status', colorClass: 'chip-paid' });
@@ -116,7 +118,7 @@ export class TransactionList implements OnInit {
 
   clearFilterChip(field: string): void {
     this.filters.update(f => {
-      if (field === 'accountId') return { ...f, accountId: null };
+      if (field === 'accountIds') return { ...f, accountIds: [] };
       if (field === 'status')    return { ...f, status: null };
       if (field === 'type')      return { ...f, type: null };
       if (field === 'period')    return { ...f, startDate: null, endDate: null };
@@ -127,7 +129,7 @@ export class TransactionList implements OnInit {
 
   loadTransactions(f: TransactionFilters = this.filters()): void {
     this.service.listTransactions({
-      accountId: f.accountId  ?? undefined,
+      accountIds: f.accountIds.length > 0 ? f.accountIds : undefined,
       status:    f.status     ?? undefined,
       type:      f.type       ?? undefined,
       startDate: f.startDate  ?? undefined,

@@ -367,7 +367,7 @@ includeArchived?: boolean;
 
 export type ListTransactionsParams = {
 invoiceId?: string;
-accountId?: string;
+accountIds?: string[];
 status?: TransactionStatus;
 type?: TransactionType;
 startDate?: string;
