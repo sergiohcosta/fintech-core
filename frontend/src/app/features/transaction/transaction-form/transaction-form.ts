@@ -1,5 +1,6 @@
-import { Component, inject, OnInit, signal, computed, effect, ViewChild } from '@angular/core';
+import { Component, ElementRef, inject, OnInit, signal, computed, effect, ViewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { Observable } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
@@ -73,6 +74,7 @@ export class TransactionForm implements OnInit {
 
   @ViewChild('picker') private picker?: MatDatepicker<Date>;
   @ViewChild('transferPicker') private transferPicker?: MatDatepicker<Date>;
+  @ViewChild('descriptionInput') private descriptionInput?: ElementRef<HTMLInputElement>;
 
   saving = signal(false);
   isEditMode = signal(false);
@@ -304,13 +306,11 @@ export class TransactionForm implements OnInit {
     return null;
   }
 
-  onSubmit(): void {
-    if (this.form.invalid) return;
+  private doSave(): Observable<any> {
     const raw = this.form.getRawValue();
-    this.saving.set(true);
 
     if (this.isEditMode()) {
-      this.transactionService.updateTransaction(this.transactionId()!, {
+      return this.transactionService.updateTransaction(this.transactionId()!, {
         description: raw.description!,
         amount: raw.amount!,
         date: this.toDateString(raw.date as Date),
@@ -319,37 +319,17 @@ export class TransactionForm implements OnInit {
         categoryId: raw.categoryId ?? undefined,
         accountId: raw.accountId!,
         propagate: this.propagateFields().size > 0 ? Array.from(this.propagateFields()) : undefined
-      }).subscribe({
-        next: () => {
-          this.snackBar.open('Transação atualizada com sucesso!', 'OK', { duration: 3000 });
-          this.router.navigate(['/transactions']);
-        },
-        error: () => {
-          this.saving.set(false);
-          this.snackBar.open('Erro ao atualizar transação.', 'Fechar', { duration: 5000 });
-        }
       });
-      return;
     }
 
     if (this.mode() === 'TRANSFER') {
-      this.transferService.createTransfer({
+      return this.transferService.createTransfer({
         fromAccountId: raw.fromAccountId!,
         toAccountId: raw.toAccountId!,
         amount: raw.amount!,
         date: this.toDateString(raw.date as Date),
         description: raw.description || undefined
-      }).subscribe({
-        next: () => {
-          this.snackBar.open('Transferência registrada com sucesso!', 'OK', { duration: 3000 });
-          this.router.navigate(['/transactions']);
-        },
-        error: () => {
-          this.saving.set(false);
-          this.snackBar.open('Erro ao registrar transferência.', 'Fechar', { duration: 5000 });
-        }
       });
-      return;
     }
 
     const rawAmount = raw.amount!;
@@ -357,7 +337,7 @@ export class TransactionForm implements OnInit {
       ? rawAmount * (raw.totalInstallments ?? 1)
       : rawAmount;
 
-    this.transactionService.createTransaction({
+    return this.transactionService.createTransaction({
       description: raw.description!,
       amount: totalAmount,
       date: this.toDateString(raw.date as Date),
@@ -366,11 +346,25 @@ export class TransactionForm implements OnInit {
       categoryId: raw.categoryId ?? undefined,
       accountId: raw.accountId!,
       totalInstallments: this.isInstallment() ? (raw.totalInstallments ?? 1) : 1
-    }).subscribe({
-      next: (created) => {
-        const msg = created.length > 1
-          ? `${created.length} parcelas criadas com sucesso!`
-          : 'Transação criada com sucesso!';
+    });
+  }
+
+  onSubmit(): void {
+    if (this.form.invalid) return;
+    this.saving.set(true);
+
+    this.doSave().subscribe({
+      next: (result) => {
+        let msg: string;
+        if (this.isEditMode()) {
+          msg = 'Transação atualizada com sucesso!';
+        } else if (this.mode() === 'TRANSFER') {
+          msg = 'Transferência registrada com sucesso!';
+        } else {
+          msg = Array.isArray(result) && result.length > 1
+            ? `${result.length} parcelas criadas com sucesso!`
+            : 'Transação criada com sucesso!';
+        }
         this.snackBar.open(msg, 'OK', { duration: 3000 });
         this.router.navigate(['/transactions']);
       },
@@ -379,5 +373,37 @@ export class TransactionForm implements OnInit {
         this.snackBar.open('Erro ao salvar transação.', 'Fechar', { duration: 5000 });
       }
     });
+  }
+
+  onSaveAndAddMore(): void {
+    if (this.form.invalid || this.isEditMode()) return;
+    this.saving.set(true);
+
+    this.doSave().subscribe({
+      next: (result) => {
+        const msg = Array.isArray(result) && result.length > 1
+          ? `${result.length} parcelas criadas com sucesso!`
+          : 'Transação criada com sucesso!';
+        this.snackBar.open(msg, 'OK', { duration: 3000 });
+        this.partialReset();
+      },
+      error: () => {
+        this.saving.set(false);
+        this.snackBar.open('Erro ao salvar transação.', 'Fechar', { duration: 5000 });
+      }
+    });
+  }
+
+  private partialReset(): void {
+    this.form.controls.description.reset();
+    this.form.controls.amount.reset();
+    this.form.controls.totalInstallments.reset(1);
+    this.amountDisplay.set('');
+    this.isInstallment.set(false);
+    this.valueMode.set('total');
+    this.propagateFields.set(new Set());
+    this.saving.set(false);
+    // setTimeout garante que o foco ocorre após o Angular processar o reset do form
+    setTimeout(() => this.descriptionInput?.nativeElement.focus());
   }
 }
