@@ -16,7 +16,7 @@
       @if (!isEditMode()) {
         <div class="form-row mode-toggle-row">
           <mat-button-toggle-group [value]="mode()" (change)="onModeChange($event.value)" [hideSingleSelectionIndicator]="true">
-            <mat-button-toggle value="TRANSACTION">Receita / Despesa</mat-button-toggle>
+            <mat-button-toggle value="TRANSACTION">Transação</mat-button-toggle>
             <mat-button-toggle value="TRANSFER">Transferência</mat-button-toggle>
           </mat-button-toggle-group>
         </div>
@@ -25,6 +25,51 @@
       <!-- ═══ TRANSACTION ═══ -->
       @if (mode() === 'TRANSACTION') {
 
+        <!-- 1. Descrição — o QUE aconteceu -->
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="field-full">
+            <mat-label>Descrição</mat-label>
+            <input #descriptionInput matInput formControlName="description" placeholder="Ex: Supermercado, Salário..." />
+            @if (form.controls.description.hasError('required')) {
+              <mat-error>Descrição obrigatória</mat-error>
+            }
+          </mat-form-field>
+        </div>
+
+        <!-- 2. Valor + Data na mesma linha — QUANTO e QUANDO -->
+        <div class="form-row form-row-cols">
+          <mat-form-field appearance="outline">
+            <mat-label>Valor</mat-label>
+            <span matTextPrefix>R$&nbsp;</span>
+            <input matInput type="text" inputmode="decimal"
+                   [value]="amountDisplay()"
+                   placeholder="0,00"
+                   (input)="onAmountInput($event)"
+                   (blur)="onAmountBlur($event)"
+                   (focus)="onAmountFocus($event)" />
+            @if (form.controls.amount.hasError('required')) {
+              <mat-error>Valor obrigatório</mat-error>
+            }
+            @if (form.controls.amount.hasError('min')) {
+              <mat-error>Valor deve ser maior que zero</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Data</mat-label>
+            <input matInput [matDatepicker]="picker" formControlName="date"
+                   placeholder="dd/mm/aaaa"
+                   (keydown)="onDateKeydown($event)"
+                   (blur)="onDateBlur($event)" />
+            <mat-datepicker-toggle matIconSuffix [for]="picker" />
+            <mat-datepicker #picker />
+            @if (form.controls.date.hasError('required')) {
+              <mat-error>Data obrigatória</mat-error>
+            }
+          </mat-form-field>
+        </div>
+
+        <!-- 3. Conta — DE ONDE saiu/entrou -->
         <div class="form-row">
           <mat-form-field appearance="outline" class="field-full">
             <mat-label>Conta *</mat-label>
@@ -47,6 +92,7 @@
 
         <div class="section-divider"><span>Classificação</span></div>
 
+        <!-- 4. Tipo — receita ou despesa -->
         <div class="form-row">
           <div class="field-group">
             <span class="field-label">Tipo de transação</span>
@@ -63,6 +109,7 @@
           </div>
         </div>
 
+        <!-- 5. Status — Cancelado só aparece na edição (raro no cadastro) -->
         <div class="form-row">
           <div class="field-group">
             <span class="field-label">Status</span>
@@ -75,16 +122,17 @@
                 <mat-icon>check_circle</mat-icon>
                 Pago
               </mat-button-toggle>
-              <mat-button-toggle value="CANCELLED" class="status-cancelled">
-                <mat-icon>cancel</mat-icon>
-                Cancelado
-              </mat-button-toggle>
+              @if (isEditMode()) {
+                <mat-button-toggle value="CANCELLED" class="status-cancelled">
+                  <mat-icon>cancel</mat-icon>
+                  Cancelado
+                </mat-button-toggle>
+              }
             </mat-button-toggle-group>
           </div>
         </div>
 
-        <div class="section-divider"><span>Detalhes</span></div>
-
+        <!-- 6. Categoria — opcional, secundário -->
         <div class="form-row">
           <mat-form-field appearance="outline" class="field-full">
             <mat-label>Categoria (opcional)</mat-label>
@@ -100,51 +148,6 @@
                 </mat-option>
               }
             </mat-select>
-          </mat-form-field>
-        </div>
-
-        <div class="form-row">
-          <mat-form-field appearance="outline" class="field-full">
-            <mat-label>Descrição</mat-label>
-            <input #descriptionInput matInput formControlName="description" placeholder="Ex: Supermercado, Salário..." />
-            @if (form.controls.description.hasError('required')) {
-              <mat-error>Descrição obrigatória</mat-error>
-            }
-          </mat-form-field>
-        </div>
-
-        <div class="form-row">
-          <mat-form-field appearance="outline" class="field-full">
-            <mat-label>Data</mat-label>
-            <input matInput [matDatepicker]="picker" formControlName="date"
-                   placeholder="dd/mm/aaaa"
-                   (keydown)="onDateKeydown($event)"
-                   (blur)="onDateBlur($event)" />
-            <mat-datepicker-toggle matIconSuffix [for]="picker" />
-            <mat-datepicker #picker />
-            @if (form.controls.date.hasError('required')) {
-              <mat-error>Data obrigatória</mat-error>
-            }
-          </mat-form-field>
-        </div>
-
-        <div class="section-divider"><span>Pagamento</span></div>
-
-        <div class="form-row">
-          <mat-form-field appearance="outline" class="field-full">
-            <mat-label>Valor (R$)</mat-label>
-            <input matInput type="text" inputmode="decimal"
-                   [value]="amountDisplay()"
-                   placeholder="0,00"
-                   (input)="onAmountInput($event)"
-                   (blur)="onAmountBlur($event)"
-                   (focus)="onAmountFocus($event)" />
-            @if (form.controls.amount.hasError('required')) {
-              <mat-error>Valor obrigatório</mat-error>
-            }
-            @if (form.controls.amount.hasError('min')) {
-              <mat-error>Valor deve ser maior que zero</mat-error>
-            }
           </mat-form-field>
         </div>
 
@@ -178,6 +181,9 @@
                       <div class="preview-chip">
                         <span class="chip-number">{{ row.number }}/{{ installmentPreview().length }}</span>
                         <span class="chip-date">{{ row.date }}</span>
+                        @if (row.invoiceLabel) {
+                          <span class="chip-invoice">{{ row.invoiceLabel }}</span>
+                        }
                         <span class="chip-amount">{{ row.amount | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
                       </div>
                     }
@@ -189,7 +195,6 @@
         }
 
         @if (isEditMode()) {
-          <mat-divider></mat-divider>
           <div class="propagate-section">
             <p class="propagate-label">
               <mat-icon class="propagate-icon">sync</mat-icon>
@@ -221,7 +226,8 @@
 
         <div class="form-row form-row-cols">
           <mat-form-field appearance="outline">
-            <mat-label>Valor (R$)</mat-label>
+            <mat-label>Valor</mat-label>
+            <span matTextPrefix>R$&nbsp;</span>
             <input matInput type="text" inputmode="decimal"
                    [value]="amountDisplay()"
                    placeholder="0,00"
