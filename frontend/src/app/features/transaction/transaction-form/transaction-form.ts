@@ -374,4 +374,35 @@ export class TransactionForm implements OnInit {
       }
     });
   }
+
+  onSaveAndAddMore(): void {
+    if (this.form.invalid) return;
+    this.saving.set(true);
+
+    this.doSave().subscribe({
+      next: (result) => {
+        const msg = Array.isArray(result) && result.length > 1
+          ? `${result.length} parcelas criadas com sucesso!`
+          : 'Transação criada com sucesso!';
+        this.snackBar.open(msg, 'OK', { duration: 3000 });
+        this.partialReset();
+      },
+      error: () => {
+        this.saving.set(false);
+        this.snackBar.open('Erro ao salvar transação.', 'Fechar', { duration: 5000 });
+      }
+    });
+  }
+
+  private partialReset(): void {
+    this.form.patchValue({ description: null, amount: null, totalInstallments: 1 });
+    this.form.controls.description.reset();
+    this.form.controls.amount.reset();
+    this.amountDisplay.set('');
+    this.isInstallment.set(false);
+    this.propagateFields.set(new Set());
+    this.saving.set(false);
+    // setTimeout garante que o foco ocorre após o Angular processar o reset do form
+    setTimeout(() => this.descriptionInput?.nativeElement.focus());
+  }
 }
