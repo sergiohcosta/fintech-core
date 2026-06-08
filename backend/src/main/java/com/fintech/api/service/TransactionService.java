@@ -47,13 +47,15 @@ public class TransactionService {
     private final InvoiceService invoiceService;
 
     @Transactional(readOnly = true)
-    public List<TransactionResponseDTO> findAll(User user, UUID invoiceId) {
+    public List<TransactionResponseDTO> findAll(User user, UUID invoiceId, UUID accountId,
+            TransactionStatus status, TransactionType type, LocalDate startDate, LocalDate endDate) {
         if (invoiceId != null) {
             Invoice invoice = invoiceService.findByIdAndTenant(invoiceId, user.getTenant());
             return repository.findAllByTenantAndInvoiceWithDetails(user.getTenant(), invoice)
                     .stream().map(TransactionResponseDTO::fromEntity).toList();
         }
-        return repository.findAllByTenantWithDetails(user.getTenant())
+        return repository.findAllByTenantWithFilters(
+                        user.getTenant(), accountId, status, type, startDate, endDate)
                 .stream()
                 .sorted(Comparator.comparing(this::effectiveSortDate, Comparator.reverseOrder()))
                 .map(TransactionResponseDTO::fromEntity)
