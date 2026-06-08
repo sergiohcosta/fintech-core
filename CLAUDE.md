@@ -289,7 +289,24 @@ Ocultar no frontend **não substitui** proteção no backend. O frontend é cont
   - `groupByEffectiveMonth`: agrupa por mês efetivo (parcelas → `invoiceDueDate`, demais → `date`), calcula totais em single-pass
   - Chips de filtros ativos com remoção individual; `forkJoin` carrega contas + transações em paralelo no `ngOnInit`
 
+- **Cadastro em sequência de transações (issue #50, 2026-06-08)**:
+  - Botão "Salvar e lançar outra" no formulário de transação (modo criação, TRANSACTION apenas)
+  - `doSave(): Observable<any>` extraído do `onSubmit()` — separa payload+HTTP de ação pós-save
+  - `onSaveAndAddMore()`: salva via `doSave()`, exibe snackbar e chama `partialReset()` sem navegar
+  - `partialReset()`: zera `description`, `amount`, `isInstallment`, `valueMode`, `propagateFields`; mantém `accountId`, `date`, `type`, `status`, `categoryId`; foca o campo description via `@ViewChild`
+  - `reset(value)` no FormControl limpa estado `touched`/`dirty` (evita erros de validação imediatos no campo vazio)
+  - `type="button"` obrigatório para não disparar `ngSubmit` ao clicar no botão secundário
+
+- **Melhorias de UX no formulário de transação (issue #58, 2026-06-08)**:
+  - **Reordenação de campos** no modo TRANSACTION: Descrição → Valor+Data → Conta → Classificação → Tipo → Status → Categoria (ordem lógica: o quê → quanto/quando → de onde → como classificar)
+  - **Valor e Data na mesma linha** (`form-row-cols`, grid 50/50) — consistente com modo Transferência
+  - **`R$` como prefixo inline** (`matTextPrefix`) no campo Valor (TRANSACTION e TRANSFER)
+  - **"Cancelado" removido do cadastro**: status toggle exibe PENDING/PAID; CANCELLED só aparece quando `isEditMode() === true`
+  - **Toggle de modo** renomeado de "Receita / Despesa" → "Transação" (o toggle alterna modo TRANSACTION/TRANSFER)
+  - **Seção de propagação com destaque visual**: borda esquerda na cor primária do tema + fundo `surface-container-low` + ícone colorido
+
 **Próximos passos:**
+- Corrigir 56 falhas pré-existentes nos testes do frontend (issue #57): falta chamada a `TestBed.initTestEnvironment()` em arquivo de setup do Vitest
 - Gráficos no dashboard (evolução mensal, breakdown por categoria/conta)
 - Tela de Patrimônio Total — consome `countInNetWorth` (campo já existe em `accounts`)
 
