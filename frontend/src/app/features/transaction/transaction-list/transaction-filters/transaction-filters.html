@@ -3,8 +3,7 @@
   <div class="filter-section">
     <span class="section-label">Conta</span>
     <mat-form-field appearance="outline" class="conta-field">
-      <mat-select [ngModel]="accountId()" (ngModelChange)="onAccountChange($event)">
-        <mat-option [value]="null">Todas as contas</mat-option>
+      <mat-select [multiple]="true" [ngModel]="accountIds()" (ngModelChange)="onAccountChange($event)" placeholder="Todas as contas">
         @for (account of accounts(); track account.id) {
           <mat-option [value]="account.id">{{ account.name }}</mat-option>
         }
