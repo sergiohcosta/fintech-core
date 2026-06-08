@@ -1,0 +1,65 @@
+.filters-panel {
+  padding: 16px 20px;
+  background: #fafafa;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.filter-field {
+  min-width: 160px;
+  flex: 1 1 160px;
+
+  ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+    display: none;
+  }
+}
+
+.period-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 2 1 320px;
+}
+
+.month-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  .month-label {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #333;
+    min-width: 130px;
+    text-align: center;
+  }
+}
+
+.date-range {
+  display: flex;
+  gap: 8px;
+
+  .date-field {
+    flex: 1;
+
+    ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+      display: none;
+    }
+  }
+}
+
+.filter-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
