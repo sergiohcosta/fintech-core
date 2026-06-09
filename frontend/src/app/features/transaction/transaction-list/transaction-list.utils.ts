@@ -1,4 +1,4 @@
-import { TransactionResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
+import { TransactionResponseDTO, InvoiceStatus } from '../../../core/api/fintechSaaSAPI.schemas';
 
 export type InstallmentGroupInfo = {
   groupId: string;
@@ -27,7 +27,7 @@ export type InvoiceHeaderRow = {
   label: string;
   dueDate: string | null;
   totalAmount: number;
-  status: string | null;
+  status: InvoiceStatus | null;
   transactionCount: number;
 };
 
@@ -86,7 +86,7 @@ function buildDisplayRowsGroupedByInvoice(
   const withInvoice    = transactions.filter(t => t.invoiceId);
   const withoutInvoice = transactions.filter(t => !t.invoiceId);
 
-  type InvoiceBucket = { dueDate: string | null; status: string | null; label: string; transactions: TransactionResponseDTO[] };
+  type InvoiceBucket = { dueDate: string | null; status: InvoiceStatus | null; label: string; transactions: TransactionResponseDTO[] };
   const invoiceMap = new Map<string, InvoiceBucket>();
 
   for (const t of withInvoice) {

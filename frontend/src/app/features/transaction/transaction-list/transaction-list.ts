@@ -15,7 +15,7 @@ import { TransactionsService } from '../../../core/api/transactions/transactions
 import { AccountsService } from '../../../core/api/accounts/accounts.service';
 import { InstallmentGroupsService } from '../../../core/api/installment-groups/installment-groups.service';
 import { TransfersService } from '../../../core/api/transfers/transfers.service';
-import { TransactionResponseDTO, AccountResponse } from '../../../core/api/fintechSaaSAPI.schemas';
+import { TransactionResponseDTO, AccountResponse, InvoiceStatus } from '../../../core/api/fintechSaaSAPI.schemas';
 import { ConfirmationDialogComponent } from '../../../components/confirmation-dialog/confirmation-dialog';
 import { DeleteInstallmentDialogComponent, DeleteInstallmentDialogResult } from './delete-installment-dialog/delete-installment-dialog';
 import { TransactionFiltersComponent } from './transaction-filters/transaction-filters';
@@ -111,15 +111,15 @@ export class TransactionList implements OnInit {
   isPeriodHeader  = (_: number, row: DisplayRow) => row.kind === 'period-header';
   isInvoiceHeader = (_: number, row: DisplayRow) => row.kind === 'invoice-header';
 
-  invoiceHeaderChipClass(status: string | null): string {
+  invoiceHeaderChipClass(status: InvoiceStatus | null): string {
     if (!status) return '';
-    const map: Record<string, string> = { OPEN: 'invoice-open', CLOSED: 'invoice-closed', PAID: 'invoice-paid' };
+    const map: Record<InvoiceStatus, string> = { OPEN: 'invoice-open', CLOSED: 'invoice-closed', PAID: 'invoice-paid' };
     return 'invoice-chip ' + (map[status] ?? '');
   }
 
-  invoiceHeaderStatusLabel(status: string | null): string {
+  invoiceHeaderStatusLabel(status: InvoiceStatus | null): string {
     if (!status) return '';
-    const map: Record<string, string> = { OPEN: 'Aberta', CLOSED: 'Fechada', PAID: 'Paga' };
+    const map: Record<InvoiceStatus, string> = { OPEN: 'Aberta', CLOSED: 'Fechada', PAID: 'Paga' };
     return map[status] ?? status;
   }
 
@@ -152,8 +152,8 @@ export class TransactionList implements OnInit {
     const prev = this.filters();
     this.filters.set(newFilters);
     this.saveToStorage(newFilters);
-    const prevServer = { ...prev,       description: null };
-    const newServer  = { ...newFilters, description: null };
+    const prevServer = { ...prev,       description: null, groupByPeriod: false, groupByInvoice: false };
+    const newServer  = { ...newFilters, description: null, groupByPeriod: false, groupByInvoice: false };
     if (JSON.stringify(prevServer) !== JSON.stringify(newServer)) {
       untracked(() => this.loadTransactions(newFilters));
     }
