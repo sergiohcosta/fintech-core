@@ -61,6 +61,23 @@
         </td>
       </ng-container>
 
+      <ng-container matColumnDef="invoiceHeader">
+        <td mat-cell *matCellDef="let row" [attr.colspan]="displayedColumns.length" class="invoice-header-cell">
+          <div class="invoice-header-content">
+            <span class="invoice-header-label">{{ $any(row).label }}</span>
+            @if ($any(row).status) {
+              <span [class]="invoiceHeaderChipClass($any(row).status)">
+                {{ invoiceHeaderStatusLabel($any(row).status) }}
+              </span>
+            }
+            <span class="invoice-header-total">
+              {{ $any(row).totalAmount | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}
+            </span>
+            <span class="invoice-header-count">{{ $any(row).transactionCount }} lançamento(s)</span>
+          </div>
+        </td>
+      </ng-container>
+
       <ng-container matColumnDef="description">
         <th mat-header-cell *matHeaderCellDef>Descrição</th>
         <td mat-cell *matCellDef="let row">
@@ -209,6 +226,7 @@
       </tr>
       <tr mat-row *matRowDef="let row; columns: ['expandedDetail']; when: isDetailRow" class="detail-row"></tr>
       <tr mat-row *matRowDef="let row; columns: ['periodHeader']; when: isPeriodHeader" class="period-header-row"></tr>
+      <tr mat-row *matRowDef="let row; columns: ['invoiceHeader']; when: isInvoiceHeader" class="invoice-header-row"></tr>
 
       <tr class="mat-row" *matNoDataRow>
         <td class="mat-cell empty-state" [attr.colspan]="displayedColumns.length">

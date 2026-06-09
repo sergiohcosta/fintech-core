@@ -97,6 +97,11 @@
       (ngModelChange)="onGroupByPeriodChange($event)">
       Agrupar por período
     </mat-slide-toggle>
+    <mat-slide-toggle
+      [ngModel]="groupByInvoice()"
+      (ngModelChange)="onGroupByInvoiceChange($event)">
+      Agrupar por fatura
+    </mat-slide-toggle>
     <button mat-button type="button" class="clear-btn" (click)="clearFilters()">
       <mat-icon>close</mat-icon> Limpar filtros
     </button>

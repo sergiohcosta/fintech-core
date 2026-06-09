@@ -34,6 +34,7 @@ export class TransactionFiltersComponent implements OnInit {
   startDate          = signal<string | null>(null);
   endDate            = signal<string | null>(null);
   groupByPeriod      = signal(false);
+  groupByInvoice     = signal(false);
   description        = signal<string | null>(null);
   showCustomInterval = signal(false);
   selectedMonths     = signal<string[]>([]);
@@ -57,6 +58,7 @@ export class TransactionFiltersComponent implements OnInit {
     this.startDate.set(f.startDate);
     this.endDate.set(f.endDate);
     this.groupByPeriod.set(f.groupByPeriod);
+    this.groupByInvoice.set(f.groupByInvoice);
     this.description.set(null); // descrição nunca é restaurada (busca pontual)
     if (f.startDate && f.endDate) {
       const key = resolveMonthKey(f.startDate, f.endDate);
@@ -97,6 +99,13 @@ export class TransactionFiltersComponent implements OnInit {
 
   onGroupByPeriodChange(val: boolean): void {
     this.groupByPeriod.set(val);
+    if (val) this.groupByInvoice.set(false); // mutuamente exclusivos
+    this.emit();
+  }
+
+  onGroupByInvoiceChange(val: boolean): void {
+    this.groupByInvoice.set(val);
+    if (val) this.groupByPeriod.set(false); // mutuamente exclusivos
     this.emit();
   }
 
@@ -150,6 +159,7 @@ export class TransactionFiltersComponent implements OnInit {
     this.startDate.set(null);
     this.endDate.set(null);
     this.groupByPeriod.set(false);
+    this.groupByInvoice.set(false);
     this.description.set(null);
     this.showCustomInterval.set(false);
     this.selectedMonths.set([]);
@@ -158,13 +168,14 @@ export class TransactionFiltersComponent implements OnInit {
 
   private emit(): void {
     this.filterChange.emit({
-      accountIds:    this.accountIds(),
-      status:        this.status(),
-      type:          this.type(),
-      startDate:     this.startDate(),
-      endDate:       this.endDate(),
-      groupByPeriod: this.groupByPeriod(),
-      description:   this.description(),
+      accountIds:     this.accountIds(),
+      status:         this.status(),
+      type:           this.type(),
+      startDate:      this.startDate(),
+      endDate:        this.endDate(),
+      groupByPeriod:  this.groupByPeriod(),
+      groupByInvoice: this.groupByInvoice(),
+      description:    this.description(),
     });
   }
 }
