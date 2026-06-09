@@ -1,7 +1,7 @@
 # Fintech SaaS Multi-Tenant — Referência de Especificação
 
 > Documento de referência técnica para Spec-Driven Development. Serve como fonte de verdade para domínio, contratos de API e regras de negócio implementadas.
-> Última atualização: 2026-06-08
+> Última atualização: 2026-06-08 (templates de issue e PR adicionados em `.github/`)
 
 ---
 

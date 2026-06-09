@@ -189,6 +189,8 @@ Ocultar no frontend **não substitui** proteção no backend. O frontend é cont
 - `frontend/` — aplicação Angular
 - `.docker/` — dados persistentes do banco (gitignored)
 - `summary.md` — referência de especificação técnica (domínio, contratos de API, regras de negócio)
+- `.github/ISSUE_TEMPLATE/` — templates de issue (bug, feature, chore) + config.yml
+- `.github/pull_request_template.md` — template de PR com checklist das regras invioláveis
 
 ---
 
@@ -304,6 +306,27 @@ Ocultar no frontend **não substitui** proteção no backend. O frontend é cont
   - **"Cancelado" removido do cadastro**: status toggle exibe PENDING/PAID; CANCELLED só aparece quando `isEditMode() === true`
   - **Toggle de modo** renomeado de "Receita / Despesa" → "Transação" (o toggle alterna modo TRANSACTION/TRANSFER)
   - **Seção de propagação com destaque visual**: borda esquerda na cor primária do tema + fundo `surface-container-low` + ícone colorido
+
+- **Templates de issue e PR (2026-06-08)**:
+  - `.github/ISSUE_TEMPLATE/bug_report.md` — title "fix:", label: bug, assignee pré-configurado
+  - `.github/ISSUE_TEMPLATE/feature_request.md` — title "feat:", label: enhancement
+  - `.github/ISSUE_TEMPLATE/chore.md` — title "chore:", label: chore
+  - `.github/ISSUE_TEMPLATE/config.yml` — menu de templates com `blank_issues_enabled: true`
+  - `.github/pull_request_template.md` — checklist: testes, migrations aditivas, tenant isolation, sem `any`, sem `Co-Authored-By`
+
+- **Bug fix: edição de conta não salvava dados do cartão (issue #61, 2026-06-09)**:
+  - `AccountUpdateRequest` (spec) e `AccountUpdateDTO` (backend) não tinham `creditCardDetails` — PUT /api/accounts/{id} ignorava silenciosamente bandeira, dígitos, limite, fechamento e vencimento
+  - Adicionado `creditCardDetails` ao `AccountUpdateRequest` no `openapi.yaml` e ao `AccountUpdateDTO.java`
+  - `AccountService.update()` ganhou `upsertCreditCardDetails()`: busca existente com `findByAccount()` ou cria novo com builder, atualiza campos individualmente (null-safe)
+  - Bug secundário corrigido: subscription de `type.valueChanges` sobrescrevia `countInLiquidBalance` ao carregar conta em edição — guard `if (isEditMode()) return` adicionado
+  - Campo `type` desabilitado em edição (`disable({ emitEvent: false })`): tipo não pode mudar após criação; `getRawValue()` ainda inclui o valor para `isCreditCard()` funcionar
+  - `onSubmit()` agora constrói payloads tipados separados: `AccountUpdateRequest` (sem `type`) em edição, `AccountCreateRequest` (com `type`) na criação — verificação em tempo de compilação via `satisfies`
+
+- **Bug fix: botões não reativavam após "Salvar e lançar outra" (issue #63, 2026-06-09)**:
+  - Causa raiz: `form.invalid` não é Signal — em Angular Zoneless, `setValue()` chamado programaticamente pode não disparar CD de forma confiável para atualizar `[disabled]`
+  - `formStatusSignal = toSignal(form.statusChanges, { initialValue: form.status })` + `formValid = computed(() => formStatusSignal() === 'VALID')`: transforma validade do formulário em Signal reativo; qualquer mudança de `statusChanges` agenda tick automaticamente
+  - `finalize(() => saving.set(false))` adicionado em `onSubmit()` e `onSaveAndAddMore()`: garante reset do signal `saving` mesmo se exceção ocorrer no callback `next`
+  - Template atualizado: `[disabled]="!formValid() || saving()"` — ambos Signals, CD garantida
 
 **Próximos passos:**
 - Corrigir 56 falhas pré-existentes nos testes do frontend (issue #57): falta chamada a `TestBed.initTestEnvironment()` em arquivo de setup do Vitest

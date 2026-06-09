@@ -5,5 +5,6 @@ public record AccountUpdateDTO(
         String color,
         String icon,
         Boolean countInLiquidBalance,
-        Boolean countInNetWorth
+        Boolean countInNetWorth,
+        CreditCardDetailsDTO creditCardDetails
 ) {}
