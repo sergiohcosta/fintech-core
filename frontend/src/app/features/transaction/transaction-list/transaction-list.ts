@@ -106,9 +106,17 @@ export class TransactionList implements OnInit {
   isPeriodHeader = (_: number, row: DisplayRow) => row.kind === 'period-header';
 
   ngOnInit(): void {
+    const saved = this.loadFromStorage();
+    this.filters.set(saved);
     forkJoin({
       accounts:     this.accountService.listAccounts(),
-      transactions: this.service.listTransactions(),
+      transactions: this.service.listTransactions({
+        accountIds: saved.accountIds.length > 0 ? saved.accountIds : undefined,
+        status:    saved.status    ?? undefined,
+        type:      saved.type      ?? undefined,
+        startDate: saved.startDate ?? undefined,
+        endDate:   saved.endDate   ?? undefined,
+      }),
     }).subscribe({
       next: ({ accounts, transactions }) => {
         this.accounts.set(accounts);
@@ -125,6 +133,7 @@ export class TransactionList implements OnInit {
   onFilterChange(newFilters: TransactionFilters): void {
     const prev = this.filters();
     this.filters.set(newFilters);
+    this.saveToStorage(newFilters);
     const prevServer = { ...prev,       description: null };
     const newServer  = { ...newFilters, description: null };
     if (JSON.stringify(prevServer) !== JSON.stringify(newServer)) {
@@ -281,5 +290,22 @@ export class TransactionList implements OnInit {
     const d = new Date(t.invoiceDueDate + 'T00:00:00');
     const month = d.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
     return `Fatura ${month}`;
+  }
+
+  private loadFromStorage(): TransactionFilters {
+    try {
+      const raw = localStorage.getItem('fintech.transaction.filters');
+      if (!raw) return DEFAULT_FILTERS;
+      const parsed = JSON.parse(raw);
+      // spread sobre DEFAULT_FILTERS garante que campos adicionados futuramente recebam seu default
+      return { ...DEFAULT_FILTERS, ...parsed, description: null };
+    } catch {
+      return DEFAULT_FILTERS;
+    }
+  }
+
+  private saveToStorage(f: TransactionFilters): void {
+    const { description, ...toSave } = f; // descrição nunca é persistida
+    localStorage.setItem('fintech.transaction.filters', JSON.stringify(toSave));
   }
 }
