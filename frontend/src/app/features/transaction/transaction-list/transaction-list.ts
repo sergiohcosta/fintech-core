@@ -305,7 +305,11 @@ export class TransactionList implements OnInit {
   }
 
   private saveToStorage(f: TransactionFilters): void {
-    const { description, ...toSave } = f; // descrição nunca é persistida
-    localStorage.setItem('fintech.transaction.filters', JSON.stringify(toSave));
+    try {
+      const { description: _desc, ...toSave } = f; // descrição nunca é persistida
+      localStorage.setItem('fintech.transaction.filters', JSON.stringify(toSave));
+    } catch {
+      // localStorage pode estar cheio ou bloqueado — ignorar silenciosamente
+    }
   }
 }
