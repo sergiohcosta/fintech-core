@@ -1,6 +1,6 @@
 import { Component, ElementRef, inject, OnInit, signal, computed, effect, ViewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { Observable } from 'rxjs';
+import { Observable, finalize } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
@@ -105,6 +105,12 @@ export class TransactionForm implements OnInit {
   private installmentsSignal = toSignal(this.form.controls.totalInstallments.valueChanges, { initialValue: this.form.controls.totalInstallments.value ?? 1 });
   private accountIdSignal = toSignal(this.form.controls.accountId.valueChanges, { initialValue: this.form.controls.accountId.value });
   private typeSignal = toSignal(this.form.controls.type.valueChanges, { initialValue: this.form.controls.type.value ?? 'EXPENSE' });
+
+  // Validade do formulário como Signal: statusChanges é o canal reativo do ReactiveFormsModule.
+  // Em Zoneless, form.invalid é uma propriedade comum — não dispara CD. Ao convertê-la em Signal,
+  // qualquer mudança de status agenda um tick automaticamente, garantindo que [disabled] seja atualizado.
+  private formStatusSignal = toSignal(this.form.statusChanges, { initialValue: this.form.status });
+  formValid = computed(() => this.formStatusSignal() === 'VALID');
 
   formCardClass = computed(() => ({
     'card-expense': this.mode() === 'TRANSACTION' && this.typeSignal() === 'EXPENSE',
@@ -350,10 +356,10 @@ export class TransactionForm implements OnInit {
   }
 
   onSubmit(): void {
-    if (this.form.invalid) return;
+    if (!this.formValid()) return;
     this.saving.set(true);
 
-    this.doSave().subscribe({
+    this.doSave().pipe(finalize(() => this.saving.set(false))).subscribe({
       next: (result) => {
         let msg: string;
         if (this.isEditMode()) {
@@ -369,17 +375,16 @@ export class TransactionForm implements OnInit {
         this.router.navigate(['/transactions']);
       },
       error: () => {
-        this.saving.set(false);
         this.snackBar.open('Erro ao salvar transação.', 'Fechar', { duration: 5000 });
       }
     });
   }
 
   onSaveAndAddMore(): void {
-    if (this.form.invalid || this.isEditMode()) return;
+    if (!this.formValid() || this.isEditMode()) return;
     this.saving.set(true);
 
-    this.doSave().subscribe({
+    this.doSave().pipe(finalize(() => this.saving.set(false))).subscribe({
       next: (result) => {
         const msg = Array.isArray(result) && result.length > 1
           ? `${result.length} parcelas criadas com sucesso!`
@@ -388,7 +393,6 @@ export class TransactionForm implements OnInit {
         this.partialReset();
       },
       error: () => {
-        this.saving.set(false);
         this.snackBar.open('Erro ao salvar transação.', 'Fechar', { duration: 5000 });
       }
     });
@@ -402,8 +406,7 @@ export class TransactionForm implements OnInit {
     this.isInstallment.set(false);
     this.valueMode.set('total');
     this.propagateFields.set(new Set());
-    this.saving.set(false);
-    // setTimeout garante que o foco ocorre após o Angular processar o reset do form
+    // saving é resetado pelo finalize() da subscription — não aqui
     setTimeout(() => this.descriptionInput?.nativeElement.focus());
   }
 }
