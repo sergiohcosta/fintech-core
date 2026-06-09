@@ -1,4 +1,4 @@
-import { Component, computed, input, output, signal } from '@angular/core';
+import { Component, computed, input, OnInit, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -10,7 +10,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AccountResponse } from '../../../../core/api/fintechSaaSAPI.schemas';
 import { TransactionFilters, DEFAULT_FILTERS } from './transaction-filters.types';
-import { monthBounds, computeMonthChipStates } from '../transaction-list.utils';
+import { monthBounds, computeMonthChipStates, resolveMonthKey } from '../transaction-list.utils';
 
 @Component({
   selector: 'app-transaction-filters',
@@ -23,9 +23,10 @@ import { monthBounds, computeMonthChipStates } from '../transaction-list.utils';
   templateUrl: './transaction-filters.html',
   styleUrl: './transaction-filters.scss',
 })
-export class TransactionFiltersComponent {
-  accounts     = input<AccountResponse[]>([]);
-  filterChange = output<TransactionFilters>();
+export class TransactionFiltersComponent implements OnInit {
+  accounts       = input<AccountResponse[]>([]);
+  initialFilters = input<TransactionFilters>(DEFAULT_FILTERS);
+  filterChange   = output<TransactionFilters>();
 
   accountIds         = signal<string[]>([]);
   status             = signal<'PENDING' | 'PAID' | 'CANCELLED' | null>(null);
@@ -33,6 +34,7 @@ export class TransactionFiltersComponent {
   startDate          = signal<string | null>(null);
   endDate            = signal<string | null>(null);
   groupByPeriod      = signal(false);
+  description        = signal<string | null>(null);
   showCustomInterval = signal(false);
   selectedMonths     = signal<string[]>([]);
 
@@ -46,6 +48,25 @@ export class TransactionFiltersComponent {
       null,
     ).map(chip => ({ ...chip, active: selected.has(chip.key) }));
   });
+
+  ngOnInit(): void {
+    const f = this.initialFilters();
+    this.accountIds.set(f.accountIds);
+    this.status.set(f.status);
+    this.type.set(f.type);
+    this.startDate.set(f.startDate);
+    this.endDate.set(f.endDate);
+    this.groupByPeriod.set(f.groupByPeriod);
+    this.description.set(null); // descrição nunca é restaurada (busca pontual)
+    if (f.startDate && f.endDate) {
+      const key = resolveMonthKey(f.startDate, f.endDate);
+      if (key && key !== 'custom') {
+        this.selectedMonths.set([key]);
+      } else {
+        this.showCustomInterval.set(true);
+      }
+    }
+  }
 
   onAccountChange(val: string[]): void {
     this.accountIds.set(val ?? []);
@@ -79,9 +100,13 @@ export class TransactionFiltersComponent {
     this.emit();
   }
 
+  onDescriptionChange(val: string): void {
+    this.description.set(val.trim() || null);
+    this.emit();
+  }
+
   onMonthChipClick(key: string, ctrl: boolean): void {
     const current = this.selectedMonths();
-
     let next: string[];
     if (ctrl) {
       next = current.includes(key)
@@ -90,7 +115,6 @@ export class TransactionFiltersComponent {
     } else {
       next = current.length === 1 && current[0] === key ? [] : [key];
     }
-
     this.selectedMonths.set(next);
     this.applyMonthSelection(next);
   }
@@ -125,6 +149,8 @@ export class TransactionFiltersComponent {
     this.type.set(null);
     this.startDate.set(null);
     this.endDate.set(null);
+    this.groupByPeriod.set(false);
+    this.description.set(null);
     this.showCustomInterval.set(false);
     this.selectedMonths.set([]);
     this.emit();
@@ -138,6 +164,7 @@ export class TransactionFiltersComponent {
       startDate:     this.startDate(),
       endDate:       this.endDate(),
       groupByPeriod: this.groupByPeriod(),
+      description:   this.description(),
     });
   }
 }
