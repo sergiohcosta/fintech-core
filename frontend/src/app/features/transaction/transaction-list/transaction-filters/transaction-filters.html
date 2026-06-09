@@ -11,6 +11,22 @@
     </mat-form-field>
   </div>
 
+  <div class="filter-section">
+    <span class="section-label">Buscar por descrição</span>
+    <mat-form-field appearance="outline" class="conta-field">
+      <mat-icon matPrefix>search</mat-icon>
+      <input matInput
+             [ngModel]="description() ?? ''"
+             (ngModelChange)="onDescriptionChange($event)"
+             placeholder="Ex: Supermercado..." />
+      @if (description()) {
+        <button matSuffix mat-icon-button (click)="onDescriptionChange('')" type="button">
+          <mat-icon>close</mat-icon>
+        </button>
+      }
+    </mat-form-field>
+  </div>
+
   <div class="tipo-status-row">
     <div class="filter-section">
       <span class="section-label">Tipo</span>
@@ -80,6 +96,11 @@
       [ngModel]="groupByPeriod()"
       (ngModelChange)="onGroupByPeriodChange($event)">
       Agrupar por período
+    </mat-slide-toggle>
+    <mat-slide-toggle
+      [ngModel]="groupByInvoice()"
+      (ngModelChange)="onGroupByInvoiceChange($event)">
+      Agrupar por fatura
     </mat-slide-toggle>
     <button mat-button type="button" class="clear-btn" (click)="clearFilters()">
       <mat-icon>close</mat-icon> Limpar filtros

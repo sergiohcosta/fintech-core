@@ -69,6 +69,8 @@ export class InvoiceList implements OnInit {
         const preselect = this.route.snapshot.queryParamMap.get('accountId');
         if (preselect && cc.some(a => a.id === preselect)) {
           this.selectedId.set(preselect);
+        } else if (cc.length === 1) {
+          this.selectedId.set(cc[0].id);
         }
       },
       error: () => this.snackBar.open('Erro ao carregar contas.', 'Fechar', { duration: 5000 })
