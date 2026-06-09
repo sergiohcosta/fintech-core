@@ -314,6 +314,20 @@ Ocultar no frontend **não substitui** proteção no backend. O frontend é cont
   - `.github/ISSUE_TEMPLATE/config.yml` — menu de templates com `blank_issues_enabled: true`
   - `.github/pull_request_template.md` — checklist: testes, migrations aditivas, tenant isolation, sem `any`, sem `Co-Authored-By`
 
+- **Bug fix: edição de conta não salvava dados do cartão (issue #61, 2026-06-09)**:
+  - `AccountUpdateRequest` (spec) e `AccountUpdateDTO` (backend) não tinham `creditCardDetails` — PUT /api/accounts/{id} ignorava silenciosamente bandeira, dígitos, limite, fechamento e vencimento
+  - Adicionado `creditCardDetails` ao `AccountUpdateRequest` no `openapi.yaml` e ao `AccountUpdateDTO.java`
+  - `AccountService.update()` ganhou `upsertCreditCardDetails()`: busca existente com `findByAccount()` ou cria novo com builder, atualiza campos individualmente (null-safe)
+  - Bug secundário corrigido: subscription de `type.valueChanges` sobrescrevia `countInLiquidBalance` ao carregar conta em edição — guard `if (isEditMode()) return` adicionado
+  - Campo `type` desabilitado em edição (`disable({ emitEvent: false })`): tipo não pode mudar após criação; `getRawValue()` ainda inclui o valor para `isCreditCard()` funcionar
+  - `onSubmit()` agora constrói payloads tipados separados: `AccountUpdateRequest` (sem `type`) em edição, `AccountCreateRequest` (com `type`) na criação — verificação em tempo de compilação via `satisfies`
+
+- **Bug fix: botões não reativavam após "Salvar e lançar outra" (issue #63, 2026-06-09)**:
+  - Causa raiz: `form.invalid` não é Signal — em Angular Zoneless, `setValue()` chamado programaticamente pode não disparar CD de forma confiável para atualizar `[disabled]`
+  - `formStatusSignal = toSignal(form.statusChanges, { initialValue: form.status })` + `formValid = computed(() => formStatusSignal() === 'VALID')`: transforma validade do formulário em Signal reativo; qualquer mudança de `statusChanges` agenda tick automaticamente
+  - `finalize(() => saving.set(false))` adicionado em `onSubmit()` e `onSaveAndAddMore()`: garante reset do signal `saving` mesmo se exceção ocorrer no callback `next`
+  - Template atualizado: `[disabled]="!formValid() || saving()"` — ambos Signals, CD garantida
+
 **Próximos passos:**
 - Corrigir 56 falhas pré-existentes nos testes do frontend (issue #57): falta chamada a `TestBed.initTestEnvironment()` em arquivo de setup do Vitest
 - Gráficos no dashboard (evolução mensal, breakdown por categoria/conta)
