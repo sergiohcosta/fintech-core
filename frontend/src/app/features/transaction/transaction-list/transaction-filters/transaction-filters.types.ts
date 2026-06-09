@@ -2,9 +2,11 @@ export interface TransactionFilters {
   accountIds: string[];
   status: 'PENDING' | 'PAID' | 'CANCELLED' | null;
   type: 'INCOME' | 'EXPENSE' | null;
-  startDate: string | null;  // 'YYYY-MM-DD'
-  endDate: string | null;    // 'YYYY-MM-DD'
+  startDate: string | null;
+  endDate: string | null;
   groupByPeriod: boolean;
+  groupByInvoice: boolean;
+  description: string | null;
 }
 
 export const DEFAULT_FILTERS: TransactionFilters = {
@@ -14,4 +16,6 @@ export const DEFAULT_FILTERS: TransactionFilters = {
   startDate: null,
   endDate: null,
   groupByPeriod: false,
+  groupByInvoice: false,
+  description: null,
 };

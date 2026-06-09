@@ -15,14 +15,14 @@ import { TransactionsService } from '../../../core/api/transactions/transactions
 import { AccountsService } from '../../../core/api/accounts/accounts.service';
 import { InstallmentGroupsService } from '../../../core/api/installment-groups/installment-groups.service';
 import { TransfersService } from '../../../core/api/transfers/transfers.service';
-import { TransactionResponseDTO, AccountResponse } from '../../../core/api/fintechSaaSAPI.schemas';
+import { TransactionResponseDTO, AccountResponse, InvoiceStatus } from '../../../core/api/fintechSaaSAPI.schemas';
 import { ConfirmationDialogComponent } from '../../../components/confirmation-dialog/confirmation-dialog';
 import { DeleteInstallmentDialogComponent, DeleteInstallmentDialogResult } from './delete-installment-dialog/delete-installment-dialog';
 import { TransactionFiltersComponent } from './transaction-filters/transaction-filters';
 import { TransactionFilters, DEFAULT_FILTERS } from './transaction-filters/transaction-filters.types';
-import { buildDisplayRows, InstallmentGroupInfo, DisplayRow, resolveMonthKey, formatMonthLabel } from './transaction-list.utils';
+import { buildDisplayRows, InstallmentGroupInfo, DisplayRow, InvoiceHeaderRow, resolveMonthKey, formatMonthLabel } from './transaction-list.utils';
 export { buildDisplayRows } from './transaction-list.utils';
-export type { InstallmentGroupInfo, DisplayRow } from './transaction-list.utils';
+export type { InstallmentGroupInfo, DisplayRow, InvoiceHeaderRow } from './transaction-list.utils';
 
 @Component({
   selector: 'app-transaction-list',
@@ -60,10 +60,23 @@ export class TransactionList implements OnInit {
   filters              = signal<TransactionFilters>(DEFAULT_FILTERS);
   showFilters          = signal(false);
 
+  filteredTransactions = computed(() => {
+    const desc = this.filters().description?.toLowerCase().trim();
+    if (!desc) return this.transactions();
+    return this.transactions().filter(t =>
+      t.description?.toLowerCase().includes(desc)
+    );
+  });
+
   displayedColumns = ['description', 'amount', 'date', 'type', 'status', 'category', 'account', 'actions'];
 
   displayRows = computed(() =>
-    buildDisplayRows(this.transactions(), this.expandedTransactions(), this.filters().groupByPeriod)
+    buildDisplayRows(
+      this.filteredTransactions(),
+      this.expandedTransactions(),
+      this.filters().groupByPeriod,
+      this.filters().groupByInvoice,
+    )
   );
 
   activeFilterChips = computed((): Array<{ label: string; field: string; colorClass: string }> => {
@@ -87,17 +100,41 @@ export class TransactionList implements OnInit {
         : `${f.startDate} – ${f.endDate}`;
       chips.push({ label, field: 'period', colorClass: 'chip-period' });
     }
+    if (f.description) {
+      chips.push({ label: `"${f.description}"`, field: 'description', colorClass: 'chip-description' });
+    }
     return chips;
   });
 
-  isDataRow      = (_: number, row: DisplayRow) => row.kind === 'single' || row.kind === 'installment';
-  isDetailRow    = (_: number, row: DisplayRow) => row.kind === 'installment-detail';
-  isPeriodHeader = (_: number, row: DisplayRow) => row.kind === 'period-header';
+  isDataRow       = (_: number, row: DisplayRow) => row.kind === 'single' || row.kind === 'installment';
+  isDetailRow     = (_: number, row: DisplayRow) => row.kind === 'installment-detail';
+  isPeriodHeader  = (_: number, row: DisplayRow) => row.kind === 'period-header';
+  isInvoiceHeader = (_: number, row: DisplayRow) => row.kind === 'invoice-header';
+
+  invoiceHeaderChipClass(status: InvoiceStatus | null): string {
+    if (!status) return '';
+    const map: Record<InvoiceStatus, string> = { OPEN: 'invoice-open', CLOSED: 'invoice-closed', PAID: 'invoice-paid' };
+    return 'invoice-chip ' + (map[status] ?? '');
+  }
+
+  invoiceHeaderStatusLabel(status: InvoiceStatus | null): string {
+    if (!status) return '';
+    const map: Record<InvoiceStatus, string> = { OPEN: 'Aberta', CLOSED: 'Fechada', PAID: 'Paga' };
+    return map[status] ?? status;
+  }
 
   ngOnInit(): void {
+    const saved = this.loadFromStorage();
+    this.filters.set(saved);
     forkJoin({
       accounts:     this.accountService.listAccounts(),
-      transactions: this.service.listTransactions(),
+      transactions: this.service.listTransactions({
+        accountIds: saved.accountIds.length > 0 ? saved.accountIds : undefined,
+        status:    saved.status    ?? undefined,
+        type:      saved.type      ?? undefined,
+        startDate: saved.startDate ?? undefined,
+        endDate:   saved.endDate   ?? undefined,
+      }),
     }).subscribe({
       next: ({ accounts, transactions }) => {
         this.accounts.set(accounts);
@@ -112,19 +149,28 @@ export class TransactionList implements OnInit {
   }
 
   onFilterChange(newFilters: TransactionFilters): void {
+    const prev = this.filters();
     this.filters.set(newFilters);
-    untracked(() => this.loadTransactions(newFilters));
+    this.saveToStorage(newFilters);
+    const prevServer = { ...prev,       description: null, groupByPeriod: false, groupByInvoice: false };
+    const newServer  = { ...newFilters, description: null, groupByPeriod: false, groupByInvoice: false };
+    if (JSON.stringify(prevServer) !== JSON.stringify(newServer)) {
+      untracked(() => this.loadTransactions(newFilters));
+    }
   }
 
   clearFilterChip(field: string): void {
     this.filters.update(f => {
-      if (field === 'accountIds') return { ...f, accountIds: [] };
-      if (field === 'status')    return { ...f, status: null };
-      if (field === 'type')      return { ...f, type: null };
-      if (field === 'period')    return { ...f, startDate: null, endDate: null };
+      if (field === 'accountIds')  return { ...f, accountIds: [] };
+      if (field === 'status')      return { ...f, status: null };
+      if (field === 'type')        return { ...f, type: null };
+      if (field === 'period')      return { ...f, startDate: null, endDate: null };
+      if (field === 'description') return { ...f, description: null };
       return f;
     });
-    untracked(() => this.loadTransactions(this.filters()));
+    if (field !== 'description') {
+      untracked(() => this.loadTransactions(this.filters()));
+    }
   }
 
   loadTransactions(f: TransactionFilters = this.filters()): void {
@@ -262,5 +308,26 @@ export class TransactionList implements OnInit {
     const d = new Date(t.invoiceDueDate + 'T00:00:00');
     const month = d.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
     return `Fatura ${month}`;
+  }
+
+  private loadFromStorage(): TransactionFilters {
+    try {
+      const raw = localStorage.getItem('fintech.transaction.filters');
+      if (!raw) return DEFAULT_FILTERS;
+      const parsed = JSON.parse(raw);
+      // spread sobre DEFAULT_FILTERS garante que campos adicionados futuramente recebam seu default
+      return { ...DEFAULT_FILTERS, ...parsed, description: null };
+    } catch {
+      return DEFAULT_FILTERS;
+    }
+  }
+
+  private saveToStorage(f: TransactionFilters): void {
+    try {
+      const { description: _desc, ...toSave } = f; // descrição nunca é persistida
+      localStorage.setItem('fintech.transaction.filters', JSON.stringify(toSave));
+    } catch {
+      // localStorage pode estar cheio ou bloqueado — ignorar silenciosamente
+    }
   }
 }

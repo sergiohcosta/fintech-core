@@ -24,6 +24,10 @@ const mockCcAccount: AccountResponse = {
   id: 'cc-1', name: 'Nubank', type: 'CREDIT_CARD',
   countInLiquidBalance: false, countInNetWorth: true, active: true, balance: 0
 };
+const mockCcAccount2: AccountResponse = {
+  id: 'cc-2', name: 'Itaú', type: 'CREDIT_CARD',
+  countInLiquidBalance: false, countInNetWorth: true, active: true, balance: 0
+};
 const mockCheckingAccount: AccountResponse = {
   id: 'ch-1', name: 'Bradesco', type: 'CHECKING',
   countInLiquidBalance: true, countInNetWorth: true, active: true, balance: 1000
@@ -70,15 +74,28 @@ describe('InvoiceList', () => {
     expect(fixture.componentInstance.creditCardAccounts()[0].name).toBe('Nubank');
   });
 
-  it('exibe empty state quando nenhuma conta selecionada', async () => {
+  it('exibe empty state quando há múltiplos cartões e nenhum selecionado', async () => {
     setup();
-    vi.spyOn(accountsService, 'listAccounts').mockReturnValue(of([mockCcAccount]) as any);
+    vi.spyOn(accountsService, 'listAccounts').mockReturnValue(of([mockCcAccount, mockCcAccount2]) as any);
 
     const fixture = TestBed.createComponent(InvoiceList);
     fixture.detectChanges();
     await fixture.whenStable();
 
     expect(fixture.nativeElement.textContent).toContain('Selecione um cartão');
+  });
+
+  it('auto-seleciona conta única quando há só um cartão de crédito', async () => {
+    setup();
+    vi.spyOn(accountsService, 'listAccounts').mockReturnValue(of([mockCcAccount]) as any);
+    vi.spyOn(invoicesService, 'listInvoices').mockReturnValue(of([mockInvoice]) as any);
+
+    const fixture = TestBed.createComponent(InvoiceList);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(fixture.componentInstance.selectedId()).toBe('cc-1');
+    expect(fixture.componentInstance.invoices()).toHaveLength(1);
   });
 
   it('pré-seleciona conta quando ?accountId está na URL', async () => {
