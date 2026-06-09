@@ -60,10 +60,18 @@ export class TransactionList implements OnInit {
   filters              = signal<TransactionFilters>(DEFAULT_FILTERS);
   showFilters          = signal(false);
 
+  filteredTransactions = computed(() => {
+    const desc = this.filters().description?.toLowerCase().trim();
+    if (!desc) return this.transactions();
+    return this.transactions().filter(t =>
+      t.description?.toLowerCase().includes(desc)
+    );
+  });
+
   displayedColumns = ['description', 'amount', 'date', 'type', 'status', 'category', 'account', 'actions'];
 
   displayRows = computed(() =>
-    buildDisplayRows(this.transactions(), this.expandedTransactions(), this.filters().groupByPeriod)
+    buildDisplayRows(this.filteredTransactions(), this.expandedTransactions(), this.filters().groupByPeriod)
   );
 
   activeFilterChips = computed((): Array<{ label: string; field: string; colorClass: string }> => {
@@ -86,6 +94,9 @@ export class TransactionList implements OnInit {
         ? formatMonthLabel(key)
         : `${f.startDate} – ${f.endDate}`;
       chips.push({ label, field: 'period', colorClass: 'chip-period' });
+    }
+    if (f.description) {
+      chips.push({ label: `"${f.description}"`, field: 'description', colorClass: 'chip-description' });
     }
     return chips;
   });
@@ -112,19 +123,27 @@ export class TransactionList implements OnInit {
   }
 
   onFilterChange(newFilters: TransactionFilters): void {
+    const prev = this.filters();
     this.filters.set(newFilters);
-    untracked(() => this.loadTransactions(newFilters));
+    const prevServer = { ...prev,       description: null };
+    const newServer  = { ...newFilters, description: null };
+    if (JSON.stringify(prevServer) !== JSON.stringify(newServer)) {
+      untracked(() => this.loadTransactions(newFilters));
+    }
   }
 
   clearFilterChip(field: string): void {
     this.filters.update(f => {
-      if (field === 'accountIds') return { ...f, accountIds: [] };
-      if (field === 'status')    return { ...f, status: null };
-      if (field === 'type')      return { ...f, type: null };
-      if (field === 'period')    return { ...f, startDate: null, endDate: null };
+      if (field === 'accountIds')  return { ...f, accountIds: [] };
+      if (field === 'status')      return { ...f, status: null };
+      if (field === 'type')        return { ...f, type: null };
+      if (field === 'period')      return { ...f, startDate: null, endDate: null };
+      if (field === 'description') return { ...f, description: null };
       return f;
     });
-    untracked(() => this.loadTransactions(this.filters()));
+    if (field !== 'description') {
+      untracked(() => this.loadTransactions(this.filters()));
+    }
   }
 
   loadTransactions(f: TransactionFilters = this.filters()): void {

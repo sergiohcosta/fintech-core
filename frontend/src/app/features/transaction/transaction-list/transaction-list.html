@@ -23,6 +23,7 @@
     <div class="filters-wrapper mat-elevation-z1">
       <app-transaction-filters
         [accounts]="accounts()"
+        [initialFilters]="filters()"
         (filterChange)="onFilterChange($event)">
       </app-transaction-filters>
     </div>
