@@ -5,6 +5,7 @@ export interface TransactionFilters {
   startDate: string | null;
   endDate: string | null;
   groupByPeriod: boolean;
+  groupByInvoice: boolean;
   description: string | null;
 }
 
@@ -15,5 +16,6 @@ export const DEFAULT_FILTERS: TransactionFilters = {
   startDate: null,
   endDate: null,
   groupByPeriod: false,
+  groupByInvoice: false,
   description: null,
 };
