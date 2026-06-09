@@ -15,6 +15,9 @@
     <mat-select formControlName="type">
       <mat-option *ngFor="let t of accountTypes" [value]="t.value">{{ t.label }}</mat-option>
     </mat-select>
+    @if (isEditMode()) {
+      <mat-hint>O tipo não pode ser alterado após a criação</mat-hint>
+    }
   </mat-form-field>
 
   <div class="pickers-row">

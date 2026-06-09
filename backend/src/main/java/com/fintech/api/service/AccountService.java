@@ -73,7 +73,24 @@ public class AccountService {
         if (dto.countInLiquidBalance() != null) account.setCountInLiquidBalance(dto.countInLiquidBalance());
         if (dto.countInNetWorth() != null)      account.setCountInNetWorth(dto.countInNetWorth());
 
+        if (dto.creditCardDetails() != null && account.getType() == AccountType.CREDIT_CARD) {
+            upsertCreditCardDetails(account, dto.creditCardDetails());
+        }
+
         return toResponse(account);
+    }
+
+    private void upsertCreditCardDetails(Account account, CreditCardDetailsDTO dto) {
+        CreditCardDetails details = creditCardDetailsRepository.findByAccount(account)
+                .orElseGet(() -> CreditCardDetails.builder().account(account).build());
+
+        if (dto.brand() != null)          details.setBrand(dto.brand());
+        if (dto.lastFourDigits() != null) details.setLastFourDigits(dto.lastFourDigits());
+        if (dto.limitAmount() != null)    details.setLimitAmount(dto.limitAmount());
+        if (dto.closingDay() != null)     details.setClosingDay(dto.closingDay());
+        if (dto.dueDay() != null)         details.setDueDay(dto.dueDay());
+
+        creditCardDetailsRepository.save(details);
     }
 
     @Transactional
