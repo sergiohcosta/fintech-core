@@ -12,7 +12,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 import { AccountsService } from '../../../core/api/accounts/accounts.service';
-import { AccountCreateRequest } from '../../../core/api/fintechSaaSAPI.schemas';
+import { AccountCreateRequest, AccountUpdateRequest } from '../../../core/api/fintechSaaSAPI.schemas';
 import { IconPicker } from '../../../components/icon-picker/icon-picker';
 
 @Component({
@@ -67,8 +67,10 @@ export class AccountForm implements OnInit {
   isCreditCard = computed(() => this.typeValue() === 'CREDIT_CARD');
 
   ngOnInit(): void {
-    // Atualiza flags de liquidez automaticamente quando o tipo muda
+    // Em modo criação, ajusta countInLiquidBalance ao trocar o tipo.
+    // Guard de isEditMode() evita sobrescrever o valor carregado do banco quando patchValue dispara valueChanges.
     this.form.get('type')!.valueChanges.subscribe(type => {
+      if (this.isEditMode()) return;
       const liquid = type === 'CHECKING' || type === 'CASH';
       this.form.patchValue({ countInLiquidBalance: liquid }, { emitEvent: false });
     });
@@ -89,6 +91,8 @@ export class AccountForm implements OnInit {
             dueDay: a.creditCardDetails?.dueDay ?? null
           });
           this.selectedIconSignal.set(a.icon ?? 'account_balance');
+          // Tipo não pode mudar após criação; desabilita o select para comunicar isso ao usuário.
+          this.form.get('type')!.disable({ emitEvent: false });
         },
         error: () => {
           this.snackBar.open('Conta não encontrada.', 'Fechar', { duration: 5000 });
@@ -108,25 +112,32 @@ export class AccountForm implements OnInit {
     const raw = this.form.getRawValue();
     this.saving.set(true);
 
-    const payload: AccountCreateRequest = {
-      name: raw.name!,
-      type: raw.type as AccountCreateRequest['type'],
-      color: raw.color || undefined,
-      icon: raw.icon || undefined,
-      countInLiquidBalance: raw.countInLiquidBalance ?? undefined,
-      countInNetWorth: raw.countInNetWorth ?? undefined,
-      creditCardDetails: raw.type === 'CREDIT_CARD' ? {
-        brand: raw.brand as any || undefined,
-        lastFourDigits: raw.lastFourDigits || undefined,
-        limitAmount: raw.limitAmount ?? undefined,
-        closingDay: raw.closingDay ?? undefined,
-        dueDay: raw.dueDay ?? undefined
-      } : undefined
-    };
+    const creditCardDetails = raw.type === 'CREDIT_CARD' ? {
+      brand: raw.brand as any || undefined,
+      lastFourDigits: raw.lastFourDigits || undefined,
+      limitAmount: raw.limitAmount ?? undefined,
+      closingDay: raw.closingDay ?? undefined,
+      dueDay: raw.dueDay ?? undefined
+    } : undefined;
 
     const obs$ = this.isEditMode()
-      ? this.service.updateAccount(this.accountId()!, payload)
-      : this.service.createAccount(payload);
+      ? this.service.updateAccount(this.accountId()!, {
+          name: raw.name || undefined,
+          color: raw.color || undefined,
+          icon: raw.icon || undefined,
+          countInLiquidBalance: raw.countInLiquidBalance ?? undefined,
+          countInNetWorth: raw.countInNetWorth ?? undefined,
+          creditCardDetails
+        } satisfies AccountUpdateRequest)
+      : this.service.createAccount({
+          name: raw.name!,
+          type: raw.type as AccountCreateRequest['type'],
+          color: raw.color || undefined,
+          icon: raw.icon || undefined,
+          countInLiquidBalance: raw.countInLiquidBalance ?? undefined,
+          countInNetWorth: raw.countInNetWorth ?? undefined,
+          creditCardDetails
+        } satisfies AccountCreateRequest);
 
     obs$.subscribe({
       next: () => {
