@@ -306,14 +306,14 @@
 
         @if (!isEditMode() && mode() === 'TRANSACTION') {
           <button mat-stroked-button type="button" color="primary"
-                  [disabled]="form.invalid || saving()"
+                  [disabled]="!formValid() || saving()"
                   (click)="onSaveAndAddMore()">
             <mat-icon>add</mat-icon>
             Salvar e lançar outra
           </button>
         }
 
-        <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid || saving()">
+        <button mat-flat-button color="primary" type="submit" [disabled]="!formValid() || saving()">
           @if (!saving()) {
             <mat-icon>save</mat-icon>
           } @else {
