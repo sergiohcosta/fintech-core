@@ -328,8 +328,25 @@ Ocultar no frontend **não substitui** proteção no backend. O frontend é cont
   - `finalize(() => saving.set(false))` adicionado em `onSubmit()` e `onSaveAndAddMore()`: garante reset do signal `saving` mesmo se exceção ocorrer no callback `next`
   - Template atualizado: `[disabled]="!formValid() || saving()"` — ambos Signals, CD garantida
 
+- **Bug fix: ícone de conta não gravava (issue #65, 2026-06-09)**:
+  - Divergência: `selectedIconSignal` inicializado com `''` mas form `icon` inicializado com `'account_balance'`; corrigido alinhando `icon: ['account_balance']`
+
+- **Bug fix: seção de propagação aparecia em transações não parceladas (issue #48, 2026-06-09)**:
+  - `isPartOfInstallment = signal(false)` preenchido com `!!t.installmentGroupId` ao carregar transação em edição
+  - Guard `@if (isEditMode() && isPartOfInstallment())` na seção de propagação
+
+- **Bug fix: campo Limite sem máscara de moeda no formulário de conta (issue #53, 2026-06-09)**:
+  - Campo `limitAmount` convertido de `type="number"` para `type="text"` com `matTextPrefix R$`
+  - `limitDisplay = signal('')` + `onLimitInput/Blur/Focus` com a mesma lógica de currency mask do campo Valor
+
+- **Melhorias nos filtros de transações e faturas (2026-06-09 — issues #52, #62, #64, #66)**:
+  - **#52 — Auto-seleção de conta única em Faturas**: `InvoiceList.ngOnInit` faz `selectedId.set(cc[0].id)` quando `cc.length === 1` (sem preselect de URL); spec de testes atualizada para refletir o novo comportamento
+  - **#66 — Filtro por descrição client-side**: campo de busca no painel de filtros; `filteredTransactions = computed()` aplica descrição sobre dados já em memória (sem round-trip); `description` nunca é persistida no localStorage (busca é pontual)
+  - **#62 — Persistência dos filtros**: chave `fintech.transaction.filters`; spread sobre `DEFAULT_FILTERS` como fallback; `try/catch` em `saveToStorage` contra `QuotaExceededError`; `initialFilters` input em `TransactionFiltersComponent` para restaurar estado ao reabrir o painel
+  - **#64 — Agrupar transações por fatura**: `groupByInvoice` toggle (mutuamente exclusivo com `groupByPeriod`); `buildDisplayRowsGroupedByInvoice` em `transaction-list.utils.ts`; row `invoice-header` com label, status chip (`InvoiceStatus`), total e contagem; flags client-side excluídos da comparação de reload para não disparar request HTTP desnecessário
+
 **Próximos passos:**
-- Corrigir 56 falhas pré-existentes nos testes do frontend (issue #57): falta chamada a `TestBed.initTestEnvironment()` em arquivo de setup do Vitest
+- Corrigir falhas pré-existentes nos testes do frontend (issue #57): falta chamada a `TestBed.initTestEnvironment()` em arquivo de setup do Vitest
 - Gráficos no dashboard (evolução mensal, breakdown por categoria/conta)
 - Tela de Patrimônio Total — consome `countInNetWorth` (campo já existe em `accounts`)
 
