@@ -194,7 +194,7 @@
           }
         }
 
-        @if (isEditMode()) {
+        @if (isEditMode() && isPartOfInstallment()) {
           <div class="propagate-section">
             <p class="propagate-label">
               <mat-icon class="propagate-icon">sync</mat-icon>

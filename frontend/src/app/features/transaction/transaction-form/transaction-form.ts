@@ -78,6 +78,7 @@ export class TransactionForm implements OnInit {
 
   saving = signal(false);
   isEditMode = signal(false);
+  isPartOfInstallment = signal(false);
   transactionId = signal<string | null>(null);
   categories = signal<TransactionCategoryOption[]>([]);
   accounts = signal<AccountResponse[]>([]);
@@ -168,6 +169,7 @@ export class TransactionForm implements OnInit {
             accountId: t.accountId ?? null
           });
           this.amountDisplay.set(this.formatAmount(t.amount));
+          this.isPartOfInstallment.set(!!t.installmentGroupId);
         },
         error: () => {
           this.snackBar.open('Transação não encontrada.', 'Fechar', { duration: 5000 });

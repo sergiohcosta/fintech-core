@@ -38,6 +38,7 @@ export class AccountForm implements OnInit {
   isEditMode = signal(false);
   accountId = signal<string | null>(null);
   selectedIconSignal = signal('account_balance');
+  limitDisplay = signal('');
 
   readonly accountTypes = [
     { value: 'CHECKING',     label: 'Conta Corrente' },
@@ -52,7 +53,7 @@ export class AccountForm implements OnInit {
     name: ['', [Validators.required, Validators.maxLength(100)]],
     type: ['CHECKING', Validators.required],
     color: [''],
-    icon: [''],
+    icon: ['account_balance'],
     countInLiquidBalance: [true],
     countInNetWorth: [true],
     brand: [''],
@@ -91,6 +92,9 @@ export class AccountForm implements OnInit {
             dueDay: a.creditCardDetails?.dueDay ?? null
           });
           this.selectedIconSignal.set(a.icon ?? 'account_balance');
+          if (a.creditCardDetails?.limitAmount != null) {
+            this.limitDisplay.set(this.formatCurrency(a.creditCardDetails.limitAmount));
+          }
           // Tipo não pode mudar após criação; desabilita o select para comunicar isso ao usuário.
           this.form.get('type')!.disable({ emitEvent: false });
         },
@@ -105,6 +109,36 @@ export class AccountForm implements OnInit {
   onIconSelected(icon: string): void {
     this.form.patchValue({ icon });
     this.selectedIconSignal.set(icon);
+  }
+
+  private formatCurrency(value: number): string {
+    return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+  }
+
+  onLimitInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const cleaned = input.value.replace(/[^\d,]/g, '');
+    const asFloat = parseFloat(cleaned.replace(',', '.'));
+    this.form.controls.limitAmount.setValue(isNaN(asFloat) ? null : asFloat);
+    this.form.controls.limitAmount.markAsTouched();
+  }
+
+  onLimitBlur(event: Event): void {
+    const val = this.form.controls.limitAmount.value;
+    const input = event.target as HTMLInputElement;
+    if (val !== null && val !== undefined) {
+      const formatted = this.formatCurrency(val);
+      input.value = formatted;
+      this.limitDisplay.set(formatted);
+    } else {
+      this.limitDisplay.set('');
+    }
+  }
+
+  onLimitFocus(event: Event): void {
+    const val = this.form.controls.limitAmount.value;
+    const input = event.target as HTMLInputElement;
+    input.value = val !== null && val !== undefined ? String(val).replace('.', ',') : '';
   }
 
   onSubmit(): void {
