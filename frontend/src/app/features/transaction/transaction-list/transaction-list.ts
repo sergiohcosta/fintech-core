@@ -20,9 +20,9 @@ import { ConfirmationDialogComponent } from '../../../components/confirmation-di
 import { DeleteInstallmentDialogComponent, DeleteInstallmentDialogResult } from './delete-installment-dialog/delete-installment-dialog';
 import { TransactionFiltersComponent } from './transaction-filters/transaction-filters';
 import { TransactionFilters, DEFAULT_FILTERS } from './transaction-filters/transaction-filters.types';
-import { buildDisplayRows, InstallmentGroupInfo, DisplayRow, resolveMonthKey, formatMonthLabel } from './transaction-list.utils';
+import { buildDisplayRows, InstallmentGroupInfo, DisplayRow, InvoiceHeaderRow, resolveMonthKey, formatMonthLabel } from './transaction-list.utils';
 export { buildDisplayRows } from './transaction-list.utils';
-export type { InstallmentGroupInfo, DisplayRow } from './transaction-list.utils';
+export type { InstallmentGroupInfo, DisplayRow, InvoiceHeaderRow } from './transaction-list.utils';
 
 @Component({
   selector: 'app-transaction-list',
@@ -71,7 +71,12 @@ export class TransactionList implements OnInit {
   displayedColumns = ['description', 'amount', 'date', 'type', 'status', 'category', 'account', 'actions'];
 
   displayRows = computed(() =>
-    buildDisplayRows(this.filteredTransactions(), this.expandedTransactions(), this.filters().groupByPeriod)
+    buildDisplayRows(
+      this.filteredTransactions(),
+      this.expandedTransactions(),
+      this.filters().groupByPeriod,
+      this.filters().groupByInvoice,
+    )
   );
 
   activeFilterChips = computed((): Array<{ label: string; field: string; colorClass: string }> => {
@@ -101,9 +106,22 @@ export class TransactionList implements OnInit {
     return chips;
   });
 
-  isDataRow      = (_: number, row: DisplayRow) => row.kind === 'single' || row.kind === 'installment';
-  isDetailRow    = (_: number, row: DisplayRow) => row.kind === 'installment-detail';
-  isPeriodHeader = (_: number, row: DisplayRow) => row.kind === 'period-header';
+  isDataRow       = (_: number, row: DisplayRow) => row.kind === 'single' || row.kind === 'installment';
+  isDetailRow     = (_: number, row: DisplayRow) => row.kind === 'installment-detail';
+  isPeriodHeader  = (_: number, row: DisplayRow) => row.kind === 'period-header';
+  isInvoiceHeader = (_: number, row: DisplayRow) => row.kind === 'invoice-header';
+
+  invoiceHeaderChipClass(status: string | null): string {
+    if (!status) return '';
+    const map: Record<string, string> = { OPEN: 'invoice-open', CLOSED: 'invoice-closed', PAID: 'invoice-paid' };
+    return 'invoice-chip ' + (map[status] ?? '');
+  }
+
+  invoiceHeaderStatusLabel(status: string | null): string {
+    if (!status) return '';
+    const map: Record<string, string> = { OPEN: 'Aberta', CLOSED: 'Fechada', PAID: 'Paga' };
+    return map[status] ?? status;
+  }
 
   ngOnInit(): void {
     const saved = this.loadFromStorage();

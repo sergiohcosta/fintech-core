@@ -21,11 +21,22 @@ export type PeriodGroup = {
   isCurrentMonth: boolean;
 };
 
+export type InvoiceHeaderRow = {
+  kind: 'invoice-header';
+  invoiceId: string | null;
+  label: string;
+  dueDate: string | null;
+  totalAmount: number;
+  status: string | null;
+  transactionCount: number;
+};
+
 export type DisplayRow =
   | { kind: 'single';             data: TransactionResponseDTO }
   | { kind: 'installment';        data: TransactionResponseDTO; group: InstallmentGroupInfo; isExpanded: boolean }
   | { kind: 'installment-detail'; data: TransactionResponseDTO; group: InstallmentGroupInfo }
-  | { kind: 'period-header';      key: string; label: string; totalIncome: number; totalExpense: number; balance: number };
+  | { kind: 'period-header';      key: string; label: string; totalIncome: number; totalExpense: number; balance: number }
+  | InvoiceHeaderRow;
 
 function buildFlatRows(
   transactions: TransactionResponseDTO[],
@@ -68,14 +79,75 @@ function buildFlatRows(
   });
 }
 
+function buildDisplayRowsGroupedByInvoice(
+  transactions: TransactionResponseDTO[],
+  expandedIds: Set<string>
+): DisplayRow[] {
+  const withInvoice    = transactions.filter(t => t.invoiceId);
+  const withoutInvoice = transactions.filter(t => !t.invoiceId);
+
+  type InvoiceBucket = { dueDate: string | null; status: string | null; label: string; transactions: TransactionResponseDTO[] };
+  const invoiceMap = new Map<string, InvoiceBucket>();
+
+  for (const t of withInvoice) {
+    const id = t.invoiceId!;
+    if (!invoiceMap.has(id)) {
+      const label = t.invoiceDueDate
+        ? 'Fatura ' + new Date(t.invoiceDueDate + 'T00:00:00').toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })
+        : 'Fatura';
+      invoiceMap.set(id, { dueDate: t.invoiceDueDate ?? null, status: t.invoiceStatus ?? null, label, transactions: [] });
+    }
+    invoiceMap.get(id)!.transactions.push(t);
+  }
+
+  const sorted = [...invoiceMap.entries()].sort(([, a], [, b]) => {
+    if (!a.dueDate) return 1;
+    if (!b.dueDate) return -1;
+    return b.dueDate.localeCompare(a.dueDate);
+  });
+
+  const calcTotal = (txs: TransactionResponseDTO[]) =>
+    txs.reduce((sum, t) => t.type === 'EXPENSE' ? sum + (t.amount ?? 0) : t.type === 'INCOME' ? sum - (t.amount ?? 0) : sum, 0);
+
+  const rows: DisplayRow[] = [];
+
+  for (const [invoiceId, bucket] of sorted) {
+    rows.push({
+      kind: 'invoice-header',
+      invoiceId,
+      label: bucket.label,
+      dueDate: bucket.dueDate,
+      totalAmount: calcTotal(bucket.transactions),
+      status: bucket.status,
+      transactionCount: bucket.transactions.length,
+    });
+    rows.push(...buildFlatRows(bucket.transactions, expandedIds));
+  }
+
+  if (withoutInvoice.length > 0) {
+    rows.push({
+      kind: 'invoice-header',
+      invoiceId: null,
+      label: 'Avulsas',
+      dueDate: null,
+      totalAmount: calcTotal(withoutInvoice),
+      status: null,
+      transactionCount: withoutInvoice.length,
+    });
+    rows.push(...buildFlatRows(withoutInvoice, expandedIds));
+  }
+
+  return rows;
+}
+
 export function buildDisplayRows(
   transactions: TransactionResponseDTO[],
   expandedIds: Set<string>,
-  groupByPeriod = false
+  groupByPeriod = false,
+  groupByInvoice = false
 ): DisplayRow[] {
-  if (!groupByPeriod) {
-    return buildFlatRows(transactions, expandedIds);
-  }
+  if (groupByInvoice) return buildDisplayRowsGroupedByInvoice(transactions, expandedIds);
+  if (!groupByPeriod) return buildFlatRows(transactions, expandedIds);
   const groups = groupByEffectiveMonth(transactions);
   return groups.flatMap(group => [
     {
