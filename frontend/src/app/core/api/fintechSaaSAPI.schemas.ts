@@ -354,6 +354,7 @@ export interface AccountUpdateRequest {
   countInLiquidBalance?: boolean | null;
   /** @nullable */
   countInNetWorth?: boolean | null;
+  creditCardDetails?: CreditCardDetailsRequest | null;
 }
 
 export interface AccountResponse {
