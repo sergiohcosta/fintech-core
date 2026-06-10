@@ -401,3 +401,31 @@ VALUES
   (gen_random_uuid(),v_tenant,v_carlos,v_inter,c_compras_gerais,'Geladeira Brastemp',280.00,'2026-03-05','EXPENSE','PENDING',v_grp_geladeira,4,6,v_inv_it_jun),
   (gen_random_uuid(),v_tenant,v_carlos,v_inter,c_compras_gerais,'Geladeira Brastemp',280.00,'2026-03-05','EXPENSE','PENDING',v_grp_geladeira,5,6,NULL),
   (gen_random_uuid(),v_tenant,v_carlos,v_inter,c_compras_gerais,'Geladeira Brastemp',280.00,'2026-03-05','EXPENSE','PENDING',v_grp_geladeira,6,6,NULL);
+
+-- ── 13. Transferências Bradesco → XP (aporte mensal Jan–Jun) ──────────────
+INSERT INTO transactions (id,tenant_id,user_id,account_id,category_id,description,amount,date,type,status,transfer_id) VALUES
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,NULL,'Aporte XP Investimentos',500.00,'2026-01-10','EXPENSE','PAID',v_tr_jan),
+  (gen_random_uuid(),v_tenant,v_carlos,v_xp,      NULL,'Aporte XP Investimentos',500.00,'2026-01-10','INCOME', 'PAID',v_tr_jan),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,NULL,'Aporte XP Investimentos',500.00,'2026-02-10','EXPENSE','PAID',v_tr_feb),
+  (gen_random_uuid(),v_tenant,v_carlos,v_xp,      NULL,'Aporte XP Investimentos',500.00,'2026-02-10','INCOME', 'PAID',v_tr_feb),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,NULL,'Aporte XP Investimentos',500.00,'2026-03-10','EXPENSE','PAID',v_tr_mar),
+  (gen_random_uuid(),v_tenant,v_carlos,v_xp,      NULL,'Aporte XP Investimentos',500.00,'2026-03-10','INCOME', 'PAID',v_tr_mar),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,NULL,'Aporte XP Investimentos',500.00,'2026-04-10','EXPENSE','PAID',v_tr_apr),
+  (gen_random_uuid(),v_tenant,v_carlos,v_xp,      NULL,'Aporte XP Investimentos',500.00,'2026-04-10','INCOME', 'PAID',v_tr_apr),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,NULL,'Aporte XP Investimentos',500.00,'2026-05-10','EXPENSE','PAID',v_tr_may),
+  (gen_random_uuid(),v_tenant,v_carlos,v_xp,      NULL,'Aporte XP Investimentos',500.00,'2026-05-10','INCOME', 'PAID',v_tr_may),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,NULL,'Aporte XP Investimentos',500.00,'2026-06-10','EXPENSE','PAID',v_tr_jun),
+  (gen_random_uuid(),v_tenant,v_carlos,v_xp,      NULL,'Aporte XP Investimentos',500.00,'2026-06-10','INCOME', 'PAID',v_tr_jun);
+
+-- ── 14. Pagamentos de fatura (EXPENSE em Bradesco) ─────────────────────────
+-- Replica o que InvoiceService.pay() faz: cria EXPENSE na conta de origem
+INSERT INTO transactions (id,tenant_id,user_id,account_id,category_id,description,amount,date,type,status) VALUES
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,NULL,'Pagamento fatura Nubank Dez/2025', 21.90,'2025-12-10','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,NULL,'Pagamento fatura Nubank Jan/2026',395.00,'2026-01-10','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,NULL,'Pagamento fatura Nubank Fev/2026',745.00,'2026-02-10','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,NULL,'Pagamento fatura Nubank Mar/2026',745.00,'2026-03-10','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,NULL,'Pagamento fatura Nubank Abr/2026',745.00,'2026-04-10','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,NULL,'Pagamento fatura Inter Mar/2026',  280.00,'2026-03-15','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,NULL,'Pagamento fatura Inter Abr/2026',  280.00,'2026-04-15','EXPENSE','PAID');
+
+END $$;
