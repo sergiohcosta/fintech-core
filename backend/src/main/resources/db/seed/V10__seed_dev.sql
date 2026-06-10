@@ -214,5 +214,3 @@ INSERT INTO installment_groups (id, tenant_id, account_id, category_id,
    'Notebook Samsung', 4200.00, 12),
   (v_grp_geladeira, v_tenant, v_inter,  c_compras_gerais,
    'Geladeira Brastemp', 1680.00, 6);
-
-END $$;
