@@ -1,7 +1,8 @@
 # Design: Dataset de Testes — Família Costa
 
 **Data:** 2026-06-09  
-**Status:** Aprovado  
+**Implementado:** 2026-06-10  
+**Status:** Implementado  
 **Período coberto:** Dezembro 2025 – Junho 2026
 
 ---
@@ -40,7 +41,11 @@ spring.flyway.locations=classpath:db/migration,classpath:db/seed
 
 O Flyway aplica `V10` apenas no perfil `dev`. Em `test` e `prod` a pasta `db/seed` não está no classpath.
 
-**Reset do banco dev:** `DROP DATABASE fintech; CREATE DATABASE fintech;` + reiniciar a app.
+**Reset do banco dev:**
+```bash
+docker exec fintech-postgres psql -U admin -d postgres -c "DROP DATABASE fintech; CREATE DATABASE fintech;"
+SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run
+```
 
 ---
 
@@ -158,12 +163,12 @@ Todas criadas para os 6 meses, exceto onde indicado.
 
 ### Parcelamentos
 
-**Notebook Samsung — 12x R$ 350,00** (compra: 15 Fev 2026, Nubank)
+**Notebook Samsung — 12x R$ 350,00** (compra: 2026-02-02, Nubank)
 - InstallmentGroup: total R$ 4.200,00, 12 parcelas
 - Parcelas 1–3 (Fev–Abr, faturas PAID): PAID | Parcelas 4–12 (Mai–Jan/2027, fatura CLOSED ou OPEN): PENDING
 - Categoria: Roupas & Casa → Compras Gerais
 
-**Geladeira Brastemp — 6x R$ 280,00** (compra: 10 Mar 2026, Inter)
+**Geladeira Brastemp — 6x R$ 280,00** (compra: 2026-03-05, Inter)
 - InstallmentGroup: total R$ 1.680,00, 6 parcelas
 - Parcelas 1–2 (Mar–Abr, faturas PAID): PAID | Parcelas 3–6 (Mai–Ago, fatura CLOSED ou OPEN): PENDING
 - Categoria: Roupas & Casa → Compras Gerais
@@ -185,9 +190,9 @@ Todas criadas para os 6 meses, exceto onde indicado.
 ### Timeline
 
 ```
-         Jan    Fev    Mar    Abr    Mai    Jun
-Nubank   PAID   PAID   PAID   PAID   CLOSED OPEN
-Inter    —      —      PAID   PAID   CLOSED OPEN
+         Dez/25  Jan    Fev    Mar    Abr    Mai    Jun
+Nubank   PAID    PAID   PAID   PAID   PAID   CLOSED OPEN
+Inter    —       —      —      PAID   PAID   CLOSED OPEN
 ```
 
 ### Datas de referência
@@ -196,6 +201,7 @@ Inter    —      —      PAID   PAID   CLOSED OPEN
 
 | Fatura | closing_date | due_date | Status |
 |--------|-------------|----------|--------|
+| Dez/2025 | 2025-12-02 | 2025-12-10 | PAID |
 | Jan/2026 | 2026-01-02 | 2026-01-10 | PAID |
 | Fev/2026 | 2026-02-02 | 2026-02-10 | PAID |
 | Mar/2026 | 2026-03-02 | 2026-03-10 | PAID |
@@ -269,7 +275,7 @@ Bloco 8: Ciclo de vida de faturas
 
 Bloco 9: Verificações
   GET /api/dashboard
-  GET /api/transactions?accountId=@id_nubank&startDate=2026-06-01&endDate=2026-06-30
+  GET /api/transactions?accountIds=@id_nubank&startDate=2026-06-01&endDate=2026-06-30
   GET /api/invoices?accountId=@id_nubank
   GET /api/invoices/{id_nubank_mai}
   GET /api/members
@@ -291,6 +297,36 @@ Uso em testes:
 @Sql(scripts = "/sql/cleanup.sql",   executionPhase = AFTER_TEST_METHOD)
 class TransactionServiceIntegrationTest { ... }
 ```
+
+---
+
+## UUIDs predefinidos
+
+O V10 usa UUIDs fixos (não `gen_random_uuid()`) para permitir cross-references sem query e scripts de verificação reproducíveis:
+
+| Entidade | UUID base |
+|----------|-----------|
+| Tenant Família Costa | `10000000-0000-0000-0000-000000000001` |
+| Carlos Costa | `20000000-0000-0000-0000-000000000001` |
+| Ana Costa | `20000000-0000-0000-0000-000000000002` |
+| Pedro Costa | `20000000-0000-0000-0000-000000000003` |
+| Bradesco Corrente | `30000000-0000-0000-0000-000000000001` |
+| Carteira | `30000000-0000-0000-0000-000000000002` |
+| Nubank | `30000000-0000-0000-0000-000000000003` |
+| Inter | `30000000-0000-0000-0000-000000000004` |
+| XP Investimentos | `30000000-0000-0000-0000-000000000005` |
+| Categorias raízes | série `40000000-...-00000000001` a `009` |
+| Faturas | série `50000000-...` |
+| InstallmentGroups | série `60000000-...` |
+| TransferIDs | série `70000000-...` |
+
+---
+
+## ⚠️ Gotchas de implementação
+
+**Query param `accountIds` é plural:** O endpoint `GET /api/transactions` aceita `accountIds` (plural, `List<UUID>`). Passar `accountId` (singular) faz o Hibernate ignorar o filtro silenciosamente e retornar todas as transações do tenant.
+
+**Datas de parcelamento = closing day do cartão:** A data de compra de cada parcelamento foi ajustada para coincidir exatamente com o `closingDay` do cartão (Notebook: `2026-02-02` = closing day 2 do Nubank; Geladeira: `2026-03-05` = closing day 5 do Inter). Isso garante que a parcela 1 cai na fatura do mês da compra. Uma data posterior ao closing day empurraria a parcela 1 para o mês seguinte.
 
 ---
 
