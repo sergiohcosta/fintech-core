@@ -1,0 +1,1069 @@
+### ═══════════════════════════════════════════════════════════════════════
+### seed-dataset.http — Dataset Família Costa
+### Execute os blocos em ordem no IntelliJ HTTP Client ou VS Code REST Client
+### Variáveis capturadas em client.global ficam disponíveis nos blocos seguintes
+### ═══════════════════════════════════════════════════════════════════════
+
+### ── Bloco 1: Auth ────────────────────────────────────────────────────────
+
+### 1.1 Registrar tenant + Carlos (ADMIN)
+POST http://localhost:8080/auth/register
+Content-Type: application/json
+
+{
+  "name": "Família Costa",
+  "adminName": "Carlos Costa",
+  "adminEmail": "carlos@costa.com",
+  "password": "costa123"
+}
+
+###
+
+### 1.2 Login Carlos → captura token
+POST http://localhost:8080/auth/login
+Content-Type: application/json
+
+{
+  "email": "carlos@costa.com",
+  "password": "costa123"
+}
+
+> {%
+client.global.set("token_carlos", response.body.token);
+%}
+
+### ── Bloco 2: Contas ──────────────────────────────────────────────────────
+
+### 2.1 Bradesco Corrente
+POST http://localhost:8080/api/accounts
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{
+  "name": "Bradesco Corrente",
+  "type": "CHECKING",
+  "icon": "account_balance",
+  "color": "#1565C0",
+  "countInLiquidBalance": true,
+  "countInNetWorth": true
+}
+
+> {%
+client.global.set("id_bradesco", response.body.id);
+%}
+
+###
+
+### 2.2 Carteira
+POST http://localhost:8080/api/accounts
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{
+  "name": "Carteira",
+  "type": "CASH",
+  "icon": "wallet",
+  "color": "#2E7D32",
+  "countInLiquidBalance": true,
+  "countInNetWorth": true
+}
+
+> {%
+client.global.set("id_carteira", response.body.id);
+%}
+
+###
+
+### 2.3 Nubank (CREDIT_CARD)
+POST http://localhost:8080/api/accounts
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{
+  "name": "Nubank",
+  "type": "CREDIT_CARD",
+  "icon": "credit_card",
+  "color": "#820AD1",
+  "countInLiquidBalance": false,
+  "countInNetWorth": true,
+  "creditCardDetails": {
+    "brand": "MASTERCARD",
+    "lastFourDigits": "1234",
+    "limitAmount": 15000.00,
+    "closingDay": 2,
+    "dueDay": 10
+  }
+}
+
+> {%
+client.global.set("id_nubank", response.body.id);
+%}
+
+###
+
+### 2.4 Inter (CREDIT_CARD)
+POST http://localhost:8080/api/accounts
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{
+  "name": "Inter",
+  "type": "CREDIT_CARD",
+  "icon": "credit_card",
+  "color": "#FF6900",
+  "countInLiquidBalance": false,
+  "countInNetWorth": true,
+  "creditCardDetails": {
+    "brand": "MASTERCARD",
+    "lastFourDigits": "5678",
+    "limitAmount": 8000.00,
+    "closingDay": 5,
+    "dueDay": 15
+  }
+}
+
+> {%
+client.global.set("id_inter", response.body.id);
+%}
+
+###
+
+### 2.5 XP Investimentos
+POST http://localhost:8080/api/accounts
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{
+  "name": "XP Investimentos",
+  "type": "INVESTMENT",
+  "icon": "trending_up",
+  "color": "#00796B",
+  "countInLiquidBalance": false,
+  "countInNetWorth": true
+}
+
+> {%
+client.global.set("id_xp", response.body.id);
+%}
+
+### ── Bloco 3: Categorias ──────────────────────────────────────────────────
+
+### 3.1 Moradia (raiz)
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"name":"Moradia","icon":"home","color":"#5C6BC0"}
+
+> {%
+client.global.set("id_cat_moradia", response.body.id);
+%}
+
+###
+
+### 3.2 Alimentação (raiz)
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"name":"Alimentação","icon":"restaurant","color":"#66BB6A"}
+
+> {%
+client.global.set("id_cat_alimentacao", response.body.id);
+%}
+
+###
+
+### 3.3 Transporte (raiz)
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"name":"Transporte","icon":"directions_car","color":"#FFA726"}
+
+> {%
+client.global.set("id_cat_transporte", response.body.id);
+%}
+
+###
+
+### 3.4 Saúde (raiz)
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"name":"Saúde","icon":"favorite","color":"#EF5350"}
+
+> {%
+client.global.set("id_cat_saude", response.body.id);
+%}
+
+###
+
+### 3.5 Lazer (raiz)
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"name":"Lazer","icon":"movie","color":"#AB47BC"}
+
+> {%
+client.global.set("id_cat_lazer", response.body.id);
+%}
+
+###
+
+### 3.6 Educação (raiz)
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"name":"Educação","icon":"school","color":"#26C6DA"}
+
+> {%
+client.global.set("id_cat_educacao", response.body.id);
+%}
+
+###
+
+### 3.7 Roupas & Casa (raiz)
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"name":"Roupas & Casa","icon":"checkroom","color":"#8D6E63"}
+
+> {%
+client.global.set("id_cat_roupas", response.body.id);
+%}
+
+###
+
+### 3.8 Receitas (raiz)
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"name":"Receitas","icon":"attach_money","color":"#26A69A"}
+
+> {%
+client.global.set("id_cat_receitas", response.body.id);
+%}
+
+###
+
+### 3.9 Assinaturas (raiz — será arquivada)
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"name":"Assinaturas","icon":"smartphone","color":"#BDBDBD"}
+
+> {%
+client.global.set("id_cat_assinaturas", response.body.id);
+%}
+
+###
+
+### 3.10 Aluguel (filha de Moradia)
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"name":"Aluguel","icon":"home","color":"#5C6BC0","parentId":"{{id_cat_moradia}}"}
+
+> {%
+client.global.set("id_cat_aluguel", response.body.id);
+%}
+
+###
+
+### 3.11 Condomínio
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"name":"Condomínio","icon":"apartment","color":"#5C6BC0","parentId":"{{id_cat_moradia}}"}
+
+###
+
+### 3.12 Energia
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"name":"Energia","icon":"bolt","color":"#5C6BC0","parentId":"{{id_cat_moradia}}"}
+
+> {%
+client.global.set("id_cat_energia", response.body.id);
+%}
+
+###
+
+### 3.13 Água/Gás
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"name":"Água/Gás","icon":"water_drop","color":"#5C6BC0","parentId":"{{id_cat_moradia}}"}
+
+###
+
+### 3.14 Internet
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"name":"Internet","icon":"wifi","color":"#5C6BC0","parentId":"{{id_cat_moradia}}"}
+
+###
+
+### 3.15 Supermercado
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"name":"Supermercado","icon":"shopping_cart","color":"#66BB6A","parentId":"{{id_cat_alimentacao}}"}
+
+> {%
+client.global.set("id_cat_supermercado", response.body.id);
+%}
+
+###
+
+### 3.16 Restaurante
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"name":"Restaurante","icon":"restaurant","color":"#66BB6A","parentId":"{{id_cat_alimentacao}}"}
+
+> {%
+client.global.set("id_cat_restaurante", response.body.id);
+%}
+
+###
+
+### 3.17 Delivery
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"name":"Delivery","icon":"delivery_dining","color":"#66BB6A","parentId":"{{id_cat_alimentacao}}"}
+
+> {%
+client.global.set("id_cat_delivery", response.body.id);
+%}
+
+###
+
+### 3.18 Combustível
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"name":"Combustível","icon":"local_gas_station","color":"#FFA726","parentId":"{{id_cat_transporte}}"}
+
+> {%
+client.global.set("id_cat_combustivel", response.body.id);
+%}
+
+###
+
+### 3.19 Uber/99
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"name":"Uber/99","icon":"local_taxi","color":"#FFA726","parentId":"{{id_cat_transporte}}"}
+
+###
+
+### 3.20 IPVA / Seguro
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"name":"IPVA / Seguro","icon":"receipt_long","color":"#FFA726","parentId":"{{id_cat_transporte}}"}
+
+###
+
+### 3.21 Farmácia
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"name":"Farmácia","icon":"local_pharmacy","color":"#EF5350","parentId":"{{id_cat_saude}}"}
+
+> {%
+client.global.set("id_cat_farmacia", response.body.id);
+%}
+
+###
+
+### 3.22 Plano de Saúde
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"name":"Plano de Saúde","icon":"health_and_safety","color":"#EF5350","parentId":"{{id_cat_saude}}"}
+
+###
+
+### 3.23 Academia
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"name":"Academia","icon":"fitness_center","color":"#EF5350","parentId":"{{id_cat_saude}}"}
+
+###
+
+### 3.24 Streaming
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"name":"Streaming","icon":"play_circle","color":"#AB47BC","parentId":"{{id_cat_lazer}}"}
+
+> {%
+client.global.set("id_cat_streaming", response.body.id);
+%}
+
+###
+
+### 3.25 Cinema/Shows
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"name":"Cinema/Shows","icon":"theaters","color":"#AB47BC","parentId":"{{id_cat_lazer}}"}
+
+> {%
+client.global.set("id_cat_cinema", response.body.id);
+%}
+
+###
+
+### 3.26 Viagens
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"name":"Viagens","icon":"flight","color":"#AB47BC","parentId":"{{id_cat_lazer}}"}
+
+###
+
+### 3.27 Cursos Online
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"name":"Cursos Online","icon":"computer","color":"#26C6DA","parentId":"{{id_cat_educacao}}"}
+
+###
+
+### 3.28 Livros
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"name":"Livros","icon":"menu_book","color":"#26C6DA","parentId":"{{id_cat_educacao}}"}
+
+###
+
+### 3.29 Compras Gerais
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"name":"Compras Gerais","icon":"shopping_bag","color":"#8D6E63","parentId":"{{id_cat_roupas}}"}
+
+> {%
+client.global.set("id_cat_compras_gerais", response.body.id);
+%}
+
+###
+
+### 3.30 Salário
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"name":"Salário","icon":"payments","color":"#26A69A","parentId":"{{id_cat_receitas}}"}
+
+> {%
+client.global.set("id_cat_salario", response.body.id);
+%}
+
+###
+
+### 3.31 Freelance
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"name":"Freelance","icon":"work","color":"#26A69A","parentId":"{{id_cat_receitas}}"}
+
+###
+
+### 3.32 Rendimentos
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"name":"Rendimentos","icon":"account_balance","color":"#26A69A","parentId":"{{id_cat_receitas}}"}
+
+###
+
+### 3.33 Serviços Digitais (filha de Assinaturas)
+POST http://localhost:8080/api/categories
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"name":"Serviços Digitais","icon":"cloud","color":"#BDBDBD","parentId":"{{id_cat_assinaturas}}"}
+
+> {%
+client.global.set("id_cat_servicos_dig", response.body.id);
+%}
+
+###
+
+### 3.34 Arquivar Assinaturas (soft-delete em cascata — arquiva Assinaturas + Serviços Digitais)
+POST http://localhost:8080/api/categories/{{id_cat_assinaturas}}/archive
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{}
+
+### ── Bloco 4: Membros ─────────────────────────────────────────────────────
+
+### 4.1 Convidar Ana
+POST http://localhost:8080/invites
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"email":"ana@costa.com"}
+
+> {%
+client.global.set("token_invite_ana", response.body.token);
+%}
+
+###
+
+### 4.2 Ana aceita o convite
+POST http://localhost:8080/auth/accept-invite
+Content-Type: application/json
+
+{
+  "token": "{{token_invite_ana}}",
+  "name": "Ana Costa",
+  "password": "costa123"
+}
+
+###
+
+### 4.3 Convidar Pedro
+POST http://localhost:8080/invites
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"email":"pedro@costa.com"}
+
+> {%
+client.global.set("token_invite_pedro", response.body.token);
+%}
+
+###
+
+### 4.4 Pedro aceita o convite
+POST http://localhost:8080/auth/accept-invite
+Content-Type: application/json
+
+{
+  "token": "{{token_invite_pedro}}",
+  "name": "Pedro Costa",
+  "password": "costa123"
+}
+
+###
+
+### 4.5 Convidar João (permanece PENDING — não executa accept-invite)
+POST http://localhost:8080/invites
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"email":"joao@costa.com"}
+
+### ── Bloco 5: Transações recorrentes (Bradesco + Carteira, Jan–Jun) ────────
+### Execute este bloco 6 vezes trocando o campo "date" para cada mês:
+### Jan=2026-01-05, Fev=2026-02-05, Mar=2026-03-05, Abr=2026-04-05, Mai=2026-05-05, Jun=2026-06-05
+### Para Energia e Água/Gás em Jun: use "status":"PENDING"
+
+### 5.1 Salário Carlos (aqui: Janeiro — repita para cada mês)
+POST http://localhost:8080/api/transactions
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{
+  "description": "Salário Carlos",
+  "amount": 8500.00,
+  "date": "2026-01-05",
+  "type": "INCOME",
+  "status": "PAID",
+  "accountId": "{{id_bradesco}}",
+  "categoryId": "{{id_cat_salario}}"
+}
+
+###
+
+### 5.2 Aluguel
+POST http://localhost:8080/api/transactions
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{
+  "description": "Aluguel",
+  "amount": 2200.00,
+  "date": "2026-01-05",
+  "type": "EXPENSE",
+  "status": "PAID",
+  "accountId": "{{id_bradesco}}",
+  "categoryId": "{{id_cat_aluguel}}"
+}
+
+###
+
+### 5.3 Condomínio
+POST http://localhost:8080/api/transactions
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{
+  "description": "Condomínio",
+  "amount": 350.00,
+  "date": "2026-01-05",
+  "type": "EXPENSE",
+  "status": "PAID",
+  "accountId": "{{id_bradesco}}",
+  "categoryId": "{{id_cat_moradia}}"
+}
+
+###
+
+### 5.4 Energia (em Jun: status PENDING)
+POST http://localhost:8080/api/transactions
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{
+  "description": "Energia",
+  "amount": 180.00,
+  "date": "2026-01-05",
+  "type": "EXPENSE",
+  "status": "PAID",
+  "accountId": "{{id_bradesco}}",
+  "categoryId": "{{id_cat_energia}}"
+}
+
+###
+
+### 5.5 Água/Gás (em Jun: status PENDING)
+POST http://localhost:8080/api/transactions
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{
+  "description": "Água/Gás",
+  "amount": 90.00,
+  "date": "2026-01-05",
+  "type": "EXPENSE",
+  "status": "PAID",
+  "accountId": "{{id_bradesco}}",
+  "categoryId": "{{id_cat_moradia}}"
+}
+
+###
+
+### 5.6 Internet
+POST http://localhost:8080/api/transactions
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{
+  "description": "Internet",
+  "amount": 120.00,
+  "date": "2026-01-05",
+  "type": "EXPENSE",
+  "status": "PAID",
+  "accountId": "{{id_bradesco}}",
+  "categoryId": "{{id_cat_moradia}}"
+}
+
+###
+
+### 5.7 Supermercado #1
+POST http://localhost:8080/api/transactions
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{
+  "description": "Supermercado Pão de Açúcar",
+  "amount": 280.00,
+  "date": "2026-01-05",
+  "type": "EXPENSE",
+  "status": "PAID",
+  "accountId": "{{id_bradesco}}",
+  "categoryId": "{{id_cat_supermercado}}"
+}
+
+###
+
+### 5.8 Supermercado #2
+POST http://localhost:8080/api/transactions
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{
+  "description": "Supermercado Extra",
+  "amount": 195.00,
+  "date": "2026-01-05",
+  "type": "EXPENSE",
+  "status": "PAID",
+  "accountId": "{{id_bradesco}}",
+  "categoryId": "{{id_cat_supermercado}}"
+}
+
+###
+
+### 5.9 Combustível
+POST http://localhost:8080/api/transactions
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{
+  "description": "Combustível",
+  "amount": 220.00,
+  "date": "2026-01-05",
+  "type": "EXPENSE",
+  "status": "PAID",
+  "accountId": "{{id_bradesco}}",
+  "categoryId": "{{id_cat_combustivel}}"
+}
+
+###
+
+### 5.10 Farmácia (Carteira — Carlos)
+POST http://localhost:8080/api/transactions
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{
+  "description": "Farmácia",
+  "amount": 75.00,
+  "date": "2026-01-05",
+  "type": "EXPENSE",
+  "status": "PAID",
+  "accountId": "{{id_carteira}}",
+  "categoryId": "{{id_cat_farmacia}}"
+}
+
+###
+
+### 5.11 Netflix (Nubank)
+POST http://localhost:8080/api/transactions
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{
+  "description": "Netflix",
+  "amount": 45.00,
+  "date": "2026-01-01",
+  "type": "EXPENSE",
+  "status": "PENDING",
+  "accountId": "{{id_nubank}}",
+  "categoryId": "{{id_cat_streaming}}"
+}
+
+###
+
+### 5.12 iFood #1 (Nubank)
+POST http://localhost:8080/api/transactions
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{
+  "description": "iFood",
+  "amount": 68.00,
+  "date": "2026-01-01",
+  "type": "EXPENSE",
+  "status": "PENDING",
+  "accountId": "{{id_nubank}}",
+  "categoryId": "{{id_cat_delivery}}"
+}
+
+###
+
+### 5.13 iFood #2 (Nubank)
+POST http://localhost:8080/api/transactions
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{
+  "description": "iFood Mercado",
+  "amount": 82.00,
+  "date": "2026-01-01",
+  "type": "EXPENSE",
+  "status": "PENDING",
+  "accountId": "{{id_nubank}}",
+  "categoryId": "{{id_cat_delivery}}"
+}
+
+###
+
+### 5.14 iFood #3 (Nubank)
+POST http://localhost:8080/api/transactions
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{
+  "description": "iFood Express",
+  "amount": 55.00,
+  "date": "2026-01-02",
+  "type": "EXPENSE",
+  "status": "PENDING",
+  "accountId": "{{id_nubank}}",
+  "categoryId": "{{id_cat_delivery}}"
+}
+
+###
+
+### 5.15 Restaurante (Nubank)
+POST http://localhost:8080/api/transactions
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{
+  "description": "Restaurante",
+  "amount": 145.00,
+  "date": "2026-01-01",
+  "type": "EXPENSE",
+  "status": "PENDING",
+  "accountId": "{{id_nubank}}",
+  "categoryId": "{{id_cat_restaurante}}"
+}
+
+### ── Bloco 5b: Cenários especiais (one-shot) ──────────────────────────────
+
+### 5b.1 Spotify Dez/2025 (categoria arquivada)
+POST http://localhost:8080/api/transactions
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{
+  "description": "Spotify Premium",
+  "amount": 21.90,
+  "date": "2025-12-01",
+  "type": "EXPENSE",
+  "status": "PENDING",
+  "accountId": "{{id_nubank}}",
+  "categoryId": "{{id_cat_servicos_dig}}"
+}
+
+###
+
+### 5b.2 Ingresso show CANCELLED (Jan/2026)
+POST http://localhost:8080/api/transactions
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{
+  "description": "Ingresso show",
+  "amount": 120.00,
+  "date": "2026-01-15",
+  "type": "EXPENSE",
+  "status": "CANCELLED",
+  "accountId": "{{id_nubank}}"
+}
+
+###
+
+### 5b.3 Compra diversa sem categoria (Carteira, Jan)
+POST http://localhost:8080/api/transactions
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{
+  "description": "Compra diversa",
+  "amount": 50.00,
+  "date": "2026-01-10",
+  "type": "EXPENSE",
+  "status": "PAID",
+  "accountId": "{{id_carteira}}"
+}
+
+### ── Bloco 6: Parcelamentos ───────────────────────────────────────────────
+
+### 6.1 Notebook Samsung 12x (Nubank, 2026-02-02)
+POST http://localhost:8080/api/transactions
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{
+  "description": "Notebook Samsung",
+  "amount": 350.00,
+  "date": "2026-02-02",
+  "type": "EXPENSE",
+  "status": "PENDING",
+  "accountId": "{{id_nubank}}",
+  "categoryId": "{{id_cat_compras_gerais}}",
+  "totalInstallments": 12
+}
+
+###
+
+### 6.2 Geladeira Brastemp 6x (Inter, 2026-03-05)
+POST http://localhost:8080/api/transactions
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{
+  "description": "Geladeira Brastemp",
+  "amount": 280.00,
+  "date": "2026-03-05",
+  "type": "EXPENSE",
+  "status": "PENDING",
+  "accountId": "{{id_inter}}",
+  "categoryId": "{{id_cat_compras_gerais}}",
+  "totalInstallments": 6
+}
+
+### ── Bloco 7: Transferências (Bradesco → XP, Jan–Jun) ────────────────────
+### Execute para cada mês trocando "date" (2026-01-10 até 2026-06-10)
+
+### 7.1 Aporte Janeiro
+POST http://localhost:8080/api/transfers
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{
+  "fromAccountId": "{{id_bradesco}}",
+  "toAccountId": "{{id_xp}}",
+  "amount": 500.00,
+  "date": "2026-01-10",
+  "description": "Aporte XP Investimentos"
+}
+
+### ── Bloco 8: Ciclo de vida das faturas ──────────────────────────────────
+
+### 8.1 Listar faturas Nubank (anote os IDs para pagar/fechar)
+GET http://localhost:8080/api/invoices?accountId={{id_nubank}}
+Authorization: Bearer {{token_carlos}}
+
+###
+
+### 8.2 Pagar fatura Nubank Jan (substitua {ID} pelo id retornado no 8.1)
+POST http://localhost:8080/api/invoices/{ID_NUBANK_JAN}/pay
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"sourceAccountId":"{{id_bradesco}}"}
+
+###
+
+### 8.3 Pagar fatura Nubank Fev
+POST http://localhost:8080/api/invoices/{ID_NUBANK_FEV}/pay
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"sourceAccountId":"{{id_bradesco}}"}
+
+###
+
+### 8.4 Pagar fatura Nubank Mar
+POST http://localhost:8080/api/invoices/{ID_NUBANK_MAR}/pay
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"sourceAccountId":"{{id_bradesco}}"}
+
+###
+
+### 8.5 Pagar fatura Nubank Abr
+POST http://localhost:8080/api/invoices/{ID_NUBANK_ABR}/pay
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"sourceAccountId":"{{id_bradesco}}"}
+
+###
+
+### 8.6 Fechar fatura Nubank Mai
+POST http://localhost:8080/api/invoices/{ID_NUBANK_MAI}/close
+Authorization: Bearer {{token_carlos}}
+
+###
+
+### 8.7 Listar faturas Inter
+GET http://localhost:8080/api/invoices?accountId={{id_inter}}
+Authorization: Bearer {{token_carlos}}
+
+###
+
+### 8.8 Pagar fatura Inter Mar
+POST http://localhost:8080/api/invoices/{ID_INTER_MAR}/pay
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"sourceAccountId":"{{id_bradesco}}"}
+
+###
+
+### 8.9 Pagar fatura Inter Abr
+POST http://localhost:8080/api/invoices/{ID_INTER_ABR}/pay
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{"sourceAccountId":"{{id_bradesco}}"}
+
+###
+
+### 8.10 Fechar fatura Inter Mai
+POST http://localhost:8080/api/invoices/{ID_INTER_MAI}/close
+Authorization: Bearer {{token_carlos}}
+
+### ── Bloco 9: Verificações ────────────────────────────────────────────────
+
+### 9.1 Dashboard Junho
+GET http://localhost:8080/api/dashboard?startDate=2026-06-01&endDate=2026-06-30
+Authorization: Bearer {{token_carlos}}
+
+###
+
+### 9.2 Transações Nubank Junho (accountIds = plural)
+GET http://localhost:8080/api/transactions?accountIds={{id_nubank}}&startDate=2026-06-01&endDate=2026-06-30
+Authorization: Bearer {{token_carlos}}
+
+###
+
+### 9.3 Faturas Nubank (deve retornar 7: Dez/2025 a Jun/2026)
+GET http://localhost:8080/api/invoices?accountId={{id_nubank}}
+Authorization: Bearer {{token_carlos}}
+
+###
+
+### 9.4 Detalhe fatura Nubank Mai (deve estar CLOSED)
+GET http://localhost:8080/api/invoices/{ID_NUBANK_MAI}
+Authorization: Bearer {{token_carlos}}
+
+###
+
+### 9.5 Membros do tenant (deve mostrar Carlos, Ana, Pedro)
+GET http://localhost:8080/api/members
+Authorization: Bearer {{token_carlos}}
+
+###
+
+### 9.6 Convites (deve mostrar João como PENDING)
+GET http://localhost:8080/invites
+Authorization: Bearer {{token_carlos}}

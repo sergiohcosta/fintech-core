@@ -1,0 +1,104 @@
+<div class="mapping-page">
+
+  <header class="mapping-header">
+    <div>
+      <h2 class="mapping-title">Mapeamento de taxonomia</h2>
+      <p class="mapping-subtitle">Associe suas categorias ao padrão do sistema</p>
+    </div>
+    <div class="mapping-actions">
+      @if (!loading()) {
+        <span class="mapping-progress-label">
+          {{ mappedCount() }}/{{ rootCategories().length }} mapeadas
+        </span>
+        <div class="progress-bar">
+          <div class="progress-fill"
+               [style.width.%]="rootCategories().length
+                 ? (mappedCount() / rootCategories().length * 100)
+                 : 0">
+          </div>
+        </div>
+      }
+      <button mat-flat-button color="primary"
+              [disabled]="!pendingMappings().size || saving()"
+              (click)="save()">
+        @if (saving()) {
+          <mat-spinner [diameter]="18"></mat-spinner>
+        } @else {
+          Salvar
+        }
+      </button>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <div class="loading-state">
+      <mat-spinner [diameter]="40"></mat-spinner>
+    </div>
+  } @else {
+    <div class="mapping-panels">
+
+      <!-- Painel esquerdo: categorias do tenant -->
+      <div class="panel">
+        <div class="panel-label">Suas categorias (raízes)</div>
+        <div class="category-list">
+          @for (cat of rootCategories(); track cat.id) {
+            <div class="category-item"
+                 [class.selected]="selectedCategory()?.id === cat.id"
+                 [class.ambiguous]="!hasSuggestion(cat) && !getEffectiveCode(cat)"
+                 (click)="selectCategory(cat)">
+              <span class="category-dot" [style.background]="cat.color"></span>
+              <span class="category-name">{{ cat.name }}</span>
+              @if (getEffectiveCode(cat); as code) {
+                <span class="code-badge"
+                      [class.pending]="pendingMappings().has(cat.id)">
+                  {{ code }}{{ pendingMappings().has(cat.id) ? ' *' : '' }}
+                </span>
+              } @else if (!hasSuggestion(cat)) {
+                <span class="ambiguous-badge">? ambígua</span>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Painel direito: taxonomia padrão -->
+      <div class="panel">
+        <div class="panel-label">Taxonomia padrão — clique para associar</div>
+        <div class="taxonomy-list">
+          @for (root of taxonomyRoots; track root.code) {
+            <div class="taxonomy-item"
+                 [class.suggested]="suggestedCode() === root.code && !isCodeUsedByOther(root.code)"
+                 [class.disabled]="!selectedCategory() || isCodeUsedByOther(root.code)"
+                 [matTooltip]="isCodeUsedByOther(root.code) ? 'Código já em uso por outra categoria' : ''"
+                 (click)="selectCode(root.code)">
+              <mat-icon class="taxonomy-icon">{{ root.icon }}</mat-icon>
+              <div class="taxonomy-info">
+                <span class="taxonomy-code">{{ root.code }}</span>
+                <span class="taxonomy-label">{{ root.label }}</span>
+              </div>
+              @if (suggestedCode() === root.code && !isCodeUsedByOther(root.code)) {
+                <span class="suggested-badge">sugerido ✦</span>
+              } @else if (isCodeUsedByOther(root.code)) {
+                <span class="in-use-label">em uso</span>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+    </div>
+
+    @if (selectedCategory()) {
+      <div class="hint-bar">
+        <mat-icon>info</mat-icon>
+        <strong>{{ selectedCategory()!.name }}</strong> selecionada —
+        @if (suggestedCode()) {
+          clique em <strong>{{ suggestedCode() }}</strong> para confirmar a sugestão, ou escolha outro código.
+        } @else {
+          sem sugestão automática; escolha o código mais adequado no painel direito.
+        }
+      </div>
+    }
+  }
+
+</div>

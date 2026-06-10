@@ -6,6 +6,7 @@ public record CategoryCreateDTO(
         String name,
         String icon,
         String color,
-        UUID parentId // Pode ser nulo se for raiz
+        UUID parentId, // Pode ser nulo se for raiz
+        String taxonomyCode  // nullable — null = não alterar o valor existente
 ) {
 }

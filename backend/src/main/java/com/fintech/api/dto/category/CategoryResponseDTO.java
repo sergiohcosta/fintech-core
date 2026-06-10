@@ -11,6 +11,7 @@ public record CategoryResponseDTO(
         String color,
         UUID parentId,
         boolean archived,
+        String taxonomyCode,
         List<CategoryResponseDTO> children) {
 
     // Sem includeArchived: filtra filhos arquivados (comportamento padrão)
@@ -26,6 +27,7 @@ public record CategoryResponseDTO(
                 category.getColor(),
                 category.getParent() != null ? category.getParent().getId() : null,
                 category.getDeletedAt() != null,
+                category.getTaxonomyCode(),
                 category.getChildren().stream()
                         .filter(c -> includeArchived || c.getDeletedAt() == null)
                         .map(c -> fromEntity(c, includeArchived))
