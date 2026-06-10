@@ -345,6 +345,14 @@ Ocultar no frontend **não substitui** proteção no backend. O frontend é cont
   - **#62 — Persistência dos filtros**: chave `fintech.transaction.filters`; spread sobre `DEFAULT_FILTERS` como fallback; `try/catch` em `saveToStorage` contra `QuotaExceededError`; `initialFilters` input em `TransactionFiltersComponent` para restaurar estado ao reabrir o painel
   - **#64 — Agrupar transações por fatura**: `groupByInvoice` toggle (mutuamente exclusivo com `groupByPeriod`); `buildDisplayRowsGroupedByInvoice` em `transaction-list.utils.ts`; row `invoice-header` com label, status chip (`InvoiceStatus`), total e contagem; flags client-side excluídos da comparação de reload para não disparar request HTTP desnecessário
 
+- **Dataset de testes — Família Costa (2026-06-10)**:
+  - `V10__seed_dev.sql` (Flyway perfil `dev`): tenant + 3 usuários (Carlos/Ana/Pedro + convite João) + 5 contas (Bradesco, Carteira, Nubank, Inter, XP) + 33 categorias + 100+ transações + 11 faturas + 2 grupos de parcelamento + transferências mensais
+  - UUIDs predefinidos (série `10000000-...` a `70000000-...`) para cross-references sem query
+  - Credenciais: `carlos@costa.com` / `costa123`; reset: `docker exec fintech-postgres psql -U admin -d postgres -c "DROP DATABASE fintech; CREATE DATABASE fintech;"`
+  - `seed_base.sql` + `cleanup.sql` em `backend/src/test/resources/sql/` para Testcontainers (`admin@test.com` / `admin123`)
+  - `docs/http/seed-dataset.http`: HTTP collection completa (9 blocos, IntelliJ/VS Code)
+  - **Gotcha**: filtro de transações usa `accountIds` (plural) como query param — `accountId` (singular) é ignorado e retorna todos os dados do tenant
+
 **Próximos passos:**
 - Corrigir falhas pré-existentes nos testes do frontend (issue #57): falta chamada a `TestBed.initTestEnvironment()` em arquivo de setup do Vitest
 - Gráficos no dashboard (evolução mensal, breakdown por categoria/conta)
