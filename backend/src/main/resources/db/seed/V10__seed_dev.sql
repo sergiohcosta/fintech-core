@@ -370,3 +370,34 @@ INSERT INTO transactions (id,tenant_id,user_id,account_id,category_id,descriptio
 -- Ingresso show CANCELLED — sem invoice_id
 INSERT INTO transactions (id,tenant_id,user_id,account_id,category_id,description,amount,date,type,status) VALUES
   (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_cinema,'Ingresso Show',120.00,'2026-01-15','EXPENSE','CANCELLED');
+
+-- ── 12. Parcelamentos ──────────────────────────────────────────────────────
+-- Notebook Samsung 12x R$350 (compra 2026-02-02, Nubank)
+INSERT INTO transactions
+  (id,tenant_id,user_id,account_id,category_id,description,amount,date,type,status,
+   installment_group_id,installment_number,total_installments,invoice_id)
+VALUES
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_compras_gerais,'Notebook Samsung',350.00,'2026-02-02','EXPENSE','PAID',   v_grp_notebook, 1,12,v_inv_nu_feb),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_compras_gerais,'Notebook Samsung',350.00,'2026-02-02','EXPENSE','PAID',   v_grp_notebook, 2,12,v_inv_nu_mar),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_compras_gerais,'Notebook Samsung',350.00,'2026-02-02','EXPENSE','PAID',   v_grp_notebook, 3,12,v_inv_nu_apr),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_compras_gerais,'Notebook Samsung',350.00,'2026-02-02','EXPENSE','PENDING',v_grp_notebook, 4,12,v_inv_nu_may),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_compras_gerais,'Notebook Samsung',350.00,'2026-02-02','EXPENSE','PENDING',v_grp_notebook, 5,12,v_inv_nu_jun),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_compras_gerais,'Notebook Samsung',350.00,'2026-02-02','EXPENSE','PENDING',v_grp_notebook, 6,12,NULL),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_compras_gerais,'Notebook Samsung',350.00,'2026-02-02','EXPENSE','PENDING',v_grp_notebook, 7,12,NULL),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_compras_gerais,'Notebook Samsung',350.00,'2026-02-02','EXPENSE','PENDING',v_grp_notebook, 8,12,NULL),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_compras_gerais,'Notebook Samsung',350.00,'2026-02-02','EXPENSE','PENDING',v_grp_notebook, 9,12,NULL),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_compras_gerais,'Notebook Samsung',350.00,'2026-02-02','EXPENSE','PENDING',v_grp_notebook,10,12,NULL),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_compras_gerais,'Notebook Samsung',350.00,'2026-02-02','EXPENSE','PENDING',v_grp_notebook,11,12,NULL),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_compras_gerais,'Notebook Samsung',350.00,'2026-02-02','EXPENSE','PENDING',v_grp_notebook,12,12,NULL);
+
+-- Geladeira Brastemp 6x R$280 (compra 2026-03-05, Inter)
+INSERT INTO transactions
+  (id,tenant_id,user_id,account_id,category_id,description,amount,date,type,status,
+   installment_group_id,installment_number,total_installments,invoice_id)
+VALUES
+  (gen_random_uuid(),v_tenant,v_carlos,v_inter,c_compras_gerais,'Geladeira Brastemp',280.00,'2026-03-05','EXPENSE','PAID',   v_grp_geladeira,1,6,v_inv_it_mar),
+  (gen_random_uuid(),v_tenant,v_carlos,v_inter,c_compras_gerais,'Geladeira Brastemp',280.00,'2026-03-05','EXPENSE','PAID',   v_grp_geladeira,2,6,v_inv_it_apr),
+  (gen_random_uuid(),v_tenant,v_carlos,v_inter,c_compras_gerais,'Geladeira Brastemp',280.00,'2026-03-05','EXPENSE','PENDING',v_grp_geladeira,3,6,v_inv_it_may),
+  (gen_random_uuid(),v_tenant,v_carlos,v_inter,c_compras_gerais,'Geladeira Brastemp',280.00,'2026-03-05','EXPENSE','PENDING',v_grp_geladeira,4,6,v_inv_it_jun),
+  (gen_random_uuid(),v_tenant,v_carlos,v_inter,c_compras_gerais,'Geladeira Brastemp',280.00,'2026-03-05','EXPENSE','PENDING',v_grp_geladeira,5,6,NULL),
+  (gen_random_uuid(),v_tenant,v_carlos,v_inter,c_compras_gerais,'Geladeira Brastemp',280.00,'2026-03-05','EXPENSE','PENDING',v_grp_geladeira,6,6,NULL);
