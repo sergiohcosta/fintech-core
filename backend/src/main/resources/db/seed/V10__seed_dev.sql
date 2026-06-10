@@ -186,3 +186,33 @@ INSERT INTO categories (id, tenant_id, created_by, name, icon, color, parent_id)
 -- Soft-delete em Assinaturas e Serviços Digitais (arquivadas)
 UPDATE categories SET deleted_at = '2025-11-01 00:00:00'
 WHERE id IN (c_assinaturas, c_servicos_dig);
+
+-- ── 6. Faturas ─────────────────────────────────────────────────────────────
+-- Nubank: closing_day=2, due_day=10
+INSERT INTO invoices (id, account_id, tenant_id, reference_year, reference_month,
+                      closing_date, due_date, status) VALUES
+  (v_inv_nu_dec2025, v_nubank, v_tenant, 2025, 12, '2025-12-02', '2025-12-10', 'PAID'),
+  (v_inv_nu_jan,     v_nubank, v_tenant, 2026,  1, '2026-01-02', '2026-01-10', 'PAID'),
+  (v_inv_nu_feb,     v_nubank, v_tenant, 2026,  2, '2026-02-02', '2026-02-10', 'PAID'),
+  (v_inv_nu_mar,     v_nubank, v_tenant, 2026,  3, '2026-03-02', '2026-03-10', 'PAID'),
+  (v_inv_nu_apr,     v_nubank, v_tenant, 2026,  4, '2026-04-02', '2026-04-10', 'PAID'),
+  (v_inv_nu_may,     v_nubank, v_tenant, 2026,  5, '2026-05-02', '2026-05-10', 'CLOSED'),
+  (v_inv_nu_jun,     v_nubank, v_tenant, 2026,  6, '2026-06-02', '2026-06-10', 'OPEN');
+
+-- Inter: closing_day=5, due_day=15
+INSERT INTO invoices (id, account_id, tenant_id, reference_year, reference_month,
+                      closing_date, due_date, status) VALUES
+  (v_inv_it_mar, v_inter, v_tenant, 2026, 3, '2026-03-05', '2026-03-15', 'PAID'),
+  (v_inv_it_apr, v_inter, v_tenant, 2026, 4, '2026-04-05', '2026-04-15', 'PAID'),
+  (v_inv_it_may, v_inter, v_tenant, 2026, 5, '2026-05-05', '2026-05-15', 'CLOSED'),
+  (v_inv_it_jun, v_inter, v_tenant, 2026, 6, '2026-06-05', '2026-06-15', 'OPEN');
+
+-- ── 7. Grupos de parcelamento ──────────────────────────────────────────────
+INSERT INTO installment_groups (id, tenant_id, account_id, category_id,
+                                 description, total_amount, total_installments) VALUES
+  (v_grp_notebook,  v_tenant, v_nubank, c_compras_gerais,
+   'Notebook Samsung', 4200.00, 12),
+  (v_grp_geladeira, v_tenant, v_inter,  c_compras_gerais,
+   'Geladeira Brastemp', 1680.00, 6);
+
+END $$;
