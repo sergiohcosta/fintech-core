@@ -97,6 +97,10 @@ components:
           type: string
           format: uuid
           nullable: true
+        taxonomyCode:
+          type: string
+          nullable: true
+          description: "Código de taxonomia padrão. null = não alterar valor existente."
 
     CategoryResponseDTO:
       type: object
@@ -117,6 +121,11 @@ components:
           nullable: true
         archived:
           type: boolean
+        taxonomyCode:
+          type: string
+          nullable: true
+          description: "Código semântico estável para benchmarking cross-tenant. null = categoria criada pelo usuário."
+          example: "HOUSING"
         children:
           type: array
           items:
@@ -578,6 +587,10 @@ components:
           nullable: true
         countInNetWorth:
           type: boolean
+          nullable: true
+        creditCardDetails:
+          oneOf:
+            - $ref: '#/components/schemas/CreditCardDetailsRequest'
           nullable: true
 
     AccountResponse:
