@@ -37,6 +37,9 @@ public class Category {
     @Column(nullable = false)
     private String color;
 
+    @Column(name = "taxonomy_code", length = 50)
+    private String taxonomyCode;
+
     // --- TENANT-FIRST (Obrigatório) ---
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tenant_id", nullable = false)

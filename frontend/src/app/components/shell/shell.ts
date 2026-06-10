@@ -47,6 +47,7 @@ export class ShellComponent {
     { label: 'Faturas',    icon: 'receipt_long', route: '/invoices' },
     { label: 'Contas',     icon: 'credit_card',  route: '/accounts' },
     { label: 'Categorias', icon: 'category',     route: '/categories' },
+    { label: 'Taxonomia',  icon: 'account_tree', route: '/categories/taxonomy', adminOnly: true },
     { label: 'Equipe',     icon: 'group',        route: '/team', adminOnly: true },
   ];
 
