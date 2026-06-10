@@ -18,6 +18,7 @@ public class TenantRegistrationService {
     private final TenantRepository tenantRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final DefaultCategorySeeder categorySeeder;
 
     @Transactional // O pulo do gato: Atomicidade (Tudo ou Nada)
     public Tenant register(TenantRegistrationDTO dto) {
@@ -46,7 +47,10 @@ public class TenantRegistrationService {
 
         userRepository.save(adminUser);
 
-        // 4. Retorno
+        // 4. Seed de categorias padrão para o novo tenant
+        categorySeeder.seedForTenant(tenant);
+
+        // 5. Retorno
         return tenant;
     }
 }

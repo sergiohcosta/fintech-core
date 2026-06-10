@@ -72,6 +72,11 @@ export interface CategoryCreateDTO {
   color: string;
   /** @nullable */
   parentId?: string | null;
+  /**
+     * Código de taxonomia padrão. null = não alterar valor existente.
+     * @nullable
+     */
+  taxonomyCode?: string | null;
 }
 
 export interface CategoryResponseDTO {
@@ -82,6 +87,11 @@ export interface CategoryResponseDTO {
   /** @nullable */
   parentId?: string | null;
   archived: boolean;
+  /**
+     * Código semântico estável para benchmarking cross-tenant. null = categoria criada pelo usuário.
+     * @nullable
+     */
+  taxonomyCode?: string | null;
   children: CategoryResponseDTO[];
 }
 
@@ -344,7 +354,6 @@ export interface AccountUpdateRequest {
   countInLiquidBalance?: boolean | null;
   /** @nullable */
   countInNetWorth?: boolean | null;
-  /** @nullable */
   creditCardDetails?: CreditCardDetailsRequest | null;
 }
 
