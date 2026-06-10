@@ -168,6 +168,7 @@ class CategoryServiceTest {
         tenant.setId(UUID.randomUUID());
         User user = new User();
         user.setTenant(tenant);
+        user.setRole(UserRole.USER);
         return user;
     }
 

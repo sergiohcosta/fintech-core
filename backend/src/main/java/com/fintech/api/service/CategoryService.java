@@ -53,6 +53,7 @@ public class CategoryService {
             throw new IllegalArgumentException("Categoria já existe neste nível.");
         }
 
+        // taxonomyCode não é definido na criação manual — apenas via mapeamento de taxonomia (PUT) ou seed automático
         Category category = Category.builder()
                 .name(dto.name())
                 .icon(dto.icon())
