@@ -1,6 +1,7 @@
 package com.fintech.api.service;
 
 import com.fintech.api.domain.category.Category;
+import com.fintech.api.domain.enums.UserRole;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.category.CategoryCreateDTO;
@@ -10,6 +11,7 @@ import com.fintech.api.exception.EntityNotFoundException;
 import com.fintech.api.repository.CategoryRepository;
 import com.fintech.api.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -79,6 +81,16 @@ public class CategoryService {
         category.setName(dto.name());
         category.setIcon(dto.icon());
         category.setColor(dto.color());
+
+        if (dto.taxonomyCode() != null) {
+            // taxonomyCode é campo de curadoria global — somente ADMIN pode defini-lo.
+            // AccessDeniedException é interceptada pelo ExceptionTranslationFilter do Spring
+            // Security e convertida automaticamente em 403, sem necessidade de handler explícito.
+            if (user.getRole() != UserRole.ADMIN) {
+                throw new AccessDeniedException("Somente ADMIN pode definir taxonomy_code");
+            }
+            category.setTaxonomyCode(dto.taxonomyCode());
+        }
 
         if (dto.parentId() != null) {
             Category parent = repository.findByIdAndTenantIdAndDeletedAtIsNull(dto.parentId(), user.getTenant().getId())
