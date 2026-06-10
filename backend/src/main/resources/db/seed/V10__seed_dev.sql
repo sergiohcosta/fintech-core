@@ -118,3 +118,71 @@ INSERT INTO invitations (id, tenant_id, email, token, expires_at, used) VALUES
   ('80000000-0000-0000-0000-000000000001', v_tenant,
    'joao@costa.com', 'seed-invite-joao-pending',
    NOW() + INTERVAL '30 days', false);
+
+-- ── 5. Categorias ──────────────────────────────────────────────────────────
+-- Raízes
+INSERT INTO categories (id, tenant_id, created_by, name, icon, color) VALUES
+  (c_moradia,     v_tenant, v_carlos, 'Moradia',       'home',          '#5C6BC0'),
+  (c_alimentacao, v_tenant, v_carlos, 'Alimentação',   'restaurant',    '#66BB6A'),
+  (c_transporte,  v_tenant, v_carlos, 'Transporte',    'directions_car','#FFA726'),
+  (c_saude,       v_tenant, v_carlos, 'Saúde',         'favorite',      '#EF5350'),
+  (c_lazer,       v_tenant, v_carlos, 'Lazer',         'movie',         '#AB47BC'),
+  (c_educacao,    v_tenant, v_carlos, 'Educação',      'school',        '#26C6DA'),
+  (c_roupas,      v_tenant, v_carlos, 'Roupas & Casa', 'checkroom',     '#8D6E63'),
+  (c_receitas,    v_tenant, v_carlos, 'Receitas',      'attach_money',  '#26A69A'),
+  (c_assinaturas, v_tenant, v_carlos, 'Assinaturas',   'smartphone',    '#BDBDBD');
+
+-- Filhas — Moradia
+INSERT INTO categories (id, tenant_id, created_by, name, icon, color, parent_id) VALUES
+  (c_aluguel,    v_tenant, v_carlos, 'Aluguel',    'home',          '#5C6BC0', c_moradia),
+  (c_condominio, v_tenant, v_carlos, 'Condomínio', 'apartment',     '#5C6BC0', c_moradia),
+  (c_energia,    v_tenant, v_carlos, 'Energia',    'bolt',          '#5C6BC0', c_moradia),
+  (c_agua_gas,   v_tenant, v_carlos, 'Água/Gás',   'water_drop',    '#5C6BC0', c_moradia),
+  (c_internet,   v_tenant, v_carlos, 'Internet',   'wifi',          '#5C6BC0', c_moradia);
+
+-- Filhas — Alimentação
+INSERT INTO categories (id, tenant_id, created_by, name, icon, color, parent_id) VALUES
+  (c_supermercado, v_tenant, v_carlos, 'Supermercado', 'shopping_cart',  '#66BB6A', c_alimentacao),
+  (c_restaurante,  v_tenant, v_carlos, 'Restaurante',  'restaurant',     '#66BB6A', c_alimentacao),
+  (c_delivery,     v_tenant, v_carlos, 'Delivery',     'delivery_dining','#66BB6A', c_alimentacao);
+
+-- Filhas — Transporte
+INSERT INTO categories (id, tenant_id, created_by, name, icon, color, parent_id) VALUES
+  (c_combustivel, v_tenant, v_carlos, 'Combustível',  'local_gas_station','#FFA726', c_transporte),
+  (c_uber,        v_tenant, v_carlos, 'Uber/99',      'local_taxi',       '#FFA726', c_transporte),
+  (c_ipva,        v_tenant, v_carlos, 'IPVA / Seguro','receipt_long',     '#FFA726', c_transporte);
+
+-- Filhas — Saúde
+INSERT INTO categories (id, tenant_id, created_by, name, icon, color, parent_id) VALUES
+  (c_farmacia,    v_tenant, v_carlos, 'Farmácia',       'local_pharmacy',    '#EF5350', c_saude),
+  (c_plano_saude, v_tenant, v_carlos, 'Plano de Saúde', 'health_and_safety', '#EF5350', c_saude),
+  (c_academia,    v_tenant, v_carlos, 'Academia',       'fitness_center',    '#EF5350', c_saude);
+
+-- Filhas — Lazer
+INSERT INTO categories (id, tenant_id, created_by, name, icon, color, parent_id) VALUES
+  (c_streaming, v_tenant, v_carlos, 'Streaming',    'play_circle', '#AB47BC', c_lazer),
+  (c_cinema,    v_tenant, v_carlos, 'Cinema/Shows', 'theaters',    '#AB47BC', c_lazer),
+  (c_viagens,   v_tenant, v_carlos, 'Viagens',      'flight',      '#AB47BC', c_lazer);
+
+-- Filhas — Educação
+INSERT INTO categories (id, tenant_id, created_by, name, icon, color, parent_id) VALUES
+  (c_cursos, v_tenant, v_carlos, 'Cursos Online', 'computer',  '#26C6DA', c_educacao),
+  (c_livros, v_tenant, v_carlos, 'Livros',        'menu_book', '#26C6DA', c_educacao);
+
+-- Filhas — Roupas & Casa
+INSERT INTO categories (id, tenant_id, created_by, name, icon, color, parent_id) VALUES
+  (c_compras_gerais, v_tenant, v_carlos, 'Compras Gerais', 'shopping_bag', '#8D6E63', c_roupas);
+
+-- Filhas — Receitas
+INSERT INTO categories (id, tenant_id, created_by, name, icon, color, parent_id) VALUES
+  (c_salario,     v_tenant, v_carlos, 'Salário',     'payments',       '#26A69A', c_receitas),
+  (c_freelance,   v_tenant, v_carlos, 'Freelance',   'work',           '#26A69A', c_receitas),
+  (c_rendimentos, v_tenant, v_carlos, 'Rendimentos', 'account_balance','#26A69A', c_receitas);
+
+-- Filhas — Assinaturas
+INSERT INTO categories (id, tenant_id, created_by, name, icon, color, parent_id) VALUES
+  (c_servicos_dig, v_tenant, v_carlos, 'Serviços Digitais', 'cloud', '#BDBDBD', c_assinaturas);
+
+-- Soft-delete em Assinaturas e Serviços Digitais (arquivadas)
+UPDATE categories SET deleted_at = '2025-11-01 00:00:00'
+WHERE id IN (c_assinaturas, c_servicos_dig);
