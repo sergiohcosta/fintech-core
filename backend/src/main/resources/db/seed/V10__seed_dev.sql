@@ -314,3 +314,59 @@ INSERT INTO transactions (id,tenant_id,user_id,account_id,category_id,descriptio
 -- Compra diversa (sem categoria)
 INSERT INTO transactions (id,tenant_id,user_id,account_id,category_id,description,amount,date,type,status) VALUES
   (gen_random_uuid(),v_tenant,v_carlos,v_carteira,NULL,'Compra diversa',50.00,'2026-01-15','EXPENSE','PAID');
+
+-- ── 10. Transações Nubank recorrentes (Jan–Jun) ────────────────────────────────
+-- Netflix (dia 1 → fatura do próprio mês)
+INSERT INTO transactions (id,tenant_id,user_id,account_id,category_id,description,amount,date,type,status,invoice_id) VALUES
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_streaming,'Netflix',45.00,'2026-01-01','EXPENSE','PAID',   v_inv_nu_jan),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_streaming,'Netflix',45.00,'2026-02-01','EXPENSE','PAID',   v_inv_nu_feb),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_streaming,'Netflix',45.00,'2026-03-01','EXPENSE','PAID',   v_inv_nu_mar),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_streaming,'Netflix',45.00,'2026-04-01','EXPENSE','PAID',   v_inv_nu_apr),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_streaming,'Netflix',45.00,'2026-05-01','EXPENSE','PENDING',v_inv_nu_may),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_streaming,'Netflix',45.00,'2026-06-01','EXPENSE','PENDING',v_inv_nu_jun);
+
+-- iFood #1
+INSERT INTO transactions (id,tenant_id,user_id,account_id,category_id,description,amount,date,type,status,invoice_id) VALUES
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_delivery,'iFood',68.00,'2026-01-01','EXPENSE','PAID',   v_inv_nu_jan),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_delivery,'iFood',68.00,'2026-02-01','EXPENSE','PAID',   v_inv_nu_feb),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_delivery,'iFood',68.00,'2026-03-01','EXPENSE','PAID',   v_inv_nu_mar),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_delivery,'iFood',68.00,'2026-04-01','EXPENSE','PAID',   v_inv_nu_apr),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_delivery,'iFood',68.00,'2026-05-01','EXPENSE','PENDING',v_inv_nu_may),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_delivery,'iFood',68.00,'2026-06-01','EXPENSE','PENDING',v_inv_nu_jun);
+
+-- iFood #2
+INSERT INTO transactions (id,tenant_id,user_id,account_id,category_id,description,amount,date,type,status,invoice_id) VALUES
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_delivery,'iFood Express',82.00,'2026-01-02','EXPENSE','PAID',   v_inv_nu_jan),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_delivery,'iFood Express',82.00,'2026-02-02','EXPENSE','PAID',   v_inv_nu_feb),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_delivery,'iFood Express',82.00,'2026-03-02','EXPENSE','PAID',   v_inv_nu_mar),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_delivery,'iFood Express',82.00,'2026-04-02','EXPENSE','PAID',   v_inv_nu_apr),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_delivery,'iFood Express',82.00,'2026-05-02','EXPENSE','PENDING',v_inv_nu_may),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_delivery,'iFood Express',82.00,'2026-06-02','EXPENSE','PENDING',v_inv_nu_jun);
+
+-- iFood #3
+INSERT INTO transactions (id,tenant_id,user_id,account_id,category_id,description,amount,date,type,status,invoice_id) VALUES
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_delivery,'iFood Mercado',55.00,'2026-01-01','EXPENSE','PAID',   v_inv_nu_jan),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_delivery,'iFood Mercado',55.00,'2026-02-01','EXPENSE','PAID',   v_inv_nu_feb),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_delivery,'iFood Mercado',55.00,'2026-03-01','EXPENSE','PAID',   v_inv_nu_mar),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_delivery,'iFood Mercado',55.00,'2026-04-01','EXPENSE','PAID',   v_inv_nu_apr),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_delivery,'iFood Mercado',55.00,'2026-05-01','EXPENSE','PENDING',v_inv_nu_may),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_delivery,'iFood Mercado',55.00,'2026-06-01','EXPENSE','PENDING',v_inv_nu_jun);
+
+-- Restaurante
+INSERT INTO transactions (id,tenant_id,user_id,account_id,category_id,description,amount,date,type,status,invoice_id) VALUES
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_restaurante,'Restaurante',145.00,'2026-01-01','EXPENSE','PAID',   v_inv_nu_jan),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_restaurante,'Restaurante',145.00,'2026-02-01','EXPENSE','PAID',   v_inv_nu_feb),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_restaurante,'Restaurante',145.00,'2026-03-01','EXPENSE','PAID',   v_inv_nu_mar),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_restaurante,'Restaurante',145.00,'2026-04-01','EXPENSE','PAID',   v_inv_nu_apr),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_restaurante,'Restaurante',145.00,'2026-05-01','EXPENSE','PENDING',v_inv_nu_may),
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_restaurante,'Restaurante',145.00,'2026-06-01','EXPENSE','PENDING',v_inv_nu_jun);
+
+-- ── 11. Cenários especiais Nubank ──────────────────────────────────────────
+-- Spotify Dez/2025 — categoria arquivada
+INSERT INTO transactions (id,tenant_id,user_id,account_id,category_id,description,amount,date,type,status,invoice_id) VALUES
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_servicos_dig,'Spotify Premium',
+   21.90,'2025-12-01','EXPENSE','PAID',v_inv_nu_dec2025);
+
+-- Ingresso show CANCELLED — sem invoice_id
+INSERT INTO transactions (id,tenant_id,user_id,account_id,category_id,description,amount,date,type,status) VALUES
+  (gen_random_uuid(),v_tenant,v_carlos,v_nubank,c_cinema,'Ingresso Show',120.00,'2026-01-15','EXPENSE','CANCELLED');
