@@ -1,6 +1,7 @@
 package com.fintech.api.service;
 
 import com.fintech.api.domain.category.Category;
+import com.fintech.api.domain.enums.UserRole;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.category.CategoryCreateDTO;
@@ -12,11 +13,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -42,7 +45,7 @@ class CategoryServiceTest {
                 .thenReturn(Optional.of(parent));
         when(repository.save(any())).thenReturn(parent);
 
-        CategoryCreateDTO dto = new CategoryCreateDTO("Pai", "home", "#00ff00", null);
+        CategoryCreateDTO dto = new CategoryCreateDTO("Pai", "home", "#00ff00", null, null);
         service.update(parent.getId(), dto, user);
 
         assertThat(child.getIcon()).isEqualTo("home");
@@ -64,7 +67,7 @@ class CategoryServiceTest {
                 .thenReturn(Optional.of(parent));
         when(repository.save(any())).thenReturn(parent);
 
-        CategoryCreateDTO dto = new CategoryCreateDTO("Pai", "star", "#abcdef", null);
+        CategoryCreateDTO dto = new CategoryCreateDTO("Pai", "star", "#abcdef", null, null);
         service.update(parent.getId(), dto, user);
 
         assertThat(child.getIcon()).isEqualTo("star");
@@ -87,7 +90,7 @@ class CategoryServiceTest {
         when(repository.save(any())).thenReturn(parent);
 
         // Mesmo ícone e cor do pai, só o nome muda
-        CategoryCreateDTO dto = new CategoryCreateDTO("Pai Renomeado", "folder", "#3f51b5", null);
+        CategoryCreateDTO dto = new CategoryCreateDTO("Pai Renomeado", "folder", "#3f51b5", null, null);
         service.update(parent.getId(), dto, user);
 
         assertThat(child.getIcon()).isEqualTo("shopping_cart");
@@ -104,11 +107,58 @@ class CategoryServiceTest {
                 .thenReturn(Optional.of(leaf));
         when(repository.save(any())).thenReturn(leaf);
 
-        CategoryCreateDTO dto = new CategoryCreateDTO("Folha", "home", "#ffffff", null);
+        CategoryCreateDTO dto = new CategoryCreateDTO("Folha", "home", "#ffffff", null, null);
         service.update(leaf.getId(), dto, user);
 
         assertThat(leaf.getIcon()).isEqualTo("home");
         assertThat(leaf.getColor()).isEqualTo("#ffffff");
+    }
+
+    // ─── update: taxonomyCode ────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("update persiste taxonomyCode quando usuário é ADMIN")
+    void update_persistsTaxonomyCodeForAdmin() {
+        User admin = buildAdmin();
+        Category category = buildCategory("Moradia", "home", "#3f51b5");
+        when(repository.findByIdAndTenantIdAndDeletedAtIsNull(category.getId(), admin.getTenant().getId()))
+                .thenReturn(Optional.of(category));
+        when(repository.save(any())).thenReturn(category);
+
+        CategoryCreateDTO dto = new CategoryCreateDTO("Moradia", "home", "#3f51b5", null, "HOUSING");
+        service.update(category.getId(), dto, admin);
+
+        assertThat(category.getTaxonomyCode()).isEqualTo("HOUSING");
+    }
+
+    @Test
+    @DisplayName("update lança AccessDeniedException quando não-ADMIN tenta definir taxonomyCode")
+    void update_throwsAccessDeniedForNonAdmin() {
+        User user = buildUser();
+        Category category = buildCategory("Moradia", "home", "#3f51b5");
+        when(repository.findByIdAndTenantIdAndDeletedAtIsNull(category.getId(), user.getTenant().getId()))
+                .thenReturn(Optional.of(category));
+
+        CategoryCreateDTO dto = new CategoryCreateDTO("Moradia", "home", "#3f51b5", null, "HOUSING");
+
+        assertThatThrownBy(() -> service.update(category.getId(), dto, user))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    @DisplayName("update NÃO altera taxonomyCode quando dto.taxonomyCode() é null")
+    void update_doesNotAlterTaxonomyCodeWhenNull() {
+        User admin = buildAdmin();
+        Category category = buildCategory("Moradia", "home", "#3f51b5");
+        category.setTaxonomyCode("HOUSING");
+        when(repository.findByIdAndTenantIdAndDeletedAtIsNull(category.getId(), admin.getTenant().getId()))
+                .thenReturn(Optional.of(category));
+        when(repository.save(any())).thenReturn(category);
+
+        CategoryCreateDTO dto = new CategoryCreateDTO("Moradia Renomeada", "home", "#3f51b5", null, null);
+        service.update(category.getId(), dto, admin);
+
+        assertThat(category.getTaxonomyCode()).isEqualTo("HOUSING");
     }
 
     // ─── helpers ──────────────────────────────────────────────────────────
@@ -119,6 +169,15 @@ class CategoryServiceTest {
         User user = new User();
         user.setTenant(tenant);
         return user;
+    }
+
+    private User buildAdmin() {
+        Tenant tenant = new Tenant();
+        tenant.setId(UUID.randomUUID());
+        User admin = new User();
+        admin.setTenant(tenant);
+        admin.setRole(UserRole.ADMIN);
+        return admin;
     }
 
     private Category buildCategory(String name, String icon, String color) {
