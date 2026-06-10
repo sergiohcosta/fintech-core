@@ -588,6 +588,10 @@ components:
         countInNetWorth:
           type: boolean
           nullable: true
+        creditCardDetails:
+          oneOf:
+            - $ref: '#/components/schemas/CreditCardDetailsRequest'
+          nullable: true
 
     AccountResponse:
       type: object
