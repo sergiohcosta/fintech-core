@@ -50,6 +50,13 @@ export const routes: Routes = [
         loadComponent: () => import('./features/category/category-form/category-form').then(m => m.CategoryForm)
       },
       {
+        path: 'categories/taxonomy',
+        loadComponent: () =>
+          import('./features/category/taxonomy-mapping/taxonomy-mapping').then(
+            m => m.TaxonomyMappingComponent
+          )
+      },
+      {
         path: 'categories/:id',
         loadComponent: () => import('./features/category/category-form/category-form').then(m => m.CategoryForm)
       },
