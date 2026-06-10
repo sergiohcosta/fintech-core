@@ -1,6 +1,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
+import { finalize } from 'rxjs/operators';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -40,11 +41,12 @@ export class TaxonomyMappingComponent implements OnInit {
 
   // Conjunto de todos os códigos já em uso (salvos + pendentes)
   usedCodes = computed(() => {
+    const pending = this.pendingMappings();
+    // exclui o código salvo de categorias que já têm override pendente
     const saved = this.rootCategories()
-      .filter(c => c.taxonomyCode)
+      .filter(c => c.taxonomyCode && !pending.has(c.id))
       .map(c => c.taxonomyCode!);
-    const pending = [...this.pendingMappings().values()];
-    return new Set([...saved, ...pending]);
+    return new Set([...saved, ...pending.values()]);
   });
 
   // Sugestão automática para a categoria selecionada
@@ -112,30 +114,31 @@ export class TaxonomyMappingComponent implements OnInit {
     const mappings = this.pendingMappings();
     if (!mappings.size) return;
 
-    const calls = [...mappings.entries()].map(([id, taxonomyCode]) => {
-      const cat = this.rootCategories().find(c => c.id === id)!;
-      return this.categoriesService.updateCategory(id, {
+    const calls = [...mappings.entries()].flatMap(([id, taxonomyCode]) => {
+      const cat = this.rootCategories().find(c => c.id === id);
+      if (!cat) return [];
+      return [this.categoriesService.updateCategory(id, {
         name: cat.name,
         icon: cat.icon,
         color: cat.color,
         parentId: cat.parentId ?? null,
         taxonomyCode,
-      });
+      })];
     });
 
     this.saving.set(true);
-    forkJoin(calls).subscribe({
+    forkJoin(calls).pipe(
+      finalize(() => this.saving.set(false))
+    ).subscribe({
       next: (updated) => {
         // Atualiza rootCategories com os valores retornados pelo backend
         this.rootCategories.update(cats =>
           cats.map(c => updated.find(r => r.id === c.id) ?? c)
         );
         this.pendingMappings.set(new Map());
-        this.saving.set(false);
         this.snackBar.open('Mapeamento salvo com sucesso.', 'OK', { duration: 3000 });
       },
       error: () => {
-        this.saving.set(false);
         this.snackBar.open('Erro ao salvar mapeamento.', 'Fechar', { duration: 4000 });
       },
     });
