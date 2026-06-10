@@ -45,23 +45,34 @@ Isso preserva:
 
 ## 3. Taxonomia Padrão
 
-9 categorias raiz, cada uma com subcategorias predefinidas.
+14 categorias raiz, cada uma com subcategorias predefinidas.
 
-| Raiz | `taxonomy_code` | Subcategorias |
-|------|-----------------|---------------|
-| Moradia | `HOUSING` | Aluguel (`HOUSING_RENT`), Condomínio (`HOUSING_CONDO`), Energia (`HOUSING_ENERGY`), Água/Gás (`HOUSING_WATER_GAS`), Internet (`HOUSING_INTERNET`) |
-| Alimentação | `FOOD` | Supermercado (`FOOD_GROCERY`), Restaurante (`FOOD_RESTAURANT`), Delivery (`FOOD_DELIVERY`) |
-| Transporte | `TRANSPORT` | Combustível (`TRANSPORT_FUEL`), Uber/99 (`TRANSPORT_RIDESHARE`), IPVA/Seguro (`TRANSPORT_VEHICLE_TAX`) |
-| Saúde | `HEALTH` | Farmácia (`HEALTH_PHARMACY`), Plano de Saúde (`HEALTH_INSURANCE`), Academia (`HEALTH_GYM`) |
-| Lazer | `LEISURE` | Streaming (`LEISURE_STREAMING`), Cinema/Shows (`LEISURE_ENTERTAINMENT`), Viagens (`LEISURE_TRAVEL`) |
-| Educação | `EDUCATION` | Cursos Online (`EDUCATION_ONLINE_COURSES`), Livros (`EDUCATION_BOOKS`) |
-| Roupas & Casa | `CLOTHING_HOME` | Compras Gerais (`CLOTHING_HOME_SHOPPING`) |
-| Receitas | `INCOME` | Salário (`INCOME_SALARY`), Freelance (`INCOME_FREELANCE`), Rendimentos (`INCOME_INVESTMENT_RETURNS`) |
-| Assinaturas | `SUBSCRIPTIONS` | Serviços Digitais (`SUBSCRIPTIONS_DIGITAL_SERVICES`) |
+| # | Raiz | `taxonomy_code` | Subcategorias |
+|---|------|-----------------|---------------|
+| 1 | Renda | `INCOME` | Salário (`INCOME_SALARY`), Freelance (`INCOME_FREELANCE`), Rendimentos (`INCOME_INVESTMENT_RETURNS`), Reembolso (`INCOME_REIMBURSEMENT`) |
+| 2 | Moradia | `HOUSING` | Aluguel/Prestação (`HOUSING_RENT`), Condomínio (`HOUSING_CONDO`), Energia (`HOUSING_ENERGY`), Água e Gás (`HOUSING_WATER_GAS`), Internet/TV (`HOUSING_INTERNET`) |
+| 3 | Alimentação | `FOOD` | Supermercado (`FOOD_GROCERY`), Restaurante (`FOOD_RESTAURANT`), Delivery (`FOOD_DELIVERY`), Padaria/Café (`FOOD_BAKERY`) |
+| 4 | Transporte | `TRANSPORT` | Combustível (`TRANSPORT_FUEL`), Uber/Apps (`TRANSPORT_RIDESHARE`), Transporte Público (`TRANSPORT_PUBLIC`), IPVA/Seguro Auto (`TRANSPORT_VEHICLE_TAX`), Manutenção do Veículo (`TRANSPORT_VEHICLE_MAINTENANCE`) |
+| 5 | Saúde | `HEALTH` | Farmácia (`HEALTH_PHARMACY`), Plano de Saúde (`HEALTH_INSURANCE`), Consultas e Exames (`HEALTH_APPOINTMENTS`), Academia e Esporte (`HEALTH_FITNESS`), Saúde Mental (`HEALTH_MENTAL`) |
+| 6 | Lazer | `LEISURE` | Cinema e Shows (`LEISURE_ENTERTAINMENT`), Viagens (`LEISURE_TRAVEL`), Hobbies (`LEISURE_HOBBIES`), Bares e Baladas (`LEISURE_NIGHTLIFE`) |
+| 7 | Educação | `EDUCATION` | Cursos e Treinamentos (`EDUCATION_COURSES`), Livros e Material (`EDUCATION_BOOKS`), Escola/Faculdade (`EDUCATION_SCHOOL`) |
+| 8 | Vestuário | `CLOTHING` | Roupas e Calçados (`CLOTHING_APPAREL`), Acessórios (`CLOTHING_ACCESSORIES`), Lavanderia/Tinturaria (`CLOTHING_LAUNDRY`) |
+| 9 | Casa & Decoração | `HOME_GOODS` | Móveis e Decoração (`HOME_GOODS_FURNITURE`), Utilidades Domésticas (`HOME_GOODS_UTILITIES`), Manutenção e Reparos (`HOME_GOODS_MAINTENANCE`) |
+| 10 | Assinaturas | `SUBSCRIPTIONS` | Streaming de Vídeo (`SUBSCRIPTIONS_VIDEO`), Streaming de Música (`SUBSCRIPTIONS_MUSIC`), Games (`SUBSCRIPTIONS_GAMING`), Apps e Software (`SUBSCRIPTIONS_SOFTWARE`) |
+| 11 | Cuidados Pessoais | `PERSONAL_CARE` | Cabelo e Beleza (`PERSONAL_CARE_BEAUTY`), Higiene e Cuidados (`PERSONAL_CARE_HYGIENE`), Bem-estar e Spa (`PERSONAL_CARE_WELLNESS`) |
+| 12 | Pets | `PETS` | Ração e Petshop (`PETS_FOOD`), Veterinário (`PETS_VET`), Banho e Tosa (`PETS_GROOMING`) |
+| 13 | Financeiro | `FINANCIAL` | Impostos e Taxas (`FINANCIAL_TAXES`), Tarifas Bancárias (`FINANCIAL_BANK_FEES`), Empréstimos/Financiamentos (`FINANCIAL_LOANS`), Seguros (`FINANCIAL_INSURANCE`) |
+| 14 | Presentes e Doações | `GIFTS` | Presentes (`GIFTS_PRESENTS`), Doações (`GIFTS_DONATIONS`) |
 
-**Total: 9 raízes + 24 subcategorias = 33 categorias por tenant.**
+**Total: 14 raízes + 52 subcategorias = 66 categorias por tenant.**
 
-> A taxonomia é idêntica ao seed da Família Costa (`V10__seed_dev.sql`). Isso não é coincidência — o V10 foi projetado para ser representativo.
+### Regra de desambiguação: Seguros
+
+Seguros aparecem em dois contextos. A distinção é:
+- **Transporte → IPVA/Seguro Auto** (`TRANSPORT_VEHICLE_TAX`): seguro obrigatório e DPVAT, seguro do veículo — gasto inerente ao carro
+- **Financeiro → Seguros** (`FINANCIAL_INSURANCE`): seguro de vida, seguro residencial, seguro saúde privado fora do plano — produto financeiro contratado separadamente
+
+> O V10 (seed da Família Costa) cobre um subconjunto desta taxonomia e precisará ser expandido com as 5 novas raízes e subcategorias adicionais ao ser atualizado.
 
 ---
 
@@ -120,19 +131,38 @@ public record CategoryResponseDTO(
 com.fintech.api.domain.category.CategoryTaxonomy
 ```
 
-Enum com todos os 33 códigos. Serve como fonte da verdade para o seeder e para validação em code review.
+Enum com todos os 66 códigos. Serve como fonte da verdade para o seeder e para validação em code review.
 
 ```java
 public enum CategoryTaxonomy {
+    // Renda
+    INCOME, INCOME_SALARY, INCOME_FREELANCE, INCOME_INVESTMENT_RETURNS, INCOME_REIMBURSEMENT,
+    // Moradia
     HOUSING, HOUSING_RENT, HOUSING_CONDO, HOUSING_ENERGY, HOUSING_WATER_GAS, HOUSING_INTERNET,
-    FOOD, FOOD_GROCERY, FOOD_RESTAURANT, FOOD_DELIVERY,
-    TRANSPORT, TRANSPORT_FUEL, TRANSPORT_RIDESHARE, TRANSPORT_VEHICLE_TAX,
-    HEALTH, HEALTH_PHARMACY, HEALTH_INSURANCE, HEALTH_GYM,
-    LEISURE, LEISURE_STREAMING, LEISURE_ENTERTAINMENT, LEISURE_TRAVEL,
-    EDUCATION, EDUCATION_ONLINE_COURSES, EDUCATION_BOOKS,
-    CLOTHING_HOME, CLOTHING_HOME_SHOPPING,
-    INCOME, INCOME_SALARY, INCOME_FREELANCE, INCOME_INVESTMENT_RETURNS,
-    SUBSCRIPTIONS, SUBSCRIPTIONS_DIGITAL_SERVICES
+    // Alimentação
+    FOOD, FOOD_GROCERY, FOOD_RESTAURANT, FOOD_DELIVERY, FOOD_BAKERY,
+    // Transporte
+    TRANSPORT, TRANSPORT_FUEL, TRANSPORT_RIDESHARE, TRANSPORT_PUBLIC, TRANSPORT_VEHICLE_TAX, TRANSPORT_VEHICLE_MAINTENANCE,
+    // Saúde
+    HEALTH, HEALTH_PHARMACY, HEALTH_INSURANCE, HEALTH_APPOINTMENTS, HEALTH_FITNESS, HEALTH_MENTAL,
+    // Lazer
+    LEISURE, LEISURE_ENTERTAINMENT, LEISURE_TRAVEL, LEISURE_HOBBIES, LEISURE_NIGHTLIFE,
+    // Educação
+    EDUCATION, EDUCATION_COURSES, EDUCATION_BOOKS, EDUCATION_SCHOOL,
+    // Vestuário
+    CLOTHING, CLOTHING_APPAREL, CLOTHING_ACCESSORIES, CLOTHING_LAUNDRY,
+    // Casa & Decoração
+    HOME_GOODS, HOME_GOODS_FURNITURE, HOME_GOODS_UTILITIES, HOME_GOODS_MAINTENANCE,
+    // Assinaturas
+    SUBSCRIPTIONS, SUBSCRIPTIONS_VIDEO, SUBSCRIPTIONS_MUSIC, SUBSCRIPTIONS_GAMING, SUBSCRIPTIONS_SOFTWARE,
+    // Cuidados Pessoais
+    PERSONAL_CARE, PERSONAL_CARE_BEAUTY, PERSONAL_CARE_HYGIENE, PERSONAL_CARE_WELLNESS,
+    // Pets
+    PETS, PETS_FOOD, PETS_VET, PETS_GROOMING,
+    // Financeiro
+    FINANCIAL, FINANCIAL_TAXES, FINANCIAL_BANK_FEES, FINANCIAL_LOANS, FINANCIAL_INSURANCE,
+    // Presentes e Doações
+    GIFTS, GIFTS_PRESENTS, GIFTS_DONATIONS
 }
 ```
 
@@ -164,7 +194,7 @@ public record CategoryTemplateNode(
 com.fintech.api.service.DefaultCategorySeeder
 ```
 
-Responsabilidade única: dado um `Tenant`, criar as 33 categorias padrão e persistir em batch.
+Responsabilidade única: dado um `Tenant`, criar as 66 categorias padrão e persistir em batch.
 
 ```java
 @Service
@@ -276,9 +306,9 @@ INSERT INTO categories (id, tenant_id, created_by, name, icon, color, taxonomy_c
 Arquivo: `backend/src/test/java/com/fintech/api/service/DefaultCategorySeederTest.java`
 
 Cenários obrigatórios:
-- `seedForTenant` cria exatamente 33 categorias (9 raízes + 24 filhas)
-- Todas as 9 raízes têm `parent == null`
-- Todas as 33 categorias têm `taxonomy_code != null`
+- `seedForTenant` cria exatamente 66 categorias (14 raízes + 52 filhas)
+- Todas as 14 raízes têm `parent == null`
+- Todas as 66 categorias têm `taxonomy_code != null`
 - Nenhuma categoria tem `tenant` nulo
 - `categoryRepository.saveAll()` é chamado uma única vez (batch)
 
@@ -293,7 +323,7 @@ Verificar que a integração com `DefaultCategorySeeder` é chamada:
 Cenário de smoke test end-to-end:
 - Registrar novo tenant via `TenantRegistrationService.register()`
 - Consultar `GET /api/categories` com token do admin criado
-- Verificar que a resposta contém 9 categorias raiz
+- Verificar que a resposta contém 14 categorias raiz
 - Verificar que ao menos uma categoria raiz tem `taxonomyCode` não nulo
 
 ---
