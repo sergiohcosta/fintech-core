@@ -181,6 +181,38 @@ Ocultar no frontend **não substitui** proteção no backend. O frontend é cont
 
 **Exemplo concreto (issue #24):** `GET /api/members` e `GET /invites` são exclusivos de ADMIN — protegidos em `SecurityConfigurations.java` com `hasRole("ADMIN")` **e** ocultos no frontend via `isAdmin()` no sidenav e no `forkJoin` do `TeamComponent`.
 
+### Dataset de Testes — Família Costa
+
+O projeto mantém um dataset realista (`V10__seed_dev.sql`) que deve ser tratado como **artefato vivo** — parte da especificação do sistema. Mantê-lo desatualizado equivale a ter documentação errada.
+
+**Artefatos:**
+- `backend/src/main/resources/db/seed/V10__seed_dev.sql` — seed Flyway, perfil `dev` apenas
+- `backend/src/test/resources/sql/seed_base.sql` / `cleanup.sql` — fixture para Testcontainers
+- `docs/http/seed-dataset.http` — HTTP collection IntelliJ/VS Code
+- Spec completa: `docs/superpowers/specs/2026-06-09-test-dataset-design.md`
+
+**Regra para SDD e TDD — ao implementar qualquer feature:**
+
+| Situação | Ação obrigatória |
+|----------|-----------------|
+| Nova tabela de negócio adicionada | Inserir dados representativos no `V10__seed_dev.sql` |
+| Nova coluna relevante em tabela existente | Atualizar os INSERTs do `V10__seed_dev.sql` |
+| Nova entidade necessária para setup mínimo de testes | Atualizar `seed_base.sql` |
+| Novo endpoint ou novo parâmetro de endpoint | Adicionar request em `docs/http/seed-dataset.http` |
+| Feature puramente de frontend / refatoração | Nenhuma atualização necessária |
+
+**Ao atualizar `V10__seed_dev.sql`:** manter o padrão de UUIDs predefinidos. Novas entidades recebem UUIDs na série correspondente (ver spec). Nunca usar `gen_random_uuid()` para entidades que precisam de cross-reference.
+
+**Credenciais:**
+- Dev (banco com seed): `carlos@costa.com` / `costa123`
+- Testes de integração (`seed_base.sql`): `admin@test.com` / `admin123`
+
+**Reset do banco dev:**
+```bash
+docker exec fintech-postgres psql -U admin -d postgres -c "DROP DATABASE fintech; CREATE DATABASE fintech;"
+SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run
+```
+
 ---
 
 ## 📂 Estrutura de Diretórios
