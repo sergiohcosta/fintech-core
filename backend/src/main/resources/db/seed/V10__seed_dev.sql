@@ -214,3 +214,103 @@ INSERT INTO installment_groups (id, tenant_id, account_id, category_id,
    'Notebook Samsung', 4200.00, 12),
   (v_grp_geladeira, v_tenant, v_inter,  c_compras_gerais,
    'Geladeira Brastemp', 1680.00, 6);
+
+-- ── 8. Transações Bradesco — recorrentes Jan–Jun ───────────────────────────
+-- Salário Carlos
+INSERT INTO transactions (id,tenant_id,user_id,account_id,category_id,description,amount,date,type,status) VALUES
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_salario,'Salário Carlos',8500.00,'2026-01-05','INCOME','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_salario,'Salário Carlos',8500.00,'2026-02-05','INCOME','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_salario,'Salário Carlos',8500.00,'2026-03-05','INCOME','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_salario,'Salário Carlos',8500.00,'2026-04-05','INCOME','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_salario,'Salário Carlos',8500.00,'2026-05-05','INCOME','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_salario,'Salário Carlos',8500.00,'2026-06-05','INCOME','PAID');
+
+-- Aluguel
+INSERT INTO transactions (id,tenant_id,user_id,account_id,category_id,description,amount,date,type,status) VALUES
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_aluguel,'Aluguel',2200.00,'2026-01-05','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_aluguel,'Aluguel',2200.00,'2026-02-05','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_aluguel,'Aluguel',2200.00,'2026-03-05','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_aluguel,'Aluguel',2200.00,'2026-04-05','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_aluguel,'Aluguel',2200.00,'2026-05-05','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_aluguel,'Aluguel',2200.00,'2026-06-05','EXPENSE','PAID');
+
+-- Condomínio
+INSERT INTO transactions (id,tenant_id,user_id,account_id,category_id,description,amount,date,type,status) VALUES
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_condominio,'Condomínio',350.00,'2026-01-05','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_condominio,'Condomínio',350.00,'2026-02-05','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_condominio,'Condomínio',350.00,'2026-03-05','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_condominio,'Condomínio',350.00,'2026-04-05','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_condominio,'Condomínio',350.00,'2026-05-05','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_condominio,'Condomínio',350.00,'2026-06-05','EXPENSE','PAID');
+
+-- Energia (Jun = PENDING)
+INSERT INTO transactions (id,tenant_id,user_id,account_id,category_id,description,amount,date,type,status) VALUES
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_energia,'Energia',180.00,'2026-01-10','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_energia,'Energia',180.00,'2026-02-10','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_energia,'Energia',180.00,'2026-03-10','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_energia,'Energia',180.00,'2026-04-10','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_energia,'Energia',180.00,'2026-05-10','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_energia,'Energia',180.00,'2026-06-10','EXPENSE','PENDING');
+
+-- Água/Gás (Jun = PENDING)
+INSERT INTO transactions (id,tenant_id,user_id,account_id,category_id,description,amount,date,type,status) VALUES
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_agua_gas,'Água/Gás',90.00,'2026-01-10','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_agua_gas,'Água/Gás',90.00,'2026-02-10','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_agua_gas,'Água/Gás',90.00,'2026-03-10','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_agua_gas,'Água/Gás',90.00,'2026-04-10','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_agua_gas,'Água/Gás',90.00,'2026-05-10','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_agua_gas,'Água/Gás',90.00,'2026-06-10','EXPENSE','PENDING');
+
+-- Internet
+INSERT INTO transactions (id,tenant_id,user_id,account_id,category_id,description,amount,date,type,status) VALUES
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_internet,'Internet',120.00,'2026-01-10','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_internet,'Internet',120.00,'2026-02-10','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_internet,'Internet',120.00,'2026-03-10','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_internet,'Internet',120.00,'2026-04-10','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_internet,'Internet',120.00,'2026-05-10','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_internet,'Internet',120.00,'2026-06-10','EXPENSE','PAID');
+
+-- Supermercado #1
+INSERT INTO transactions (id,tenant_id,user_id,account_id,category_id,description,amount,date,type,status) VALUES
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_supermercado,'Supermercado Pão de Açúcar',280.00,'2026-01-10','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_supermercado,'Supermercado Pão de Açúcar',280.00,'2026-02-10','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_supermercado,'Supermercado Pão de Açúcar',280.00,'2026-03-10','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_supermercado,'Supermercado Pão de Açúcar',280.00,'2026-04-10','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_supermercado,'Supermercado Pão de Açúcar',280.00,'2026-05-10','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_supermercado,'Supermercado Pão de Açúcar',280.00,'2026-06-10','EXPENSE','PAID');
+
+-- Supermercado #2
+INSERT INTO transactions (id,tenant_id,user_id,account_id,category_id,description,amount,date,type,status) VALUES
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_supermercado,'Supermercado Extra',195.00,'2026-01-20','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_supermercado,'Supermercado Extra',195.00,'2026-02-20','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_supermercado,'Supermercado Extra',195.00,'2026-03-20','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_supermercado,'Supermercado Extra',195.00,'2026-04-20','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_supermercado,'Supermercado Extra',195.00,'2026-05-20','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_supermercado,'Supermercado Extra',195.00,'2026-06-20','EXPENSE','PAID');
+
+-- Combustível
+INSERT INTO transactions (id,tenant_id,user_id,account_id,category_id,description,amount,date,type,status) VALUES
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_combustivel,'Combustível',220.00,'2026-01-15','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_combustivel,'Combustível',220.00,'2026-02-15','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_combustivel,'Combustível',220.00,'2026-03-15','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_combustivel,'Combustível',220.00,'2026-04-15','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_combustivel,'Combustível',220.00,'2026-05-15','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_bradesco,c_combustivel,'Combustível',220.00,'2026-06-15','EXPENSE','PAID');
+
+-- ── 9. Transações Carteira ─────────────────────────────────────────────────
+-- Farmácia — Carlos (todos os meses)
+INSERT INTO transactions (id,tenant_id,user_id,account_id,category_id,description,amount,date,type,status) VALUES
+  (gen_random_uuid(),v_tenant,v_carlos,v_carteira,c_farmacia,'Farmácia',75.00,'2026-01-10','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_carteira,c_farmacia,'Farmácia',75.00,'2026-02-10','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_carteira,c_farmacia,'Farmácia',75.00,'2026-03-10','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_carteira,c_farmacia,'Farmácia',75.00,'2026-04-10','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_carteira,c_farmacia,'Farmácia',75.00,'2026-05-10','EXPENSE','PAID'),
+  (gen_random_uuid(),v_tenant,v_carlos,v_carteira,c_farmacia,'Farmácia',75.00,'2026-06-10','EXPENSE','PAID');
+
+-- Farmácia — Ana (Mar/2026)
+INSERT INTO transactions (id,tenant_id,user_id,account_id,category_id,description,amount,date,type,status) VALUES
+  (gen_random_uuid(),v_tenant,v_ana,v_carteira,c_farmacia,'Farmácia',65.00,'2026-03-12','EXPENSE','PAID');
+
+-- Compra diversa (sem categoria)
+INSERT INTO transactions (id,tenant_id,user_id,account_id,category_id,description,amount,date,type,status) VALUES
+  (gen_random_uuid(),v_tenant,v_carlos,v_carteira,NULL,'Compra diversa',50.00,'2026-01-15','EXPENSE','PAID');
