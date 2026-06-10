@@ -97,6 +97,10 @@ components:
           type: string
           format: uuid
           nullable: true
+        taxonomyCode:
+          type: string
+          nullable: true
+          description: "Código de taxonomia padrão. null = não alterar valor existente."
 
     CategoryResponseDTO:
       type: object
