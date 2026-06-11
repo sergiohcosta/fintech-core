@@ -59,6 +59,7 @@
             <mat-label>Data</mat-label>
             <input matInput [matDatepicker]="picker" formControlName="date"
                    placeholder="dd/mm/aaaa"
+                   (click)="openDatePicker(picker)"
                    (keydown)="onDateKeydown($event)"
                    (blur)="onDateBlur($event)" />
             <mat-datepicker-toggle matIconSuffix [for]="picker" />
@@ -246,6 +247,7 @@
             <mat-label>Data</mat-label>
             <input matInput [matDatepicker]="transferPicker" formControlName="date"
                    placeholder="dd/mm/aaaa"
+                   (click)="openDatePicker(transferPicker)"
                    (keydown)="onDateKeydown($event)"
                    (blur)="onDateBlur($event)" />
             <mat-datepicker-toggle matIconSuffix [for]="transferPicker" />
