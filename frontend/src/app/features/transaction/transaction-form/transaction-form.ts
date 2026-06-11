@@ -26,6 +26,7 @@ import { CategoriesService } from '../../../core/api/categories/categories.servi
 import { AccountsService } from '../../../core/api/accounts/accounts.service';
 import { CategoryResponseDTO, AccountResponse } from '../../../core/api/fintechSaaSAPI.schemas';
 import { buildInstallmentPreview, CreditCardPreviewConfig } from './installment-preview';
+import { evaluateMathExpression } from './amount-math';
 export { buildInstallmentPreview } from './installment-preview';
 export type { InstallmentPreviewRow, CreditCardPreviewConfig } from './installment-preview';
 
@@ -226,16 +227,39 @@ export class TransactionForm implements OnInit {
 
   onAmountInput(event: Event): void {
     const input = event.target as HTMLInputElement;
-    const cleaned = input.value.replace(/[^\d,]/g, '');
+    const raw = input.value;
+    if (raw.startsWith('=')) {
+      // modo fórmula — avaliado no blur; mantém formulário inválido até lá
+      this.form.controls.amount.setValue(null);
+      this.form.controls.amount.markAsTouched();
+      return;
+    }
+    const cleaned = raw.replace(/[^\d,]/g, '');
     const asFloat = parseFloat(cleaned.replace(',', '.'));
     this.form.controls.amount.setValue(isNaN(asFloat) ? null : asFloat);
     this.form.controls.amount.markAsTouched();
   }
 
   onAmountBlur(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const raw = input.value;
+    if (raw.startsWith('=')) {
+      const result = evaluateMathExpression(raw.slice(1));
+      if (result !== null && result > 0) {
+        const rounded = Math.round(result * 100) / 100;
+        this.form.controls.amount.setValue(rounded);
+        const formatted = this.formatAmount(rounded);
+        input.value = formatted;
+        this.amountDisplay.set(formatted);
+      } else {
+        this.form.controls.amount.setValue(null);
+        input.value = '';
+        this.amountDisplay.set('');
+      }
+      return;
+    }
     const val = this.form.controls.amount.value;
     if (val !== null && val !== undefined) {
-      const input = event.target as HTMLInputElement;
       const formatted = this.formatAmount(val);
       input.value = formatted;
       this.amountDisplay.set(formatted);
@@ -248,10 +272,27 @@ export class TransactionForm implements OnInit {
     input.value = val !== null && val !== undefined ? String(val).replace('.', ',') : '';
   }
 
-  // --- Máscara de data (#18) ---
+  // --- Campo de data ---
+
+  openDatePicker(picker: MatDatepicker<Date>): void {
+    if (!picker.opened) picker.open();
+  }
 
   onDateKeydown(event: KeyboardEvent): void {
-    const PASS_THROUGH = ['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter'];
+    if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+      const isOpen = this.picker?.opened || this.transferPicker?.opened;
+      if (isOpen) return;
+      event.preventDefault();
+      const current = this.form.controls.date.value;
+      if (current instanceof Date && !isNaN(current.getTime())) {
+        const next = new Date(current);
+        next.setDate(next.getDate() + (event.key === 'ArrowUp' ? 1 : -1));
+        this.form.controls.date.setValue(next);
+      }
+      return;
+    }
+
+    const PASS_THROUGH = ['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'Enter'];
     if (PASS_THROUGH.includes(event.key) || !(/^\d$/.test(event.key))) return;
 
     const input = event.target as HTMLInputElement;
