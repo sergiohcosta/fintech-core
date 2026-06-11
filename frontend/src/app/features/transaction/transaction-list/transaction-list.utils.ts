@@ -38,10 +38,31 @@ export type DisplayRow =
   | { kind: 'period-header';      key: string; label: string; totalIncome: number; totalExpense: number; balance: number }
   | InvoiceHeaderRow;
 
+function sortTransferPairsTogether(transactions: TransactionResponseDTO[]): TransactionResponseDTO[] {
+  const result: TransactionResponseDTO[] = [];
+  const placed = new Set<string>();
+  for (const t of transactions) {
+    if (placed.has(t.id)) continue;
+    placed.add(t.id);
+    result.push(t);
+    if (t.transferId) {
+      const pair = transactions.find(
+        other => other.transferId === t.transferId && other.id !== t.id && !placed.has(other.id)
+      );
+      if (pair) {
+        placed.add(pair.id);
+        result.push(pair);
+      }
+    }
+  }
+  return result;
+}
+
 function buildFlatRows(
   transactions: TransactionResponseDTO[],
   expandedIds: Set<string>
 ): DisplayRow[] {
+  transactions = sortTransferPairsTogether(transactions);
   const groupsMap = new Map<string, TransactionResponseDTO[]>();
   for (const t of transactions) {
     if (t.installmentGroupId) {
