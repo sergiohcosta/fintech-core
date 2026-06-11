@@ -624,6 +624,251 @@ components:
             - $ref: '#/components/schemas/CreditCardDetailsResponse'
           nullable: true
 
+    # --- Budget Planning ---
+
+    BudgetCycleStatus:
+      type: string
+      enum: [OPEN, CLOSED]
+
+    BudgetItemSource:
+      type: string
+      enum: [MANUAL, RECURRING, INSTALLMENT]
+
+    BudgetItemStatus:
+      type: string
+      enum: [PENDING, REALIZED, SKIPPED]
+
+    BudgetCycleOpenRequest:
+      type: object
+      required: [referenceMonth]
+      properties:
+        referenceMonth:
+          type: string
+          pattern: '^\d{4}-\d{2}$'
+          example: "2026-06"
+
+    BudgetCycleSummary:
+      type: object
+      properties:
+        plannedIncome:
+          type: number
+          format: double
+        plannedExpense:
+          type: number
+          format: double
+        projectedBalance:
+          type: number
+          format: double
+        realizedIncome:
+          type: number
+          format: double
+        realizedExpense:
+          type: number
+          format: double
+        currentBalance:
+          type: number
+          format: double
+        pendingCount:
+          type: integer
+
+    BudgetItemResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        description:
+          type: string
+        amount:
+          type: number
+          format: double
+        type:
+          $ref: '#/components/schemas/TransactionType'
+        expectedDate:
+          type: string
+          format: date
+        source:
+          $ref: '#/components/schemas/BudgetItemSource'
+        status:
+          $ref: '#/components/schemas/BudgetItemStatus'
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
+        categoryName:
+          type: string
+          nullable: true
+        accountId:
+          type: string
+          format: uuid
+          nullable: true
+        accountName:
+          type: string
+          nullable: true
+        transactionId:
+          type: string
+          format: uuid
+          nullable: true
+        installmentGroupId:
+          type: string
+          format: uuid
+          nullable: true
+
+    BudgetCycleResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        openingBalance:
+          type: number
+          format: double
+        status:
+          $ref: '#/components/schemas/BudgetCycleStatus'
+        summary:
+          $ref: '#/components/schemas/BudgetCycleSummary'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BudgetItemResponse'
+
+    BudgetItemCreateRequest:
+      type: object
+      required: [description, amount, type, expectedDate]
+      properties:
+        description:
+          type: string
+        amount:
+          type: number
+          format: double
+        type:
+          $ref: '#/components/schemas/TransactionType'
+        expectedDate:
+          type: string
+          format: date
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
+        accountId:
+          type: string
+          format: uuid
+          nullable: true
+
+    BudgetItemUpdateRequest:
+      type: object
+      required: [description, amount, expectedDate]
+      properties:
+        description:
+          type: string
+        amount:
+          type: number
+          format: double
+        expectedDate:
+          type: string
+          format: date
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
+        accountId:
+          type: string
+          format: uuid
+          nullable: true
+
+    BudgetItemLinkRequest:
+      type: object
+      required: [transactionId]
+      properties:
+        transactionId:
+          type: string
+          format: uuid
+
+    RecurringBudgetItemRequest:
+      type: object
+      required: [description, amount, type, dayOfMonth]
+      properties:
+        description:
+          type: string
+        amount:
+          type: number
+          format: double
+        type:
+          $ref: '#/components/schemas/TransactionType'
+        dayOfMonth:
+          type: integer
+          minimum: 1
+          maximum: 28
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
+        accountId:
+          type: string
+          format: uuid
+          nullable: true
+
+    RecurringBudgetItemResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        description:
+          type: string
+        amount:
+          type: number
+          format: double
+        type:
+          $ref: '#/components/schemas/TransactionType'
+        dayOfMonth:
+          type: integer
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
+        categoryName:
+          type: string
+          nullable: true
+        accountId:
+          type: string
+          format: uuid
+          nullable: true
+        accountName:
+          type: string
+          nullable: true
+        active:
+          type: boolean
+
+    TenantSettingsPatchRequest:
+      type: object
+      required: [budgetCycleStartDay]
+      properties:
+        budgetCycleStartDay:
+          type: integer
+          minimum: 1
+          maximum: 28
+
+    BudgetCyclePageResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/BudgetCycleResponse'
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+        number:
+          type: integer
+
 paths:
 
   # --- Auth (sem autenticação) ---
@@ -1254,3 +1499,327 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/InvoiceResponseDTO'
+
+  # --- Tenant Settings ---
+
+  /api/tenant/settings:
+    patch:
+      tags: [tenant]
+      operationId: patchTenantSettings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantSettingsPatchRequest'
+      responses:
+        '204':
+          description: Configurações atualizadas
+
+  # --- Budget Cycles ---
+
+  /api/budget-cycles:
+    get:
+      tags: [budget]
+      operationId: listBudgetCycles
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 12
+      responses:
+        '200':
+          description: Histórico de ciclos paginado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetCyclePageResponse'
+    post:
+      tags: [budget]
+      operationId: openBudgetCycle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BudgetCycleOpenRequest'
+      responses:
+        '201':
+          description: Ciclo aberto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetCycleResponse'
+        '409':
+          description: Ciclo já existe ou período conflita
+
+  /api/budget-cycles/current:
+    get:
+      tags: [budget]
+      operationId: getCurrentBudgetCycle
+      responses:
+        '200':
+          description: Ciclo OPEN atual com itens
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetCycleResponse'
+        '404':
+          description: Nenhum ciclo aberto
+
+  /api/budget-cycles/{id}:
+    get:
+      tags: [budget]
+      operationId: getBudgetCycle
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Ciclo com itens
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetCycleResponse'
+
+  /api/budget-cycles/{id}/close:
+    post:
+      tags: [budget]
+      operationId: closeBudgetCycle
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Ciclo fechado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetCycleResponse'
+
+  /api/budget-cycles/{id}/sync-installments:
+    post:
+      tags: [budget]
+      operationId: syncInstallments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Parcelas sincronizadas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetCycleResponse'
+
+  /api/budget-cycles/{cycleId}/items:
+    get:
+      tags: [budget]
+      operationId: listBudgetItems
+      parameters:
+        - name: cycleId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Lista de itens do ciclo
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BudgetItemResponse'
+    post:
+      tags: [budget]
+      operationId: createBudgetItem
+      parameters:
+        - name: cycleId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BudgetItemCreateRequest'
+      responses:
+        '201':
+          description: Item criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetItemResponse'
+
+  /api/budget-items/{id}:
+    put:
+      tags: [budget]
+      operationId: updateBudgetItem
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BudgetItemUpdateRequest'
+      responses:
+        '200':
+          description: Item atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetItemResponse'
+    delete:
+      tags: [budget]
+      operationId: deleteBudgetItem
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Item removido
+
+  /api/budget-items/{id}/link:
+    post:
+      tags: [budget]
+      operationId: linkBudgetItem
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BudgetItemLinkRequest'
+      responses:
+        '200':
+          description: Transação vinculada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetItemResponse'
+    delete:
+      tags: [budget]
+      operationId: unlinkBudgetItem
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Transação desvinculada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetItemResponse'
+
+  # --- Recurring Budget Items ---
+
+  /api/recurring-budget-items:
+    get:
+      tags: [budget]
+      operationId: listRecurringBudgetItems
+      responses:
+        '200':
+          description: Templates recorrentes ativos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RecurringBudgetItemResponse'
+    post:
+      tags: [budget]
+      operationId: createRecurringBudgetItem
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecurringBudgetItemRequest'
+      responses:
+        '201':
+          description: Template criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecurringBudgetItemResponse'
+
+  /api/recurring-budget-items/{id}:
+    put:
+      tags: [budget]
+      operationId: updateRecurringBudgetItem
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecurringBudgetItemRequest'
+      responses:
+        '200':
+          description: Template atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecurringBudgetItemResponse'
+    delete:
+      tags: [budget]
+      operationId: deleteRecurringBudgetItem
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Template desativado
