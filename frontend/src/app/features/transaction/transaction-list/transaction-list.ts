@@ -19,7 +19,7 @@ import { TransactionResponseDTO, AccountResponse, InvoiceStatus } from '../../..
 import { ConfirmationDialogComponent } from '../../../components/confirmation-dialog/confirmation-dialog';
 import { DeleteInstallmentDialogComponent, DeleteInstallmentDialogResult } from './delete-installment-dialog/delete-installment-dialog';
 import { TransactionFiltersComponent } from './transaction-filters/transaction-filters';
-import { TransactionFilters, DEFAULT_FILTERS } from './transaction-filters/transaction-filters.types';
+import { TransactionFilters, DEFAULT_FILTERS, currentMonthFilters } from './transaction-filters/transaction-filters.types';
 import { buildDisplayRows, InstallmentGroupInfo, DisplayRow, InvoiceHeaderRow, resolveMonthKey, formatMonthLabel } from './transaction-list.utils';
 export { buildDisplayRows } from './transaction-list.utils';
 export type { InstallmentGroupInfo, DisplayRow, InvoiceHeaderRow } from './transaction-list.utils';
@@ -313,12 +313,11 @@ export class TransactionList implements OnInit {
   private loadFromStorage(): TransactionFilters {
     try {
       const raw = localStorage.getItem('fintech.transaction.filters');
-      if (!raw) return DEFAULT_FILTERS;
+      if (!raw) return currentMonthFilters();
       const parsed = JSON.parse(raw);
-      // spread sobre DEFAULT_FILTERS garante que campos adicionados futuramente recebam seu default
       return { ...DEFAULT_FILTERS, ...parsed, description: null };
     } catch {
-      return DEFAULT_FILTERS;
+      return currentMonthFilters();
     }
   }
 
