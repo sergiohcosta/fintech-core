@@ -154,6 +154,24 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
     // LEFT JOIN explícito é obrigatório: t.invoice.dueDate em WHERE gera INNER JOIN implícito
     // no Hibernate, excluindo transações sem fatura e quebrando o branch invoice IS NULL.
     @Query("""
+        SELECT t FROM Transaction t
+        LEFT JOIN FETCH t.installmentGroup ig
+        LEFT JOIN FETCH t.invoice inv
+        WHERE t.account.tenant.id = :tenantId
+          AND t.installmentGroup IS NOT NULL
+          AND inv IS NOT NULL
+          AND inv.dueDate BETWEEN :startDate AND :endDate
+          AND t.status <> :cancelledStatus
+        ORDER BY ig.id, inv.dueDate
+    """)
+    List<Transaction> findInstallmentsInPeriodByTenant(
+        @Param("tenantId") UUID tenantId,
+        @Param("startDate") LocalDate startDate,
+        @Param("endDate") LocalDate endDate,
+        @Param("cancelledStatus") TransactionStatus cancelledStatus
+    );
+
+    @Query("""
             SELECT COALESCE(SUM(t.amount), 0)
             FROM Transaction t
             LEFT JOIN t.invoice inv
