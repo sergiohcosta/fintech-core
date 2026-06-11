@@ -385,6 +385,12 @@ SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run
   - `docs/http/seed-dataset.http`: HTTP collection completa (9 blocos, IntelliJ/VS Code)
   - **Gotcha**: filtro de transações usa `accountIds` (plural) como query param — `accountId` (singular) é ignorado e retorna todos os dados do tenant
 
+- **Melhorias de UX no formulário de transação (issue #69, #73, #60, #49 — 2026-06-11)**:
+  - **#69 — Pares de transferência adjacentes**: `sortTransferPairsTogether()` em `transaction-list.utils.ts` — percorre a lista em ordem e puxar a perna par imediatamente após a primeira; sem mudança de template ou backend
+  - **#73 — Filtro padrão = mês corrente**: `currentMonthFilters()` em `transaction-filters.types.ts`; `loadFromStorage()` usa `currentMonthFilters()` quando não há estado salvo; `clearFilters()` restaura mês corrente (não tabula rasa)
+  - **#60 — Campo de data**: `↑`/`↓` incrementam/decrementam 1 dia; clicar no campo abre o datepicker; barras inseridas automaticamente na máscara `dd/mm/aaaa`
+  - **#49 — Operações matemáticas no valor**: prefixo `=` ativa modo fórmula (ex: `=300+200` → `500,00`); `amount-math.ts` com parser recursivo descendente sem `eval`; suporta `+`, `-`, `*`, `/`, `^`, parênteses; 16 testes
+
 **Próximos passos:**
 - Gráficos no dashboard (evolução mensal, breakdown por categoria/conta)
 - Tela de Patrimônio Total — consome `countInNetWorth` (campo já existe em `accounts`)
