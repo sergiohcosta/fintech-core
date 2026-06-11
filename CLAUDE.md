@@ -386,7 +386,6 @@ SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run
   - **Gotcha**: filtro de transações usa `accountIds` (plural) como query param — `accountId` (singular) é ignorado e retorna todos os dados do tenant
 
 **Próximos passos:**
-- Corrigir falhas pré-existentes nos testes do frontend (issue #57): falta chamada a `TestBed.initTestEnvironment()` em arquivo de setup do Vitest
 - Gráficos no dashboard (evolução mensal, breakdown por categoria/conta)
 - Tela de Patrimônio Total — consome `countInNetWorth` (campo já existe em `accounts`)
 
