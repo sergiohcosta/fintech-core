@@ -248,10 +248,27 @@ export class TransactionForm implements OnInit {
     input.value = val !== null && val !== undefined ? String(val).replace('.', ',') : '';
   }
 
-  // --- Máscara de data (#18) ---
+  // --- Campo de data ---
+
+  openDatePicker(picker: MatDatepicker<Date>): void {
+    if (!picker.opened) picker.open();
+  }
 
   onDateKeydown(event: KeyboardEvent): void {
-    const PASS_THROUGH = ['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter'];
+    if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+      const isOpen = this.picker?.opened || this.transferPicker?.opened;
+      if (isOpen) return;
+      event.preventDefault();
+      const current = this.form.controls.date.value;
+      if (current instanceof Date && !isNaN(current.getTime())) {
+        const next = new Date(current);
+        next.setDate(next.getDate() + (event.key === 'ArrowUp' ? 1 : -1));
+        this.form.controls.date.setValue(next);
+      }
+      return;
+    }
+
+    const PASS_THROUGH = ['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'Enter'];
     if (PASS_THROUGH.includes(event.key) || !(/^\d$/.test(event.key))) return;
 
     const input = event.target as HTMLInputElement;
