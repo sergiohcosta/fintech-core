@@ -9,7 +9,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AccountResponse } from '../../../../core/api/fintechSaaSAPI.schemas';
-import { TransactionFilters, DEFAULT_FILTERS } from './transaction-filters.types';
+import { TransactionFilters, DEFAULT_FILTERS, currentMonthFilters, currentMonthKey } from './transaction-filters.types';
 import { monthBounds, computeMonthChipStates, resolveMonthKey } from '../transaction-list.utils';
 
 @Component({
@@ -153,16 +153,17 @@ export class TransactionFiltersComponent implements OnInit {
   }
 
   clearFilters(): void {
+    const defaults = currentMonthFilters();
     this.accountIds.set([]);
     this.status.set(null);
     this.type.set(null);
-    this.startDate.set(null);
-    this.endDate.set(null);
+    this.startDate.set(defaults.startDate);
+    this.endDate.set(defaults.endDate);
     this.groupByPeriod.set(false);
     this.groupByInvoice.set(false);
     this.description.set(null);
     this.showCustomInterval.set(false);
-    this.selectedMonths.set([]);
+    this.selectedMonths.set([currentMonthKey()]);
     this.emit();
   }
 
