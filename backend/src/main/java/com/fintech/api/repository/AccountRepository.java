@@ -32,4 +32,20 @@ public interface AccountRepository extends JpaRepository<Account, UUID> {
         @Param("incomeType") TransactionType incomeType,
         @Param("cancelledStatus") TransactionStatus cancelledStatus
     );
+
+    @Query("""
+        SELECT COALESCE(SUM(
+            CASE WHEN t.type = :incomeType THEN t.amount ELSE -t.amount END
+        ), 0)
+        FROM Transaction t
+        WHERE t.account.tenant.id = :tenantId
+          AND t.account.countInLiquidBalance = true
+          AND t.account.active = true
+          AND t.status <> :cancelledStatus
+    """)
+    BigDecimal sumLiquidBalanceByTenant(
+        @Param("tenantId") UUID tenantId,
+        @Param("incomeType") TransactionType incomeType,
+        @Param("cancelledStatus") TransactionStatus cancelledStatus
+    );
 }
