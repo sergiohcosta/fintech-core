@@ -25,6 +25,9 @@ public class Tenant {
 
     private String document;
 
+    @Column(nullable = false)
+    private int budgetCycleStartDay = 1;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 
