@@ -26,6 +26,7 @@ import { CategoriesService } from '../../../core/api/categories/categories.servi
 import { AccountsService } from '../../../core/api/accounts/accounts.service';
 import { CategoryResponseDTO, AccountResponse } from '../../../core/api/fintechSaaSAPI.schemas';
 import { buildInstallmentPreview, CreditCardPreviewConfig } from './installment-preview';
+import { evaluateMathExpression } from './amount-math';
 export { buildInstallmentPreview } from './installment-preview';
 export type { InstallmentPreviewRow, CreditCardPreviewConfig } from './installment-preview';
 
@@ -226,16 +227,39 @@ export class TransactionForm implements OnInit {
 
   onAmountInput(event: Event): void {
     const input = event.target as HTMLInputElement;
-    const cleaned = input.value.replace(/[^\d,]/g, '');
+    const raw = input.value;
+    if (raw.startsWith('=')) {
+      // modo fórmula — avaliado no blur; mantém formulário inválido até lá
+      this.form.controls.amount.setValue(null);
+      this.form.controls.amount.markAsTouched();
+      return;
+    }
+    const cleaned = raw.replace(/[^\d,]/g, '');
     const asFloat = parseFloat(cleaned.replace(',', '.'));
     this.form.controls.amount.setValue(isNaN(asFloat) ? null : asFloat);
     this.form.controls.amount.markAsTouched();
   }
 
   onAmountBlur(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const raw = input.value;
+    if (raw.startsWith('=')) {
+      const result = evaluateMathExpression(raw.slice(1));
+      if (result !== null && result > 0) {
+        const rounded = Math.round(result * 100) / 100;
+        this.form.controls.amount.setValue(rounded);
+        const formatted = this.formatAmount(rounded);
+        input.value = formatted;
+        this.amountDisplay.set(formatted);
+      } else {
+        this.form.controls.amount.setValue(null);
+        input.value = '';
+        this.amountDisplay.set('');
+      }
+      return;
+    }
     const val = this.form.controls.amount.value;
     if (val !== null && val !== undefined) {
-      const input = event.target as HTMLInputElement;
       const formatted = this.formatAmount(val);
       input.value = formatted;
       this.amountDisplay.set(formatted);
