@@ -1,0 +1,40 @@
+.planning-container {
+  padding: 24px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.cycle-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+
+  .cycle-dates h1 { margin: 0; }
+  .period { color: var(--mat-sys-on-surface-variant); }
+  .cycle-actions { display: flex; align-items: center; gap: 12px; }
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.summary-line {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  &.realized strong { color: var(--mat-sys-primary); }
+}
+
+.empty-state-card {
+  text-align: center;
+  padding: 40px;
+  mat-icon { font-size: 48px; width: 48px; height: 48px; opacity: 0.4; }
+}
+
+.add-btn { margin-bottom: 16px; }
+
+mat-expansion-panel { margin-bottom: 12px; }
