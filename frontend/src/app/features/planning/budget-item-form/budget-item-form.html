@@ -1,11 +1,18 @@
 @if (isOpenCycleMode()) {
   <h2 mat-dialog-title>Abrir ciclo de planejamento</h2>
   <mat-dialog-content>
-    <form [formGroup]="cycleForm">
+    <form [formGroup]="cycleForm" style="display:flex;flex-direction:column;gap:12px;padding-top:8px">
       <mat-form-field appearance="outline" style="width:100%">
         <mat-label>Mês de referência (yyyy-MM)</mat-label>
         <input matInput formControlName="referenceMonth" placeholder="2026-06" />
         <mat-error>Formato esperado: yyyy-MM (ex: 2026-06)</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" style="width:100%">
+        <mat-label>Dia de início do ciclo (1–28)</mat-label>
+        <input matInput type="number" formControlName="startDay" min="1" max="28" />
+        <mat-hint>Dia 1 = mês calendário; dia 11 = ciclo do dia 11 ao dia 10</mat-hint>
+        <mat-error>Informe um dia entre 1 e 28</mat-error>
       </mat-form-field>
     </form>
   </mat-dialog-content>
@@ -40,7 +47,7 @@
       <mat-form-field appearance="outline">
         <mat-label>Data prevista</mat-label>
         <input matInput [matDatepicker]="picker" formControlName="expectedDate" />
-        <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+        <mat-datepicker-toggle matIconSuffix [for]="picker" />
         <mat-datepicker #picker></mat-datepicker>
       </mat-form-field>
     </form>

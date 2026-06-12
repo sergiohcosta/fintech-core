@@ -13,7 +13,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { finalize } from 'rxjs/operators';
 
 import { PlanningService } from '../planning.service';
-import { BudgetCycleResponse, BudgetItemResponse } from '../../../core/api/fintechSaaSAPI.schemas';
+import { BudgetCycleOpenRequest, BudgetCycleResponse, BudgetItemResponse } from '../../../core/api/fintechSaaSAPI.schemas';
 import { buildSummary } from './budget-cycle.utils';
 import { BudgetItemFormComponent, BudgetItemFormResult } from '../budget-item-form/budget-item-form';
 import { LinkTransactionDialogComponent, LinkTransactionDialogData } from '../link-transaction-dialog/link-transaction-dialog';
@@ -72,9 +72,9 @@ export class BudgetCycleCurrentComponent implements OnInit {
       width: '400px',
       data: { mode: 'openCycle' },
     });
-    ref.afterClosed().subscribe((referenceMonth?: string) => {
-      if (!referenceMonth) return;
-      this.planningService.openCycle({ referenceMonth }).subscribe({
+    ref.afterClosed().subscribe((req?: BudgetCycleOpenRequest) => {
+      if (!req) return;
+      this.planningService.openCycle(req).subscribe({
         next: c => {
           this.cycle.set(c);
           this.items.set(c.items ?? []);

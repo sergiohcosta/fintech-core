@@ -401,6 +401,11 @@ export const BudgetItemStatus = {
 export interface BudgetCycleOpenRequest {
   /** @pattern ^\d{4}-\d{2}$ */
   referenceMonth: string;
+  /**
+   * @minimum 1
+   * @maximum 28
+   */
+  startDay: number;
 }
 
 export interface BudgetCycleSummary {
