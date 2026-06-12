@@ -10,11 +10,13 @@ import com.fintech.api.domain.invoice.Invoice;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.transaction.Transaction;
 import com.fintech.api.domain.user.User;
+import com.fintech.api.dto.invoice.InvoiceResponseDTO;
 import com.fintech.api.exception.EntityNotFoundException;
 import com.fintech.api.repository.AccountRepository;
 import com.fintech.api.repository.CreditCardDetailsRepository;
 import com.fintech.api.repository.InvoiceRepository;
 import com.fintech.api.repository.TransactionRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,9 +24,12 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -41,6 +46,14 @@ class InvoiceServiceTest {
     @Mock TransactionRepository transactionRepository;
     @Mock AccountRepository accountRepository;
     @InjectMocks InvoiceService service;
+
+    @BeforeEach
+    void setup() {
+        // self-injection: em testes Mockito o proxy não existe, então apontamos self para
+        // a própria instância. O comportamento transacional (REQUIRES_NEW) não é testado
+        // aqui — é verificado em testes de integração. O que testamos é o fluxo de retry.
+        ReflectionTestUtils.setField(service, "self", service);
+    }
 
     // ---- getOrCreate ----
 
@@ -125,6 +138,63 @@ class InvoiceServiceTest {
         ArgumentCaptor<Invoice> captor = ArgumentCaptor.forClass(Invoice.class);
         verify(repository).save(captor.capture());
         assertThat(captor.getValue().getDueDate()).isEqualTo(LocalDate.of(2026, 6, 10));
+    }
+
+    @Test
+    @DisplayName("getOrCreate: race condition → retry retorna a fatura salva pela thread vencedora")
+    void getOrCreateRetriesOnRaceCondition() {
+        Account account = buildAccount();
+        Invoice winner = buildInvoice(InvoiceStatus.OPEN);
+        CreditCardDetails details = buildDetails(account, 5, 15);
+
+        when(repository.findByAccountAndReferenceYearAndReferenceMonth(account, 2026, 6))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(winner));
+        when(creditCardDetailsRepository.findByAccount(account)).thenReturn(Optional.of(details));
+        when(repository.save(any(Invoice.class))).thenThrow(DataIntegrityViolationException.class);
+
+        Invoice result = service.getOrCreate(account, 2026, 6);
+
+        assertThat(result).isSameAs(winner);
+        verify(repository, times(2)).findByAccountAndReferenceYearAndReferenceMonth(account, 2026, 6);
+        verify(repository).save(any());
+    }
+
+    // ---- listDTOs ----
+
+    @Test
+    @DisplayName("listDTOs: usa query agregada — não chama sumAmountByInvoice nem countByInvoice por fatura")
+    void listDTOsUsesAggregateQuery() {
+        Account account = buildAccount();
+        Invoice invoice = buildInvoice(InvoiceStatus.OPEN);
+
+        List<Object[]> rows = new java.util.ArrayList<>();
+        rows.add(new Object[]{invoice, new BigDecimal("250.00"), 4L});
+        when(repository.findByAccountWithTotals(account)).thenReturn(rows);
+
+        List<InvoiceResponseDTO> result = service.listDTOs(account);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).totalAmount()).isEqualByComparingTo("250.00");
+        assertThat(result.get(0).transactionCount()).isEqualTo(4);
+        verify(transactionRepository, never()).sumAmountByInvoice(any(), any());
+        verify(transactionRepository, never()).countByInvoice(any());
+    }
+
+    @Test
+    @DisplayName("listDTOs: totalAmount é zero quando query retorna null (fatura sem transações)")
+    void listDTOsHandlesNullTotal() {
+        Account account = buildAccount();
+        Invoice invoice = buildInvoice(InvoiceStatus.OPEN);
+
+        List<Object[]> emptyRows = new java.util.ArrayList<>();
+        emptyRows.add(new Object[]{invoice, null, 0L});
+        when(repository.findByAccountWithTotals(account)).thenReturn(emptyRows);
+
+        List<InvoiceResponseDTO> result = service.listDTOs(account);
+
+        assertThat(result.get(0).totalAmount()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(result.get(0).transactionCount()).isZero();
     }
 
     // ---- close ----
