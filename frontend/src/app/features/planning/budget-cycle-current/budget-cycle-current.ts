@@ -149,6 +149,15 @@ export class BudgetCycleCurrentComponent implements OnInit {
     });
   }
 
+  statusLabel(status: string | undefined): string {
+    const labels: Record<string, string> = {
+      PENDING: 'Pendente',
+      REALIZED: 'Realizado',
+      SKIPPED: 'Ignorado',
+    };
+    return labels[status ?? ''] ?? (status ?? '');
+  }
+
   private replaceItem(updated: BudgetItemResponse): void {
     this.items.update(list => list.map(i => i.id === updated.id ? updated : i));
   }
