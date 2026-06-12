@@ -6,10 +6,12 @@ import com.fintech.api.domain.enums.TransactionStatus;
 import com.fintech.api.domain.enums.TransactionType;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.user.User;
+import com.fintech.api.dto.budget.BudgetCycleOpenRequest;
 import com.fintech.api.repository.AccountRepository;
 import com.fintech.api.repository.BudgetCycleRepository;
 import com.fintech.api.repository.BudgetItemRepository;
 import com.fintech.api.repository.RecurringBudgetItemRepository;
+import com.fintech.api.repository.TenantRepository;
 import com.fintech.api.repository.TransactionRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -38,6 +40,7 @@ class BudgetCycleServiceTest {
     @Mock RecurringBudgetItemRepository recurringRepository;
     @Mock AccountRepository accountRepository;
     @Mock TransactionRepository transactionRepository;
+    @Mock TenantRepository tenantRepository;
 
     @InjectMocks BudgetCycleService service;
 
@@ -91,10 +94,11 @@ class BudgetCycleServiceTest {
         Tenant tenant = tenantWith(1);
         User user = new User();
 
+        when(tenantRepository.findById(tenant.getId())).thenReturn(Optional.of(tenant));
         when(cycleRepository.findByTenantAndStatus(tenant, BudgetCycleStatus.OPEN))
             .thenReturn(Optional.of(new BudgetCycle()));
 
-        assertThatThrownBy(() -> service.open(tenant, user, "2026-06"))
+        assertThatThrownBy(() -> service.open(tenant, user, new BudgetCycleOpenRequest("2026-06", 1)))
             .isInstanceOf(IllegalStateException.class)
             .hasMessageContaining("ciclo aberto");
     }
@@ -105,12 +109,13 @@ class BudgetCycleServiceTest {
         Tenant tenant = tenantWith(1);
         User user = new User();
 
+        when(tenantRepository.findById(tenant.getId())).thenReturn(Optional.of(tenant));
         when(cycleRepository.findByTenantAndStatus(tenant, BudgetCycleStatus.OPEN))
             .thenReturn(Optional.empty());
         when(cycleRepository.existsOverlap(eq(tenant), any(), any()))
             .thenReturn(true);
 
-        assertThatThrownBy(() -> service.open(tenant, user, "2026-06"))
+        assertThatThrownBy(() -> service.open(tenant, user, new BudgetCycleOpenRequest("2026-06", 1)))
             .isInstanceOf(IllegalStateException.class)
             .hasMessageContaining("conflita");
     }
@@ -121,10 +126,12 @@ class BudgetCycleServiceTest {
         Tenant tenant = tenantWith(1);
         User user = new User();
 
+        when(tenantRepository.findById(tenant.getId())).thenReturn(Optional.of(tenant));
         when(cycleRepository.findByTenantAndStatus(tenant, BudgetCycleStatus.OPEN))
             .thenReturn(Optional.empty());
         when(cycleRepository.existsOverlap(any(), any(), any()))
             .thenReturn(false);
+        when(tenantRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(accountRepository.sumLiquidBalanceByTenant(
                 eq(tenant.getId()), eq(TransactionType.INCOME), eq(TransactionStatus.CANCELLED)))
             .thenReturn(new BigDecimal("3200.00"));
@@ -136,7 +143,7 @@ class BudgetCycleServiceTest {
         var captor = ArgumentCaptor.forClass(BudgetCycle.class);
         when(cycleRepository.save(captor.capture())).thenAnswer(inv -> inv.getArgument(0));
 
-        service.open(tenant, user, "2026-06");
+        service.open(tenant, user, new BudgetCycleOpenRequest("2026-06", 1));
 
         assertThat(captor.getValue().getOpeningBalance()).isEqualByComparingTo("3200.00");
     }
