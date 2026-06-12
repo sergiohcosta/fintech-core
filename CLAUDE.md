@@ -439,6 +439,11 @@ SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run
   - Botão "Ciclo atual" removido do `BudgetCycleList` — redundante com as abas do shell
   - Fix de seletor: `MatTabsModule` importado como módulo falha em standalone; importar `MatTabNav`, `MatTabNavPanel`, `MatTabLink` diretamente funciona
 
+- **Bug fixes de planejamento mensal (issue #95 — 2026-06-12)**:
+  - **Bug 1 — Dia de início do ciclo:** `startDay` adicionado ao `BudgetCycleOpenRequest` (OpenAPI spec + DTO Java + `BudgetCycleService.open()` + Controller); dialog de abertura agora exibe campo "Dia de início (1–28)"; preferência persistida no `Tenant`; testes de `BudgetCycleServiceTest` atualizados com `@Mock TenantRepository` e novo request
+  - **Bug 2 — Datepicker não abria:** `matSuffix` → `matIconSuffix` no toggle; workaround Zoneless adicional via `picker.open()` no evento `(click)` do campo de data — Angular Material 21 Zoneless não dispara CD para toggle automático do datepicker
+  - **Bug 3 — Status em inglês:** `statusLabel()` no `BudgetCycleCurrentComponent` traduz `PENDING/REALIZED/SKIPPED` → `Pendente/Realizado/Ignorado`; chips com classes `chip-realized` e `chip-skipped` para diferenciação visual
+
 **Próximos passos:**
 - Issues médias do ADR-001: #85 (`effective_date`), #86 (`WITH RECURSIVE`), #87 (`TransferService`), #88 (`BusinessException`)
 - Gráficos no dashboard (evolução mensal, breakdown por categoria/conta)
