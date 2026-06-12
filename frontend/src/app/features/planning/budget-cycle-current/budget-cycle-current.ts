@@ -1,6 +1,5 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
-import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
@@ -23,7 +22,7 @@ import { LinkTransactionDialogComponent, LinkTransactionDialogData } from '../li
   selector: 'app-budget-cycle-current',
   standalone: true,
   imports: [
-    CommonModule, CurrencyPipe, DatePipe, RouterLink,
+    CommonModule, CurrencyPipe, DatePipe,
     MatButtonModule, MatCardModule, MatChipsModule, MatExpansionModule,
     MatIconModule, MatSnackBarModule, MatTableModule, MatTooltipModule,
   ],
