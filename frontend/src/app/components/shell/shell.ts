@@ -45,6 +45,7 @@ export class ShellComponent {
     { label: 'Dashboard',  icon: 'dashboard',    route: '/dashboard' },
     { label: 'Transações', icon: 'swap_horiz',   route: '/transactions' },
     { label: 'Faturas',    icon: 'receipt_long', route: '/invoices' },
+    { label: 'Planejamento', icon: 'event_note', route: '/planning' },
     { label: 'Contas',     icon: 'credit_card',  route: '/accounts' },
     { label: 'Categorias', icon: 'category',     route: '/categories' },
     { label: 'Taxonomia',  icon: 'account_tree', route: '/categories/taxonomy', adminOnly: true },
