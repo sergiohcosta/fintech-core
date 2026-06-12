@@ -7,8 +7,10 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
+import { filter, switchMap } from 'rxjs/operators';
+
 import { PlanningService } from '../planning.service';
-import { RecurringBudgetItemResponse } from '../../../core/api/fintechSaaSAPI.schemas';
+import { RecurringBudgetItemRequest, RecurringBudgetItemResponse } from '../../../core/api/fintechSaaSAPI.schemas';
 import { RecurringItemFormComponent } from '../recurring-item-form/recurring-item-form';
 
 @Component({
@@ -47,17 +49,18 @@ export class RecurringItemList implements OnInit {
       width: '460px',
       data: existing ?? null,
     });
-    ref.afterClosed().subscribe(result => {
-      if (!result) return;
-      const obs$ = existing
+    ref.afterClosed().pipe(
+      filter(Boolean),
+      switchMap((result: RecurringBudgetItemRequest) => existing
         ? this.planningService.updateRecurring(existing.id!, result)
-        : this.planningService.createRecurring(result);
-      obs$.subscribe({
-        next: () => {
-          this.load();
-          this.snackBar.open(existing ? 'Template atualizado.' : 'Template criado.', 'OK', { duration: 2000 });
-        },
-      });
+        : this.planningService.createRecurring(result)
+      )
+    ).subscribe({
+      next: () => {
+        this.load();
+        this.snackBar.open(existing ? 'Template atualizado.' : 'Template criado.', 'OK', { duration: 2000 });
+      },
+      error: () => this.snackBar.open('Erro ao salvar template.', 'OK', { duration: 3000 }),
     });
   }
 

@@ -4,7 +4,9 @@ import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
+import { finalize } from 'rxjs/operators';
 import { PlanningService } from '../planning.service';
 import { BudgetCycleResponse } from '../../../core/api/fintechSaaSAPI.schemas';
 
@@ -13,12 +15,13 @@ import { BudgetCycleResponse } from '../../../core/api/fintechSaaSAPI.schemas';
   standalone: true,
   imports: [
     CommonModule, CurrencyPipe, DatePipe, RouterLink,
-    MatButtonModule, MatChipsModule, MatIconModule, MatTableModule,
+    MatButtonModule, MatChipsModule, MatIconModule, MatSnackBarModule, MatTableModule,
   ],
   templateUrl: './budget-cycle-list.html',
 })
 export class BudgetCycleList implements OnInit {
   private readonly planningService = inject(PlanningService);
+  private readonly snackBar = inject(MatSnackBar);
 
   readonly cycles = signal<BudgetCycleResponse[]>([]);
   readonly loading = signal(true);
@@ -26,9 +29,11 @@ export class BudgetCycleList implements OnInit {
   displayedColumns = ['period', 'openingBalance', 'status', 'actions'];
 
   ngOnInit(): void {
-    this.planningService.listCycles().subscribe({
-      next: page => { this.cycles.set(page.content ?? []); this.loading.set(false); },
-      error: () => this.loading.set(false),
-    });
+    this.planningService.listCycles()
+      .pipe(finalize(() => this.loading.set(false)))
+      .subscribe({
+        next: page => this.cycles.set(page.content ?? []),
+        error: () => this.snackBar.open('Erro ao carregar ciclos.', 'OK', { duration: 3000 }),
+      });
   }
 }

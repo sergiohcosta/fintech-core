@@ -2,6 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatNativeDateModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -21,7 +22,7 @@ export interface BudgetItemFormData {
   standalone: true,
   imports: [
     CommonModule, ReactiveFormsModule,
-    MatButtonModule, MatDatepickerModule, MatDialogModule,
+    MatButtonModule, MatDatepickerModule, MatNativeDateModule, MatDialogModule,
     MatFormFieldModule, MatInputModule, MatSelectModule,
   ],
   templateUrl: './budget-item-form.html',
