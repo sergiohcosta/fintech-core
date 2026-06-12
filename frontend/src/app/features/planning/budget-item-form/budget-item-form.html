@@ -1,0 +1,53 @@
+@if (isOpenCycleMode()) {
+  <h2 mat-dialog-title>Abrir ciclo de planejamento</h2>
+  <mat-dialog-content>
+    <form [formGroup]="cycleForm">
+      <mat-form-field appearance="outline" style="width:100%">
+        <mat-label>Mês de referência (yyyy-MM)</mat-label>
+        <input matInput formControlName="referenceMonth" placeholder="2026-06" />
+        <mat-error>Formato esperado: yyyy-MM (ex: 2026-06)</mat-error>
+      </mat-form-field>
+    </form>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="onCancel()">Cancelar</button>
+    <button mat-flat-button color="primary" type="button"
+            [disabled]="cycleForm.invalid" (click)="onSubmit()">Abrir</button>
+  </mat-dialog-actions>
+} @else {
+  <h2 mat-dialog-title>Adicionar item</h2>
+  <mat-dialog-content>
+    <form [formGroup]="itemForm" style="display:flex;flex-direction:column;gap:12px;padding-top:8px">
+      <mat-form-field appearance="outline">
+        <mat-label>Descrição</mat-label>
+        <input matInput formControlName="description" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Tipo</mat-label>
+        <mat-select formControlName="type">
+          <mat-option value="INCOME">Receita</mat-option>
+          <mat-option value="EXPENSE">Despesa</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Valor</mat-label>
+        <span matTextPrefix>R$&nbsp;</span>
+        <input matInput type="number" formControlName="amount" min="0.01" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Data prevista</mat-label>
+        <input matInput [matDatepicker]="picker" formControlName="expectedDate" />
+        <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+        <mat-datepicker #picker></mat-datepicker>
+      </mat-form-field>
+    </form>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="onCancel()">Cancelar</button>
+    <button mat-flat-button color="primary" type="button"
+            [disabled]="itemForm.invalid" (click)="onSubmit()">Salvar</button>
+  </mat-dialog-actions>
+}

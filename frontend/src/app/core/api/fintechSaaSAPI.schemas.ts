@@ -372,6 +372,151 @@ export interface AccountResponse {
   creditCardDetails?: CreditCardDetailsResponse | null;
 }
 
+export type BudgetCycleStatus = typeof BudgetCycleStatus[keyof typeof BudgetCycleStatus];
+
+
+export const BudgetCycleStatus = {
+  OPEN: 'OPEN',
+  CLOSED: 'CLOSED',
+} as const;
+
+export type BudgetItemSource = typeof BudgetItemSource[keyof typeof BudgetItemSource];
+
+
+export const BudgetItemSource = {
+  MANUAL: 'MANUAL',
+  RECURRING: 'RECURRING',
+  INSTALLMENT: 'INSTALLMENT',
+} as const;
+
+export type BudgetItemStatus = typeof BudgetItemStatus[keyof typeof BudgetItemStatus];
+
+
+export const BudgetItemStatus = {
+  PENDING: 'PENDING',
+  REALIZED: 'REALIZED',
+  SKIPPED: 'SKIPPED',
+} as const;
+
+export interface BudgetCycleOpenRequest {
+  /** @pattern ^\d{4}-\d{2}$ */
+  referenceMonth: string;
+}
+
+export interface BudgetCycleSummary {
+  plannedIncome?: number;
+  plannedExpense?: number;
+  projectedBalance?: number;
+  realizedIncome?: number;
+  realizedExpense?: number;
+  currentBalance?: number;
+  pendingCount?: number;
+}
+
+export interface BudgetItemResponse {
+  id?: string;
+  description?: string;
+  amount?: number;
+  type?: TransactionType;
+  expectedDate?: string;
+  source?: BudgetItemSource;
+  status?: BudgetItemStatus;
+  /** @nullable */
+  categoryId?: string | null;
+  /** @nullable */
+  categoryName?: string | null;
+  /** @nullable */
+  accountId?: string | null;
+  /** @nullable */
+  accountName?: string | null;
+  /** @nullable */
+  transactionId?: string | null;
+  /** @nullable */
+  installmentGroupId?: string | null;
+}
+
+export interface BudgetCycleResponse {
+  id?: string;
+  startDate?: string;
+  endDate?: string;
+  openingBalance?: number;
+  status?: BudgetCycleStatus;
+  summary?: BudgetCycleSummary;
+  items?: BudgetItemResponse[];
+}
+
+export interface BudgetItemCreateRequest {
+  description: string;
+  amount: number;
+  type: TransactionType;
+  expectedDate: string;
+  /** @nullable */
+  categoryId?: string | null;
+  /** @nullable */
+  accountId?: string | null;
+}
+
+export interface BudgetItemUpdateRequest {
+  description: string;
+  amount: number;
+  expectedDate: string;
+  /** @nullable */
+  categoryId?: string | null;
+  /** @nullable */
+  accountId?: string | null;
+}
+
+export interface BudgetItemLinkRequest {
+  transactionId: string;
+}
+
+export interface RecurringBudgetItemRequest {
+  description: string;
+  amount: number;
+  type: TransactionType;
+  /**
+     * @minimum 1
+     * @maximum 28
+     */
+  dayOfMonth: number;
+  /** @nullable */
+  categoryId?: string | null;
+  /** @nullable */
+  accountId?: string | null;
+}
+
+export interface RecurringBudgetItemResponse {
+  id?: string;
+  description?: string;
+  amount?: number;
+  type?: TransactionType;
+  dayOfMonth?: number;
+  /** @nullable */
+  categoryId?: string | null;
+  /** @nullable */
+  categoryName?: string | null;
+  /** @nullable */
+  accountId?: string | null;
+  /** @nullable */
+  accountName?: string | null;
+  active?: boolean;
+}
+
+export interface TenantSettingsPatchRequest {
+  /**
+     * @minimum 1
+     * @maximum 28
+     */
+  budgetCycleStartDay: number;
+}
+
+export interface BudgetCyclePageResponse {
+  content?: BudgetCycleResponse[];
+  totalElements?: number;
+  totalPages?: number;
+  number?: number;
+}
+
 export type ListCategoriesParams = {
 includeArchived?: boolean;
 };
@@ -398,5 +543,10 @@ month: string;
 
 export type ListInvoicesParams = {
 accountId: string;
+};
+
+export type ListBudgetCyclesParams = {
+page?: number;
+size?: number;
 };
 
