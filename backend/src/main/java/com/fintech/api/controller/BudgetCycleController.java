@@ -37,7 +37,7 @@ public class BudgetCycleController {
     @PostMapping
     public ResponseEntity<BudgetCycleResponseDTO> open(@Valid @RequestBody BudgetCycleOpenRequest req) {
         User user = getUser();
-        var cycle = cycleService.open(user.getTenant(), user, req.referenceMonth());
+        var cycle = cycleService.open(user.getTenant(), user, req);
         return ResponseEntity.status(201)
             .body(BudgetCycleResponseDTO.fromEntity(cycle, cycleService.listItems(cycle)));
     }
