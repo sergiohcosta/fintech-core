@@ -124,6 +124,23 @@ npm start
 
 ## 📏 Convenções de Desenvolvimento
 
+### Workflow de Branches e PRs
+
+**Regras invioláveis:**
+- Toda branch de feature parte de `develop` (nunca de `main` ou de outra feature branch)
+- Ao concluir uma feature com sucesso, fazer merge imediato na `develop` local e push
+- PRs devem ser o mais cumulativos possível: agrupar issues relacionadas da mesma sessão em uma única PR em vez de abrir uma por issue
+- PRs sempre apontam para `main` e partem de `develop` (o fluxo é `feature → develop → PR → main`)
+- Nunca fazer merge de `develop` → `main` diretamente; sempre via PR com revisão
+- Deletar branches locais após o merge em `develop` para manter o repositório limpo
+
+**Fluxo padrão:**
+1. `git checkout -b feature/issue-XYZ develop`
+2. Implementar, commitar, testar
+3. `git checkout develop && git merge feature/issue-XYZ && git push origin develop`
+4. Abrir PR: `feature/issue-XYZ → main` (ou acumular issues relacionadas numa PR única)
+5. `git branch -d feature/issue-XYZ`
+
 ### Commits
 
 - Mensagens em português, descritivas, no imperativo ("adiciona", "corrige", "implementa")
@@ -391,7 +408,21 @@ SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run
   - **#60 — Campo de data**: `↑`/`↓` incrementam/decrementam 1 dia; clicar no campo abre o datepicker; barras inseridas automaticamente na máscara `dd/mm/aaaa`
   - **#49 — Operações matemáticas no valor**: prefixo `=` ativa modo fórmula (ex: `=300+200` → `500,00`); `amount-math.ts` com parser recursivo descendente sem `eval`; suporta `+`, `-`, `*`, `/`, `^`, parênteses; 16 testes
 
+- **Planejamento Mensal — Budget Cycles fullstack (issue #74 — 2026-06-12)** — PR #92 aberto:
+  - Migration V12: `budget_cycles`, `budget_items`, `recurring_budget_items` + `budget_cycle_start_day` em `tenant`
+  - `BudgetCycleService`: cálculo de datas do ciclo (startDay=1 → mês calendário; startDay=N → dia N do mês anterior até N-1 do mês atual); sincronização automática de parcelas de cartão ao abrir ciclo
+  - `BudgetItemService`: criação, atualização, link/unlink para transações, guard anti-duplicação
+  - `RecurringBudgetItemService`: CRUD de templates; `deactivate` faz soft-delete (`active=false`)
+  - `TenantController` com `PATCH /api/tenant/settings`; 17 endpoints no OpenAPI spec
+  - Frontend Angular 21 Zoneless: `BudgetCycleCurrentComponent`, `BudgetItemFormComponent`, `LinkTransactionDialogComponent`, `RecurringItemList`, `BudgetCycleList`, `BudgetCycleDetail`; rotas lazy `/planning/*`
+
+- **Correções críticas de InvoiceService — ADR-001 (issues #83, #84 — 2026-06-12)** — PR #93:
+  - **#83 — Race condition em `getOrCreate`**: extraído `createNewInvoice()` com `@Transactional(REQUIRES_NEW)` chamado via self-injection `@Lazy`. Conflito de chave única reverte apenas a transação interna; catch faz retry com `findBy` e retorna a fatura vencedora. Sem REQUIRES_NEW, a `DataIntegrityViolationException` marcaria a transação externa como rollback-only, impossibilitando o retry
+  - **#84 — N+1 em `listDTOs`**: `findByAccountWithTotals` com `LEFT JOIN Transaction ON t.invoice = i GROUP BY i` — substitui `1 + 2N` queries por uma única query, independente do volume de faturas
+  - **Fix Flyway em testes**: `src/test/resources/application-dev.properties` sobrescreve `spring.flyway.locations` para excluir `db/seed`. O arquivo de test-classpath substitui (não faz merge com) o de main-classpath — necessário replicar todas as props relevantes
+
 **Próximos passos:**
+- Issues médias do ADR-001: #85 (`effective_date`), #86 (`WITH RECURSIVE`), #87 (`TransferService`), #88 (`BusinessException`)
 - Gráficos no dashboard (evolução mensal, breakdown por categoria/conta)
 - Tela de Patrimônio Total — consome `countInNetWorth` (campo já existe em `accounts`)
 
