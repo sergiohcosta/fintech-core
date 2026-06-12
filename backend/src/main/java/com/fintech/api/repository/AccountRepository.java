@@ -25,12 +25,12 @@ public interface AccountRepository extends JpaRepository<Account, UUID> {
         ), 0)
         FROM Transaction t
         WHERE t.account = :account
-          AND t.status <> :cancelledStatus
+          AND t.status = :paidStatus
     """)
     BigDecimal calculateBalance(
         @Param("account") Account account,
         @Param("incomeType") TransactionType incomeType,
-        @Param("cancelledStatus") TransactionStatus cancelledStatus
+        @Param("paidStatus") TransactionStatus paidStatus
     );
 
     @Query("""
@@ -41,11 +41,11 @@ public interface AccountRepository extends JpaRepository<Account, UUID> {
         WHERE t.account.tenant.id = :tenantId
           AND t.account.countInLiquidBalance = true
           AND t.account.active = true
-          AND t.status <> :cancelledStatus
+          AND t.status = :paidStatus
     """)
     BigDecimal sumLiquidBalanceByTenant(
         @Param("tenantId") UUID tenantId,
         @Param("incomeType") TransactionType incomeType,
-        @Param("cancelledStatus") TransactionStatus cancelledStatus
+        @Param("paidStatus") TransactionStatus paidStatus
     );
 }
