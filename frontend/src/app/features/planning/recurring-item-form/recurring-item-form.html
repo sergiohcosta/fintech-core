@@ -1,0 +1,34 @@
+<h2 mat-dialog-title>{{ existing ? 'Editar' : 'Novo' }} template recorrente</h2>
+<mat-dialog-content>
+  <form [formGroup]="form" style="display:flex;flex-direction:column;gap:12px;padding-top:8px">
+    <mat-form-field appearance="outline">
+      <mat-label>Descrição</mat-label>
+      <input matInput formControlName="description" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Tipo</mat-label>
+      <mat-select formControlName="type">
+        <mat-option value="INCOME">Receita</mat-option>
+        <mat-option value="EXPENSE">Despesa</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Valor</mat-label>
+      <span matTextPrefix>R$&nbsp;</span>
+      <input matInput type="number" formControlName="amount" min="0.01" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Dia do mês (1–28)</mat-label>
+      <input matInput type="number" formControlName="dayOfMonth" min="1" max="28" />
+      <mat-hint>Dia em que o item ocorre tipicamente.</mat-hint>
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="onCancel()">Cancelar</button>
+  <button mat-flat-button color="primary" type="button"
+          [disabled]="form.invalid" (click)="onSubmit()">Salvar</button>
+</mat-dialog-actions>
