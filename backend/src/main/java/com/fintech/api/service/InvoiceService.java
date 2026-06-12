@@ -17,12 +17,17 @@ import com.fintech.api.repository.InvoiceRepository;
 import com.fintech.api.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
@@ -35,32 +40,53 @@ public class InvoiceService {
     private final TransactionRepository transactionRepository;
     private final AccountRepository accountRepository;
 
+    // Self-injection via proxy para que @Transactional(REQUIRES_NEW) em createNewInvoice
+    // seja honrado pelo Spring AOP — chamadas em `this` ignoram o proxy e a anotação.
+    @Lazy
+    @Autowired
+    private InvoiceService self;
+
     @Transactional
     public Invoice getOrCreate(Account account, int referenceYear, int referenceMonth) {
-        return repository.findByAccountAndReferenceYearAndReferenceMonth(
-                        account, referenceYear, referenceMonth)
-                .orElseGet(() -> {
-                    var details = creditCardDetailsRepository.findByAccount(account)
-                            .orElseThrow(() -> new EntityNotFoundException(
-                                    "Detalhes do cartão não encontrados para a conta."));
-                    int closingDay = details.getClosingDay();
-                    int dueDay = details.getDueDay();
+        Optional<Invoice> existing = repository.findByAccountAndReferenceYearAndReferenceMonth(
+                account, referenceYear, referenceMonth);
+        if (existing.isPresent()) return existing.get();
 
-                    LocalDate closingDate = LocalDate.of(referenceYear, referenceMonth, closingDay);
-                    LocalDate dueDate = dueDay >= closingDay
-                            ? LocalDate.of(referenceYear, referenceMonth, dueDay)
-                            : LocalDate.of(referenceYear, referenceMonth, dueDay).plusMonths(1);
+        try {
+            return self.createNewInvoice(account, referenceYear, referenceMonth);
+        } catch (DataIntegrityViolationException e) {
+            // Race condition: outra thread ganhou a corrida — retorna a fatura vencedora.
+            return repository.findByAccountAndReferenceYearAndReferenceMonth(
+                            account, referenceYear, referenceMonth)
+                    .orElseThrow(() -> new IllegalStateException(
+                            "Fatura não encontrada após conflito de inserção", e));
+        }
+    }
 
-                    return repository.save(Invoice.builder()
-                            .account(account)
-                            .tenant(account.getTenant())
-                            .referenceYear(referenceYear)
-                            .referenceMonth(referenceMonth)
-                            .closingDate(closingDate)
-                            .dueDate(dueDate)
-                            .status(InvoiceStatus.OPEN)
-                            .build());
-                });
+    // Transação separada (REQUIRES_NEW) para que um conflito de chave única não contamine
+    // a transação externa — permite o catch em getOrCreate fazer o retry com findBy.
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Invoice createNewInvoice(Account account, int referenceYear, int referenceMonth) {
+        var details = creditCardDetailsRepository.findByAccount(account)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Detalhes do cartão não encontrados para a conta."));
+        int closingDay = details.getClosingDay();
+        int dueDay = details.getDueDay();
+
+        LocalDate closingDate = LocalDate.of(referenceYear, referenceMonth, closingDay);
+        LocalDate dueDate = dueDay >= closingDay
+                ? LocalDate.of(referenceYear, referenceMonth, dueDay)
+                : LocalDate.of(referenceYear, referenceMonth, dueDay).plusMonths(1);
+
+        return repository.save(Invoice.builder()
+                .account(account)
+                .tenant(account.getTenant())
+                .referenceYear(referenceYear)
+                .referenceMonth(referenceMonth)
+                .closingDate(closingDate)
+                .dueDate(dueDate)
+                .status(InvoiceStatus.OPEN)
+                .build());
     }
 
     @Transactional(readOnly = true)
@@ -79,9 +105,12 @@ public class InvoiceService {
 
     @Transactional(readOnly = true)
     public List<InvoiceResponseDTO> listDTOs(Account account) {
-        return repository.findByAccountOrderByReferenceYearDescReferenceMonthDesc(account)
+        return repository.findByAccountWithTotals(account)
                 .stream()
-                .map(this::buildDTO)
+                .map(row -> InvoiceResponseDTO.fromEntity(
+                        (Invoice) row[0],
+                        row[1] != null ? (BigDecimal) row[1] : BigDecimal.ZERO,
+                        (Long) row[2]))
                 .toList();
     }
 
