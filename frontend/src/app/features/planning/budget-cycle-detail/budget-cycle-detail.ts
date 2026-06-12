@@ -4,7 +4,9 @@ import { ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
+import { finalize } from 'rxjs/operators';
 import { PlanningService } from '../planning.service';
 import { BudgetCycleResponse, BudgetItemResponse } from '../../../core/api/fintechSaaSAPI.schemas';
 import { buildSummary } from '../budget-cycle-current/budget-cycle.utils';
@@ -14,13 +16,14 @@ import { buildSummary } from '../budget-cycle-current/budget-cycle.utils';
   standalone: true,
   imports: [
     CommonModule, CurrencyPipe, DatePipe,
-    MatButtonModule, MatCardModule, MatChipsModule, MatTableModule,
+    MatButtonModule, MatCardModule, MatChipsModule, MatSnackBarModule, MatTableModule,
   ],
   templateUrl: './budget-cycle-detail.html',
 })
 export class BudgetCycleDetail implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly planningService = inject(PlanningService);
+  private readonly snackBar = inject(MatSnackBar);
 
   readonly cycle = signal<BudgetCycleResponse | null>(null);
   readonly items = signal<BudgetItemResponse[]>([]);
@@ -33,9 +36,11 @@ export class BudgetCycleDetail implements OnInit {
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id')!;
-    this.planningService.getCycle(id).subscribe({
-      next: c => { this.cycle.set(c); this.items.set(c.items ?? []); this.loading.set(false); },
-      error: () => this.loading.set(false),
-    });
+    this.planningService.getCycle(id)
+      .pipe(finalize(() => this.loading.set(false)))
+      .subscribe({
+        next: c => { this.cycle.set(c); this.items.set(c.items ?? []); },
+        error: () => this.snackBar.open('Erro ao carregar ciclo.', 'OK', { duration: 3000 }),
+      });
   }
 }
