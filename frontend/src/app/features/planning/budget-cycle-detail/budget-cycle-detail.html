@@ -7,7 +7,7 @@
         <h1 style="margin:0">{{ cycle()!.startDate | date:'dd/MM/yyyy' }}
           – {{ cycle()!.endDate | date:'dd/MM/yyyy' }}</h1>
       </div>
-      <mat-chip>{{ cycle()!.status }}</mat-chip>
+      <mat-chip>{{ cycle()!.status === 'OPEN' ? 'Aberto' : cycle()!.status === 'CLOSED' ? 'Fechado' : 'Pago' }}</mat-chip>
     </div>
 
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px">
@@ -37,10 +37,13 @@
         <mat-card-header><mat-card-title>Saldo</mat-card-title></mat-card-header>
         <mat-card-content>
           <div style="display:flex;justify-content:space-between;padding:4px 0">
+            <span>Abertura</span><strong>{{ cycle()!.openingBalance | currency:'BRL' }}</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0">
             <span>Projetado</span><strong>{{ summary().projectedBalance | currency:'BRL' }}</strong>
           </div>
           <div style="display:flex;justify-content:space-between;padding:4px 0">
-            <span>Atual</span><strong>{{ summary().currentBalance | currency:'BRL' }}</strong>
+            <span>Realizado</span><strong>{{ summary().currentBalance | currency:'BRL' }}</strong>
           </div>
         </mat-card-content>
       </mat-card>
@@ -65,7 +68,7 @@
       </ng-container>
       <ng-container matColumnDef="status">
         <th mat-header-cell *matHeaderCellDef>Status</th>
-        <td mat-cell *matCellDef="let item"><mat-chip>{{ item.status }}</mat-chip></td>
+        <td mat-cell *matCellDef="let item"><mat-chip>{{ item.status === 'PENDING' ? 'Pendente' : item.status === 'REALIZED' ? 'Realizado' : 'Ignorado' }}</mat-chip></td>
       </ng-container>
       <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
       <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
