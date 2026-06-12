@@ -1,0 +1,41 @@
+<div style="padding:24px;max-width:800px;margin:0 auto">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+    <h1 style="margin:0">Histórico de ciclos</h1>
+    <button mat-stroked-button routerLink="/planning/current">
+      <mat-icon>arrow_back</mat-icon> Ciclo atual
+    </button>
+  </div>
+
+  @if (loading()) {
+    <p>Carregando...</p>
+  } @else if (cycles().length === 0) {
+    <p>Nenhum ciclo encontrado.</p>
+  } @else {
+    <table mat-table [dataSource]="cycles()" style="width:100%">
+      <ng-container matColumnDef="period">
+        <th mat-header-cell *matHeaderCellDef>Período</th>
+        <td mat-cell *matCellDef="let c">
+          {{ c.startDate | date:'dd/MM/yyyy' }} – {{ c.endDate | date:'dd/MM/yyyy' }}
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="openingBalance">
+        <th mat-header-cell *matHeaderCellDef>Saldo inicial</th>
+        <td mat-cell *matCellDef="let c">{{ c.openingBalance | currency:'BRL' }}</td>
+      </ng-container>
+      <ng-container matColumnDef="status">
+        <th mat-header-cell *matHeaderCellDef>Status</th>
+        <td mat-cell *matCellDef="let c"><mat-chip>{{ c.status }}</mat-chip></td>
+      </ng-container>
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef></th>
+        <td mat-cell *matCellDef="let c">
+          <a mat-icon-button [routerLink]="['/planning/cycles', c.id]">
+            <mat-icon>visibility</mat-icon>
+          </a>
+        </td>
+      </ng-container>
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+    </table>
+  }
+</div>
