@@ -8,6 +8,7 @@ import com.fintech.api.domain.installment.InstallmentGroup;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.transaction.Transaction;
 import com.fintech.api.domain.user.User;
+import com.fintech.api.dto.budget.BudgetCycleOpenRequest;
 import com.fintech.api.exception.EntityNotFoundException;
 import com.fintech.api.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,7 @@ public class BudgetCycleService {
     private final RecurringBudgetItemRepository recurringRepository;
     private final AccountRepository accountRepository;
     private final TransactionRepository transactionRepository;
+    private final TenantRepository tenantRepository;
 
     /**
      * Calcula as datas de início e fim do ciclo para um dado mês de referência.
@@ -82,25 +84,35 @@ public class BudgetCycleService {
      * - Parcelas de cartão cujo vencimento cai no período do ciclo
      */
     @Transactional
-    public BudgetCycle open(Tenant tenant, User user, String referenceMonth) {
-        if (cycleRepository.findByTenantAndStatus(tenant, BudgetCycleStatus.OPEN).isPresent()) {
+    public BudgetCycle open(Tenant tenant, User user, BudgetCycleOpenRequest req) {
+        // O Tenant vindo do SecurityContext é um proxy Hibernate da sessão do SecurityFilter
+        // (já encerrada). Acessar campos não-ID como budgetCycleStartDay lançaria
+        // LazyInitializationException. Recarregamos aqui para vinculá-lo à sessão atual.
+        Tenant managed = tenantRepository.findById(tenant.getId())
+            .orElseThrow(() -> new EntityNotFoundException("Tenant não encontrado."));
+
+        if (cycleRepository.findByTenantAndStatus(managed, BudgetCycleStatus.OPEN).isPresent()) {
             throw new IllegalStateException("Já existe um ciclo aberto para este tenant.");
         }
 
-        int startDay = tenant.getBudgetCycleStartDay();
-        LocalDate[] dates = calculateCycleDates(YearMonth.parse(referenceMonth), startDay);
+        int startDay = req.startDay();
+        LocalDate[] dates = calculateCycleDates(YearMonth.parse(req.referenceMonth()), startDay);
         LocalDate startDate = dates[0];
         LocalDate endDate   = dates[1];
 
-        if (cycleRepository.existsOverlap(tenant, startDate, endDate)) {
+        if (cycleRepository.existsOverlap(managed, startDate, endDate)) {
             throw new IllegalStateException("O período solicitado conflita com um ciclo já existente.");
         }
 
+        // Persiste a preferência de dia de início no tenant para próximos ciclos
+        managed.setBudgetCycleStartDay(startDay);
+        tenantRepository.save(managed);
+
         BigDecimal opening = accountRepository.sumLiquidBalanceByTenant(
-            tenant.getId(), TransactionType.INCOME, TransactionStatus.CANCELLED);
+            managed.getId(), TransactionType.INCOME, TransactionStatus.PAID);
 
         BudgetCycle cycle = cycleRepository.save(BudgetCycle.builder()
-            .tenant(tenant)
+            .tenant(managed)
             .startDate(startDate)
             .endDate(endDate)
             .openingBalance(opening)
@@ -108,11 +120,11 @@ public class BudgetCycleService {
             .createdBy(user)
             .build());
 
-        populateRecurringItems(cycle, tenant, user, startDate, startDay);
-        populateInstallmentItems(cycle, tenant, startDate, endDate);
+        populateRecurringItems(cycle, managed, user, startDate, startDay);
+        populateInstallmentItems(cycle, managed, startDate, endDate);
 
-        log.info("Ciclo de planejamento aberto [cycleId={} tenantId={} periodo={}/{}]",
-            cycle.getId(), tenant.getId(), startDate, endDate);
+        log.info("Ciclo de planejamento aberto [cycleId={} tenantId={} periodo={}/{} startDay={}]",
+            cycle.getId(), managed.getId(), startDate, endDate, startDay);
         return cycle;
     }
 

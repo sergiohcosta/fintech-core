@@ -38,3 +38,12 @@
 .add-btn { margin-bottom: 16px; }
 
 mat-expansion-panel { margin-bottom: 12px; }
+
+.chip-realized {
+  background-color: var(--mat-sys-tertiary-container) !important;
+  color: var(--mat-sys-on-tertiary-container) !important;
+}
+
+.chip-skipped {
+  opacity: 0.5;
+}

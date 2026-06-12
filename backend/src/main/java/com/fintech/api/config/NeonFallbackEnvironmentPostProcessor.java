@@ -38,6 +38,11 @@ public class NeonFallbackEnvironmentPostProcessor implements EnvironmentPostProc
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
+        if (!"true".equalsIgnoreCase(environment.getProperty("neon.enabled", "true"))) {
+            System.out.println(">>> [NeonFallback] neon.enabled=false — usando banco local (Docker Compose)");
+            return;
+        }
+
         Properties localProps = loadLocalProperties();
         if (localProps == null) {
             return;

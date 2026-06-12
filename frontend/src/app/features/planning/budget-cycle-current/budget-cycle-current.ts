@@ -1,6 +1,5 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
-import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
@@ -10,10 +9,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { HttpErrorResponse } from '@angular/common/http';
 import { finalize } from 'rxjs/operators';
 
 import { PlanningService } from '../planning.service';
-import { BudgetCycleResponse, BudgetItemResponse } from '../../../core/api/fintechSaaSAPI.schemas';
+import { BudgetCycleOpenRequest, BudgetCycleResponse, BudgetItemResponse } from '../../../core/api/fintechSaaSAPI.schemas';
 import { buildSummary } from './budget-cycle.utils';
 import { BudgetItemFormComponent, BudgetItemFormResult } from '../budget-item-form/budget-item-form';
 import { LinkTransactionDialogComponent, LinkTransactionDialogData } from '../link-transaction-dialog/link-transaction-dialog';
@@ -22,7 +22,7 @@ import { LinkTransactionDialogComponent, LinkTransactionDialogData } from '../li
   selector: 'app-budget-cycle-current',
   standalone: true,
   imports: [
-    CommonModule, CurrencyPipe, DatePipe, RouterLink,
+    CommonModule, CurrencyPipe, DatePipe,
     MatButtonModule, MatCardModule, MatChipsModule, MatExpansionModule,
     MatIconModule, MatSnackBarModule, MatTableModule, MatTooltipModule,
   ],
@@ -72,15 +72,18 @@ export class BudgetCycleCurrentComponent implements OnInit {
       width: '400px',
       data: { mode: 'openCycle' },
     });
-    ref.afterClosed().subscribe((referenceMonth?: string) => {
-      if (!referenceMonth) return;
-      this.planningService.openCycle({ referenceMonth }).subscribe({
+    ref.afterClosed().subscribe((req?: BudgetCycleOpenRequest) => {
+      if (!req) return;
+      this.planningService.openCycle(req).subscribe({
         next: c => {
           this.cycle.set(c);
           this.items.set(c.items ?? []);
           this.snackBar.open('Ciclo aberto com sucesso.', 'OK', { duration: 3000 });
         },
-        error: () => this.snackBar.open('Erro ao abrir ciclo.', 'OK', { duration: 3000 }),
+        error: (err: HttpErrorResponse) => {
+          const msg = err.error?.message ?? 'Erro ao abrir ciclo.';
+          this.snackBar.open(msg, 'OK', { duration: 5000 });
+        },
       });
     });
   }
@@ -147,6 +150,15 @@ export class BudgetCycleCurrentComponent implements OnInit {
       next: () => this.items.update(list => list.filter(i => i.id !== item.id)),
       error: () => this.snackBar.open('Erro. Tente novamente.', 'OK', { duration: 3000 }),
     });
+  }
+
+  statusLabel(status: string | undefined): string {
+    const labels: Record<string, string> = {
+      PENDING: 'Pendente',
+      REALIZED: 'Realizado',
+      SKIPPED: 'Ignorado',
+    };
+    return labels[status ?? ''] ?? (status ?? '');
   }
 
   private replaceItem(updated: BudgetItemResponse): void {

@@ -200,10 +200,12 @@ Ocultar no frontend **não substitui** proteção no backend. O frontend é cont
 
 ### Dataset de Testes — Família Costa
 
-O projeto mantém um dataset realista (`V10__seed_dev.sql`) que deve ser tratado como **artefato vivo** — parte da especificação do sistema. Mantê-lo desatualizado equivale a ter documentação errada.
+O projeto mantém um dataset realista (`V13__seed_dev.sql`) que deve ser tratado como **artefato vivo** — parte da especificação do sistema. Mantê-lo desatualizado equivale a ter documentação errada.
+
+**Regra inviolável:** toda alteração que envolva banco de dados **deve** atualizar o dataset de testes para contemplar as mudanças realizadas. Não existe "vou atualizar depois" — a atualização faz parte da entrega, não é opcional.
 
 **Artefatos:**
-- `backend/src/main/resources/db/seed/V10__seed_dev.sql` — seed Flyway, perfil `dev` apenas
+- `backend/src/main/resources/db/seed/V13__seed_dev.sql` — seed Flyway, perfil `dev` apenas
 - `backend/src/test/resources/sql/seed_base.sql` / `cleanup.sql` — fixture para Testcontainers
 - `docs/http/seed-dataset.http` — HTTP collection IntelliJ/VS Code
 - Spec completa: `docs/superpowers/specs/2026-06-09-test-dataset-design.md`
@@ -212,13 +214,16 @@ O projeto mantém um dataset realista (`V10__seed_dev.sql`) que deve ser tratado
 
 | Situação | Ação obrigatória |
 |----------|-----------------|
-| Nova tabela de negócio adicionada | Inserir dados representativos no `V10__seed_dev.sql` |
-| Nova coluna relevante em tabela existente | Atualizar os INSERTs do `V10__seed_dev.sql` |
+| Nova tabela de negócio adicionada | Inserir dados representativos no `V13__seed_dev.sql` |
+| Nova coluna relevante em tabela existente | Atualizar os INSERTs do `V13__seed_dev.sql` |
+| Nova coluna adicionada por migration | Atualizar os INSERTs existentes no `V13__seed_dev.sql` para incluir o novo campo |
 | Nova entidade necessária para setup mínimo de testes | Atualizar `seed_base.sql` |
 | Novo endpoint ou novo parâmetro de endpoint | Adicionar request em `docs/http/seed-dataset.http` |
-| Feature puramente de frontend / refatoração | Nenhuma atualização necessária |
+| Feature puramente de frontend / refatoração sem schema | Nenhuma atualização necessária |
 
-**Ao atualizar `V10__seed_dev.sql`:** manter o padrão de UUIDs predefinidos. Novas entidades recebem UUIDs na série correspondente (ver spec). Nunca usar `gen_random_uuid()` para entidades que precisam de cross-reference.
+**Ao atualizar `V13__seed_dev.sql`:** manter o padrão de UUIDs predefinidos. Novas entidades recebem UUIDs na série correspondente (ver spec). Nunca usar `gen_random_uuid()` para entidades que precisam de cross-reference.
+
+**Atenção — posição do arquivo seed:** o seed deve sempre ter versão maior que todas as migrations de schema. Ao adicionar uma nova migration (ex: V14), verificar se o seed precisa ser renomeado para V15 (após o novo schema).
 
 **Credenciais:**
 - Dev (banco com seed): `carlos@costa.com` / `costa123`
@@ -421,7 +426,15 @@ SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run
   - **#84 — N+1 em `listDTOs`**: `findByAccountWithTotals` com `LEFT JOIN Transaction ON t.invoice = i GROUP BY i` — substitui `1 + 2N` queries por uma única query, independente do volume de faturas
   - **Fix Flyway em testes**: `src/test/resources/application-dev.properties` sobrescreve `spring.flyway.locations` para excluir `db/seed`. O arquivo de test-classpath substitui (não faz merge com) o de main-classpath — necessário replicar todas as props relevantes
 
+- **Planning Shell com abas roteadas (issue #96 — 2026-06-12)** — spec + plano prontos, aguardando implementação:
+  - `PlanningShellComponent` com `mat-tab-nav-bar` + `router-outlet` — abas "Ciclo atual", "Histórico", "Recorrentes"
+  - `planning.routes.ts` reestruturado com shell como pai e filhos como children
+  - Fix do bug: ciclos fechados ficavam inacessíveis quando não havia ciclo aberto; agora a aba "Histórico" está sempre visível
+  - Spec: `docs/superpowers/specs/2026-06-12-planning-shell-tabs-design.md`
+  - Plano: `docs/superpowers/plans/2026-06-12-planning-shell-tabs.md`
+
 **Próximos passos:**
+- **Issue #96 — Planning Shell (pronto para implementar):** ver plano `docs/superpowers/plans/2026-06-12-planning-shell-tabs.md`
 - Issues médias do ADR-001: #85 (`effective_date`), #86 (`WITH RECURSIVE`), #87 (`TransferService`), #88 (`BusinessException`)
 - Gráficos no dashboard (evolução mensal, breakdown por categoria/conta)
 - Tela de Patrimônio Total — consome `countInNetWorth` (campo já existe em `accounts`)
