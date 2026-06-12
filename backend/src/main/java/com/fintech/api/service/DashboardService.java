@@ -31,7 +31,7 @@ public class DashboardService {
         long count = transactionRepository.countByTenantAndPeriod(
                 tenant, TransactionStatus.CANCELLED, start, end);
         BigDecimal totalAccountBalance = transactionRepository.sumNetLiquidBalanceByTenant(
-                tenant, TransactionType.INCOME, TransactionStatus.CANCELLED);
+                tenant, TransactionType.INCOME, TransactionStatus.PAID);
 
         return DashboardSummaryDTO.of(period, income, expense, count, totalAccountBalance);
     }
