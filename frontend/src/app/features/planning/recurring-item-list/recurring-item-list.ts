@@ -7,7 +7,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
-import { filter, switchMap } from 'rxjs/operators';
+import { filter, finalize, switchMap } from 'rxjs/operators';
 
 import { PlanningService } from '../planning.service';
 import { RecurringBudgetItemRequest, RecurringBudgetItemResponse } from '../../../core/api/fintechSaaSAPI.schemas';
@@ -38,10 +38,12 @@ export class RecurringItemList implements OnInit {
   }
 
   private load(): void {
-    this.planningService.listRecurring().subscribe({
-      next: items => { this.items.set(items); this.loading.set(false); },
-      error: () => this.loading.set(false),
-    });
+    this.planningService.listRecurring()
+      .pipe(finalize(() => this.loading.set(false)))
+      .subscribe({
+        next: items => this.items.set(items),
+        error: () => this.snackBar.open('Erro ao carregar templates.', 'OK', { duration: 3000 }),
+      });
   }
 
   openForm(existing?: RecurringBudgetItemResponse): void {
