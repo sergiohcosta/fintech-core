@@ -426,7 +426,15 @@ SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run
   - **#84 — N+1 em `listDTOs`**: `findByAccountWithTotals` com `LEFT JOIN Transaction ON t.invoice = i GROUP BY i` — substitui `1 + 2N` queries por uma única query, independente do volume de faturas
   - **Fix Flyway em testes**: `src/test/resources/application-dev.properties` sobrescreve `spring.flyway.locations` para excluir `db/seed`. O arquivo de test-classpath substitui (não faz merge com) o de main-classpath — necessário replicar todas as props relevantes
 
+- **Planning Shell com abas roteadas (issue #96 — 2026-06-12)** — spec + plano prontos, aguardando implementação:
+  - `PlanningShellComponent` com `mat-tab-nav-bar` + `router-outlet` — abas "Ciclo atual", "Histórico", "Recorrentes"
+  - `planning.routes.ts` reestruturado com shell como pai e filhos como children
+  - Fix do bug: ciclos fechados ficavam inacessíveis quando não havia ciclo aberto; agora a aba "Histórico" está sempre visível
+  - Spec: `docs/superpowers/specs/2026-06-12-planning-shell-tabs-design.md`
+  - Plano: `docs/superpowers/plans/2026-06-12-planning-shell-tabs.md`
+
 **Próximos passos:**
+- **Issue #96 — Planning Shell (pronto para implementar):** ver plano `docs/superpowers/plans/2026-06-12-planning-shell-tabs.md`
 - Issues médias do ADR-001: #85 (`effective_date`), #86 (`WITH RECURSIVE`), #87 (`TransferService`), #88 (`BusinessException`)
 - Gráficos no dashboard (evolução mensal, breakdown por categoria/conta)
 - Tela de Patrimônio Total — consome `countInNetWorth` (campo já existe em `accounts`)
