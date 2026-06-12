@@ -426,15 +426,20 @@ SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run
   - **#84 — N+1 em `listDTOs`**: `findByAccountWithTotals` com `LEFT JOIN Transaction ON t.invoice = i GROUP BY i` — substitui `1 + 2N` queries por uma única query, independente do volume de faturas
   - **Fix Flyway em testes**: `src/test/resources/application-dev.properties` sobrescreve `spring.flyway.locations` para excluir `db/seed`. O arquivo de test-classpath substitui (não faz merge com) o de main-classpath — necessário replicar todas as props relevantes
 
-- **Planning Shell com abas roteadas (issue #96 — 2026-06-12)** — spec + plano prontos, aguardando implementação:
-  - `PlanningShellComponent` com `mat-tab-nav-bar` + `router-outlet` — abas "Ciclo atual", "Histórico", "Recorrentes"
-  - `planning.routes.ts` reestruturado com shell como pai e filhos como children
-  - Fix do bug: ciclos fechados ficavam inacessíveis quando não havia ciclo aberto; agora a aba "Histórico" está sempre visível
-  - Spec: `docs/superpowers/specs/2026-06-12-planning-shell-tabs-design.md`
-  - Plano: `docs/superpowers/plans/2026-06-12-planning-shell-tabs.md`
+- **Bug fix: saldo de contas incluía transações pendentes (issue #79 — 2026-06-12)**:
+  - `calculateBalance`, `sumLiquidBalanceByTenant` e `sumNetLiquidBalanceByTenant` filtravam `<> CANCELLED` (blacklist), incluindo PENDING no cálculo
+  - Corrigido para `= PAID` (whitelist) — saldo reflete apenas o que foi efetivado; qualquer status futuro fica automaticamente de fora
+  - Impacto: listagem de contas, saldo de abertura de ciclos de orçamento e card "Posição atual" no dashboard
+
+- **Planning Shell com abas roteadas (issue #96 — 2026-06-12)**:
+  - `PlanningShellComponent` com `<nav mat-tab-nav-bar>` + `<mat-tab-nav-panel>` + `<router-outlet>` — abas "Ciclo atual", "Histórico", "Recorrentes"
+  - `planning.routes.ts` reestruturado: shell como rota pai (`path: ''`), filhos como `children`; o `mat-tab-nav-bar` aparece em todas as rotas sem duplicação
+  - Bug #96 resolvido: aba "Histórico" sempre visível — ciclos fechados acessíveis mesmo sem ciclo aberto
+  - Empty state atualizado: menção à aba "Histórico" para guiar o usuário
+  - Botão "Ciclo atual" removido do `BudgetCycleList` — redundante com as abas do shell
+  - Fix de seletor: `MatTabsModule` importado como módulo falha em standalone; importar `MatTabNav`, `MatTabNavPanel`, `MatTabLink` diretamente funciona
 
 **Próximos passos:**
-- **Issue #96 — Planning Shell (pronto para implementar):** ver plano `docs/superpowers/plans/2026-06-12-planning-shell-tabs.md`
 - Issues médias do ADR-001: #85 (`effective_date`), #86 (`WITH RECURSIVE`), #87 (`TransferService`), #88 (`BusinessException`)
 - Gráficos no dashboard (evolução mensal, breakdown por categoria/conta)
 - Tela de Patrimônio Total — consome `countInNetWorth` (campo já existe em `accounts`)
