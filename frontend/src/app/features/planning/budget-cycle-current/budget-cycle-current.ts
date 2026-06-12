@@ -58,7 +58,11 @@ export class BudgetCycleCurrentComponent implements OnInit {
           this.items.set(c.items ?? []);
         },
         error: (err: { status: number }) => {
-          if (err.status === 404) this.cycle.set(null);
+          if (err.status === 404) {
+            this.cycle.set(null);
+          } else {
+            this.snackBar.open('Erro ao carregar planejamento.', 'OK', { duration: 3000 });
+          }
         },
       });
   }
@@ -110,6 +114,7 @@ export class BudgetCycleCurrentComponent implements OnInit {
           this.items.update(list => [...list, item]);
           this.snackBar.open('Item adicionado.', 'OK', { duration: 2000 });
         },
+        error: () => this.snackBar.open('Erro. Tente novamente.', 'OK', { duration: 3000 }),
       });
     });
   }
@@ -125,6 +130,7 @@ export class BudgetCycleCurrentComponent implements OnInit {
       if (!transactionId) return;
       this.planningService.linkItem(item.id!, { transactionId }).subscribe({
         next: updated => this.replaceItem(updated),
+        error: () => this.snackBar.open('Erro. Tente novamente.', 'OK', { duration: 3000 }),
       });
     });
   }
@@ -132,12 +138,14 @@ export class BudgetCycleCurrentComponent implements OnInit {
   unlinkTransaction(item: BudgetItemResponse): void {
     this.planningService.unlinkItem(item.id!).subscribe({
       next: updated => this.replaceItem(updated),
+      error: () => this.snackBar.open('Erro. Tente novamente.', 'OK', { duration: 3000 }),
     });
   }
 
   deleteItem(item: BudgetItemResponse): void {
     this.planningService.deleteItem(item.id!).subscribe({
       next: () => this.items.update(list => list.filter(i => i.id !== item.id)),
+      error: () => this.snackBar.open('Erro. Tente novamente.', 'OK', { duration: 3000 }),
     });
   }
 
