@@ -8,7 +8,7 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { BudgetItemCreateRequest } from '../../../core/api/fintechSaaSAPI.schemas';
+import { BudgetCycleOpenRequest, BudgetItemCreateRequest } from '../../../core/api/fintechSaaSAPI.schemas';
 
 export type BudgetItemFormResult = BudgetItemCreateRequest;
 
@@ -36,6 +36,7 @@ export class BudgetItemFormComponent implements OnInit {
 
   readonly cycleForm = this.fb.group({
     referenceMonth: ['', [Validators.required, Validators.pattern(/^\d{4}-\d{2}$/)]],
+    startDay: [1, [Validators.required, Validators.min(1), Validators.max(28)]],
   });
 
   readonly itemForm = this.fb.group({
@@ -52,7 +53,8 @@ export class BudgetItemFormComponent implements OnInit {
   onSubmit(): void {
     if (this.isOpenCycleMode()) {
       if (this.cycleForm.invalid) return;
-      this.dialogRef.close(this.cycleForm.value.referenceMonth);
+      const v = this.cycleForm.getRawValue();
+      this.dialogRef.close({ referenceMonth: v.referenceMonth!, startDay: v.startDay! });
     } else {
       if (this.itemForm.invalid) return;
       const v = this.itemForm.getRawValue();
