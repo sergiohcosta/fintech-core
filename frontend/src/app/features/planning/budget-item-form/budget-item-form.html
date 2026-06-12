@@ -46,9 +46,10 @@
 
       <mat-form-field appearance="outline">
         <mat-label>Data prevista</mat-label>
-        <input matInput [matDatepicker]="picker" formControlName="expectedDate" />
+        <input matInput [matDatepicker]="picker" formControlName="expectedDate"
+               (click)="picker.open()" />
         <mat-datepicker-toggle matIconSuffix [for]="picker" />
-        <mat-datepicker #picker></mat-datepicker>
+        <mat-datepicker #picker />
       </mat-form-field>
     </form>
   </mat-dialog-content>
