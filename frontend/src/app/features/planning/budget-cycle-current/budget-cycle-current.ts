@@ -10,6 +10,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { HttpErrorResponse } from '@angular/common/http';
 import { finalize } from 'rxjs/operators';
 
 import { PlanningService } from '../planning.service';
@@ -80,7 +81,10 @@ export class BudgetCycleCurrentComponent implements OnInit {
           this.items.set(c.items ?? []);
           this.snackBar.open('Ciclo aberto com sucesso.', 'OK', { duration: 3000 });
         },
-        error: () => this.snackBar.open('Erro ao abrir ciclo.', 'OK', { duration: 3000 }),
+        error: (err: HttpErrorResponse) => {
+          const msg = err.error?.message ?? 'Erro ao abrir ciclo.';
+          this.snackBar.open(msg, 'OK', { duration: 5000 });
+        },
       });
     });
   }
