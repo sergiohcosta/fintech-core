@@ -109,7 +109,7 @@ public class BudgetCycleService {
         tenantRepository.save(managed);
 
         BigDecimal opening = accountRepository.sumLiquidBalanceByTenant(
-            managed.getId(), TransactionType.INCOME, TransactionStatus.CANCELLED);
+            managed.getId(), TransactionType.INCOME, TransactionStatus.PAID);
 
         BudgetCycle cycle = cycleRepository.save(BudgetCycle.builder()
             .tenant(managed)

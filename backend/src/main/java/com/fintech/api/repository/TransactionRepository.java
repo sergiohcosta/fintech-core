@@ -211,21 +211,20 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             @Param("end") LocalDate end
     );
 
-    // Saldo líquido acumulado: soma income e subtrai expense de TODAS as transações
-    // não canceladas, filtradas pelas contas marcadas como countInLiquidBalance.
-    // Sem filtro de período — representa a posição financeira atual.
+    // Saldo líquido acumulado: soma apenas transações PAID das contas marcadas como
+    // countInLiquidBalance. PENDING não conta — representa o que o usuário tem de fato.
     @Query("""
             SELECT COALESCE(SUM(
                 CASE WHEN t.type = :incomeType THEN t.amount ELSE -t.amount END
             ), 0)
             FROM Transaction t
             WHERE t.tenant = :tenant
-              AND t.status <> :excluded
+              AND t.status = :paidStatus
               AND t.account.countInLiquidBalance = true
             """)
     BigDecimal sumNetLiquidBalanceByTenant(
             @Param("tenant") Tenant tenant,
             @Param("incomeType") TransactionType incomeType,
-            @Param("excluded") TransactionStatus excluded
+            @Param("paidStatus") TransactionStatus paidStatus
     );
 }

@@ -118,7 +118,7 @@ public class AccountService {
 
     private AccountResponseDTO toResponse(Account account) {
         BigDecimal balance = accountRepository.calculateBalance(
-                account, TransactionType.INCOME, TransactionStatus.CANCELLED);
+                account, TransactionType.INCOME, TransactionStatus.PAID);
 
         CreditCardDetailsResponseDTO detailsDto = null;
         if (account.getType() == AccountType.CREDIT_CARD) {
