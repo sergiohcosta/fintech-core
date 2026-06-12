@@ -1,4 +1,5 @@
 export const environment = {
   production: false,
-  apiUrl: ''
+  apiUrl: '',
+  devCredentials: { email: 'carlos@costa.com', password: 'costa123' }
 };
