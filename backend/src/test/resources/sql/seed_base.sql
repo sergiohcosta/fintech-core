@@ -1,4 +1,4 @@
--- seed_base.sql — fixture mínima para testes de integração com Testcontainers
+-- seed_base.sql — fixture mínima para testes de integração baseados em @Sql
 -- Uso: @Sql(scripts="/sql/seed_base.sql", executionPhase=BEFORE_TEST_METHOD)
 -- Senha do admin: admin123
 
