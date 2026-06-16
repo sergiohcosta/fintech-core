@@ -1,0 +1,64 @@
+<h2 mat-dialog-title>Abrir novo ciclo de planejamento</h2>
+
+<mat-dialog-content>
+  @if (loadingPreview()) {
+    <div class="loading-center">
+      <mat-spinner diameter="40"></mat-spinner>
+    </div>
+  } @else if (previewError()) {
+    <p class="error-msg">{{ previewError() }}</p>
+  } @else if (preview(); as p) {
+    <div class="period-row">
+      <mat-icon>date_range</mat-icon>
+      <span>{{ p.startDate | date:'dd/MM/yyyy' }} — {{ p.endDate | date:'dd/MM/yyyy' }}</span>
+    </div>
+
+    <form [formGroup]="form">
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Saldo de abertura (R$)</mat-label>
+        <input matInput type="number" formControlName="openingBalance" step="0.01">
+        <mat-hint>Sugerido: {{ p.suggestedOpeningBalance | currency:'BRL' }}</mat-hint>
+      </mat-form-field>
+    </form>
+
+    @if ((p.recurringItems?.length ?? 0) > 0) {
+      <h4 class="section-title">Itens recorrentes ({{ p.recurringItems!.length }})</h4>
+      <div class="item-list">
+        @for (item of p.recurringItems; track item.description) {
+          <div class="preview-item">
+            <span class="desc">{{ item.description }}</span>
+            <span [class.income]="item.type === 'INCOME'" [class.expense]="item.type === 'EXPENSE'">
+              {{ item.amount | currency:'BRL' }}
+            </span>
+          </div>
+        }
+      </div>
+    }
+
+    @if ((p.installmentItems?.length ?? 0) > 0) {
+      <h4 class="section-title">Parcelas do cartão ({{ p.installmentItems!.length }})</h4>
+      <div class="item-list">
+        @for (item of p.installmentItems; track item.description) {
+          <div class="preview-item">
+            <span class="desc">{{ item.description }}</span>
+            <span class="expense">{{ item.amount | currency:'BRL' }}</span>
+          </div>
+        }
+      </div>
+    }
+
+    <div class="totals-row">
+      <span>Receita planejada: <strong class="income">{{ p.projectedIncome | currency:'BRL' }}</strong></span>
+      <span>Despesa planejada: <strong class="expense">{{ p.projectedExpense | currency:'BRL' }}</strong></span>
+    </div>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancel()" [disabled]="saving()">Cancelar</button>
+  <button mat-flat-button color="primary"
+          [disabled]="isInvalid() || saving() || loadingPreview() || !!previewError()"
+          (click)="confirm()">
+    {{ saving() ? 'Abrindo...' : 'Abrir ciclo' }}
+  </button>
+</mat-dialog-actions>

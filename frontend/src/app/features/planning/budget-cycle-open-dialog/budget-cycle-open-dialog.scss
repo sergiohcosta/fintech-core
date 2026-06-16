@@ -1,0 +1,55 @@
+.loading-center {
+  display: flex;
+  justify-content: center;
+  padding: 32px;
+}
+
+.error-msg {
+  color: var(--mat-sys-error);
+}
+
+.period-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.full-width { width: 100%; }
+
+.section-title {
+  margin: 16px 0 8px;
+  font-size: 0.875rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.preview-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.875rem;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+
+  .desc { color: var(--mat-sys-on-surface); }
+}
+
+.totals-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 2px solid var(--mat-sys-outline-variant);
+  font-size: 0.9rem;
+}
+
+.income { color: var(--mat-sys-primary); }
+.expense { color: var(--mat-sys-error); }
