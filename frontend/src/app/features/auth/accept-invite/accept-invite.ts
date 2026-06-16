@@ -40,7 +40,12 @@ export class AcceptInviteComponent implements OnInit {
 
   form = this.fb.group({
     name:     ['', [Validators.required]],
-    password: ['', [Validators.required, Validators.minLength(6)]],
+    password: ['', [
+      Validators.required,
+      Validators.minLength(8),
+      Validators.maxLength(72),
+      Validators.pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/),
+    ]],
   });
 
   ngOnInit(): void {
