@@ -38,6 +38,10 @@ export class PlanningService {
     return this.budget.listBudgetCycles({ page, size });
   }
 
+  deleteCycle(id: string): Observable<void> {
+    return this.budget.deleteBudgetCycle(id);
+  }
+
   getCycle(id: string): Observable<BudgetCycleResponse> {
     return this.budget.getBudgetCycle(id);
   }
