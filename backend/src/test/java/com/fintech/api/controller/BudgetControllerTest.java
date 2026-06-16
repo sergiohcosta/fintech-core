@@ -192,6 +192,17 @@ class BudgetControllerTest {
                 .andExpect(status().isUnprocessableEntity());
     }
 
+    // --- DELETE /api/budget-cycles/{id} ---
+
+    @Test
+    @DisplayName("DELETE /api/budget-cycles/{id} com role MEMBER retorna 403")
+    void deleteCycleAsMemberReturns403() throws Exception {
+        // user.role é null por padrão → getAuthorities() retorna apenas ROLE_USER (MEMBER)
+        mockMvc.perform(delete("/api/budget-cycles/" + UUID.randomUUID())
+                        .header("Authorization", token))
+                .andExpect(status().isForbidden());
+    }
+
     // --- POST /api/budget-items/{id}/skip ---
 
     @Test
