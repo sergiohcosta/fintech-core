@@ -228,6 +228,7 @@ public class BudgetCycleService {
                 BigDecimal total = entry.getValue().stream()
                     .map(Transaction::getAmount)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
+                // findInstallmentsInPeriodByTenant garante invoice != null e installmentGroup != null
                 LocalDate dueDate = entry.getValue().get(0).getInvoice().getDueDate();
                 return new InstallmentItemPreviewDTO(group.getDescription(), total, dueDate);
             })
@@ -264,11 +265,11 @@ public class BudgetCycleService {
     public BudgetCycle close(UUID cycleId, Tenant tenant) {
         BudgetCycle cycle = findByIdAndTenant(cycleId, tenant);
 
-        if (cycle.getStatus() == BudgetCycleStatus.OPEN) {
-            throw new IllegalStateException("O ciclo ainda está em andamento.");
-        }
-        if (cycle.getStatus() == BudgetCycleStatus.CLOSED) {
-            throw new IllegalStateException("O ciclo já está fechado.");
+        if (cycle.getStatus() != BudgetCycleStatus.ENDED) {
+            String msg = cycle.getStatus() == BudgetCycleStatus.OPEN
+                ? "O ciclo ainda está em andamento."
+                : "O ciclo já está fechado.";
+            throw new IllegalStateException(msg);
         }
 
         List<BudgetItem> items = itemRepository.findAllByCycleWithDetails(cycle);
