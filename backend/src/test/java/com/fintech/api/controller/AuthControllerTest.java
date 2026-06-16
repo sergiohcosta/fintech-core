@@ -1,6 +1,7 @@
 package com.fintech.api.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fintech.api.config.LoginRateLimiter;
 import com.fintech.api.config.TokenService;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.user.User;
@@ -26,6 +27,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -53,6 +56,9 @@ class AuthControllerTest {
 
     @MockitoBean
     private InvitationService invitationService;
+
+    @MockitoBean
+    private LoginRateLimiter loginRateLimiter;
 
     private ObjectMapper objectMapper = new ObjectMapper();
 
@@ -121,6 +127,51 @@ class AuthControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(loginDTO)))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("Should return generic 401 when user does not exist (no enumeration)")
+    void shouldFailLoginWhenUserNotFound() throws Exception {
+        LoginDTO loginDTO = new LoginDTO("naoexiste@test.com", "qualquer");
+        when(userRepository.findByEmail("naoexiste@test.com")).thenReturn(Optional.empty());
+
+        mockMvc.perform(post("/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(loginDTO)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("Should return 401 when user is inactive, even with correct password")
+    void shouldFailLoginWhenUserInactive() throws Exception {
+        LoginDTO loginDTO = new LoginDTO("inativo@test.com", "password");
+        User user = new User();
+        user.setEmail("inativo@test.com");
+        user.setPasswordHash("encoded_password");
+        user.setActive(false);
+
+        when(userRepository.findByEmail("inativo@test.com")).thenReturn(Optional.of(user));
+
+        mockMvc.perform(post("/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(loginDTO)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("Should return 429 when rate limit exceeded for the email")
+    void shouldReturn429WhenRateLimited() throws Exception {
+        LoginDTO loginDTO = new LoginDTO("test@email.com", "password");
+        when(loginRateLimiter.isBlocked("test@email.com")).thenReturn(true);
+
+        mockMvc.perform(post("/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(loginDTO)))
+                .andExpect(status().isTooManyRequests());
+
+        verify(userRepository, never()).findByEmail(any());
+        verify(loginRateLimiter, never()).registerFailure(any());
+        verify(loginRateLimiter, never()).registerSuccess(any());
     }
 
     @Test
