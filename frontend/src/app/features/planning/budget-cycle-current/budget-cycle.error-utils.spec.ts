@@ -12,40 +12,25 @@ describe('budget-cycle error handling', () => {
     });
   });
 
-  describe('Bug Condition: unfixed error callback pattern discards backend message', () => {
-    /**
-     * Validates: Requirements 1.1, 1.2, 1.3, 1.4
-     *
-     * The UNFIXED code uses `error: () => ...` — a parameterless callback
-     * that ignores the HttpErrorResponse and always returns the generic string.
-     * This test mimics that pattern and asserts it should return the backend message.
-     * It MUST FAIL on unfixed code, proving the bug exists.
-     */
-    // ponytail: simulates the unfixed callback signature `error: () => 'Erro. Tente novamente.'`
-    const unfixedErrorCallback = (_err: unknown) => FALLBACK;
-
-    it('unfixed addItem callback should return backend message (EXPECTED TO FAIL)', () => {
-      const err = { error: { message: 'Data deve estar dentro do período do ciclo.' } };
-      const result = unfixedErrorCallback(err);
-      expect(result).toBe(err.error.message);
+  describe('extractErrorMessage — backend 422 messages', () => {
+    it('returns backend message for realize error', () => {
+      const err = { error: { message: 'Item já foi realizado.' } };
+      expect(extractErrorMessage(err, FALLBACK)).toBe(err.error.message);
     });
 
-    it('unfixed linkTransaction callback should return backend message (EXPECTED TO FAIL)', () => {
+    it('returns backend message for skip error', () => {
+      const err = { error: { message: 'Item já foi pulado.' } };
+      expect(extractErrorMessage(err, FALLBACK)).toBe(err.error.message);
+    });
+
+    it('returns backend message for link error', () => {
       const err = { error: { message: 'Transação já vinculada a outro item.' } };
-      const result = unfixedErrorCallback(err);
-      expect(result).toBe(err.error.message);
+      expect(extractErrorMessage(err, FALLBACK)).toBe(err.error.message);
     });
 
-    it('unfixed unlinkTransaction callback should return backend message (EXPECTED TO FAIL)', () => {
-      const err = { error: { message: 'Item não está vinculado.' } };
-      const result = unfixedErrorCallback(err);
-      expect(result).toBe(err.error.message);
-    });
-
-    it('unfixed deleteItem callback should return backend message (EXPECTED TO FAIL)', () => {
+    it('returns backend message for delete error', () => {
       const err = { error: { message: 'Item já realizado não pode ser excluído.' } };
-      const result = unfixedErrorCallback(err);
-      expect(result).toBe(err.error.message);
+      expect(extractErrorMessage(err, FALLBACK)).toBe(err.error.message);
     });
   });
 
@@ -67,7 +52,7 @@ describe('budget-cycle error handling', () => {
             fc.constant({ error: undefined }),
             fc.constant({} as { error?: { message?: string } }),
           ),
-          (err) => {
+          (err: { error?: null | { message?: string } }) => {
             expect(extractErrorMessage(err, FALLBACK)).toBe(FALLBACK);
           },
         ),
@@ -78,9 +63,9 @@ describe('budget-cycle error handling', () => {
       fc.assert(
         fc.property(
           fc.record({
-            error: fc.record({}, { requiredKeys: [] }).map((obj) => obj as { message?: string }),
+            error: fc.record({}, { requiredKeys: [] }).map((obj: Record<string, never>) => obj as { message?: string }),
           }),
-          (err) => {
+          (err: { error: { message?: string } }) => {
             expect(extractErrorMessage(err, FALLBACK)).toBe(FALLBACK);
           },
         ),
@@ -95,7 +80,7 @@ describe('budget-cycle error handling', () => {
             fc.constant({ error: { message: undefined } }),
             fc.constant({ error: { message: null as unknown as string | undefined } }),
           ),
-          (err) => {
+          (err: { error?: { message?: string } | null }) => {
             expect(extractErrorMessage(err, FALLBACK)).toBe(FALLBACK);
           },
         ),
