@@ -14,7 +14,6 @@ import { finalize } from 'rxjs/operators';
 
 import { PlanningService } from '../planning.service';
 import {
-  BudgetCycleOpenRequest,
   BudgetCycleResponse,
   BudgetItemCreateRequest,
   BudgetItemResponse,
@@ -74,22 +73,11 @@ export class BudgetCycleCurrentComponent implements OnInit {
   }
 
   openCycle(): void {
-    const ref = this.dialog.open(BudgetItemFormComponent, {
-      width: '400px',
-      data: { mode: 'openCycle' },
-    });
-    ref.afterClosed().subscribe((req?: BudgetCycleOpenRequest) => {
-      if (!req) return;
-      this.planningService.openCycle(req).subscribe({
-        next: c => {
-          this.cycle.set(c);
-          this.items.set(c.items ?? []);
-          this.snackBar.open('Ciclo aberto com sucesso.', 'OK', { duration: 3000 });
-        },
-        error: (err: HttpErrorResponse) => {
-          const msg = err.error?.message ?? 'Erro ao abrir ciclo.';
-          this.snackBar.open(msg, 'OK', { duration: 5000 });
-        },
+    // BudgetCycleOpenDialogComponent será criado na Task 8 — import dinâmico para evitar dependência circular antecipada
+    import('../budget-cycle-open-dialog/budget-cycle-open-dialog').then(m => {
+      const ref = this.dialog.open(m.BudgetCycleOpenDialogComponent, { width: '600px' });
+      ref.afterClosed().subscribe((opened: boolean) => {
+        if (opened) this.loadCurrentCycle();
       });
     });
   }
