@@ -5,8 +5,10 @@ import com.fintech.api.domain.budget.BudgetItem;
 import com.fintech.api.domain.enums.BudgetItemSource;
 import com.fintech.api.domain.enums.BudgetItemStatus;
 import com.fintech.api.domain.enums.TransactionType;
+import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.transaction.Transaction;
 import com.fintech.api.dto.budget.BudgetItemUpdateRequest;
+import com.fintech.api.exception.EntityNotFoundException;
 import com.fintech.api.repository.BudgetItemRepository;
 import com.fintech.api.repository.TransactionRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -62,13 +64,15 @@ class BudgetItemServiceTest {
     @Test
     @DisplayName("link() muda status para REALIZED e preenche transaction")
     void link_transacaoValida_mudaParaRealized() {
+        Tenant tenant = tenantWithId();
         BudgetCycle cycle = new BudgetCycle();
         BudgetItem item = itemWith(BudgetItemSource.MANUAL);
+        item.setTenant(tenant);
         item.setCycle(cycle);
         Transaction tx = new Transaction();
         tx.setId(UUID.randomUUID());
 
-        when(transactionRepository.findById(tx.getId())).thenReturn(Optional.of(tx));
+        when(transactionRepository.findByIdAndTenant(tx.getId(), tenant)).thenReturn(Optional.of(tx));
         when(repository.findByTransactionAndCycleNot(tx, cycle)).thenReturn(Optional.empty());
         when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -81,19 +85,41 @@ class BudgetItemServiceTest {
     @Test
     @DisplayName("link() lança IllegalStateException se transação já vinculada a outro item")
     void link_transacaoJaVinculada_lançaException() {
+        Tenant tenant = tenantWithId();
         BudgetCycle cycle = new BudgetCycle();
         BudgetItem item = itemWith(BudgetItemSource.MANUAL);
+        item.setTenant(tenant);
         item.setCycle(cycle);
         Transaction tx = new Transaction();
         tx.setId(UUID.randomUUID());
 
-        when(transactionRepository.findById(tx.getId())).thenReturn(Optional.of(tx));
+        when(transactionRepository.findByIdAndTenant(tx.getId(), tenant)).thenReturn(Optional.of(tx));
         when(repository.findByTransactionAndCycleNot(tx, cycle))
             .thenReturn(Optional.of(new BudgetItem()));
 
         assertThatThrownBy(() -> service.link(item, tx.getId()))
             .isInstanceOf(IllegalStateException.class)
             .hasMessageContaining("vinculada");
+    }
+
+    @Test
+    @DisplayName("link() lança EntityNotFoundException se a transação pertence a outro tenant")
+    void link_transacaoDeOutroTenant_lancaEntityNotFoundException() {
+        Tenant tenant = tenantWithId();
+        BudgetItem item = itemWith(BudgetItemSource.MANUAL);
+        item.setTenant(tenant);
+        item.setCycle(new BudgetCycle());
+        UUID transactionIdDeOutroTenant = UUID.randomUUID();
+
+        // Simula o repositório real: findByIdAndTenant não encontra porque a transação é de outro tenant
+        when(transactionRepository.findByIdAndTenant(transactionIdDeOutroTenant, tenant))
+            .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.link(item, transactionIdDeOutroTenant))
+            .isInstanceOf(EntityNotFoundException.class)
+            .hasMessageContaining("Transação");
+
+        verify(repository, never()).save(any());
     }
 
     @Test
@@ -108,6 +134,12 @@ class BudgetItemServiceTest {
 
         assertThat(result.getStatus()).isEqualTo(BudgetItemStatus.PENDING);
         assertThat(result.getTransaction()).isNull();
+    }
+
+    private Tenant tenantWithId() {
+        Tenant tenant = new Tenant();
+        tenant.setId(UUID.randomUUID());
+        return tenant;
     }
 
     private BudgetItem itemWith(BudgetItemSource source) {
