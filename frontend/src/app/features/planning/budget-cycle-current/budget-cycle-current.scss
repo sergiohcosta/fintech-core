@@ -47,3 +47,7 @@ mat-expansion-panel { margin-bottom: 12px; }
 .chip-skipped {
   opacity: 0.5;
 }
+
+.negative {
+  color: var(--mat-sys-error);
+}
