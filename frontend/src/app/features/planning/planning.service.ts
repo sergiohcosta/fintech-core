@@ -5,6 +5,7 @@ import { TenantService } from '../../core/api/tenant/tenant.service';
 import {
   BudgetCycleOpenRequest,
   BudgetCyclePageResponse,
+  BudgetCyclePreview,
   BudgetCycleResponse,
   BudgetItemCreateRequest,
   BudgetItemLinkRequest,
@@ -43,6 +44,10 @@ export class PlanningService {
 
   syncInstallments(id: string): Observable<BudgetCycleResponse> {
     return this.budget.syncInstallments(id);
+  }
+
+  previewCycle(startDay?: number): Observable<BudgetCyclePreview> {
+    return this.budget.previewBudgetCycle(startDay !== undefined ? { startDay } : undefined);
   }
 
   createItem(cycleId: string, req: BudgetItemCreateRequest): Observable<BudgetItemResponse> {

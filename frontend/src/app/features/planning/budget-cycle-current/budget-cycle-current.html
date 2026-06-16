@@ -19,6 +19,18 @@
   }
 
   @if (!loading() && cycle()) {
+    @if (cycle()?.status === 'ENDED') {
+      <mat-card class="ended-banner">
+        <mat-card-content>
+          <mat-icon>event_busy</mat-icon>
+          <span>Período encerrado — revise os lançamentos e feche o ciclo quando estiver pronto.</span>
+          <button mat-flat-button color="warn" (click)="closeCycle()">
+            Fechar ciclo definitivamente
+          </button>
+        </mat-card-content>
+      </mat-card>
+    }
+
     <div class="cycle-header">
       <div class="cycle-dates">
         <h1>Planejamento</h1>
@@ -27,8 +39,9 @@
       </div>
       <div class="cycle-actions">
         <mat-chip [class.chip-open]="cycle()!.status === 'OPEN'"
-                  [class.chip-closed]="cycle()!.status === 'CLOSED'">
-          {{ cycle()!.status === 'OPEN' ? 'Aberto' : 'Fechado' }}
+                  [class.chip-closed]="cycle()!.status === 'CLOSED'"
+                  [class.chip-ended]="cycle()!.status === 'ENDED'">
+          {{ cycle()!.status === 'OPEN' ? 'Aberto' : cycle()!.status === 'ENDED' ? 'Encerrado' : 'Fechado' }}
         </mat-chip>
         @if (cycle()!.status === 'OPEN') {
           <button mat-icon-button matTooltip="Sincronizar parcelas do cartão"
