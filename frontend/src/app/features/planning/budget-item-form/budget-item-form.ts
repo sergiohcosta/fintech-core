@@ -8,13 +8,19 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { BudgetCycleOpenRequest, BudgetItemCreateRequest } from '../../../core/api/fintechSaaSAPI.schemas';
+import {
+  BudgetCycleOpenRequest,
+  BudgetItemCreateRequest,
+  BudgetItemResponse,
+  BudgetItemUpdateRequest,
+} from '../../../core/api/fintechSaaSAPI.schemas';
 
-export type BudgetItemFormResult = BudgetItemCreateRequest;
+export type BudgetItemFormResult = BudgetItemCreateRequest | BudgetItemUpdateRequest;
 
 export interface BudgetItemFormData {
   cycleId?: string;
-  mode?: 'openCycle';
+  mode?: 'openCycle' | 'edit';
+  item?: BudgetItemResponse;
 }
 
 @Component({
@@ -34,6 +40,7 @@ export class BudgetItemFormComponent implements OnInit {
   readonly data: BudgetItemFormData = inject(MAT_DIALOG_DATA);
 
   readonly isOpenCycleMode = signal(false);
+  readonly isEditMode = signal(false);
 
   readonly cycleForm = this.fb.group({
     referenceMonth: ['', [Validators.required, Validators.pattern(/^\d{4}-\d{2}$/)]],
@@ -49,13 +56,34 @@ export class BudgetItemFormComponent implements OnInit {
 
   ngOnInit(): void {
     this.isOpenCycleMode.set(this.data?.mode === 'openCycle');
+    this.isEditMode.set(this.data?.mode === 'edit');
+
+    if (this.isEditMode()) {
+      const item = this.data.item!;
+      this.itemForm.patchValue({
+        description: item.description ?? '',
+        amount: item.amount ?? null,
+        type: item.type ?? 'EXPENSE',
+        expectedDate: item.expectedDate ? new Date(item.expectedDate + 'T00:00:00') : null,
+      });
+      this.itemForm.get('type')!.disable();
+    }
   }
 
   onSubmit(): void {
     if (this.isOpenCycleMode()) {
       if (this.cycleForm.invalid) return;
       const v = this.cycleForm.getRawValue();
-      this.dialogRef.close({ referenceMonth: v.referenceMonth!, startDay: v.startDay! });
+      this.dialogRef.close({ referenceMonth: v.referenceMonth!, startDay: v.startDay! } satisfies BudgetCycleOpenRequest);
+    } else if (this.isEditMode()) {
+      if (this.itemForm.invalid) return;
+      const v = this.itemForm.getRawValue();
+      const result: BudgetItemUpdateRequest = {
+        description: v.description!,
+        amount: v.amount!,
+        expectedDate: v.expectedDate!.toISOString().substring(0, 10),
+      };
+      this.dialogRef.close(result);
     } else {
       if (this.itemForm.invalid) return;
       const v = this.itemForm.getRawValue();

@@ -22,7 +22,7 @@
             [disabled]="cycleForm.invalid" (click)="onSubmit()">Abrir</button>
   </mat-dialog-actions>
 } @else {
-  <h2 mat-dialog-title>Adicionar item</h2>
+  <h2 mat-dialog-title>{{ isEditMode() ? 'Editar item' : 'Adicionar item' }}</h2>
   <mat-dialog-content>
     <form [formGroup]="itemForm" style="display:flex;flex-direction:column;gap:12px;padding-top:8px">
       <mat-form-field appearance="outline">
