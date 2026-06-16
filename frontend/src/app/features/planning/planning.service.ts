@@ -8,6 +8,7 @@ import {
   BudgetCycleResponse,
   BudgetItemCreateRequest,
   BudgetItemLinkRequest,
+  BudgetItemRealizeRequest,
   BudgetItemResponse,
   BudgetItemUpdateRequest,
   RecurringBudgetItemRequest,
@@ -62,6 +63,26 @@ export class PlanningService {
 
   unlinkItem(id: string): Observable<BudgetItemResponse> {
     return this.budget.unlinkBudgetItem(id);
+  }
+
+  realizeItem(id: string, req: BudgetItemRealizeRequest): Observable<BudgetItemResponse> {
+    return this.budget.realizeBudgetItem(id, req);
+  }
+
+  unrealizeItem(id: string): Observable<BudgetItemResponse> {
+    return this.budget.unrealizeBudgetItem(id);
+  }
+
+  skipItem(id: string): Observable<BudgetItemResponse> {
+    return this.budget.skipBudgetItem(id);
+  }
+
+  unskipItem(id: string): Observable<BudgetItemResponse> {
+    return this.budget.unskipBudgetItem(id);
+  }
+
+  reactivateRecurring(id: string): Observable<RecurringBudgetItemResponse> {
+    return this.budget.reactivateRecurringBudgetItem(id);
   }
 
   listRecurring(): Observable<RecurringBudgetItemResponse[]> {

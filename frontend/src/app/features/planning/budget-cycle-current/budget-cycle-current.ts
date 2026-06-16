@@ -13,9 +13,9 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { finalize } from 'rxjs/operators';
 
 import { PlanningService } from '../planning.service';
-import { BudgetCycleOpenRequest, BudgetCycleResponse, BudgetItemResponse } from '../../../core/api/fintechSaaSAPI.schemas';
+import { BudgetCycleOpenRequest, BudgetCycleResponse, BudgetItemCreateRequest, BudgetItemResponse } from '../../../core/api/fintechSaaSAPI.schemas';
 import { buildSummary } from './budget-cycle.utils';
-import { BudgetItemFormComponent, BudgetItemFormResult } from '../budget-item-form/budget-item-form';
+import { BudgetItemFormComponent } from '../budget-item-form/budget-item-form';
 import { LinkTransactionDialogComponent, LinkTransactionDialogData } from '../link-transaction-dialog/link-transaction-dialog';
 
 @Component({
@@ -110,7 +110,7 @@ export class BudgetCycleCurrentComponent implements OnInit {
       width: '500px',
       data: { cycleId },
     });
-    ref.afterClosed().subscribe((result?: BudgetItemFormResult) => {
+    ref.afterClosed().subscribe((result?: BudgetItemCreateRequest) => {
       if (!result) return;
       this.planningService.createItem(cycleId, result).subscribe({
         next: item => {
