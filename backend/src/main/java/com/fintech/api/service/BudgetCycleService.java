@@ -8,8 +8,7 @@ import com.fintech.api.domain.installment.InstallmentGroup;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.transaction.Transaction;
 import com.fintech.api.domain.user.User;
-import com.fintech.api.dto.budget.BudgetCycleOpenRequest;
-import com.fintech.api.dto.budget.BudgetCycleSummaryDTO;
+import com.fintech.api.dto.budget.*;
 import com.fintech.api.exception.EntityNotFoundException;
 import com.fintech.api.repository.*;
 import org.springframework.security.access.AccessDeniedException;
@@ -76,10 +75,40 @@ public class BudgetCycleService {
     }
 
     /**
+     * Transita OPEN→ENDED se endDate < today. Operação idempotente e lazy.
+     * Permite que o ciclo seja encerrado automaticamente sem intervenção do usuário,
+     * preservando o estado histórico antes do fechamento formal (close).
+     */
+    @Transactional
+    public BudgetCycle checkAndTransitionToEnded(BudgetCycle cycle) {
+        if (cycle.getStatus() == BudgetCycleStatus.OPEN
+                && cycle.getEndDate().isBefore(LocalDate.now())) {
+            cycle.setStatus(BudgetCycleStatus.ENDED);
+            cycleRepository.save(cycle);
+            log.info("Ciclo transitado para ENDED [cycleId={}]", cycle.getId());
+        }
+        return cycle;
+    }
+
+    /**
+     * Retorna o ciclo "atual" do tenant: OPEN (verificando lazy transition) ou ENDED.
+     * Substitui findOpenByTenant() — agora retorna também ciclos ENDED recém-transitados.
+     */
+    @Transactional
+    public Optional<BudgetCycle> findCurrentByTenant(Tenant tenant) {
+        Optional<BudgetCycle> open = cycleRepository.findByTenantAndStatus(tenant, BudgetCycleStatus.OPEN);
+        if (open.isPresent()) {
+            return Optional.of(checkAndTransitionToEnded(open.get()));
+        }
+        return cycleRepository.findByTenantAndStatus(tenant, BudgetCycleStatus.ENDED);
+    }
+
+    /**
      * Abre um novo ciclo de planejamento para o tenant.
      *
      * Validações:
      * - Não pode existir outro ciclo OPEN para o mesmo tenant
+     * - O período calculado deve compreender a data atual (evita abrir ciclos futuros/passados)
      * - O período calculado não pode sobrepor ciclos já existentes
      *
      * Após criar o ciclo, popula automaticamente:
@@ -102,6 +131,12 @@ public class BudgetCycleService {
         LocalDate[] dates = calculateCycleDates(YearMonth.parse(req.referenceMonth()), startDay);
         LocalDate startDate = dates[0];
         LocalDate endDate   = dates[1];
+        LocalDate today     = LocalDate.now();
+
+        // Garante que today está dentro do período — impede abertura de ciclos futuros ou retroativos
+        if (today.isBefore(startDate) || today.isAfter(endDate)) {
+            throw new IllegalStateException("O período do ciclo deve compreender a data atual.");
+        }
 
         if (cycleRepository.existsOverlap(managed, startDate, endDate)) {
             throw new IllegalStateException("O período solicitado conflita com um ciclo já existente.");
@@ -111,8 +146,10 @@ public class BudgetCycleService {
         managed.setBudgetCycleStartDay(startDay);
         tenantRepository.save(managed);
 
-        BigDecimal opening = accountRepository.sumLiquidBalanceByTenant(
-            managed.getId(), TransactionType.INCOME, TransactionStatus.PAID);
+        BigDecimal opening = req.openingBalance() != null
+            ? req.openingBalance()
+            : accountRepository.sumLiquidBalanceByTenant(
+                managed.getId(), TransactionType.INCOME, TransactionStatus.PAID);
 
         BudgetCycle cycle = cycleRepository.save(BudgetCycle.builder()
             .tenant(managed)
@@ -131,6 +168,158 @@ public class BudgetCycleService {
             cycle.getId(), managed.getId(), startDate, endDate, startDay);
         return cycle;
     }
+
+    /**
+     * Retorna preview do ciclo que seria criado sem persistir nada.
+     * Auto-determina referenceMonth a partir de today + startDay.
+     * Útil para o frontend exibir um resumo antes de o usuário confirmar a abertura.
+     */
+    @Transactional(readOnly = true)
+    public BudgetCyclePreviewDTO preview(Tenant tenant, int startDay) {
+        Tenant managed = tenantRepository.findById(tenant.getId())
+            .orElseThrow(() -> new EntityNotFoundException("Tenant não encontrado."));
+
+        LocalDate today = LocalDate.now();
+        YearMonth thisMonth = YearMonth.from(today);
+
+        // Tenta este mês, depois o próximo, até encontrar o período que contém today
+        LocalDate[] dates = null;
+        YearMonth refMonth = null;
+        for (int offset = 0; offset <= 1; offset++) {
+            YearMonth candidate = thisMonth.plusMonths(offset);
+            LocalDate[] d = calculateCycleDates(candidate, startDay);
+            if (!today.isBefore(d[0]) && !today.isAfter(d[1])) {
+                dates = d;
+                refMonth = candidate;
+                break;
+            }
+        }
+        if (dates == null) {
+            throw new IllegalStateException("Não foi possível determinar o ciclo atual para o dia de início informado.");
+        }
+
+        final LocalDate startDate = dates[0];
+        final LocalDate endDate   = dates[1];
+        final int sd = startDay;
+
+        BigDecimal suggestedBalance = accountRepository.sumLiquidBalanceByTenant(
+            managed.getId(), TransactionType.INCOME, TransactionStatus.PAID);
+
+        List<RecurringBudgetItem> templates =
+            recurringRepository.findAllByTenantAndActiveTrueOrderByDayOfMonthAscDescriptionAsc(managed);
+
+        List<RecurringItemPreviewDTO> recurringPreviews = templates.stream()
+            .map(t -> new RecurringItemPreviewDTO(
+                t.getDescription(),
+                t.getAmount(),
+                t.getType().name(),
+                calculateExpectedDate(startDate, sd, t.getDayOfMonth())))
+            .toList();
+
+        List<Transaction> installments = transactionRepository.findInstallmentsInPeriodByTenant(
+            managed.getId(), startDate, endDate, TransactionStatus.CANCELLED);
+
+        Map<InstallmentGroup, List<Transaction>> byGroup = installments.stream()
+            .collect(Collectors.groupingBy(Transaction::getInstallmentGroup));
+
+        List<InstallmentItemPreviewDTO> installmentPreviews = byGroup.entrySet().stream()
+            .map(entry -> {
+                InstallmentGroup group = entry.getKey();
+                BigDecimal total = entry.getValue().stream()
+                    .map(Transaction::getAmount)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+                LocalDate dueDate = entry.getValue().get(0).getInvoice().getDueDate();
+                return new InstallmentItemPreviewDTO(group.getDescription(), total, dueDate);
+            })
+            .toList();
+
+        BigDecimal projectedIncome = recurringPreviews.stream()
+            .filter(r -> "INCOME".equals(r.type()))
+            .map(RecurringItemPreviewDTO::amount)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal projectedExpense = recurringPreviews.stream()
+            .filter(r -> "EXPENSE".equals(r.type()))
+            .map(RecurringItemPreviewDTO::amount)
+            .reduce(BigDecimal.ZERO, BigDecimal::add)
+            .add(installmentPreviews.stream()
+                .map(InstallmentItemPreviewDTO::amount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
+
+        return new BudgetCyclePreviewDTO(
+            refMonth.toString(), startDay, startDate, endDate, suggestedBalance,
+            recurringPreviews, installmentPreviews, projectedIncome, projectedExpense
+        );
+    }
+
+    /**
+     * Fecha um ciclo ENDED (ENDED → CLOSED).
+     * Calcula o resumo final e persiste os valores de snapshot para registro histórico.
+     *
+     * Requer ENDED (não OPEN) — o ciclo deve ter encerrado seu período antes de ser
+     * fechado formalmente. Essa separação evita fechamentos prematuros e garante que
+     * os snapshots reflitam o estado completo do ciclo.
+     */
+    @Transactional
+    public BudgetCycle close(UUID cycleId, Tenant tenant) {
+        BudgetCycle cycle = findByIdAndTenant(cycleId, tenant);
+
+        if (cycle.getStatus() == BudgetCycleStatus.OPEN) {
+            throw new IllegalStateException("O ciclo ainda está em andamento.");
+        }
+        if (cycle.getStatus() == BudgetCycleStatus.CLOSED) {
+            throw new IllegalStateException("O ciclo já está fechado.");
+        }
+
+        List<BudgetItem> items = itemRepository.findAllByCycleWithDetails(cycle);
+        BudgetCycleSummaryDTO summary = summaryService.calculateSummary(cycle, items, LocalDate.now());
+
+        cycle.setSnapshotProjectedBalance(summary.projectedBalance());
+        cycle.setSnapshotAvailableToSpend(summary.availableToSpend());
+        cycle.setSnapshotRealizedIncome(summary.realizedIncome());
+        cycle.setSnapshotRealizedExpense(summary.realizedExpense());
+        cycle.setSnapshotUnplannedExpenses(summary.unplannedExpenses());
+        cycle.setStatus(BudgetCycleStatus.CLOSED);
+
+        log.info("Ciclo fechado [cycleId={} tenantId={}]", cycleId, tenant.getId());
+        return cycleRepository.save(cycle);
+    }
+
+    /**
+     * Re-sincroniza os itens de parcelamento do ciclo.
+     * Remove todos os itens com source=INSTALLMENT e os recria com base nas parcelas atuais.
+     * Útil quando novas compras parceladas são adicionadas após a abertura do ciclo.
+     */
+    @Transactional
+    public BudgetCycle syncInstallments(UUID cycleId, Tenant tenant, User user) {
+        BudgetCycle cycle = findByIdAndTenant(cycleId, tenant);
+        List<BudgetItem> existing = itemRepository.findAllByCycleWithDetails(cycle);
+        itemRepository.deleteAll(existing.stream()
+            .filter(i -> i.getSource() == BudgetItemSource.INSTALLMENT)
+            .toList());
+        populateInstallmentItems(cycle, tenant, cycle.getStartDate(), cycle.getEndDate());
+        return cycle;
+    }
+
+    @Transactional
+    public BudgetCycle findByIdAndTenant(UUID id, Tenant tenant) {
+        BudgetCycle cycle = cycleRepository.findById(id)
+            .filter(c -> c.getTenant().getId().equals(tenant.getId()))
+            .orElseThrow(() -> new AccessDeniedException("Acesso negado."));
+        return checkAndTransitionToEnded(cycle);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<BudgetCycle> listByTenant(Tenant tenant, Pageable pageable) {
+        return cycleRepository.findAllByTenantOrderByStartDateDesc(tenant, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public List<BudgetItem> listItems(BudgetCycle cycle) {
+        return itemRepository.findAllByCycleWithDetails(cycle);
+    }
+
+    // ---- private helpers ----
 
     private void populateRecurringItems(BudgetCycle cycle, Tenant tenant, User user,
                                         LocalDate startDate, int startDay) {
@@ -190,71 +379,5 @@ public class BudgetCycleService {
             .toList();
 
         itemRepository.saveAll(items);
-    }
-
-    /**
-     * Fecha um ciclo aberto (OPEN → CLOSED).
-     * Calcula o resumo final e persiste os valores de snapshot para registro histórico.
-     */
-    @Transactional
-    public BudgetCycle close(UUID cycleId, Tenant tenant) {
-        BudgetCycle cycle = findByIdAndTenant(cycleId, tenant);
-        if (cycle.getStatus() != BudgetCycleStatus.OPEN) {
-            throw new IllegalStateException("O ciclo já está fechado.");
-        }
-
-        // Calculate final summary for snapshot
-        List<BudgetItem> items = itemRepository.findAllByCycleWithDetails(cycle);
-        BudgetCycleSummaryDTO summary = summaryService.calculateSummary(cycle, items, LocalDate.now());
-
-        // Persist snapshot
-        cycle.setSnapshotProjectedBalance(summary.projectedBalance());
-        cycle.setSnapshotAvailableToSpend(summary.availableToSpend());
-        cycle.setSnapshotRealizedIncome(summary.realizedIncome());
-        cycle.setSnapshotRealizedExpense(summary.realizedExpense());
-        cycle.setSnapshotUnplannedExpenses(summary.unplannedExpenses());
-
-        cycle.setStatus(BudgetCycleStatus.CLOSED);
-        log.info("Ciclo fechado [cycleId={} tenantId={}]", cycleId, tenant.getId());
-        return cycleRepository.save(cycle);
-    }
-
-    /**
-     * Re-sincroniza os itens de parcelamento do ciclo.
-     * Remove todos os itens com source=INSTALLMENT e os recria com base nas parcelas atuais.
-     * Útil quando novas compras parceladas são adicionadas após a abertura do ciclo.
-     */
-    @Transactional
-    public BudgetCycle syncInstallments(UUID cycleId, Tenant tenant, User user) {
-        BudgetCycle cycle = findByIdAndTenant(cycleId, tenant);
-        List<BudgetItem> existing = itemRepository.findAllByCycleWithDetails(cycle);
-        List<BudgetItem> toRemove = existing.stream()
-            .filter(i -> i.getSource() == BudgetItemSource.INSTALLMENT)
-            .toList();
-        itemRepository.deleteAll(toRemove);
-        populateInstallmentItems(cycle, tenant, cycle.getStartDate(), cycle.getEndDate());
-        return cycle;
-    }
-
-    @Transactional(readOnly = true)
-    public Optional<BudgetCycle> findOpenByTenant(Tenant tenant) {
-        return cycleRepository.findByTenantAndStatus(tenant, BudgetCycleStatus.OPEN);
-    }
-
-    @Transactional(readOnly = true)
-    public BudgetCycle findByIdAndTenant(UUID id, Tenant tenant) {
-        return cycleRepository.findById(id)
-            .filter(c -> c.getTenant().getId().equals(tenant.getId()))
-            .orElseThrow(() -> new AccessDeniedException("Acesso negado."));
-    }
-
-    @Transactional(readOnly = true)
-    public Page<BudgetCycle> listByTenant(Tenant tenant, Pageable pageable) {
-        return cycleRepository.findAllByTenantOrderByStartDateDesc(tenant, pageable);
-    }
-
-    @Transactional(readOnly = true)
-    public List<BudgetItem> listItems(BudgetCycle cycle) {
-        return itemRepository.findAllByCycleWithDetails(cycle);
     }
 }

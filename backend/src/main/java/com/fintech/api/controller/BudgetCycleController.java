@@ -49,7 +49,7 @@ public class BudgetCycleController {
     @GetMapping("/current")
     public ResponseEntity<BudgetCycleResponseDTO> current() {
         User user = getUser();
-        return cycleService.findOpenByTenant(user.getTenant())
+        return cycleService.findCurrentByTenant(user.getTenant())
             .map(c -> ResponseEntity.ok(buildResponse(c)))
             .orElse(ResponseEntity.notFound().build());
     }
