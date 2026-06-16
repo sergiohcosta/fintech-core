@@ -333,6 +333,61 @@ class BudgetCycleServiceTest {
         assertThat(result.getStatus()).isEqualTo(BudgetCycleStatus.CLOSED);
     }
 
+    // ---- delete() ----
+
+    @Test
+    @DisplayName("delete() em ciclo CLOSED remove itens e ciclo")
+    void delete_cicloFechado_removeItemsECiclo() {
+        Tenant tenant = tenantWith(1);
+        BudgetCycle cycle = BudgetCycle.builder()
+            .id(UUID.randomUUID()).tenant(tenant)
+            .startDate(LocalDate.of(2026, 5, 1))
+            .endDate(LocalDate.of(2026, 5, 31))
+            .openingBalance(BigDecimal.ZERO)
+            .status(BudgetCycleStatus.CLOSED)
+            .build();
+
+        List<BudgetItem> items = List.of(
+            BudgetItem.builder()
+                .id(UUID.randomUUID())
+                .cycle(cycle)
+                .tenant(tenant)
+                .description("Item teste")
+                .amount(BigDecimal.TEN)
+                .type(com.fintech.api.domain.enums.TransactionType.EXPENSE)
+                .expectedDate(LocalDate.of(2026, 5, 10))
+                .source(com.fintech.api.domain.enums.BudgetItemSource.MANUAL)
+                .build()
+        );
+
+        when(cycleRepository.findById(cycle.getId())).thenReturn(Optional.of(cycle));
+        when(itemRepository.findAllByCycleWithDetails(cycle)).thenReturn(items);
+
+        service.delete(cycle.getId(), tenant);
+
+        verify(itemRepository).deleteAll(items);
+        verify(cycleRepository).delete(cycle);
+    }
+
+    @Test
+    @DisplayName("delete() em ciclo não-CLOSED lança IllegalStateException")
+    void delete_cicloNaoFechado_lancaException() {
+        Tenant tenant = tenantWith(1);
+        BudgetCycle cycle = BudgetCycle.builder()
+            .id(UUID.randomUUID()).tenant(tenant)
+            .startDate(LocalDate.of(2026, 6, 1))
+            .endDate(LocalDate.of(2026, 6, 30))
+            .openingBalance(BigDecimal.ZERO)
+            .status(BudgetCycleStatus.ENDED)
+            .build();
+
+        when(cycleRepository.findById(cycle.getId())).thenReturn(Optional.of(cycle));
+
+        assertThatThrownBy(() -> service.delete(cycle.getId(), tenant))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage("Apenas ciclos fechados podem ser excluídos.");
+    }
+
     // ---- helpers ----
 
     private Tenant tenantWith(int startDay) {
