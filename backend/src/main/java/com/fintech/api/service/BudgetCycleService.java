@@ -287,6 +287,28 @@ public class BudgetCycleService {
     }
 
     /**
+     * Exclui permanentemente um ciclo CLOSED e todos os seus itens.
+     *
+     * Requer CLOSED — ciclos OPEN ou ENDED ainda podem ser relevantes para o planejamento
+     * corrente e não devem ser apagados acidentalmente. A exclusão deleta os BudgetItems
+     * primeiro (FK NOT NULL sem CASCADE) e depois o próprio ciclo.
+     */
+    @Transactional
+    public void delete(UUID cycleId, Tenant tenant) {
+        BudgetCycle cycle = cycleRepository.findById(cycleId)
+            .filter(c -> c.getTenant().getId().equals(tenant.getId()))
+            .orElseThrow(() -> new AccessDeniedException("Acesso negado."));
+
+        if (cycle.getStatus() != BudgetCycleStatus.CLOSED) {
+            throw new IllegalStateException("Apenas ciclos fechados podem ser excluídos.");
+        }
+
+        itemRepository.deleteAll(itemRepository.findAllByCycleWithDetails(cycle));
+        cycleRepository.delete(cycle);
+        log.info("Ciclo excluído [cycleId={} tenantId={}]", cycleId, tenant.getId());
+    }
+
+    /**
      * Re-sincroniza os itens de parcelamento do ciclo.
      * Remove todos os itens com source=INSTALLMENT e os recria com base nas parcelas atuais.
      * Útil quando novas compras parceladas são adicionadas após a abertura do ciclo.
