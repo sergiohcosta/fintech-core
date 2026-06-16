@@ -85,8 +85,8 @@ export class PlanningService {
     return this.budget.reactivateRecurringBudgetItem(id);
   }
 
-  listRecurring(): Observable<RecurringBudgetItemResponse[]> {
-    return this.budget.listRecurringBudgetItems();
+  listRecurring(active?: boolean): Observable<RecurringBudgetItemResponse[]> {
+    return this.budget.listRecurringBudgetItems(active !== undefined ? { active } : undefined);
   }
 
   createRecurring(req: RecurringBudgetItemRequest): Observable<RecurringBudgetItemResponse> {

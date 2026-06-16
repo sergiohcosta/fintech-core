@@ -1,0 +1,16 @@
+.toggle-row {
+  margin-bottom: 8px;
+}
+
+.inactive-section {
+  margin-top: 12px;
+}
+
+.inactive-table {
+  opacity: 0.6;
+}
+
+.empty-state {
+  color: var(--mat-sys-on-surface-variant);
+  font-style: italic;
+}
