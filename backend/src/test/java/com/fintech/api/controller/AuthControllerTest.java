@@ -73,7 +73,7 @@ class AuthControllerTest {
     void shouldRegisterTenant() throws Exception {
         // Arrange
         TenantRegistrationDTO dto = new TenantRegistrationDTO(
-                "My Tenant", "Admin", "admin@email.com", "123456");
+                "My Tenant", "Admin", "admin@email.com", "Senha123");
 
         Tenant tenant = new Tenant();
         tenant.setId(UUID.randomUUID());
@@ -87,6 +87,31 @@ class AuthControllerTest {
                 .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.name").value("My Tenant"));
+    }
+
+    @Test
+    @DisplayName("POST /auth/register retorna 400 quando senha não atende a política mínima")
+    void shouldFailRegisterWithWeakPassword() throws Exception {
+        TenantRegistrationDTO dto = new TenantRegistrationDTO(
+                "My Tenant", "Admin", "admin@email.com", "12345678");
+
+        mockMvc.perform(post("/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("POST /auth/register retorna 400 quando senha excede o tamanho máximo")
+    void shouldFailRegisterWithTooLongPassword() throws Exception {
+        String tooLong = "Senha123" + "a".repeat(70);
+        TenantRegistrationDTO dto = new TenantRegistrationDTO(
+                "My Tenant", "Admin", "admin@email.com", tooLong);
+
+        mockMvc.perform(post("/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -177,7 +202,7 @@ class AuthControllerTest {
     @Test
     @DisplayName("POST /auth/accept-invite retorna 200 com token JWT")
     void shouldAcceptInviteSuccessfully() throws Exception {
-        AcceptInviteDTO dto = new AcceptInviteDTO("valid-token", "João Silva", "senha123");
+        AcceptInviteDTO dto = new AcceptInviteDTO("valid-token", "João Silva", "Senha123");
         when(invitationService.accept(any(AcceptInviteDTO.class))).thenReturn("jwt-result");
 
         mockMvc.perform(post("/auth/accept-invite")
@@ -185,6 +210,17 @@ class AuthControllerTest {
                 .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").value("jwt-result"));
+    }
+
+    @Test
+    @DisplayName("POST /auth/accept-invite retorna 400 quando senha não atende a política mínima")
+    void shouldFailAcceptInviteWithWeakPassword() throws Exception {
+        AcceptInviteDTO dto = new AcceptInviteDTO("valid-token", "João Silva", "12345678");
+
+        mockMvc.perform(post("/auth/accept-invite")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
