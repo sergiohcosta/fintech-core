@@ -312,6 +312,39 @@ export class BudgetService {
       }
     );
   }
+/**
+ * @summary Exclui um ciclo fechado (ADMIN)
+ */
+ deleteBudgetCycle<TData = void>(id: string, options?: HttpClientBodyOptions): Observable<TData>;
+ deleteBudgetCycle<TData = void>(id: string, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ deleteBudgetCycle<TData = void>(id: string, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  deleteBudgetCycle<TData = void>(
+    id: string, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    if (options?.observe === 'events') {
+      return this.http.delete<TData>(
+      `/api/budget-cycles/${id}`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'events',
+      }
+    );
+    }
+
+    if (options?.observe === 'response') {
+      return this.http.delete<TData>(
+      `/api/budget-cycles/${id}`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'response',
+      }
+    );
+    }
+
+    return this.http.delete<TData>(
+      `/api/budget-cycles/${id}`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'body',
+      }
+    );
+  }
  closeBudgetCycle<TData = BudgetCycleResponse>(id: string, options?: HttpClientBodyOptions): Observable<TData>;
  closeBudgetCycle<TData = BudgetCycleResponse>(id: string, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
  closeBudgetCycle<TData = BudgetCycleResponse>(id: string, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;

@@ -1714,6 +1714,26 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BudgetCycleResponse'
+    delete:
+      tags: [budget]
+      operationId: deleteBudgetCycle
+      summary: Exclui um ciclo fechado (ADMIN)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Ciclo excluído
+        '403':
+          description: Acesso negado (não é ADMIN ou ciclo não pertence ao tenant)
+        '422':
+          description: Ciclo não está com status CLOSED
+      security:
+        - bearerAuth: []
 
   /api/budget-cycles/{id}/close:
     post:
