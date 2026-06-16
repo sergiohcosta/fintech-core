@@ -54,6 +54,14 @@ public class BudgetCycleController {
             .orElse(ResponseEntity.notFound().build());
     }
 
+    @GetMapping("/preview")
+    public ResponseEntity<BudgetCyclePreviewDTO> preview(
+            @RequestParam(required = false) Integer startDay) {
+        User user = getUser();
+        int sd = startDay != null ? startDay : user.getTenant().getBudgetCycleStartDay();
+        return ResponseEntity.ok(cycleService.preview(user.getTenant(), sd));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<BudgetCycleResponseDTO> get(@PathVariable UUID id) {
         User user = getUser();
