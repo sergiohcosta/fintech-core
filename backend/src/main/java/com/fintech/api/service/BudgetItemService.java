@@ -52,7 +52,9 @@ public class BudgetItemService {
 
     @Transactional
     public BudgetItem link(BudgetItem item, UUID transactionId) {
-        Transaction tx = transactionRepository.findById(transactionId)
+        // Escopado pelo tenant do item (já validado em findByIdAndTenant no controller) — sem isso,
+        // qualquer UUID de transação de OUTRO tenant seria aceito (vazamento cross-tenant).
+        Transaction tx = transactionRepository.findByIdAndTenant(transactionId, item.getTenant())
             .orElseThrow(() -> new EntityNotFoundException("Transação não encontrada."));
 
         if (repository.findByTransactionAndCycleNot(tx, item.getCycle()).isPresent()) {
