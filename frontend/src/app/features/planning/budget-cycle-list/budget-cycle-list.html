@@ -21,14 +21,30 @@
       </ng-container>
       <ng-container matColumnDef="status">
         <th mat-header-cell *matHeaderCellDef>Status</th>
-        <td mat-cell *matCellDef="let c"><mat-chip>{{ c.status === 'OPEN' ? 'Aberto' : c.status === 'CLOSED' ? 'Fechado' : 'Pago' }}</mat-chip></td>
+        <td mat-cell *matCellDef="let c">
+          <mat-chip>
+            {{ c.status === 'OPEN' ? 'Aberto' : c.status === 'ENDED' ? 'Encerrado' : 'Fechado' }}
+          </mat-chip>
+        </td>
       </ng-container>
       <ng-container matColumnDef="actions">
         <th mat-header-cell *matHeaderCellDef></th>
         <td mat-cell *matCellDef="let c">
-          <a mat-icon-button [routerLink]="['/planning/cycles', c.id]">
-            <mat-icon>visibility</mat-icon>
-          </a>
+          @if (deleting() === c.id) {
+            <span style="font-size:0.85rem;margin-right:8px">Excluir?</span>
+            <button mat-button color="warn" (click)="confirmDelete(c.id!)">Sim</button>
+            <button mat-button (click)="cancelDelete()">Não</button>
+          } @else {
+            <a mat-icon-button [routerLink]="['/planning/cycles', c.id]">
+              <mat-icon>visibility</mat-icon>
+            </a>
+            @if (isAdmin() && c.status === 'CLOSED') {
+              <button mat-icon-button color="warn" (click)="requestDelete(c.id!)"
+                      aria-label="Excluir ciclo">
+                <mat-icon>delete_outline</mat-icon>
+              </button>
+            }
+          }
         </td>
       </ng-container>
       <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
