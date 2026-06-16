@@ -83,6 +83,13 @@ public class BudgetCycleController {
         return ResponseEntity.ok(buildResponse(cycle));
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        User user = getUser();
+        cycleService.delete(id, user.getTenant());
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/{cycleId}/items")
     public ResponseEntity<List<BudgetItemResponseDTO>> listItems(@PathVariable UUID cycleId) {
         User user = getUser();
