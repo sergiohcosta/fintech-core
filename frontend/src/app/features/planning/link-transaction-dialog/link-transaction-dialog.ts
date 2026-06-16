@@ -11,6 +11,7 @@ import { BudgetItemResponse, TransactionResponseDTO } from '../../../core/api/fi
 export interface LinkTransactionDialogData {
   item: BudgetItemResponse;
   cycleId: string;
+  mode?: 'link' | 'realize';
 }
 
 @Component({
@@ -29,6 +30,7 @@ export class LinkTransactionDialogComponent implements OnInit {
 
   readonly transactions = signal<TransactionResponseDTO[]>([]);
   readonly loading = signal(true);
+  readonly isRealizeMode = () => this.data.mode === 'realize';
 
   displayedColumns = ['date', 'description', 'amount', 'select'];
 
@@ -46,6 +48,10 @@ export class LinkTransactionDialogComponent implements OnInit {
 
   select(tx: TransactionResponseDTO): void {
     this.dialogRef.close(tx.id);
+  }
+
+  realizeWithoutLink(): void {
+    this.dialogRef.close(null);
   }
 
   cancel(): void {
