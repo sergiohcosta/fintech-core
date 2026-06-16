@@ -1,12 +1,14 @@
 package com.fintech.api.service;
 
 import com.fintech.api.domain.budget.BudgetCycle;
+import com.fintech.api.domain.budget.BudgetItem;
 import com.fintech.api.domain.enums.BudgetCycleStatus;
 import com.fintech.api.domain.enums.TransactionStatus;
 import com.fintech.api.domain.enums.TransactionType;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.budget.BudgetCycleOpenRequest;
+import com.fintech.api.dto.budget.BudgetCycleSummaryDTO;
 import com.fintech.api.repository.AccountRepository;
 import com.fintech.api.repository.BudgetCycleRepository;
 import com.fintech.api.repository.BudgetItemRepository;
@@ -41,6 +43,7 @@ class BudgetCycleServiceTest {
     @Mock AccountRepository accountRepository;
     @Mock TransactionRepository transactionRepository;
     @Mock TenantRepository tenantRepository;
+    @Mock BudgetSummaryService summaryService;
 
     @InjectMocks BudgetCycleService service;
 
@@ -100,7 +103,7 @@ class BudgetCycleServiceTest {
 
         assertThatThrownBy(() -> service.open(tenant, user, new BudgetCycleOpenRequest("2026-06", 1)))
             .isInstanceOf(IllegalStateException.class)
-            .hasMessageContaining("ciclo aberto");
+            .hasMessage("Já existe um ciclo aberto para este tenant.");
     }
 
     @Test
@@ -117,7 +120,7 @@ class BudgetCycleServiceTest {
 
         assertThatThrownBy(() -> service.open(tenant, user, new BudgetCycleOpenRequest("2026-06", 1)))
             .isInstanceOf(IllegalStateException.class)
-            .hasMessageContaining("conflita");
+            .hasMessage("O período solicitado conflita com um ciclo já existente.");
     }
 
     @Test
@@ -133,7 +136,7 @@ class BudgetCycleServiceTest {
             .thenReturn(false);
         when(tenantRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(accountRepository.sumLiquidBalanceByTenant(
-                eq(tenant.getId()), eq(TransactionType.INCOME), eq(TransactionStatus.CANCELLED)))
+                eq(tenant.getId()), eq(TransactionType.INCOME), eq(TransactionStatus.PAID)))
             .thenReturn(new BigDecimal("3200.00"));
         when(recurringRepository.findAllByTenantAndActiveTrueOrderByDayOfMonthAscDescriptionAsc(tenant))
             .thenReturn(List.of());
@@ -165,6 +168,75 @@ class BudgetCycleServiceTest {
         LocalDate result = service.calculateExpectedDate(startDate, 11, 5);
         assertThat(result).isEqualTo(LocalDate.of(2026, 6, 5));
     }
+
+    // ---- close() — snapshot e validações ----
+
+    @Test
+    @DisplayName("close() persiste snapshot com valores corretos do resumo")
+    void close_persistsSnapshot() {
+        Tenant tenant = tenantWith(1);
+        UUID cycleId = UUID.randomUUID();
+        BudgetCycle cycle = BudgetCycle.builder()
+            .id(cycleId)
+            .tenant(tenant)
+            .startDate(LocalDate.of(2026, 6, 1))
+            .endDate(LocalDate.of(2026, 6, 30))
+            .openingBalance(new BigDecimal("1000.00"))
+            .status(BudgetCycleStatus.OPEN)
+            .build();
+
+        List<BudgetItem> items = List.of();
+        BudgetCycleSummaryDTO summary = new BudgetCycleSummaryDTO(
+            new BigDecimal("1000.00"),  // openingBalance
+            new BigDecimal("6000.00"),  // plannedIncome
+            new BigDecimal("3500.00"),  // plannedExpense
+            new BigDecimal("3500.00"),  // projectedBalance
+            new BigDecimal("5000.00"),  // realizedIncome
+            new BigDecimal("2000.00"),  // realizedExpense
+            new BigDecimal("200.00"),   // unplannedExpenses
+            new BigDecimal("2300.00"),  // availableToSpend
+            new BigDecimal("115.00"),   // dailyAllowance
+            20,                         // remainingDays
+            2L                          // pendingCount
+        );
+
+        when(cycleRepository.findById(cycleId)).thenReturn(Optional.of(cycle));
+        when(itemRepository.findAllByCycleWithDetails(cycle)).thenReturn(items);
+        when(summaryService.calculateSummary(eq(cycle), eq(items), any(LocalDate.class))).thenReturn(summary);
+        when(cycleRepository.save(any(BudgetCycle.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        BudgetCycle result = service.close(cycleId, tenant);
+
+        assertThat(result.getStatus()).isEqualTo(BudgetCycleStatus.CLOSED);
+        assertThat(result.getSnapshotProjectedBalance()).isEqualByComparingTo("3500");
+        assertThat(result.getSnapshotAvailableToSpend()).isEqualByComparingTo("2300");
+        assertThat(result.getSnapshotRealizedIncome()).isEqualByComparingTo("5000");
+        assertThat(result.getSnapshotRealizedExpense()).isEqualByComparingTo("2000");
+        assertThat(result.getSnapshotUnplannedExpenses()).isEqualByComparingTo("200");
+        verify(cycleRepository).save(cycle);
+    }
+
+    @Test
+    @DisplayName("close() em ciclo já CLOSED lança IllegalStateException")
+    void close_alreadyClosed_throwsIllegalState() {
+        Tenant tenant = tenantWith(1);
+        BudgetCycle cycle = BudgetCycle.builder()
+            .id(UUID.randomUUID())
+            .tenant(tenant)
+            .startDate(LocalDate.of(2026, 6, 1))
+            .endDate(LocalDate.of(2026, 6, 30))
+            .openingBalance(BigDecimal.ZERO)
+            .status(BudgetCycleStatus.CLOSED)
+            .build();
+
+        when(cycleRepository.findById(cycle.getId())).thenReturn(Optional.of(cycle));
+
+        assertThatThrownBy(() -> service.close(cycle.getId(), tenant))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage("O ciclo já está fechado.");
+    }
+
+    // ---- helpers ----
 
     private Tenant tenantWith(int startDay) {
         Tenant t = new Tenant();

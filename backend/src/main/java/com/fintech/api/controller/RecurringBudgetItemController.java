@@ -21,9 +21,10 @@ public class RecurringBudgetItemController {
     private final RecurringBudgetItemService service;
 
     @GetMapping
-    public ResponseEntity<List<RecurringBudgetItemResponseDTO>> list() {
+    public ResponseEntity<List<RecurringBudgetItemResponseDTO>> list(
+            @RequestParam(required = false) Boolean active) {
         User user = getUser();
-        return ResponseEntity.ok(service.listActive(user.getTenant()).stream()
+        return ResponseEntity.ok(service.listByTenant(user.getTenant(), active).stream()
             .map(RecurringBudgetItemResponseDTO::fromEntity).toList());
     }
 
@@ -43,6 +44,13 @@ public class RecurringBudgetItemController {
         User user = getUser();
         return ResponseEntity.ok(RecurringBudgetItemResponseDTO.fromEntity(
             service.update(id, req, user.getTenant())));
+    }
+
+    @PatchMapping("/{id}/reactivate")
+    public ResponseEntity<RecurringBudgetItemResponseDTO> reactivate(@PathVariable UUID id) {
+        User user = getUser();
+        return ResponseEntity.ok(RecurringBudgetItemResponseDTO.fromEntity(
+            service.reactivate(id, user.getTenant())));
     }
 
     @DeleteMapping("/{id}")

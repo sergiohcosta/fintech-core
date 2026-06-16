@@ -201,6 +201,7 @@
 								<importMapping>BudgetItemCreateRequest=com.fintech.api.dto.budget.BudgetItemCreateRequest</importMapping>
 								<importMapping>BudgetItemUpdateRequest=com.fintech.api.dto.budget.BudgetItemUpdateRequest</importMapping>
 								<importMapping>BudgetItemLinkRequest=com.fintech.api.dto.budget.BudgetItemLinkRequest</importMapping>
+								<importMapping>BudgetItemRealizeRequest=com.fintech.api.dto.budget.BudgetItemRealizeRequest</importMapping>
 								<importMapping>BudgetItemResponseDTO=com.fintech.api.dto.budget.BudgetItemResponseDTO</importMapping>
 								<importMapping>RecurringBudgetItemRequest=com.fintech.api.dto.budget.RecurringBudgetItemRequest</importMapping>
 								<importMapping>RecurringBudgetItemResponseDTO=com.fintech.api.dto.budget.RecurringBudgetItemResponseDTO</importMapping>
