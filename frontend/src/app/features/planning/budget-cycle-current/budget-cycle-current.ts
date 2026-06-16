@@ -13,9 +13,15 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { finalize } from 'rxjs/operators';
 
 import { PlanningService } from '../planning.service';
-import { BudgetCycleOpenRequest, BudgetCycleResponse, BudgetItemCreateRequest, BudgetItemResponse } from '../../../core/api/fintechSaaSAPI.schemas';
+import {
+  BudgetCycleOpenRequest,
+  BudgetCycleResponse,
+  BudgetItemCreateRequest,
+  BudgetItemResponse,
+  BudgetItemUpdateRequest,
+} from '../../../core/api/fintechSaaSAPI.schemas';
 import { buildSummary } from './budget-cycle.utils';
-import { BudgetItemFormComponent } from '../budget-item-form/budget-item-form';
+import { BudgetItemFormComponent, BudgetItemFormData } from '../budget-item-form/budget-item-form';
 import { LinkTransactionDialogComponent, LinkTransactionDialogData } from '../link-transaction-dialog/link-transaction-dialog';
 
 @Component({
@@ -161,6 +167,101 @@ export class BudgetCycleCurrentComponent implements OnInit {
         const msg = err.error?.message ?? 'Erro. Tente novamente.';
         this.snackBar.open(msg, 'OK', { duration: 3000 });
       },
+    });
+  }
+
+  realizeItem(item: BudgetItemResponse): void {
+    const cycleId = this.cycle()?.id;
+    if (!cycleId) return;
+    const ref = this.dialog.open(LinkTransactionDialogComponent, {
+      width: '600px',
+      data: { item, cycleId, mode: 'realize' } satisfies LinkTransactionDialogData,
+    });
+    ref.afterClosed().subscribe((result: string | null | undefined) => {
+      if (result === undefined) return;
+      const req = result ? { transactionId: result } : {};
+      this.planningService.realizeItem(item.id!, req).subscribe({
+        next: updated => {
+          this.replaceItem(updated);
+          this.snackBar.open('Item realizado.', 'OK', { duration: 2000 });
+        },
+        error: (err: HttpErrorResponse) => {
+          const msg = err.error?.message ?? 'Erro ao realizar item.';
+          this.snackBar.open(msg, 'OK', { duration: 3000 });
+        },
+      });
+    });
+  }
+
+  skipItem(item: BudgetItemResponse): void {
+    this.planningService.skipItem(item.id!).subscribe({
+      next: updated => {
+        this.replaceItem(updated);
+        this.snackBar.open('Item pulado.', 'OK', { duration: 2000 });
+      },
+      error: (err: HttpErrorResponse) => {
+        const msg = err.error?.message ?? 'Erro ao pular item.';
+        this.snackBar.open(msg, 'OK', { duration: 3000 });
+      },
+    });
+  }
+
+  unrealizeItem(item: BudgetItemResponse): void {
+    this.planningService.unrealizeItem(item.id!).subscribe({
+      next: updated => {
+        this.replaceItem(updated);
+        this.snackBar.open('Realização desfeita.', 'OK', { duration: 2000 });
+      },
+      error: (err: HttpErrorResponse) => {
+        const msg = err.error?.message ?? 'Erro ao desfazer realização.';
+        this.snackBar.open(msg, 'OK', { duration: 3000 });
+      },
+    });
+  }
+
+  unskipItem(item: BudgetItemResponse): void {
+    this.planningService.unskipItem(item.id!).subscribe({
+      next: updated => {
+        this.replaceItem(updated);
+        this.snackBar.open('Item reativado.', 'OK', { duration: 2000 });
+      },
+      error: (err: HttpErrorResponse) => {
+        const msg = err.error?.message ?? 'Erro ao desfazer pulo.';
+        this.snackBar.open(msg, 'OK', { duration: 3000 });
+      },
+    });
+  }
+
+  editItem(item: BudgetItemResponse): void {
+    const ref = this.dialog.open(BudgetItemFormComponent, {
+      width: '500px',
+      data: { mode: 'edit', item } satisfies BudgetItemFormData,
+    });
+    ref.afterClosed().subscribe((result?: BudgetItemUpdateRequest) => {
+      if (!result) return;
+      this.planningService.updateItem(item.id!, result).subscribe({
+        next: updated => {
+          this.replaceItem(updated);
+          this.snackBar.open('Item atualizado.', 'OK', { duration: 2000 });
+        },
+        error: (err: HttpErrorResponse) => {
+          const msg = err.error?.message ?? 'Erro ao atualizar item.';
+          this.snackBar.open(msg, 'OK', { duration: 3000 });
+        },
+      });
+    });
+  }
+
+  syncInstallments(): void {
+    const id = this.cycle()?.id;
+    if (!id) return;
+    this.planningService.syncInstallments(id).subscribe({
+      next: c => {
+        this.cycle.set(c);
+        this.items.set(c.items ?? []);
+        this.snackBar.open('Parcelas sincronizadas.', 'OK', { duration: 2000 });
+      },
+      error: () => this.snackBar.open('Erro ao sincronizar parcelas.', 'OK', { duration: 3000 }),
     });
   }
 

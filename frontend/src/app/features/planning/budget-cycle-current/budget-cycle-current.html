@@ -31,6 +31,10 @@
           {{ cycle()!.status === 'OPEN' ? 'Aberto' : 'Fechado' }}
         </mat-chip>
         @if (cycle()!.status === 'OPEN') {
+          <button mat-icon-button matTooltip="Sincronizar parcelas do cartão"
+                  (click)="syncInstallments()">
+            <mat-icon>sync</mat-icon>
+          </button>
           <button mat-stroked-button [disabled]="closing()" (click)="closeCycle()">
             Fechar ciclo
           </button>
@@ -145,21 +149,44 @@
           <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef></th>
             <td mat-cell *matCellDef="let item">
-              @if (!item.transactionId && cycle()!.status === 'OPEN') {
-                <button mat-icon-button matTooltip="Vincular transação"
-                        (click)="linkTransaction(item)">
-                  <mat-icon>link</mat-icon>
+              @if (item.status === 'PENDING' && cycle()!.status === 'OPEN') {
+                <button mat-icon-button matTooltip="Realizar" (click)="realizeItem(item)">
+                  <mat-icon>check_circle_outline</mat-icon>
                 </button>
-              }
-              @if (item.transactionId) {
-                <button mat-icon-button matTooltip="Desvincular"
-                        (click)="unlinkTransaction(item)">
-                  <mat-icon>link_off</mat-icon>
+                <button mat-icon-button matTooltip="Pular" (click)="skipItem(item)">
+                  <mat-icon>skip_next</mat-icon>
                 </button>
+                @if (item.source === 'MANUAL') {
+                  <button mat-icon-button matTooltip="Editar" (click)="editItem(item)">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button mat-icon-button matTooltip="Remover" (click)="deleteItem(item)">
+                    <mat-icon>delete_outline</mat-icon>
+                  </button>
+                }
+                @if (!item.transactionId) {
+                  <button mat-icon-button matTooltip="Vincular transação" (click)="linkTransaction(item)">
+                    <mat-icon>link</mat-icon>
+                  </button>
+                } @else {
+                  <button mat-icon-button matTooltip="Desvincular" (click)="unlinkTransaction(item)">
+                    <mat-icon>link_off</mat-icon>
+                  </button>
+                }
               }
-              @if (item.source !== 'INSTALLMENT' && cycle()!.status === 'OPEN') {
-                <button mat-icon-button matTooltip="Remover" (click)="deleteItem(item)">
-                  <mat-icon>delete_outline</mat-icon>
+              @if (item.status === 'REALIZED' && cycle()!.status === 'OPEN') {
+                <button mat-icon-button matTooltip="Desfazer realização" (click)="unrealizeItem(item)">
+                  <mat-icon>undo</mat-icon>
+                </button>
+                @if (item.transactionId) {
+                  <button mat-icon-button matTooltip="Desvincular" (click)="unlinkTransaction(item)">
+                    <mat-icon>link_off</mat-icon>
+                  </button>
+                }
+              }
+              @if (item.status === 'SKIPPED' && cycle()!.status === 'OPEN') {
+                <button mat-icon-button matTooltip="Desfazer" (click)="unskipItem(item)">
+                  <mat-icon>undo</mat-icon>
                 </button>
               }
             </td>
@@ -202,20 +229,44 @@
           <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef></th>
             <td mat-cell *matCellDef="let item">
-              @if (!item.transactionId && cycle()!.status === 'OPEN') {
-                <button mat-icon-button matTooltip="Vincular transação"
-                        (click)="linkTransaction(item)">
-                  <mat-icon>link</mat-icon>
+              @if (item.status === 'PENDING' && cycle()!.status === 'OPEN') {
+                <button mat-icon-button matTooltip="Realizar" (click)="realizeItem(item)">
+                  <mat-icon>check_circle_outline</mat-icon>
                 </button>
-              }
-              @if (item.transactionId) {
-                <button mat-icon-button (click)="unlinkTransaction(item)">
-                  <mat-icon>link_off</mat-icon>
+                <button mat-icon-button matTooltip="Pular" (click)="skipItem(item)">
+                  <mat-icon>skip_next</mat-icon>
                 </button>
+                @if (item.source === 'MANUAL') {
+                  <button mat-icon-button matTooltip="Editar" (click)="editItem(item)">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button mat-icon-button matTooltip="Remover" (click)="deleteItem(item)">
+                    <mat-icon>delete_outline</mat-icon>
+                  </button>
+                }
+                @if (!item.transactionId) {
+                  <button mat-icon-button matTooltip="Vincular transação" (click)="linkTransaction(item)">
+                    <mat-icon>link</mat-icon>
+                  </button>
+                } @else {
+                  <button mat-icon-button matTooltip="Desvincular" (click)="unlinkTransaction(item)">
+                    <mat-icon>link_off</mat-icon>
+                  </button>
+                }
               }
-              @if (cycle()!.status === 'OPEN') {
-                <button mat-icon-button (click)="deleteItem(item)">
-                  <mat-icon>delete_outline</mat-icon>
+              @if (item.status === 'REALIZED' && cycle()!.status === 'OPEN') {
+                <button mat-icon-button matTooltip="Desfazer realização" (click)="unrealizeItem(item)">
+                  <mat-icon>undo</mat-icon>
+                </button>
+                @if (item.transactionId) {
+                  <button mat-icon-button matTooltip="Desvincular" (click)="unlinkTransaction(item)">
+                    <mat-icon>link_off</mat-icon>
+                  </button>
+                }
+              }
+              @if (item.status === 'SKIPPED' && cycle()!.status === 'OPEN') {
+                <button mat-icon-button matTooltip="Desfazer" (click)="unskipItem(item)">
+                  <mat-icon>undo</mat-icon>
                 </button>
               }
             </td>
@@ -255,8 +306,45 @@
               </mat-chip>
             </td>
           </ng-container>
-          <tr mat-header-row *matHeaderRowDef="['description','expectedDate','amount','status']"></tr>
-          <tr mat-row *matRowDef="let row; columns: ['description','expectedDate','amount','status']"></tr>
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef></th>
+            <td mat-cell *matCellDef="let item">
+              @if (item.status === 'PENDING' && cycle()!.status === 'OPEN') {
+                <button mat-icon-button matTooltip="Realizar" (click)="realizeItem(item)">
+                  <mat-icon>check_circle_outline</mat-icon>
+                </button>
+                <button mat-icon-button matTooltip="Pular" (click)="skipItem(item)">
+                  <mat-icon>skip_next</mat-icon>
+                </button>
+                @if (!item.transactionId) {
+                  <button mat-icon-button matTooltip="Vincular transação" (click)="linkTransaction(item)">
+                    <mat-icon>link</mat-icon>
+                  </button>
+                } @else {
+                  <button mat-icon-button matTooltip="Desvincular" (click)="unlinkTransaction(item)">
+                    <mat-icon>link_off</mat-icon>
+                  </button>
+                }
+              }
+              @if (item.status === 'REALIZED' && cycle()!.status === 'OPEN') {
+                <button mat-icon-button matTooltip="Desfazer realização" (click)="unrealizeItem(item)">
+                  <mat-icon>undo</mat-icon>
+                </button>
+                @if (item.transactionId) {
+                  <button mat-icon-button matTooltip="Desvincular" (click)="unlinkTransaction(item)">
+                    <mat-icon>link_off</mat-icon>
+                  </button>
+                }
+              }
+              @if (item.status === 'SKIPPED' && cycle()!.status === 'OPEN') {
+                <button mat-icon-button matTooltip="Desfazer" (click)="unskipItem(item)">
+                  <mat-icon>undo</mat-icon>
+                </button>
+              }
+            </td>
+          </ng-container>
+          <tr mat-header-row *matHeaderRowDef="['description','expectedDate','amount','status','actions']"></tr>
+          <tr mat-row *matRowDef="let row; columns: ['description','expectedDate','amount','status','actions']"></tr>
         </table>
       </ng-template>
     </mat-expansion-panel>
