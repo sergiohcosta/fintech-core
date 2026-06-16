@@ -101,7 +101,7 @@ class BudgetCycleServiceTest {
         when(cycleRepository.findByTenantAndStatus(tenant, BudgetCycleStatus.OPEN))
             .thenReturn(Optional.of(new BudgetCycle()));
 
-        assertThatThrownBy(() -> service.open(tenant, user, new BudgetCycleOpenRequest("2026-06", 1)))
+        assertThatThrownBy(() -> service.open(tenant, user, new BudgetCycleOpenRequest("2026-06", 1, null)))
             .isInstanceOf(IllegalStateException.class)
             .hasMessage("Já existe um ciclo aberto para este tenant.");
     }
@@ -118,7 +118,7 @@ class BudgetCycleServiceTest {
         when(cycleRepository.existsOverlap(eq(tenant), any(), any()))
             .thenReturn(true);
 
-        assertThatThrownBy(() -> service.open(tenant, user, new BudgetCycleOpenRequest("2026-06", 1)))
+        assertThatThrownBy(() -> service.open(tenant, user, new BudgetCycleOpenRequest("2026-06", 1, null)))
             .isInstanceOf(IllegalStateException.class)
             .hasMessage("O período solicitado conflita com um ciclo já existente.");
     }
@@ -146,7 +146,7 @@ class BudgetCycleServiceTest {
         var captor = ArgumentCaptor.forClass(BudgetCycle.class);
         when(cycleRepository.save(captor.capture())).thenAnswer(inv -> inv.getArgument(0));
 
-        service.open(tenant, user, new BudgetCycleOpenRequest("2026-06", 1));
+        service.open(tenant, user, new BudgetCycleOpenRequest("2026-06", 1, null));
 
         assertThat(captor.getValue().getOpeningBalance()).isEqualByComparingTo("3200.00");
     }

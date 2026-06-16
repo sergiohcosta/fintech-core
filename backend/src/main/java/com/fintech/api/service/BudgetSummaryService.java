@@ -2,6 +2,7 @@ package com.fintech.api.service;
 
 import com.fintech.api.domain.budget.BudgetCycle;
 import com.fintech.api.domain.budget.BudgetItem;
+import com.fintech.api.domain.enums.BudgetCycleStatus;
 import com.fintech.api.domain.enums.BudgetItemStatus;
 import com.fintech.api.domain.enums.TransactionType;
 import com.fintech.api.dto.budget.BudgetCycleSummaryDTO;
@@ -46,8 +47,12 @@ public class BudgetSummaryService {
         // Available to Spend = sum(INCOME, PENDING|REALIZED) - sum(EXPENSE, PENDING|REALIZED) - unplannedExpenses
         BigDecimal availableToSpend = plannedIncome.subtract(plannedExpense).subtract(unplannedExpenses);
 
-        int remainingDays = (int) ChronoUnit.DAYS.between(today, cycle.getEndDate());
-        BigDecimal dailyAllowance = calculateDailyAllowance(availableToSpend, cycle.getEndDate(), today);
+        Integer remainingDays = cycle.getStatus() == BudgetCycleStatus.OPEN
+            ? (int) ChronoUnit.DAYS.between(today, cycle.getEndDate())
+            : null;
+        BigDecimal dailyAllowance = cycle.getStatus() == BudgetCycleStatus.OPEN
+            ? calculateDailyAllowance(availableToSpend, cycle.getEndDate(), today)
+            : null;
 
         long pendingCount = activeItems.stream()
             .filter(i -> i.getStatus() == BudgetItemStatus.PENDING)
