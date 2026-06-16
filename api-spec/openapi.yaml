@@ -1824,6 +1824,48 @@ paths:
               schema:
                 $ref: '#/components/schemas/BudgetItemResponse'
 
+  /api/budget-items/{id}/link:
+    post:
+      tags: [budget]
+      operationId: linkBudgetItem
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BudgetItemLinkRequest'
+      responses:
+        '200':
+          description: Item vinculado à transação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetItemResponse'
+    delete:
+      tags: [budget]
+      operationId: unlinkBudgetItem
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Vínculo removido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetItemResponse'
+
   # --- Recurring Budget Items ---
 
   /api/recurring-budget-items:

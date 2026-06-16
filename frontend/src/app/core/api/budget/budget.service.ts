@@ -30,6 +30,7 @@ import type {
   BudgetCyclePageResponse,
   BudgetCycleResponse,
   BudgetItemCreateRequest,
+  BudgetItemLinkRequest,
   BudgetItemRealizeRequest,
   BudgetItemResponse,
   BudgetItemUpdateRequest,
@@ -599,6 +600,73 @@ export class BudgetService {
 
     return this.http.delete<TData>(
       `/api/budget-items/${id}/skip`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'body',
+      }
+    );
+  }
+ linkBudgetItem<TData = BudgetItemResponse>(id: string,
+    budgetItemLinkRequest: BudgetItemLinkRequest, options?: HttpClientBodyOptions): Observable<TData>;
+ linkBudgetItem<TData = BudgetItemResponse>(id: string,
+    budgetItemLinkRequest: BudgetItemLinkRequest, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ linkBudgetItem<TData = BudgetItemResponse>(id: string,
+    budgetItemLinkRequest: BudgetItemLinkRequest, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  linkBudgetItem<TData = BudgetItemResponse>(
+    id: string,
+    budgetItemLinkRequest: BudgetItemLinkRequest, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    if (options?.observe === 'events') {
+      return this.http.post<TData>(
+      `/api/budget-items/${id}/link`,
+      budgetItemLinkRequest,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'events',
+      }
+    );
+    }
+
+    if (options?.observe === 'response') {
+      return this.http.post<TData>(
+      `/api/budget-items/${id}/link`,
+      budgetItemLinkRequest,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'response',
+      }
+    );
+    }
+
+    return this.http.post<TData>(
+      `/api/budget-items/${id}/link`,
+      budgetItemLinkRequest,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'body',
+      }
+    );
+  }
+ unlinkBudgetItem<TData = BudgetItemResponse>(id: string, options?: HttpClientBodyOptions): Observable<TData>;
+ unlinkBudgetItem<TData = BudgetItemResponse>(id: string, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ unlinkBudgetItem<TData = BudgetItemResponse>(id: string, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  unlinkBudgetItem<TData = BudgetItemResponse>(
+    id: string, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    if (options?.observe === 'events') {
+      return this.http.delete<TData>(
+      `/api/budget-items/${id}/link`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'events',
+      }
+    );
+    }
+
+    if (options?.observe === 'response') {
+      return this.http.delete<TData>(
+      `/api/budget-items/${id}/link`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'response',
+      }
+    );
+    }
+
+    return this.http.delete<TData>(
+      `/api/budget-items/${id}/link`,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'body',
       }
