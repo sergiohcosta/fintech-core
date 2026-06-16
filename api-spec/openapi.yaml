@@ -632,7 +632,7 @@ components:
 
     BudgetCycleStatus:
       type: string
-      enum: [OPEN, CLOSED]
+      enum: [OPEN, ENDED, CLOSED]
 
     BudgetItemSource:
       type: string
@@ -656,6 +656,10 @@ components:
           maximum: 28
           example: 1
           description: "Dia do mês em que o ciclo começa (1 = mês calendário)"
+        openingBalance:
+          type: number
+          format: double
+          nullable: true
 
     BudgetCycleSummary:
       type: object
@@ -687,8 +691,10 @@ components:
         dailyAllowance:
           type: number
           format: double
+          nullable: true
         remainingDays:
           type: integer
+          nullable: true
         pendingCount:
           type: integer
 
@@ -902,6 +908,64 @@ components:
           type: integer
         number:
           type: integer
+
+    RecurringItemPreview:
+      type: object
+      properties:
+        description:
+          type: string
+        amount:
+          type: number
+          format: double
+        type:
+          type: string
+          enum: [INCOME, EXPENSE]
+        expectedDate:
+          type: string
+          format: date
+
+    InstallmentItemPreview:
+      type: object
+      properties:
+        description:
+          type: string
+        amount:
+          type: number
+          format: double
+        expectedDate:
+          type: string
+          format: date
+
+    BudgetCyclePreview:
+      type: object
+      properties:
+        referenceMonth:
+          type: string
+        startDay:
+          type: integer
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        suggestedOpeningBalance:
+          type: number
+          format: double
+        recurringItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecurringItemPreview'
+        installmentItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/InstallmentItemPreview'
+        projectedIncome:
+          type: number
+          format: double
+        projectedExpense:
+          type: number
+          format: double
 
 paths:
 
@@ -1592,6 +1656,31 @@ paths:
                 $ref: '#/components/schemas/BudgetCycleResponse'
         '409':
           description: Ciclo já existe ou período conflita
+
+  /api/budget-cycles/preview:
+    get:
+      tags: [budget]
+      operationId: previewBudgetCycle
+      summary: Preview do ciclo que seria criado
+      parameters:
+        - name: startDay
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 28
+      responses:
+        '200':
+          description: Preview do ciclo que seria criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetCyclePreview'
+        '422':
+          description: Não há período válido para hoje com o startDay informado
+      security:
+        - bearerAuth: []
 
   /api/budget-cycles/current:
     get:
