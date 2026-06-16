@@ -7,6 +7,7 @@ import com.fintech.api.exception.InviteExpiredException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -89,6 +90,13 @@ public class GlobalExceptionHandler {
     }
 
     // 4. NOVO CÓDIGO (Fallback de segurança)
+    // Trata acesso negado (cross-tenant) — 403
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Map<String, Object>> handleAccessDenied(AccessDeniedException ex) {
+        return buildErrorResponse(HttpStatus.FORBIDDEN, ex.getMessage(), null);
+    }
+
+    // 5. NOVO CÓDIGO (Fallback genérico)
     // Trata qualquer outro erro não mapeado (500)
     // Nota: NoResourceFoundException é excluída para deixar o Spring MVC tratar 404 de recursos estáticos
     @ExceptionHandler(Exception.class)

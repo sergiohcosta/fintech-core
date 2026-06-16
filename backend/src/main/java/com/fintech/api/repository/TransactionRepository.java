@@ -227,4 +227,24 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             @Param("incomeType") TransactionType incomeType,
             @Param("paidStatus") TransactionStatus paidStatus
     );
+
+    // Despesas não planejadas: transações EXPENSE no período do ciclo que não estão
+    // vinculadas a nenhum budget item (sem link transaction_id em budget_items).
+    @Query("""
+            SELECT COALESCE(SUM(t.amount), 0)
+            FROM Transaction t
+            WHERE t.tenant.id = :tenantId
+              AND t.type = com.fintech.api.domain.enums.TransactionType.EXPENSE
+              AND t.date BETWEEN :startDate AND :endDate
+              AND t.id NOT IN (
+                SELECT bi.transaction.id FROM BudgetItem bi
+                WHERE bi.cycle.id = :cycleId AND bi.transaction IS NOT NULL
+              )
+            """)
+    BigDecimal sumUnplannedExpenses(
+            @Param("tenantId") UUID tenantId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("cycleId") UUID cycleId
+    );
 }

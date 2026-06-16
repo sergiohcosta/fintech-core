@@ -660,6 +660,9 @@ components:
     BudgetCycleSummary:
       type: object
       properties:
+        openingBalance:
+          type: number
+          format: double
         plannedIncome:
           type: number
           format: double
@@ -675,9 +678,17 @@ components:
         realizedExpense:
           type: number
           format: double
-        currentBalance:
+        unplannedExpenses:
           type: number
           format: double
+        availableToSpend:
+          type: number
+          format: double
+        dailyAllowance:
+          type: number
+          format: double
+        remainingDays:
+          type: integer
         pendingCount:
           type: integer
 
@@ -730,6 +741,10 @@ components:
         id:
           type: string
           format: uuid
+        referenceMonth:
+          type: string
+          example: "2026-06"
+          description: "Mês de referência do ciclo (yyyy-MM)"
         startDate:
           type: string
           format: date
@@ -799,6 +814,15 @@ components:
         transactionId:
           type: string
           format: uuid
+
+    BudgetItemRealizeRequest:
+      type: object
+      properties:
+        transactionId:
+          type: string
+          format: uuid
+          nullable: true
+          description: "ID da transação existente. Se null, cria uma nova transação."
 
     RecurringBudgetItemRequest:
       type: object
@@ -1722,10 +1746,10 @@ paths:
         '204':
           description: Item removido
 
-  /api/budget-items/{id}/link:
+  /api/budget-items/{id}/realize:
     post:
       tags: [budget]
-      operationId: linkBudgetItem
+      operationId: realizeBudgetItem
       parameters:
         - name: id
           in: path
@@ -1734,21 +1758,21 @@ paths:
             type: string
             format: uuid
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/BudgetItemLinkRequest'
+              $ref: '#/components/schemas/BudgetItemRealizeRequest'
       responses:
         '200':
-          description: Transação vinculada
+          description: Item realizado
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/BudgetItemResponse'
     delete:
       tags: [budget]
-      operationId: unlinkBudgetItem
+      operationId: unrealizeBudgetItem
       parameters:
         - name: id
           in: path
@@ -1758,7 +1782,43 @@ paths:
             format: uuid
       responses:
         '200':
-          description: Transação desvinculada
+          description: Realização revertida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetItemResponse'
+
+  /api/budget-items/{id}/skip:
+    post:
+      tags: [budget]
+      operationId: skipBudgetItem
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Item marcado como pulado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetItemResponse'
+    delete:
+      tags: [budget]
+      operationId: unskipBudgetItem
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Item revertido para pendente
           content:
             application/json:
               schema:
@@ -1770,9 +1830,16 @@ paths:
     get:
       tags: [budget]
       operationId: listRecurringBudgetItems
+      parameters:
+        - name: active
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: "Filtrar por status ativo/inativo"
       responses:
         '200':
-          description: Templates recorrentes ativos
+          description: Templates recorrentes
           content:
             application/json:
               schema:
@@ -1833,3 +1900,22 @@ paths:
       responses:
         '204':
           description: Template desativado
+
+  /api/recurring-budget-items/{id}/reactivate:
+    patch:
+      tags: [budget]
+      operationId: reactivateRecurringBudgetItem
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Template reativado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecurringBudgetItemResponse'

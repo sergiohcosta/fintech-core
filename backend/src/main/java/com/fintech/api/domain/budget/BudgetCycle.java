@@ -47,10 +47,24 @@ public class BudgetCycle {
     @Builder.Default
     private BudgetCycleStatus status = BudgetCycleStatus.OPEN;
 
+    @Column(length = 7)
+    private String referenceMonth;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
     @ToString.Exclude
     private User createdBy;
+
+    // Snapshot fields — populated when the cycle is closed
+    private BigDecimal snapshotProjectedBalance;
+
+    private BigDecimal snapshotAvailableToSpend;
+
+    private BigDecimal snapshotRealizedIncome;
+
+    private BigDecimal snapshotRealizedExpense;
+
+    private BigDecimal snapshotUnplannedExpenses;
 
     @CreationTimestamp
     private LocalDateTime createdAt;

@@ -9,8 +9,10 @@ import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.transaction.Transaction;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.budget.BudgetCycleOpenRequest;
+import com.fintech.api.dto.budget.BudgetCycleSummaryDTO;
 import com.fintech.api.exception.EntityNotFoundException;
 import com.fintech.api.repository.*;
+import org.springframework.security.access.AccessDeniedException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -35,6 +37,7 @@ public class BudgetCycleService {
     private final AccountRepository accountRepository;
     private final TransactionRepository transactionRepository;
     private final TenantRepository tenantRepository;
+    private final BudgetSummaryService summaryService;
 
     /**
      * Calcula as datas de início e fim do ciclo para um dado mês de referência.
@@ -116,6 +119,7 @@ public class BudgetCycleService {
             .startDate(startDate)
             .endDate(endDate)
             .openingBalance(opening)
+            .referenceMonth(req.referenceMonth())
             .status(BudgetCycleStatus.OPEN)
             .createdBy(user)
             .build());
@@ -190,7 +194,7 @@ public class BudgetCycleService {
 
     /**
      * Fecha um ciclo aberto (OPEN → CLOSED).
-     * Operação administrativa sem side effects — registra que o planejamento foi encerrado.
+     * Calcula o resumo final e persiste os valores de snapshot para registro histórico.
      */
     @Transactional
     public BudgetCycle close(UUID cycleId, Tenant tenant) {
@@ -198,6 +202,18 @@ public class BudgetCycleService {
         if (cycle.getStatus() != BudgetCycleStatus.OPEN) {
             throw new IllegalStateException("O ciclo já está fechado.");
         }
+
+        // Calculate final summary for snapshot
+        List<BudgetItem> items = itemRepository.findAllByCycleWithDetails(cycle);
+        BudgetCycleSummaryDTO summary = summaryService.calculateSummary(cycle, items, LocalDate.now());
+
+        // Persist snapshot
+        cycle.setSnapshotProjectedBalance(summary.projectedBalance());
+        cycle.setSnapshotAvailableToSpend(summary.availableToSpend());
+        cycle.setSnapshotRealizedIncome(summary.realizedIncome());
+        cycle.setSnapshotRealizedExpense(summary.realizedExpense());
+        cycle.setSnapshotUnplannedExpenses(summary.unplannedExpenses());
+
         cycle.setStatus(BudgetCycleStatus.CLOSED);
         log.info("Ciclo fechado [cycleId={} tenantId={}]", cycleId, tenant.getId());
         return cycleRepository.save(cycle);
@@ -229,7 +245,7 @@ public class BudgetCycleService {
     public BudgetCycle findByIdAndTenant(UUID id, Tenant tenant) {
         return cycleRepository.findById(id)
             .filter(c -> c.getTenant().getId().equals(tenant.getId()))
-            .orElseThrow(() -> new EntityNotFoundException("Ciclo de planejamento não encontrado."));
+            .orElseThrow(() -> new AccessDeniedException("Acesso negado."));
     }
 
     @Transactional(readOnly = true)
