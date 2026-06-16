@@ -71,6 +71,10 @@ components:
           format: email
         password:
           type: string
+          minLength: 8
+          maxLength: 72
+          pattern: '^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$'
+          description: "Mínimo 8 caracteres, com letra maiúscula, minúscula e número"
 
     RegisterResponseDTO:
       type: object
