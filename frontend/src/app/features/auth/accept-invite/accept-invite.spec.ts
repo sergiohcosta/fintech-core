@@ -72,7 +72,7 @@ describe('AcceptInviteComponent', () => {
     vi.spyOn(router, 'navigate').mockResolvedValue(true);
     vi.spyOn(authSvc, 'setToken').mockImplementation((t: string) => { savedToken = t; });
 
-    component.form.setValue({ name: 'João', password: 'senha123' });
+    component.form.setValue({ name: 'João', password: 'Senha123' });
     component.onSubmit();
     await fixture.whenStable();
 
@@ -88,7 +88,7 @@ describe('AcceptInviteComponent', () => {
       acceptResponse: acceptError,
     });
 
-    component.form.setValue({ name: 'João', password: 'senha123' });
+    component.form.setValue({ name: 'João', password: 'Senha123' });
     component.onSubmit();
     await fixture.whenStable();
 
