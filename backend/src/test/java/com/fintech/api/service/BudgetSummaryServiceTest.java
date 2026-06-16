@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -240,6 +241,52 @@ class BudgetSummaryServiceTest {
             verify(transactionRepository).sumUnplannedExpenses(
                     tenant.getId(), start, end, cycle.getId()
             );
+        }
+    }
+
+    // ---- remainingDays e dailyAllowance — nulos fora de OPEN ----
+
+    @Nested
+    @DisplayName("remainingDays e dailyAllowance — nulos fora de OPEN")
+    class NullFieldsForNonOpenTests {
+
+        @Test
+        @DisplayName("ciclo ENDED → remainingDays null e dailyAllowance null")
+        void calculateSummary_ended_remainingDaysNull() {
+            Tenant tenant = createTenant();
+            LocalDate start = LocalDate.of(2026, 5, 1);
+            LocalDate end = LocalDate.of(2026, 5, 31);
+            BudgetCycle cycle = BudgetCycle.builder()
+                    .id(UUID.randomUUID()).tenant(tenant)
+                    .startDate(start).endDate(end)
+                    .openingBalance(BigDecimal.ZERO)
+                    .status(BudgetCycleStatus.ENDED)
+                    .build();
+
+            when(transactionRepository.sumUnplannedExpenses(any(), any(), any(), any()))
+                    .thenReturn(BigDecimal.ZERO);
+
+            BudgetCycleSummaryDTO summary = summaryService.calculateSummary(cycle, List.of(), LocalDate.of(2026, 6, 10));
+
+            assertThat(summary.remainingDays()).isNull();
+            assertThat(summary.dailyAllowance()).isNull();
+        }
+
+        @Test
+        @DisplayName("ciclo OPEN → remainingDays = dias entre hoje e endDate")
+        void calculateSummary_open_remainingDaysCorreto() {
+            Tenant tenant = createTenant();
+            LocalDate start = LocalDate.of(2026, 6, 1);
+            LocalDate end = LocalDate.of(2026, 6, 30);
+            LocalDate today = LocalDate.of(2026, 6, 10);
+            BudgetCycle cycle = createCycle(tenant, BigDecimal.ZERO, start, end); // status OPEN
+
+            when(transactionRepository.sumUnplannedExpenses(any(), any(), any(), any()))
+                    .thenReturn(BigDecimal.ZERO);
+
+            BudgetCycleSummaryDTO summary = summaryService.calculateSummary(cycle, List.of(), today);
+
+            assertThat(summary.remainingDays()).isEqualTo(20); // entre 10/jun e 30/jun
         }
     }
 }
