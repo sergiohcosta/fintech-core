@@ -383,6 +383,7 @@ export type BudgetCycleStatus = typeof BudgetCycleStatus[keyof typeof BudgetCycl
 
 export const BudgetCycleStatus = {
   OPEN: 'OPEN',
+  ENDED: 'ENDED',
   CLOSED: 'CLOSED',
 } as const;
 
@@ -413,6 +414,8 @@ export interface BudgetCycleOpenRequest {
      * @maximum 28
      */
   startDay: number;
+  /** @nullable */
+  openingBalance?: number | null;
 }
 
 export interface BudgetCycleSummary {
@@ -424,8 +427,10 @@ export interface BudgetCycleSummary {
   realizedExpense?: number;
   unplannedExpenses?: number;
   availableToSpend?: number;
-  dailyAllowance?: number;
-  remainingDays?: number;
+  /** @nullable */
+  dailyAllowance?: number | null;
+  /** @nullable */
+  remainingDays?: number | null;
   pendingCount?: number;
 }
 
@@ -543,6 +548,39 @@ export interface BudgetCyclePageResponse {
   number?: number;
 }
 
+export type RecurringItemPreviewType = typeof RecurringItemPreviewType[keyof typeof RecurringItemPreviewType];
+
+
+export const RecurringItemPreviewType = {
+  INCOME: 'INCOME',
+  EXPENSE: 'EXPENSE',
+} as const;
+
+export interface RecurringItemPreview {
+  description?: string;
+  amount?: number;
+  type?: RecurringItemPreviewType;
+  expectedDate?: string;
+}
+
+export interface InstallmentItemPreview {
+  description?: string;
+  amount?: number;
+  expectedDate?: string;
+}
+
+export interface BudgetCyclePreview {
+  referenceMonth?: string;
+  startDay?: number;
+  startDate?: string;
+  endDate?: string;
+  suggestedOpeningBalance?: number;
+  recurringItems?: RecurringItemPreview[];
+  installmentItems?: InstallmentItemPreview[];
+  projectedIncome?: number;
+  projectedExpense?: number;
+}
+
 export type ListCategoriesParams = {
 includeArchived?: boolean;
 };
@@ -574,6 +612,14 @@ accountId: string;
 export type ListBudgetCyclesParams = {
 page?: number;
 size?: number;
+};
+
+export type PreviewBudgetCycleParams = {
+/**
+ * @minimum 1
+ * @maximum 28
+ */
+startDay?: number;
 };
 
 export type ListRecurringBudgetItemsParams = {

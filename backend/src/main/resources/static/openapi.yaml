@@ -101,6 +101,10 @@ components:
           type: string
           format: uuid
           nullable: true
+        taxonomyCode:
+          type: string
+          nullable: true
+          description: "Código de taxonomia padrão. null = não alterar valor existente."
 
     CategoryResponseDTO:
       type: object
@@ -121,6 +125,11 @@ components:
           nullable: true
         archived:
           type: boolean
+        taxonomyCode:
+          type: string
+          nullable: true
+          description: "Código semântico estável para benchmarking cross-tenant. null = categoria criada pelo usuário."
+          example: "HOUSING"
         children:
           type: array
           items:
@@ -623,7 +632,7 @@ components:
 
     BudgetCycleStatus:
       type: string
-      enum: [OPEN, CLOSED]
+      enum: [OPEN, ENDED, CLOSED]
 
     BudgetItemSource:
       type: string
@@ -647,10 +656,17 @@ components:
           maximum: 28
           example: 1
           description: "Dia do mês em que o ciclo começa (1 = mês calendário)"
+        openingBalance:
+          type: number
+          format: double
+          nullable: true
 
     BudgetCycleSummary:
       type: object
       properties:
+        openingBalance:
+          type: number
+          format: double
         plannedIncome:
           type: number
           format: double
@@ -666,9 +682,19 @@ components:
         realizedExpense:
           type: number
           format: double
-        currentBalance:
+        unplannedExpenses:
           type: number
           format: double
+        availableToSpend:
+          type: number
+          format: double
+        dailyAllowance:
+          type: number
+          format: double
+          nullable: true
+        remainingDays:
+          type: integer
+          nullable: true
         pendingCount:
           type: integer
 
@@ -721,6 +747,10 @@ components:
         id:
           type: string
           format: uuid
+        referenceMonth:
+          type: string
+          example: "2026-06"
+          description: "Mês de referência do ciclo (yyyy-MM)"
         startDate:
           type: string
           format: date
@@ -790,6 +820,15 @@ components:
         transactionId:
           type: string
           format: uuid
+
+    BudgetItemRealizeRequest:
+      type: object
+      properties:
+        transactionId:
+          type: string
+          format: uuid
+          nullable: true
+          description: "ID da transação existente. Se null, cria uma nova transação."
 
     RecurringBudgetItemRequest:
       type: object
@@ -869,6 +908,64 @@ components:
           type: integer
         number:
           type: integer
+
+    RecurringItemPreview:
+      type: object
+      properties:
+        description:
+          type: string
+        amount:
+          type: number
+          format: double
+        type:
+          type: string
+          enum: [INCOME, EXPENSE]
+        expectedDate:
+          type: string
+          format: date
+
+    InstallmentItemPreview:
+      type: object
+      properties:
+        description:
+          type: string
+        amount:
+          type: number
+          format: double
+        expectedDate:
+          type: string
+          format: date
+
+    BudgetCyclePreview:
+      type: object
+      properties:
+        referenceMonth:
+          type: string
+        startDay:
+          type: integer
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        suggestedOpeningBalance:
+          type: number
+          format: double
+        recurringItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecurringItemPreview'
+        installmentItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/InstallmentItemPreview'
+        projectedIncome:
+          type: number
+          format: double
+        projectedExpense:
+          type: number
+          format: double
 
 paths:
 
@@ -1560,6 +1657,31 @@ paths:
         '409':
           description: Ciclo já existe ou período conflita
 
+  /api/budget-cycles/preview:
+    get:
+      tags: [budget]
+      operationId: previewBudgetCycle
+      summary: Preview do ciclo que seria criado
+      parameters:
+        - name: startDay
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 28
+      responses:
+        '200':
+          description: Preview do ciclo que seria criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetCyclePreview'
+        '422':
+          description: Não há período válido para hoje com o startDay informado
+      security:
+        - bearerAuth: []
+
   /api/budget-cycles/current:
     get:
       tags: [budget]
@@ -1713,6 +1835,84 @@ paths:
         '204':
           description: Item removido
 
+  /api/budget-items/{id}/realize:
+    post:
+      tags: [budget]
+      operationId: realizeBudgetItem
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BudgetItemRealizeRequest'
+      responses:
+        '200':
+          description: Item realizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetItemResponse'
+    delete:
+      tags: [budget]
+      operationId: unrealizeBudgetItem
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Realização revertida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetItemResponse'
+
+  /api/budget-items/{id}/skip:
+    post:
+      tags: [budget]
+      operationId: skipBudgetItem
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Item marcado como pulado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetItemResponse'
+    delete:
+      tags: [budget]
+      operationId: unskipBudgetItem
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Item revertido para pendente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetItemResponse'
+
   /api/budget-items/{id}/link:
     post:
       tags: [budget]
@@ -1732,7 +1932,7 @@ paths:
               $ref: '#/components/schemas/BudgetItemLinkRequest'
       responses:
         '200':
-          description: Transação vinculada
+          description: Item vinculado à transação
           content:
             application/json:
               schema:
@@ -1749,7 +1949,7 @@ paths:
             format: uuid
       responses:
         '200':
-          description: Transação desvinculada
+          description: Vínculo removido
           content:
             application/json:
               schema:
@@ -1761,9 +1961,16 @@ paths:
     get:
       tags: [budget]
       operationId: listRecurringBudgetItems
+      parameters:
+        - name: active
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: "Filtrar por status ativo/inativo"
       responses:
         '200':
-          description: Templates recorrentes ativos
+          description: Templates recorrentes
           content:
             application/json:
               schema:
@@ -1824,3 +2031,22 @@ paths:
       responses:
         '204':
           description: Template desativado
+
+  /api/recurring-budget-items/{id}/reactivate:
+    patch:
+      tags: [budget]
+      operationId: reactivateRecurringBudgetItem
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Template reativado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecurringBudgetItemResponse'

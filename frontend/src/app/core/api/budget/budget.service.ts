@@ -28,6 +28,7 @@ import {
 import type {
   BudgetCycleOpenRequest,
   BudgetCyclePageResponse,
+  BudgetCyclePreview,
   BudgetCycleResponse,
   BudgetItemCreateRequest,
   BudgetItemLinkRequest,
@@ -36,6 +37,7 @@ import type {
   BudgetItemUpdateRequest,
   ListBudgetCyclesParams,
   ListRecurringBudgetItemsParams,
+  PreviewBudgetCycleParams,
   RecurringBudgetItemRequest,
   RecurringBudgetItemResponse
 } from '../fintechSaaSAPI.schemas';
@@ -213,6 +215,41 @@ export class BudgetService {
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'body',
       }
+    );
+  }
+/**
+ * @summary Preview do ciclo que seria criado
+ */
+ previewBudgetCycle<TData = BudgetCyclePreview>(params?: PreviewBudgetCycleParams, options?: HttpClientBodyOptions): Observable<TData>;
+ previewBudgetCycle<TData = BudgetCyclePreview>(params?: PreviewBudgetCycleParams, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ previewBudgetCycle<TData = BudgetCyclePreview>(params?: PreviewBudgetCycleParams, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  previewBudgetCycle<TData = BudgetCyclePreview>(
+    params?: PreviewBudgetCycleParams, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    const filteredParams = filterParams({...params, ...options?.params}, new Set<string>([]));
+
+    if (options?.observe === 'events') {
+      return this.http.get<TData>(
+      `/api/budget-cycles/preview`,{
+    ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'events',
+        params: filteredParams,}
+    );
+    }
+
+    if (options?.observe === 'response') {
+      return this.http.get<TData>(
+      `/api/budget-cycles/preview`,{
+    ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'response',
+        params: filteredParams,}
+    );
+    }
+
+    return this.http.get<TData>(
+      `/api/budget-cycles/preview`,{
+    ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'body',
+        params: filteredParams,}
     );
   }
  getCurrentBudgetCycle<TData = BudgetCycleResponse>( options?: HttpClientBodyOptions): Observable<TData>;
