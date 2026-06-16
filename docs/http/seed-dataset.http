@@ -14,7 +14,7 @@ Content-Type: application/json
   "name": "Família Costa",
   "adminName": "Carlos Costa",
   "adminEmail": "carlos@costa.com",
-  "password": "costa123"
+  "password": "Costa123"
 }
 
 ###
@@ -25,7 +25,7 @@ Content-Type: application/json
 
 {
   "email": "carlos@costa.com",
-  "password": "costa123"
+  "password": "Costa123"
 }
 
 > {%
@@ -558,7 +558,7 @@ Content-Type: application/json
 {
   "token": "{{token_invite_ana}}",
   "name": "Ana Costa",
-  "password": "costa123"
+  "password": "Costa123"
 }
 
 ###
@@ -583,7 +583,7 @@ Content-Type: application/json
 {
   "token": "{{token_invite_pedro}}",
   "name": "Pedro Costa",
-  "password": "costa123"
+  "password": "Costa123"
 }
 
 ###
