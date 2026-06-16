@@ -7,7 +7,7 @@
 
 ```
 Público:   POST /auth/{login,register,accept-invite} · GET /invites/{token} · /openapi.yaml · /swagger-ui/** · /actuator/health
-ADMIN:     POST /invites · GET /api/members
+ADMIN:     POST /invites · GET /api/members · PATCH /api/tenant/settings
 Demais:    authenticated (JWT obrigatório)
 ```
 **Invariante:** toda query de negócio filtra pelo `tenant` autenticado. Senha só via BCrypt, nunca em DTO. JWT assina `sub = email`. `SecurityFilter` valida em toda requisição.

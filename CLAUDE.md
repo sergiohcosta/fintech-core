@@ -57,7 +57,11 @@ Toda mudança de permissão/visibilidade/role **deve** ser validada nas duas cam
 | Backend | `hasRole(...)` em `SecurityConfigurations.java` + teste de controller verificando 403 |
 | Frontend | Ocultar via `@if (isAdmin())` e não chamar endpoints sem permissão |
 
-Ocultar no frontend não substitui o backend (última linha de defesa). Senhas sempre BCrypt — nunca logar/retornar. JWT valida `exp` antes de navegar.
+Ocultar no frontend não substitui o backend (última linha de defesa). Senhas sempre BCrypt — nunca logar/retornar. JWT valida `exp` antes de navegar (expiração calculada via `Instant.now()` — nunca `LocalDateTime` + offset fixo, que quebra fora do timezone esperado).
+
+**Login (`/auth/login`):** nunca diferenciar a resposta entre "usuário não existe", "senha incorreta" e "usuário inativo" — todas retornam `401` genérico, sem corpo (evita enumeração de usuários). Rate limit por email via `LoginRateLimiter` (em memória, 5 tentativas/min) protege contra brute force. Usuário com `active=false` não autentica nem mantém sessão — `isEnabled()` é checado tanto no login quanto no `SecurityFilter` (por requisição).
+
+**Senha (registro/convite):** mínimo 8 e máximo 72 caracteres, com maiúscula, minúscula e número (`@Pattern` no DTO + `Validators.pattern` no frontend) — qualquer novo campo de senha segue a mesma regra.
 
 ## Dataset de Testes — Família Costa
 
