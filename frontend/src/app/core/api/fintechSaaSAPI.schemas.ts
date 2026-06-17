@@ -567,6 +567,7 @@ export interface InstallmentItemPreview {
   description?: string;
   amount?: number;
   expectedDate?: string;
+  accountName?: string;
 }
 
 export interface BudgetCyclePreview {

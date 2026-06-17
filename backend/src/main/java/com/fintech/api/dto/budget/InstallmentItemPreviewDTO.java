@@ -6,5 +6,6 @@ import java.time.LocalDate;
 public record InstallmentItemPreviewDTO(
     String description,
     BigDecimal amount,
-    LocalDate expectedDate
+    LocalDate expectedDate,
+    String accountName
 ) {}

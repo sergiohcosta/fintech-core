@@ -50,6 +50,7 @@
         @for (item of p.installmentItems; track item.description) {
           <div class="preview-item">
             <span class="desc">{{ item.description }}</span>
+            <mat-chip>{{ item.accountName }}</mat-chip>
             <span class="item-date">{{ item.expectedDate | date:'dd/MM' }}</span>
             <span class="expense">{{ item.amount | currency:'BRL' }}</span>
           </div>

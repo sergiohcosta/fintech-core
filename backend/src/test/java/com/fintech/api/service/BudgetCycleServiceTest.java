@@ -140,7 +140,7 @@ class BudgetCycleServiceTest {
             .thenReturn(new BigDecimal("3200.00"));
         when(recurringRepository.findAllByTenantAndActiveTrueOrderByDayOfMonthAscDescriptionAsc(tenant))
             .thenReturn(List.of());
-        when(transactionRepository.findInstallmentsInPeriodByTenant(any(), any(), any(), any()))
+        when(transactionRepository.findInstallmentsByReferenceMonthAndTenant(any(), anyInt(), anyInt(), any()))
             .thenReturn(List.of());
 
         var captor = ArgumentCaptor.forClass(BudgetCycle.class);

@@ -162,7 +162,7 @@ public class BudgetCycleService {
             .build());
 
         populateRecurringItems(cycle, managed, user, startDate, startDay);
-        populateInstallmentItems(cycle, managed, startDate, endDate);
+        populateInstallmentItems(cycle, managed);
 
         log.info("Ciclo de planejamento aberto [cycleId={} tenantId={} periodo={}/{} startDay={}]",
             cycle.getId(), managed.getId(), startDate, endDate, startDay);
@@ -175,12 +175,14 @@ public class BudgetCycleService {
      * Útil para o frontend exibir um resumo antes de o usuário confirmar a abertura.
      */
     @Transactional(readOnly = true)
-    public BudgetCyclePreviewDTO preview(Tenant tenant, int startDay) {
+    public BudgetCyclePreviewDTO preview(Tenant tenant, Integer startDay) {
         Tenant managed = tenantRepository.findById(tenant.getId())
             .orElseThrow(() -> new EntityNotFoundException("Tenant não encontrado."));
 
         LocalDate today = LocalDate.now();
         YearMonth thisMonth = YearMonth.from(today);
+        // resolve aqui, dentro da sessão, para evitar LazyInitializationException no controller
+        if (startDay == null) startDay = managed.getBudgetCycleStartDay();
 
         // Tenta este mês, depois o próximo, até encontrar o período que contém today
         LocalDate[] dates = null;
@@ -216,8 +218,8 @@ public class BudgetCycleService {
                 calculateExpectedDate(startDate, sd, t.getDayOfMonth())))
             .toList();
 
-        List<Transaction> installments = transactionRepository.findInstallmentsInPeriodByTenant(
-            managed.getId(), startDate, endDate, TransactionStatus.CANCELLED);
+        List<Transaction> installments = transactionRepository.findInstallmentsByReferenceMonthAndTenant(
+            managed.getId(), refMonth.getYear(), refMonth.getMonthValue(), TransactionStatus.CANCELLED);
 
         Map<InstallmentGroup, List<Transaction>> byGroup = installments.stream()
             .collect(Collectors.groupingBy(Transaction::getInstallmentGroup));
@@ -228,9 +230,9 @@ public class BudgetCycleService {
                 BigDecimal total = entry.getValue().stream()
                     .map(Transaction::getAmount)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
-                // findInstallmentsInPeriodByTenant garante invoice != null e installmentGroup != null
                 LocalDate dueDate = entry.getValue().get(0).getInvoice().getDueDate();
-                return new InstallmentItemPreviewDTO(group.getDescription(), total, dueDate);
+                return new InstallmentItemPreviewDTO(group.getDescription(), total, dueDate,
+                    group.getAccount().getName());
             })
             .toList();
 
@@ -320,7 +322,7 @@ public class BudgetCycleService {
         itemRepository.deleteAll(existing.stream()
             .filter(i -> i.getSource() == BudgetItemSource.INSTALLMENT)
             .toList());
-        populateInstallmentItems(cycle, tenant, cycle.getStartDate(), cycle.getEndDate());
+        populateInstallmentItems(cycle, tenant);
         return cycle;
     }
 
@@ -368,10 +370,10 @@ public class BudgetCycleService {
         itemRepository.saveAll(items);
     }
 
-    private void populateInstallmentItems(BudgetCycle cycle, Tenant tenant,
-                                          LocalDate startDate, LocalDate endDate) {
-        List<Transaction> installments = transactionRepository.findInstallmentsInPeriodByTenant(
-            tenant.getId(), startDate, endDate, TransactionStatus.CANCELLED);
+    private void populateInstallmentItems(BudgetCycle cycle, Tenant tenant) {
+        YearMonth refMonth = YearMonth.parse(cycle.getReferenceMonth());
+        List<Transaction> installments = transactionRepository.findInstallmentsByReferenceMonthAndTenant(
+            tenant.getId(), refMonth.getYear(), refMonth.getMonthValue(), TransactionStatus.CANCELLED);
 
         // Agrupa parcelas pelo InstallmentGroup para criar um único BudgetItem por grupo
         Map<InstallmentGroup, List<Transaction>> byGroup = installments.stream()

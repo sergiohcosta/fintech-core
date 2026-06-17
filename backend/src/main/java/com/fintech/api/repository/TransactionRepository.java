@@ -149,10 +149,9 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
         @Param("newStatus") TransactionStatus newStatus
     );
 
-    // Para transações de cartão, usa invoice.dueDate como referência de mês.
-    // Para demais contas (sem fatura), usa transaction.date.
-    // LEFT JOIN explícito é obrigatório: t.invoice.dueDate em WHERE gera INNER JOIN implícito
-    // no Hibernate, excluindo transações sem fatura e quebrando o branch invoice IS NULL.
+    // Filtra por referenceYear/Month da fatura (não por dueDate) para capturar
+    // todos os cartões independente do dueDay — cartões com dueDay fora do
+    // período do ciclo seriam excluídos erroneamente se filtrássemos por dueDate.
     @Query("""
         SELECT t FROM Transaction t
         LEFT JOIN FETCH t.installmentGroup ig
@@ -160,14 +159,15 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
         WHERE t.account.tenant.id = :tenantId
           AND t.installmentGroup IS NOT NULL
           AND inv IS NOT NULL
-          AND inv.dueDate BETWEEN :startDate AND :endDate
+          AND inv.referenceYear = :referenceYear
+          AND inv.referenceMonth = :referenceMonth
           AND t.status <> :cancelledStatus
         ORDER BY ig.id, inv.dueDate
     """)
-    List<Transaction> findInstallmentsInPeriodByTenant(
+    List<Transaction> findInstallmentsByReferenceMonthAndTenant(
         @Param("tenantId") UUID tenantId,
-        @Param("startDate") LocalDate startDate,
-        @Param("endDate") LocalDate endDate,
+        @Param("referenceYear") int referenceYear,
+        @Param("referenceMonth") int referenceMonth,
         @Param("cancelledStatus") TransactionStatus cancelledStatus
     );
 
