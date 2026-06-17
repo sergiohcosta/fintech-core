@@ -102,7 +102,8 @@ function buildFlatRows(
 
 function buildDisplayRowsGroupedByInvoice(
   transactions: TransactionResponseDTO[],
-  expandedIds: Set<string>
+  expandedIds: Set<string>,
+  sortCriteria: SortCriterion[] = []
 ): DisplayRow[] {
   const withInvoice    = transactions.filter(t => t.invoiceId);
   const withoutInvoice = transactions.filter(t => !t.invoiceId);
@@ -142,7 +143,7 @@ function buildDisplayRowsGroupedByInvoice(
       status: bucket.status,
       transactionCount: bucket.transactions.length,
     });
-    rows.push(...buildFlatRows(bucket.transactions, expandedIds));
+    rows.push(...buildFlatRows(sortTransactions(bucket.transactions, sortCriteria), expandedIds));
   }
 
   if (withoutInvoice.length > 0) {
@@ -155,7 +156,7 @@ function buildDisplayRowsGroupedByInvoice(
       status: null,
       transactionCount: withoutInvoice.length,
     });
-    rows.push(...buildFlatRows(withoutInvoice, expandedIds));
+    rows.push(...buildFlatRows(sortTransactions(withoutInvoice, sortCriteria), expandedIds));
   }
 
   return rows;
@@ -165,10 +166,11 @@ export function buildDisplayRows(
   transactions: TransactionResponseDTO[],
   expandedIds: Set<string>,
   groupByPeriod = false,
-  groupByInvoice = false
+  groupByInvoice = false,
+  sortCriteria: SortCriterion[] = []
 ): DisplayRow[] {
-  if (groupByInvoice) return buildDisplayRowsGroupedByInvoice(transactions, expandedIds);
-  if (!groupByPeriod) return buildFlatRows(transactions, expandedIds);
+  if (groupByInvoice) return buildDisplayRowsGroupedByInvoice(transactions, expandedIds, sortCriteria);
+  if (!groupByPeriod) return buildFlatRows(sortTransactions(transactions, sortCriteria), expandedIds);
   const groups = groupByEffectiveMonth(transactions);
   return groups.flatMap(group => [
     {
@@ -179,7 +181,7 @@ export function buildDisplayRows(
       totalExpense: group.totalExpense,
       balance: group.balance,
     },
-    ...buildFlatRows(group.transactions, expandedIds),
+    ...buildFlatRows(sortTransactions(group.transactions, sortCriteria), expandedIds),
   ]);
 }
 
