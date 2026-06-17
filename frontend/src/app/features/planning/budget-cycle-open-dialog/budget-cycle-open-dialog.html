@@ -1,0 +1,109 @@
+<h2 mat-dialog-title>Abrir novo ciclo de planejamento</h2>
+
+<mat-dialog-content>
+  @if (loadingPreview()) {
+    <div class="loading-center">
+      <mat-spinner diameter="40"></mat-spinner>
+    </div>
+  } @else if (previewError()) {
+    <p class="error-msg">{{ previewError() }}</p>
+  } @else if (preview(); as p) {
+
+    <!-- Seção 1: cabeçalho do período -->
+    <div class="period-header">
+      <span class="period-month">{{ monthLabel() }}</span>
+      <span class="period-range">{{ p.startDate | date:'dd/MM/yyyy' }} – {{ p.endDate | date:'dd/MM/yyyy' }}</span>
+    </div>
+
+    <!-- Seção 2: saldo de abertura com explicação -->
+    <form [formGroup]="form">
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Saldo de abertura (R$)</mat-label>
+        <input matInput type="number" formControlName="openingBalance" step="0.01">
+        <mat-icon matSuffix class="info-icon"
+                  matTooltip="O saldo de abertura representa o dinheiro disponível no início do ciclo. O valor sugerido é calculado a partir das suas contas marcadas como 'conta no saldo líquido' com transações pagas."
+                  matTooltipPosition="above">info_outline</mat-icon>
+        <mat-hint>Sugerido: {{ p.suggestedOpeningBalance | currency:'BRL' }} — baseado nas suas contas líquidas</mat-hint>
+      </mat-form-field>
+    </form>
+
+    <!-- Seção 3: itens recorrentes com data -->
+    @if ((p.recurringItems?.length ?? 0) > 0) {
+      <h4 class="section-title">Itens recorrentes ({{ p.recurringItems!.length }})</h4>
+      <div class="item-list">
+        @for (item of p.recurringItems; track item.description) {
+          <div class="preview-item">
+            <span class="desc">{{ item.description }}</span>
+            <span class="item-date">{{ item.expectedDate | date:'dd/MM' }}</span>
+            <span [class.income]="item.type === 'INCOME'" [class.expense]="item.type === 'EXPENSE'">
+              {{ item.amount | currency:'BRL' }}
+            </span>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Seção 3: parcelas do cartão com data -->
+    @if ((p.installmentItems?.length ?? 0) > 0) {
+      <h4 class="section-title">Parcelas do cartão ({{ p.installmentItems!.length }})</h4>
+      <div class="item-list">
+        @for (item of p.installmentItems; track item.description) {
+          <div class="preview-item">
+            <span class="desc">{{ item.description }}</span>
+            <mat-chip>{{ item.accountName }}</mat-chip>
+            <span class="item-date">{{ item.expectedDate | date:'dd/MM' }}</span>
+            <span class="expense">{{ item.amount | currency:'BRL' }}</span>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Seção 4: transações já lançadas no período -->
+    @if (existingTxSummary(); as tx) {
+      <div class="existing-tx-row">
+        <mat-icon>info</mat-icon>
+        <span>
+          {{ tx.count }} {{ tx.count === 1 ? 'transação já lançada' : 'transações já lançadas' }} neste período
+          · {{ tx.expense | currency:'BRL' }} em despesas
+          · {{ tx.income | currency:'BRL' }} em receitas
+        </span>
+      </div>
+    }
+
+    <!-- Seção 5: saldo projetado -->
+    <div class="projected-grid">
+      <div class="proj-item">
+        <span class="proj-label">Abertura</span>
+        <span class="proj-value">{{ (form.value.openingBalance ?? 0) | currency:'BRL' }}</span>
+      </div>
+      <span class="proj-op">+</span>
+      <div class="proj-item">
+        <span class="proj-label">Receita prevista</span>
+        <span class="proj-value income">{{ p.projectedIncome | currency:'BRL' }}</span>
+      </div>
+      <span class="proj-op">−</span>
+      <div class="proj-item">
+        <span class="proj-label">Despesa prevista</span>
+        <span class="proj-value expense">{{ p.projectedExpense | currency:'BRL' }}</span>
+      </div>
+      <span class="proj-op">=</span>
+      <div class="proj-item proj-result">
+        <span class="proj-label">Saldo projetado</span>
+        <span class="proj-value"
+              [class.income]="(projectedBalance() ?? 0) >= 0"
+              [class.expense]="(projectedBalance() ?? 0) < 0">
+          {{ projectedBalance() | currency:'BRL' }}
+        </span>
+      </div>
+    </div>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancel()" [disabled]="saving()">Cancelar</button>
+  <button mat-flat-button color="primary"
+          [disabled]="isInvalid() || saving() || loadingPreview() || !!previewError()"
+          (click)="confirm()">
+    {{ saving() ? 'Abrindo...' : 'Abrir ciclo' }}
+  </button>
+</mat-dialog-actions>

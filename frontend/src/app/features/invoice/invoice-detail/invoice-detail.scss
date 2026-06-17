@@ -108,3 +108,23 @@ table { width: 100%; }
 
 .empty-state { text-align: center; padding: 24px; color: #999; }
 .loading-state { display: flex; justify-content: center; padding: 48px; color: #666; }
+
+.show-more-container {
+  padding: 4px 16px 8px;
+  display: flex;
+  justify-content: center;
+}
+
+.section-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 16px;
+
+  .section-title { margin-bottom: 0; }
+}
+
+.section-subtitle {
+  font-size: 13px;
+  color: #666;
+}

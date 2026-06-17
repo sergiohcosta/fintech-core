@@ -1,7 +1,7 @@
 package com.fintech.api.config;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -23,10 +23,10 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfigurations {
 
-    @Autowired
-    SecurityFilter securityFilter;
+    private final SecurityFilter securityFilter;
 
     @Value("${cors.allowed-origins}")
     private String allowedOrigins;
@@ -47,6 +47,8 @@ public class SecurityConfigurations {
                         .requestMatchers(HttpMethod.GET, "/invites").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/invites/*").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/members").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/tenant/settings").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/budget-cycles/*").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();

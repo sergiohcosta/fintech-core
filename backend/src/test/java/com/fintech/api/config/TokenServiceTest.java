@@ -10,6 +10,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Instant;
+import java.util.TimeZone;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -54,5 +56,25 @@ class TokenServiceTest {
         String token = tokenService.generateToken(user);
         DecodedJWT decoded = JWT.decode(token);
         assertThat(decoded.getClaim("role").asString()).isEqualTo("USER");
+    }
+
+    @Test
+    @DisplayName("generateToken expira ~2h após emissão, independente do timezone default da JVM")
+    void generateToken_expiresAfterTwoHours_independentOfJvmTimezone() {
+        TimeZone original = TimeZone.getDefault();
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+        try {
+            Instant before = Instant.now();
+            User user = buildUser(UserRole.USER);
+            String token = tokenService.generateToken(user);
+            DecodedJWT decoded = JWT.decode(token);
+            Instant expiresAt = decoded.getExpiresAtAsInstant();
+
+            Instant expected = before.plusSeconds(2 * 3600);
+            long diffSeconds = Math.abs(expiresAt.getEpochSecond() - expected.getEpochSecond());
+            assertThat(diffSeconds).isLessThan(5);
+        } finally {
+            TimeZone.setDefault(original);
+        }
     }
 }

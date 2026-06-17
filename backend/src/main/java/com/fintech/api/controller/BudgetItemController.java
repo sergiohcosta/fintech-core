@@ -1,7 +1,7 @@
 package com.fintech.api.controller;
 
 import com.fintech.api.domain.user.User;
-import com.fintech.api.dto.budget.BudgetItemLinkRequest;
+import com.fintech.api.dto.budget.BudgetItemRealizeRequest;
 import com.fintech.api.dto.budget.BudgetItemResponseDTO;
 import com.fintech.api.dto.budget.BudgetItemUpdateRequest;
 import com.fintech.api.service.BudgetItemService;
@@ -37,21 +37,36 @@ public class BudgetItemController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/{id}/link")
-    public ResponseEntity<BudgetItemResponseDTO> link(
+    @PostMapping("/{id}/realize")
+    public ResponseEntity<BudgetItemResponseDTO> realize(
             @PathVariable UUID id,
-            @Valid @RequestBody BudgetItemLinkRequest req) {
+            @RequestBody(required = false) BudgetItemRealizeRequest req) {
         User user = getUser();
         var item = itemService.findByIdAndTenant(id, user.getTenant());
+        UUID transactionId = (req != null) ? req.transactionId() : null;
         return ResponseEntity.ok(BudgetItemResponseDTO.fromEntity(
-            itemService.link(item, req.transactionId())));
+            itemService.realize(item, transactionId, user.getTenant(), user)));
     }
 
-    @DeleteMapping("/{id}/link")
-    public ResponseEntity<BudgetItemResponseDTO> unlink(@PathVariable UUID id) {
+    @DeleteMapping("/{id}/realize")
+    public ResponseEntity<BudgetItemResponseDTO> unrealize(@PathVariable UUID id) {
         User user = getUser();
         var item = itemService.findByIdAndTenant(id, user.getTenant());
-        return ResponseEntity.ok(BudgetItemResponseDTO.fromEntity(itemService.unlink(item)));
+        return ResponseEntity.ok(BudgetItemResponseDTO.fromEntity(itemService.unrealize(item)));
+    }
+
+    @PostMapping("/{id}/skip")
+    public ResponseEntity<BudgetItemResponseDTO> skip(@PathVariable UUID id) {
+        User user = getUser();
+        var item = itemService.findByIdAndTenant(id, user.getTenant());
+        return ResponseEntity.ok(BudgetItemResponseDTO.fromEntity(itemService.skip(item)));
+    }
+
+    @DeleteMapping("/{id}/skip")
+    public ResponseEntity<BudgetItemResponseDTO> unskip(@PathVariable UUID id) {
+        User user = getUser();
+        var item = itemService.findByIdAndTenant(id, user.getTenant());
+        return ResponseEntity.ok(BudgetItemResponseDTO.fromEntity(itemService.unskip(item)));
     }
 
     private User getUser() {

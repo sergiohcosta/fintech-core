@@ -5,9 +5,11 @@ import { TenantService } from '../../core/api/tenant/tenant.service';
 import {
   BudgetCycleOpenRequest,
   BudgetCyclePageResponse,
+  BudgetCyclePreview,
   BudgetCycleResponse,
   BudgetItemCreateRequest,
   BudgetItemLinkRequest,
+  BudgetItemRealizeRequest,
   BudgetItemResponse,
   BudgetItemUpdateRequest,
   RecurringBudgetItemRequest,
@@ -36,12 +38,20 @@ export class PlanningService {
     return this.budget.listBudgetCycles({ page, size });
   }
 
+  deleteCycle(id: string): Observable<void> {
+    return this.budget.deleteBudgetCycle(id);
+  }
+
   getCycle(id: string): Observable<BudgetCycleResponse> {
     return this.budget.getBudgetCycle(id);
   }
 
   syncInstallments(id: string): Observable<BudgetCycleResponse> {
     return this.budget.syncInstallments(id);
+  }
+
+  previewCycle(startDay?: number): Observable<BudgetCyclePreview> {
+    return this.budget.previewBudgetCycle(startDay !== undefined ? { startDay } : undefined);
   }
 
   createItem(cycleId: string, req: BudgetItemCreateRequest): Observable<BudgetItemResponse> {
@@ -64,8 +74,28 @@ export class PlanningService {
     return this.budget.unlinkBudgetItem(id);
   }
 
-  listRecurring(): Observable<RecurringBudgetItemResponse[]> {
-    return this.budget.listRecurringBudgetItems();
+  realizeItem(id: string, req: BudgetItemRealizeRequest): Observable<BudgetItemResponse> {
+    return this.budget.realizeBudgetItem(id, req);
+  }
+
+  unrealizeItem(id: string): Observable<BudgetItemResponse> {
+    return this.budget.unrealizeBudgetItem(id);
+  }
+
+  skipItem(id: string): Observable<BudgetItemResponse> {
+    return this.budget.skipBudgetItem(id);
+  }
+
+  unskipItem(id: string): Observable<BudgetItemResponse> {
+    return this.budget.unskipBudgetItem(id);
+  }
+
+  reactivateRecurring(id: string): Observable<RecurringBudgetItemResponse> {
+    return this.budget.reactivateRecurringBudgetItem(id);
+  }
+
+  listRecurring(active?: boolean): Observable<RecurringBudgetItemResponse[]> {
+    return this.budget.listRecurringBudgetItems(active !== undefined ? { active } : undefined);
   }
 
   createRecurring(req: RecurringBudgetItemRequest): Observable<RecurringBudgetItemResponse> {

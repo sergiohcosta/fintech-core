@@ -7,6 +7,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-login',
@@ -39,8 +40,8 @@ export class LoginComponent implements OnInit {
   errorMessage = signal('');
 
   form = this.fb.group({
-    email: ['', [Validators.required, Validators.email]],
-    password: ['', [Validators.required]]
+    email: [environment.devCredentials?.email ?? '', [Validators.required, Validators.email]],
+    password: [environment.devCredentials?.password ?? '', [Validators.required]]
   });
 
   onSubmit() {

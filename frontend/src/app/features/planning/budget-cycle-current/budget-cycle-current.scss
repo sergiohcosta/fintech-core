@@ -38,3 +38,41 @@
 .add-btn { margin-bottom: 16px; }
 
 mat-expansion-panel { margin-bottom: 12px; }
+
+.chip-realized {
+  background-color: var(--mat-sys-tertiary-container) !important;
+  color: var(--mat-sys-on-tertiary-container) !important;
+}
+
+.chip-skipped {
+  opacity: 0.5;
+}
+
+.negative {
+  color: var(--mat-sys-error);
+}
+
+.ended-banner {
+  margin-bottom: 16px;
+  background-color: var(--mat-sys-error-container);
+
+  mat-card-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+
+    mat-icon { color: var(--mat-sys-error); }
+    span { flex: 1; }
+  }
+}
+
+.confirm-label {
+  font-size: 0.875rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.chip-ended {
+  background-color: var(--mat-sys-error-container) !important;
+  color: var(--mat-sys-on-error-container) !important;
+}

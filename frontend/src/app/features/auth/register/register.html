@@ -32,6 +32,8 @@
                 <mat-form-field appearance="outline" class="full-width">
                     <mat-label>Senha</mat-label>
                     <input matInput type="password" formControlName="password">
+                    <mat-hint>Entre 8 e 72 caracteres, com letra maiúscula, minúscula e número</mat-hint>
+                    <mat-error>Senha deve ter entre 8 e 72 caracteres, com letra maiúscula, minúscula e número</mat-error>
                 </mat-form-field>
 
                 @if (errorMessage()) {

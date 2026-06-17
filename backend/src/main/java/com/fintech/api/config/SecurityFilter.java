@@ -41,6 +41,8 @@ public class SecurityFilter extends OncePerRequestFilter {
                 UserDetails userDetails = userRepository.findByEmail(email).orElse(null);
                 if (userDetails == null) {
                     log.warn("Token válido mas usuário não encontrado [email={}]", email);
+                } else if (!userDetails.isEnabled()) {
+                    log.warn("Token válido mas usuário está inativo [email={}]", email);
                 } else {
                     var authentication = new UsernamePasswordAuthenticationToken(
                             userDetails, null, userDetails.getAuthorities());
