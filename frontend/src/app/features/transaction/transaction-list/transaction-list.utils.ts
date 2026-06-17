@@ -285,3 +285,90 @@ export function computeMonthChipStates(
     };
   });
 }
+
+// --- Multi-sort ---
+
+export type SortCol = 'description' | 'amount' | 'date' | 'type' | 'status' | 'category' | 'account';
+export type SortDir = 'asc' | 'desc';
+export type SortCriterion = { col: SortCol; dir: SortDir };
+
+function effectiveSortDate(t: TransactionResponseDTO): string {
+  if (t.installmentGroupId && t.invoiceDueDate) return t.invoiceDueDate;
+  return t.date ?? '';
+}
+
+function compareBy(col: SortCol, a: TransactionResponseDTO, b: TransactionResponseDTO): number {
+  switch (col) {
+    case 'date':
+      return effectiveSortDate(a).localeCompare(effectiveSortDate(b));
+    case 'amount':
+      return (a.amount ?? 0) - (b.amount ?? 0);
+    case 'description':
+      return (a.description ?? '').localeCompare(b.description ?? '', 'pt-BR', { sensitivity: 'base' });
+    case 'category': {
+      const ac = (a as any).categoryName as string | null | undefined;
+      const bc = (b as any).categoryName as string | null | undefined;
+      if (!ac && !bc) return 0;
+      if (!ac) return 1;
+      if (!bc) return -1;
+      return ac.localeCompare(bc, 'pt-BR', { sensitivity: 'base' });
+    }
+    case 'account': {
+      const aa = (a as any).accountName as string | null | undefined;
+      const ba = (b as any).accountName as string | null | undefined;
+      if (!aa && !ba) return 0;
+      if (!aa) return 1;
+      if (!ba) return -1;
+      return aa.localeCompare(ba, 'pt-BR', { sensitivity: 'base' });
+    }
+    case 'type': {
+      const typeOrder: Record<string, number> = { INCOME: 0, EXPENSE: 1 };
+      const ao = (a as any).transferId ? 2 : (typeOrder[a.type ?? ''] ?? 1);
+      const bo = (b as any).transferId ? 2 : (typeOrder[b.type ?? ''] ?? 1);
+      return ao - bo;
+    }
+    case 'status': {
+      const statusOrder: Record<string, number> = { PENDING: 0, PAID: 1, CANCELLED: 2 };
+      return (statusOrder[a.status ?? ''] ?? 0) - (statusOrder[b.status ?? ''] ?? 0);
+    }
+  }
+}
+
+export function sortTransactions(
+  transactions: TransactionResponseDTO[],
+  criteria: SortCriterion[]
+): TransactionResponseDTO[] {
+  if (!criteria.length) return transactions;
+  return [...transactions].sort((a, b) => {
+    for (const { col, dir } of criteria) {
+      const cmp = compareBy(col, a, b);
+      if (cmp !== 0) return dir === 'asc' ? cmp : -cmp;
+    }
+    return 0;
+  });
+}
+
+export function applySort(criteria: SortCriterion[], col: SortCol, shiftKey: boolean): SortCriterion[] {
+  if (shiftKey) {
+    const idx = criteria.findIndex(c => c.col === col);
+    if (idx >= 0) {
+      const updated = [...criteria];
+      updated[idx] = { col, dir: criteria[idx].dir === 'asc' ? 'desc' : 'asc' };
+      return updated;
+    }
+    return [...criteria, { col, dir: 'asc' }];
+  }
+  if (criteria.length === 1 && criteria[0].col === col) {
+    return [{ col, dir: criteria[0].dir === 'asc' ? 'desc' : 'asc' }];
+  }
+  return [{ col, dir: 'asc' }];
+}
+
+export function getSortInfo(
+  criteria: SortCriterion[],
+  col: SortCol
+): { priority: number; dir: SortDir } | null {
+  const idx = criteria.findIndex(c => c.col === col);
+  if (idx < 0) return null;
+  return { priority: idx + 1, dir: criteria[idx].dir };
+}
