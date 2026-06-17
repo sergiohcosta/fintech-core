@@ -24,9 +24,15 @@
         <mat-card-content>
           <mat-icon>event_busy</mat-icon>
           <span>Período encerrado — revise os lançamentos e feche o ciclo quando estiver pronto.</span>
-          <button mat-flat-button color="warn" (click)="closeCycle()" [disabled]="closing()">
-            Fechar ciclo definitivamente
-          </button>
+          @if (!confirmingClose()) {
+            <button mat-flat-button color="warn" (click)="requestClose()" [disabled]="closing()">
+              Fechar ciclo definitivamente
+            </button>
+          } @else {
+            <span class="confirm-label">Tem certeza? Esta ação é irreversível.</span>
+            <button mat-flat-button color="warn" [disabled]="closing()" (click)="closeCycle()">Sim, fechar</button>
+            <button mat-stroked-button [disabled]="closing()" (click)="cancelClose()">Cancelar</button>
+          }
         </mat-card-content>
       </mat-card>
     }
@@ -48,9 +54,15 @@
                   (click)="syncInstallments()">
             <mat-icon>sync</mat-icon>
           </button>
-          <button mat-stroked-button [disabled]="closing()" (click)="closeCycle()">
-            Fechar ciclo
-          </button>
+          @if (!confirmingClose()) {
+            <button mat-stroked-button [disabled]="closing()" (click)="requestClose()">
+              Fechar ciclo
+            </button>
+          } @else {
+            <span class="confirm-label">Tem certeza?</span>
+            <button mat-flat-button color="warn" [disabled]="closing()" (click)="closeCycle()">Sim, fechar</button>
+            <button mat-stroked-button [disabled]="closing()" (click)="cancelClose()">Cancelar</button>
+          }
         }
       </div>
     </div>
