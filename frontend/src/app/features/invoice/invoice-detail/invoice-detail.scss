@@ -114,3 +114,17 @@ table { width: 100%; }
   display: flex;
   justify-content: center;
 }
+
+.section-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 16px;
+
+  .section-title { margin-bottom: 0; }
+}
+
+.section-subtitle {
+  font-size: 13px;
+  color: #666;
+}

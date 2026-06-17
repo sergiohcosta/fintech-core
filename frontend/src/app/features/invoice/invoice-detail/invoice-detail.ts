@@ -70,6 +70,20 @@ export class InvoiceDetail implements OnInit {
 
   hiddenBreakdownCount = computed(() => Math.max(0, this.breakdown().length - 5));
 
+  installmentTxs = computed(() =>
+    this.transactions().filter(t => t.installmentGroupId != null)
+  );
+
+  regularTxs = computed(() =>
+    this.transactions().filter(t => t.installmentGroupId == null)
+  );
+
+  installmentSubtotal = computed(() =>
+    this.installmentTxs()
+      .filter(t => t.status !== TransactionStatus.CANCELLED)
+      .reduce((sum, t) => sum + t.amount, 0)
+  );
+
   transactionColumns = ['description', 'amount', 'date', 'type', 'status', 'installmentLabel'];
   breakdownColumns = ['categoryName', 'count', 'total', 'percentage'];
 
