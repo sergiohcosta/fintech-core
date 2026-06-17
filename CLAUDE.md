@@ -78,6 +78,6 @@ UUIDs predefinidos por série (nunca `gen_random_uuid()` para cross-reference). 
 
 ## Estado Atual
 
-Implementado (fullstack): Auth JWT · Tenants/Users · Categorias hierárquicas (soft-delete + archive) · Contas (4 tipos + transferências double-entry) · Transações (parcelamento, filtros, fórmulas de valor) · Faturas de cartão (OPEN→CLOSED→PAID) · Dashboard · Planejamento Mensal (Budget Cycles) · Logging estruturado com MDC · OpenAPI spec-first com codegen.
+Implementado (fullstack): Auth JWT · Tenants/Users · Categorias hierárquicas (soft-delete + archive) · Contas (4 tipos + transferências double-entry) · Transações (parcelamento, filtros, fórmulas de valor, multi-sort por coluna) · Faturas de cartão (OPEN→CLOSED→PAID) · Dashboard · Planejamento Mensal (Budget Cycles) · Logging estruturado com MDC · OpenAPI spec-first com codegen.
 
 **Próximos passos:** ADR-001 #85 (`effective_date`), #86 (`WITH RECURSIVE`), #87 (`TransferService`), #88 (`BusinessException`) · Gráficos no dashboard · Tela de Patrimônio Total (consome `countInNetWorth`).
