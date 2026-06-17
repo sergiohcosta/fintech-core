@@ -1,3 +1,3 @@
 package com.fintech.api.domain.enums;
 
-public enum BudgetCycleStatus { OPEN, CLOSED }
+public enum BudgetCycleStatus { OPEN, ENDED, CLOSED }

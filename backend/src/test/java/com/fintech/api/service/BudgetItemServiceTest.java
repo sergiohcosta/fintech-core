@@ -2,19 +2,29 @@ package com.fintech.api.service;
 
 import com.fintech.api.domain.budget.BudgetCycle;
 import com.fintech.api.domain.budget.BudgetItem;
+import com.fintech.api.domain.enums.BudgetCycleStatus;
 import com.fintech.api.domain.enums.BudgetItemSource;
 import com.fintech.api.domain.enums.BudgetItemStatus;
+import com.fintech.api.domain.enums.TransactionStatus;
 import com.fintech.api.domain.enums.TransactionType;
+import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.transaction.Transaction;
+import com.fintech.api.domain.user.User;
+import com.fintech.api.dto.budget.BudgetItemCreateRequest;
 import com.fintech.api.dto.budget.BudgetItemUpdateRequest;
+import com.fintech.api.repository.AccountRepository;
 import com.fintech.api.repository.BudgetItemRepository;
+import com.fintech.api.repository.CategoryRepository;
 import com.fintech.api.repository.TransactionRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -30,95 +40,425 @@ class BudgetItemServiceTest {
 
     @Mock BudgetItemRepository repository;
     @Mock TransactionRepository transactionRepository;
+    @Mock CategoryRepository categoryRepository;
+    @Mock AccountRepository accountRepository;
 
     @InjectMocks BudgetItemService service;
 
-    @Test
-    @DisplayName("update() em item INSTALLMENT lança IllegalStateException")
-    void update_itemInstallment_lançaException() {
-        BudgetItem item = itemWith(BudgetItemSource.INSTALLMENT);
+    private Tenant tenant;
+    private User user;
 
-        assertThatThrownBy(() -> service.update(item,
-            new BudgetItemUpdateRequest("desc", BigDecimal.TEN, LocalDate.now(), null, null)))
-            .isInstanceOf(IllegalStateException.class)
-            .hasMessageContaining("parcela");
+    @BeforeEach
+    void setUp() {
+        tenant = new Tenant();
+        tenant.setId(UUID.randomUUID());
+        tenant.setName("Test Tenant");
+
+        user = new User();
+        user.setId(UUID.randomUUID());
+        user.setTenant(tenant);
     }
 
-    @Test
-    @DisplayName("update() em item MANUAL atualiza campos e salva")
-    void update_itemManual_atualizaCampos() {
-        BudgetItem item = itemWith(BudgetItemSource.MANUAL);
-        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    // ---- helpers ----
 
-        var updated = service.update(item,
-            new BudgetItemUpdateRequest("Nova desc", new BigDecimal("500.00"),
-                LocalDate.of(2026, 6, 15), null, null));
-
-        assertThat(updated.getDescription()).isEqualTo("Nova desc");
-        assertThat(updated.getAmount()).isEqualByComparingTo("500.00");
-        assertThat(updated.getExpectedDate()).isEqualTo(LocalDate.of(2026, 6, 15));
+    private BudgetCycle openCycle() {
+        return BudgetCycle.builder()
+            .id(UUID.randomUUID())
+            .tenant(tenant)
+            .startDate(LocalDate.of(2026, 6, 1))
+            .endDate(LocalDate.of(2026, 6, 30))
+            .openingBalance(BigDecimal.valueOf(1000))
+            .status(BudgetCycleStatus.OPEN)
+            .build();
     }
 
-    @Test
-    @DisplayName("link() muda status para REALIZED e preenche transaction")
-    void link_transacaoValida_mudaParaRealized() {
-        BudgetCycle cycle = new BudgetCycle();
-        BudgetItem item = itemWith(BudgetItemSource.MANUAL);
-        item.setCycle(cycle);
-        Transaction tx = new Transaction();
-        tx.setId(UUID.randomUUID());
-
-        when(transactionRepository.findById(tx.getId())).thenReturn(Optional.of(tx));
-        when(repository.findByTransactionAndCycleNot(tx, cycle)).thenReturn(Optional.empty());
-        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-
-        BudgetItem result = service.link(item, tx.getId());
-
-        assertThat(result.getStatus()).isEqualTo(BudgetItemStatus.REALIZED);
-        assertThat(result.getTransaction()).isEqualTo(tx);
+    private BudgetCycle closedCycle() {
+        return BudgetCycle.builder()
+            .id(UUID.randomUUID())
+            .tenant(tenant)
+            .startDate(LocalDate.of(2026, 5, 1))
+            .endDate(LocalDate.of(2026, 5, 31))
+            .openingBalance(BigDecimal.valueOf(1000))
+            .status(BudgetCycleStatus.CLOSED)
+            .build();
     }
 
-    @Test
-    @DisplayName("link() lança IllegalStateException se transação já vinculada a outro item")
-    void link_transacaoJaVinculada_lançaException() {
-        BudgetCycle cycle = new BudgetCycle();
-        BudgetItem item = itemWith(BudgetItemSource.MANUAL);
-        item.setCycle(cycle);
-        Transaction tx = new Transaction();
-        tx.setId(UUID.randomUUID());
-
-        when(transactionRepository.findById(tx.getId())).thenReturn(Optional.of(tx));
-        when(repository.findByTransactionAndCycleNot(tx, cycle))
-            .thenReturn(Optional.of(new BudgetItem()));
-
-        assertThatThrownBy(() -> service.link(item, tx.getId()))
-            .isInstanceOf(IllegalStateException.class)
-            .hasMessageContaining("vinculada");
-    }
-
-    @Test
-    @DisplayName("unlink() volta status para PENDING e limpa transaction")
-    void unlink_voltaParaPending() {
-        BudgetItem item = itemWith(BudgetItemSource.MANUAL);
-        item.setStatus(BudgetItemStatus.REALIZED);
-        item.setTransaction(new Transaction());
-        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-
-        BudgetItem result = service.unlink(item);
-
-        assertThat(result.getStatus()).isEqualTo(BudgetItemStatus.PENDING);
-        assertThat(result.getTransaction()).isNull();
-    }
-
-    private BudgetItem itemWith(BudgetItemSource source) {
+    private BudgetItem pendingItem(BudgetCycle cycle) {
         return BudgetItem.builder()
             .id(UUID.randomUUID())
-            .description("Item teste")
-            .amount(BigDecimal.TEN)
+            .cycle(cycle)
+            .tenant(tenant)
+            .description("Test")
+            .amount(BigDecimal.valueOf(100))
             .type(TransactionType.EXPENSE)
-            .expectedDate(LocalDate.now())
-            .source(source)
+            .expectedDate(cycle.getStartDate().plusDays(5))
+            .source(BudgetItemSource.MANUAL)
             .status(BudgetItemStatus.PENDING)
             .build();
+    }
+
+    private BudgetItem realizedItem(BudgetCycle cycle) {
+        BudgetItem item = pendingItem(cycle);
+        item.setStatus(BudgetItemStatus.REALIZED);
+        item.setTransaction(Transaction.builder().id(UUID.randomUUID()).build());
+        return item;
+    }
+
+    private BudgetItem skippedItem(BudgetCycle cycle) {
+        BudgetItem item = pendingItem(cycle);
+        item.setStatus(BudgetItemStatus.SKIPPED);
+        return item;
+    }
+
+    private Transaction expenseTransaction() {
+        return Transaction.builder()
+            .id(UUID.randomUUID())
+            .description("Tx Test")
+            .amount(BigDecimal.valueOf(150))
+            .date(LocalDate.of(2026, 6, 10))
+            .type(TransactionType.EXPENSE)
+            .tenant(tenant)
+            .user(user)
+            .status(TransactionStatus.PAID)
+            .build();
+    }
+
+    // ---- realize ----
+
+    @Nested
+    @DisplayName("realize()")
+    class Realize {
+
+        @Test
+        @DisplayName("com transactionId existente: vincula e atualiza amount")
+        void realize_withExistingTransaction_linksAndUpdatesAmount() {
+            BudgetCycle cycle = openCycle();
+            BudgetItem item = pendingItem(cycle);
+            Transaction tx = expenseTransaction();
+
+            when(transactionRepository.findByIdAndTenant(tx.getId(), tenant))
+                .thenReturn(Optional.of(tx));
+            when(repository.findByTransaction(tx)).thenReturn(Optional.empty());
+            when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            BudgetItem result = service.realize(item, tx.getId(), tenant, user);
+
+            assertThat(result.getStatus()).isEqualTo(BudgetItemStatus.REALIZED);
+            assertThat(result.getTransaction()).isEqualTo(tx);
+            assertThat(result.getAmount()).isEqualByComparingTo(tx.getAmount());
+            verify(transactionRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("sem transactionId: cria nova transação")
+        void realize_withoutTransactionId_createsNewTransaction() {
+            BudgetCycle cycle = openCycle();
+            BudgetItem item = pendingItem(cycle);
+
+            when(transactionRepository.save(any())).thenAnswer(inv -> {
+                Transaction saved = inv.getArgument(0);
+                saved.setId(UUID.randomUUID());
+                return saved;
+            });
+            when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            BudgetItem result = service.realize(item, null, tenant, user);
+
+            assertThat(result.getStatus()).isEqualTo(BudgetItemStatus.REALIZED);
+            assertThat(result.getTransaction()).isNotNull();
+            verify(transactionRepository).save(argThat(tx ->
+                tx.getDescription().equals(item.getDescription()) &&
+                tx.getAmount().compareTo(item.getAmount()) == 0 &&
+                tx.getType() == item.getType() &&
+                tx.getStatus() == TransactionStatus.PAID
+            ));
+        }
+
+        @Test
+        @DisplayName("transação de outro tenant: lança AccessDeniedException")
+        void realize_transactionFromOtherTenant_throwsAccessDenied() {
+            BudgetCycle cycle = openCycle();
+            BudgetItem item = pendingItem(cycle);
+            UUID otherTenantTxId = UUID.randomUUID();
+
+            when(transactionRepository.findByIdAndTenant(otherTenantTxId, tenant))
+                .thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.realize(item, otherTenantTxId, tenant, user))
+                .isInstanceOf(AccessDeniedException.class);
+
+            verify(repository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("transação já vinculada a outro item: lança IllegalStateException")
+        void realize_transactionAlreadyLinked_throwsIllegalState() {
+            BudgetCycle cycle = openCycle();
+            BudgetItem item = pendingItem(cycle);
+            Transaction tx = expenseTransaction();
+            BudgetItem otherItem = pendingItem(cycle);
+            otherItem.setId(UUID.randomUUID());
+
+            when(transactionRepository.findByIdAndTenant(tx.getId(), tenant))
+                .thenReturn(Optional.of(tx));
+            when(repository.findByTransaction(tx)).thenReturn(Optional.of(otherItem));
+
+            assertThatThrownBy(() -> service.realize(item, tx.getId(), tenant, user))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("vinculada");
+
+            verify(repository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("tipo incompatível: lança IllegalStateException")
+        void realize_typeMismatch_throwsIllegalState() {
+            BudgetCycle cycle = openCycle();
+            BudgetItem item = pendingItem(cycle); // EXPENSE
+            Transaction tx = expenseTransaction();
+            tx.setType(TransactionType.INCOME); // mismatch
+
+            when(transactionRepository.findByIdAndTenant(tx.getId(), tenant))
+                .thenReturn(Optional.of(tx));
+            when(repository.findByTransaction(tx)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.realize(item, tx.getId(), tenant, user))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("tipo");
+
+            verify(repository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("item não-PENDING: lança IllegalStateException")
+        void realize_itemNotPending_throwsIllegalState() {
+            BudgetCycle cycle = openCycle();
+            BudgetItem item = realizedItem(cycle);
+
+            assertThatThrownBy(() -> service.realize(item, UUID.randomUUID(), tenant, user))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("pendentes");
+
+            verify(transactionRepository, never()).findByIdAndTenant(any(), any());
+        }
+
+        @Test
+        @DisplayName("ciclo CLOSED: lança IllegalStateException")
+        void realize_cycleClosed_throwsIllegalState() {
+            BudgetCycle cycle = closedCycle();
+            BudgetItem item = pendingItem(cycle);
+
+            assertThatThrownBy(() -> service.realize(item, UUID.randomUUID(), tenant, user))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("fechado");
+
+            verify(transactionRepository, never()).findByIdAndTenant(any(), any());
+        }
+    }
+
+    // ---- unrealize ----
+
+    @Nested
+    @DisplayName("unrealize()")
+    class Unrealize {
+
+        @Test
+        @DisplayName("item realizado: remove vínculo e status → PENDING")
+        void unrealize_realizedItem_revertsStatus() {
+            BudgetCycle cycle = openCycle();
+            BudgetItem item = realizedItem(cycle);
+
+            when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            BudgetItem result = service.unrealize(item);
+
+            assertThat(result.getStatus()).isEqualTo(BudgetItemStatus.PENDING);
+            assertThat(result.getTransaction()).isNull();
+        }
+
+        @Test
+        @DisplayName("ciclo CLOSED: lança IllegalStateException")
+        void unrealize_cycleClosed_throwsIllegalState() {
+            BudgetCycle cycle = closedCycle();
+            BudgetItem item = realizedItem(cycle);
+
+            assertThatThrownBy(() -> service.unrealize(item))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("fechado");
+
+            verify(repository, never()).save(any());
+        }
+    }
+
+    // ---- skip ----
+
+    @Nested
+    @DisplayName("skip()")
+    class Skip {
+
+        @Test
+        @DisplayName("item pendente: muda status para SKIPPED")
+        void skip_pendingItem_changesStatus() {
+            BudgetCycle cycle = openCycle();
+            BudgetItem item = pendingItem(cycle);
+
+            when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            BudgetItem result = service.skip(item);
+
+            assertThat(result.getStatus()).isEqualTo(BudgetItemStatus.SKIPPED);
+        }
+
+        @Test
+        @DisplayName("item realizado: lança IllegalStateException")
+        void skip_realizedItem_throwsIllegalState() {
+            BudgetCycle cycle = openCycle();
+            BudgetItem item = realizedItem(cycle);
+
+            assertThatThrownBy(() -> service.skip(item))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("realizados");
+
+            verify(repository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("ciclo CLOSED: lança IllegalStateException")
+        void skip_cycleClosed_throwsIllegalState() {
+            BudgetCycle cycle = closedCycle();
+            BudgetItem item = pendingItem(cycle);
+
+            assertThatThrownBy(() -> service.skip(item))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("fechado");
+
+            verify(repository, never()).save(any());
+        }
+    }
+
+    // ---- unskip ----
+
+    @Nested
+    @DisplayName("unskip()")
+    class Unskip {
+
+        @Test
+        @DisplayName("item pulado: reverte para PENDING")
+        void unskip_skippedItem_revertsStatus() {
+            BudgetCycle cycle = openCycle();
+            BudgetItem item = skippedItem(cycle);
+
+            when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            BudgetItem result = service.unskip(item);
+
+            assertThat(result.getStatus()).isEqualTo(BudgetItemStatus.PENDING);
+        }
+
+        @Test
+        @DisplayName("item não-SKIPPED: lança IllegalStateException")
+        void unskip_notSkippedItem_throwsIllegalState() {
+            BudgetCycle cycle = openCycle();
+            BudgetItem item = pendingItem(cycle);
+
+            assertThatThrownBy(() -> service.unskip(item))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("pulados");
+
+            verify(repository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("ciclo CLOSED: lança IllegalStateException")
+        void unskip_cycleClosed_throwsIllegalState() {
+            BudgetCycle cycle = closedCycle();
+            BudgetItem item = skippedItem(cycle);
+
+            assertThatThrownBy(() -> service.unskip(item))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("fechado");
+
+            verify(repository, never()).save(any());
+        }
+    }
+
+    // ---- update validations ----
+
+    @Nested
+    @DisplayName("update()")
+    class Update {
+
+        @Test
+        @DisplayName("item realizado: lança IllegalStateException")
+        void update_realizedItem_throwsIllegalState() {
+            BudgetCycle cycle = openCycle();
+            BudgetItem item = realizedItem(cycle);
+
+            var req = new BudgetItemUpdateRequest("desc", BigDecimal.TEN, LocalDate.of(2026, 6, 10), null, null);
+
+            assertThatThrownBy(() -> service.update(item, req))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("imutáveis");
+
+            verify(repository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("item pulado: lança IllegalStateException")
+        void update_skippedItem_throwsIllegalState() {
+            BudgetCycle cycle = openCycle();
+            BudgetItem item = skippedItem(cycle);
+
+            var req = new BudgetItemUpdateRequest("desc", BigDecimal.TEN, LocalDate.of(2026, 6, 10), null, null);
+
+            assertThatThrownBy(() -> service.update(item, req))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("revertido");
+
+            verify(repository, never()).save(any());
+        }
+    }
+
+    // ---- delete validations ----
+
+    @Nested
+    @DisplayName("delete()")
+    class Delete {
+
+        @Test
+        @DisplayName("item realizado: lança IllegalStateException")
+        void delete_realizedItem_throwsIllegalState() {
+            BudgetCycle cycle = openCycle();
+            BudgetItem item = realizedItem(cycle);
+
+            assertThatThrownBy(() -> service.delete(item))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("imutáveis");
+
+            verify(repository, never()).delete(any());
+        }
+    }
+
+    // ---- create validations ----
+
+    @Nested
+    @DisplayName("create()")
+    class Create {
+
+        @Test
+        @DisplayName("ciclo CLOSED: lança IllegalStateException")
+        void create_closedCycle_throwsIllegalState() {
+            BudgetCycle cycle = closedCycle();
+            var req = new BudgetItemCreateRequest(
+                "Teste", BigDecimal.valueOf(200), TransactionType.EXPENSE,
+                LocalDate.of(2026, 5, 15), null, null
+            );
+
+            assertThatThrownBy(() -> service.create(cycle, req, tenant, user))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("fechado");
+
+            verify(repository, never()).save(any());
+        }
     }
 }

@@ -20,7 +20,7 @@ import { ConfirmationDialogComponent } from '../../../components/confirmation-di
 import { DeleteInstallmentDialogComponent, DeleteInstallmentDialogResult } from './delete-installment-dialog/delete-installment-dialog';
 import { TransactionFiltersComponent } from './transaction-filters/transaction-filters';
 import { TransactionFilters, DEFAULT_FILTERS, currentMonthFilters } from './transaction-filters/transaction-filters.types';
-import { buildDisplayRows, InstallmentGroupInfo, DisplayRow, InvoiceHeaderRow, resolveMonthKey, formatMonthLabel } from './transaction-list.utils';
+import { buildDisplayRows, InstallmentGroupInfo, DisplayRow, InvoiceHeaderRow, resolveMonthKey, formatMonthLabel, SortCol, SortCriterion, applySort, getSortInfo } from './transaction-list.utils';
 export { buildDisplayRows } from './transaction-list.utils';
 export type { InstallmentGroupInfo, DisplayRow, InvoiceHeaderRow } from './transaction-list.utils';
 
@@ -59,6 +59,7 @@ export class TransactionList implements OnInit {
   expandedTransactions = signal(new Set<string>());
   filters              = signal<TransactionFilters>(DEFAULT_FILTERS);
   showFilters          = signal(false);
+  sortCriteria         = signal<SortCriterion[]>([{ col: 'date', dir: 'desc' }]);
 
   filteredTransactions = computed(() => {
     const desc = this.filters().description?.toLowerCase().trim();
@@ -76,6 +77,7 @@ export class TransactionList implements OnInit {
       this.expandedTransactions(),
       this.filters().groupByPeriod,
       this.filters().groupByInvoice,
+      this.sortCriteria(),
     )
   );
 
@@ -142,6 +144,14 @@ export class TransactionList implements OnInit {
       },
       error: () => this.snackBar.open('Erro ao carregar dados.', 'Fechar', { duration: 5000 }),
     });
+  }
+
+  onSortClick(col: SortCol, event: MouseEvent): void {
+    this.sortCriteria.update(criteria => applySort(criteria, col, event.shiftKey));
+  }
+
+  sortInfo(col: SortCol): { priority: number; dir: 'asc' | 'desc' } | null {
+    return getSortInfo(this.sortCriteria(), col);
   }
 
   toggleFilters(): void {

@@ -164,6 +164,7 @@
 								<schemaMapping>BudgetItemResponse=BudgetItemResponseDTO</schemaMapping>
 								<schemaMapping>RecurringBudgetItemResponse=RecurringBudgetItemResponseDTO</schemaMapping>
 								<schemaMapping>BudgetCyclePageResponse=BudgetCyclePageResponse</schemaMapping>
+								<schemaMapping>BudgetCyclePreview=BudgetCyclePreviewDTO</schemaMapping>
 							</schemaMappings>
 							<importMappings>
 								<importMapping>LoginDTO=com.fintech.api.dto.LoginDTO</importMapping>
@@ -201,6 +202,7 @@
 								<importMapping>BudgetItemCreateRequest=com.fintech.api.dto.budget.BudgetItemCreateRequest</importMapping>
 								<importMapping>BudgetItemUpdateRequest=com.fintech.api.dto.budget.BudgetItemUpdateRequest</importMapping>
 								<importMapping>BudgetItemLinkRequest=com.fintech.api.dto.budget.BudgetItemLinkRequest</importMapping>
+								<importMapping>BudgetItemRealizeRequest=com.fintech.api.dto.budget.BudgetItemRealizeRequest</importMapping>
 								<importMapping>BudgetItemResponseDTO=com.fintech.api.dto.budget.BudgetItemResponseDTO</importMapping>
 								<importMapping>RecurringBudgetItemRequest=com.fintech.api.dto.budget.RecurringBudgetItemRequest</importMapping>
 								<importMapping>RecurringBudgetItemResponseDTO=com.fintech.api.dto.budget.RecurringBudgetItemResponseDTO</importMapping>
@@ -209,6 +211,7 @@
 								<importMapping>BudgetItemSource=com.fintech.api.domain.enums.BudgetItemSource</importMapping>
 								<importMapping>BudgetItemStatus=com.fintech.api.domain.enums.BudgetItemStatus</importMapping>
 								<importMapping>BudgetCyclePageResponse=com.fintech.api.dto.budget.BudgetCyclePageResponse</importMapping>
+								<importMapping>BudgetCyclePreviewDTO=com.fintech.api.dto.budget.BudgetCyclePreviewDTO</importMapping>
 							</importMappings>
 							<configOptions>
 								<interfaceOnly>true</interfaceOnly>

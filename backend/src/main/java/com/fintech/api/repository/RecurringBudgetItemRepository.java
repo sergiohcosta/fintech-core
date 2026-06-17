@@ -13,4 +13,8 @@ public interface RecurringBudgetItemRepository extends JpaRepository<RecurringBu
     List<RecurringBudgetItem> findAllByTenantAndActiveTrueOrderByDayOfMonthAscDescriptionAsc(Tenant tenant);
 
     Optional<RecurringBudgetItem> findByIdAndTenant(UUID id, Tenant tenant);
+
+    List<RecurringBudgetItem> findAllByTenantOrderByDescriptionAsc(Tenant tenant);
+
+    List<RecurringBudgetItem> findAllByTenantAndActiveOrderByDescriptionAsc(Tenant tenant, boolean active);
 }

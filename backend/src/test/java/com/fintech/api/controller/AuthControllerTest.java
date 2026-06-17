@@ -1,6 +1,7 @@
 package com.fintech.api.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fintech.api.config.LoginRateLimiter;
 import com.fintech.api.config.TokenService;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.user.User;
@@ -26,6 +27,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -54,6 +57,9 @@ class AuthControllerTest {
     @MockitoBean
     private InvitationService invitationService;
 
+    @MockitoBean
+    private LoginRateLimiter loginRateLimiter;
+
     private ObjectMapper objectMapper = new ObjectMapper();
 
     @BeforeEach
@@ -67,7 +73,7 @@ class AuthControllerTest {
     void shouldRegisterTenant() throws Exception {
         // Arrange
         TenantRegistrationDTO dto = new TenantRegistrationDTO(
-                "My Tenant", "Admin", "admin@email.com", "123456");
+                "My Tenant", "Admin", "admin@email.com", "Senha123");
 
         Tenant tenant = new Tenant();
         tenant.setId(UUID.randomUUID());
@@ -81,6 +87,31 @@ class AuthControllerTest {
                 .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.name").value("My Tenant"));
+    }
+
+    @Test
+    @DisplayName("POST /auth/register retorna 400 quando senha não atende a política mínima")
+    void shouldFailRegisterWithWeakPassword() throws Exception {
+        TenantRegistrationDTO dto = new TenantRegistrationDTO(
+                "My Tenant", "Admin", "admin@email.com", "12345678");
+
+        mockMvc.perform(post("/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("POST /auth/register retorna 400 quando senha excede o tamanho máximo")
+    void shouldFailRegisterWithTooLongPassword() throws Exception {
+        String tooLong = "Senha123" + "a".repeat(70);
+        TenantRegistrationDTO dto = new TenantRegistrationDTO(
+                "My Tenant", "Admin", "admin@email.com", tooLong);
+
+        mockMvc.perform(post("/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -124,9 +155,54 @@ class AuthControllerTest {
     }
 
     @Test
+    @DisplayName("Should return generic 401 when user does not exist (no enumeration)")
+    void shouldFailLoginWhenUserNotFound() throws Exception {
+        LoginDTO loginDTO = new LoginDTO("naoexiste@test.com", "qualquer");
+        when(userRepository.findByEmail("naoexiste@test.com")).thenReturn(Optional.empty());
+
+        mockMvc.perform(post("/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(loginDTO)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("Should return 401 when user is inactive, even with correct password")
+    void shouldFailLoginWhenUserInactive() throws Exception {
+        LoginDTO loginDTO = new LoginDTO("inativo@test.com", "password");
+        User user = new User();
+        user.setEmail("inativo@test.com");
+        user.setPasswordHash("encoded_password");
+        user.setActive(false);
+
+        when(userRepository.findByEmail("inativo@test.com")).thenReturn(Optional.of(user));
+
+        mockMvc.perform(post("/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(loginDTO)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("Should return 429 when rate limit exceeded for the email")
+    void shouldReturn429WhenRateLimited() throws Exception {
+        LoginDTO loginDTO = new LoginDTO("test@email.com", "password");
+        when(loginRateLimiter.isBlocked("test@email.com")).thenReturn(true);
+
+        mockMvc.perform(post("/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(loginDTO)))
+                .andExpect(status().isTooManyRequests());
+
+        verify(userRepository, never()).findByEmail(any());
+        verify(loginRateLimiter, never()).registerFailure(any());
+        verify(loginRateLimiter, never()).registerSuccess(any());
+    }
+
+    @Test
     @DisplayName("POST /auth/accept-invite retorna 200 com token JWT")
     void shouldAcceptInviteSuccessfully() throws Exception {
-        AcceptInviteDTO dto = new AcceptInviteDTO("valid-token", "João Silva", "senha123");
+        AcceptInviteDTO dto = new AcceptInviteDTO("valid-token", "João Silva", "Senha123");
         when(invitationService.accept(any(AcceptInviteDTO.class))).thenReturn("jwt-result");
 
         mockMvc.perform(post("/auth/accept-invite")
@@ -134,6 +210,17 @@ class AuthControllerTest {
                 .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").value("jwt-result"));
+    }
+
+    @Test
+    @DisplayName("POST /auth/accept-invite retorna 400 quando senha não atende a política mínima")
+    void shouldFailAcceptInviteWithWeakPassword() throws Exception {
+        AcceptInviteDTO dto = new AcceptInviteDTO("valid-token", "João Silva", "12345678");
+
+        mockMvc.perform(post("/auth/accept-invite")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

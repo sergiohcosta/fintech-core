@@ -149,10 +149,9 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
         @Param("newStatus") TransactionStatus newStatus
     );
 
-    // Para transações de cartão, usa invoice.dueDate como referência de mês.
-    // Para demais contas (sem fatura), usa transaction.date.
-    // LEFT JOIN explícito é obrigatório: t.invoice.dueDate em WHERE gera INNER JOIN implícito
-    // no Hibernate, excluindo transações sem fatura e quebrando o branch invoice IS NULL.
+    // Filtra por referenceYear/Month da fatura (não por dueDate) para capturar
+    // todos os cartões independente do dueDay — cartões com dueDay fora do
+    // período do ciclo seriam excluídos erroneamente se filtrássemos por dueDate.
     @Query("""
         SELECT t FROM Transaction t
         LEFT JOIN FETCH t.installmentGroup ig
@@ -160,14 +159,15 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
         WHERE t.account.tenant.id = :tenantId
           AND t.installmentGroup IS NOT NULL
           AND inv IS NOT NULL
-          AND inv.dueDate BETWEEN :startDate AND :endDate
+          AND inv.referenceYear = :referenceYear
+          AND inv.referenceMonth = :referenceMonth
           AND t.status <> :cancelledStatus
         ORDER BY ig.id, inv.dueDate
     """)
-    List<Transaction> findInstallmentsInPeriodByTenant(
+    List<Transaction> findInstallmentsByReferenceMonthAndTenant(
         @Param("tenantId") UUID tenantId,
-        @Param("startDate") LocalDate startDate,
-        @Param("endDate") LocalDate endDate,
+        @Param("referenceYear") int referenceYear,
+        @Param("referenceMonth") int referenceMonth,
         @Param("cancelledStatus") TransactionStatus cancelledStatus
     );
 
@@ -211,21 +211,40 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             @Param("end") LocalDate end
     );
 
-    // Saldo líquido acumulado: soma income e subtrai expense de TODAS as transações
-    // não canceladas, filtradas pelas contas marcadas como countInLiquidBalance.
-    // Sem filtro de período — representa a posição financeira atual.
+    // Saldo líquido acumulado: soma apenas transações PAID das contas marcadas como
+    // countInLiquidBalance. PENDING não conta — representa o que o usuário tem de fato.
     @Query("""
             SELECT COALESCE(SUM(
                 CASE WHEN t.type = :incomeType THEN t.amount ELSE -t.amount END
             ), 0)
             FROM Transaction t
             WHERE t.tenant = :tenant
-              AND t.status <> :excluded
+              AND t.status = :paidStatus
               AND t.account.countInLiquidBalance = true
             """)
     BigDecimal sumNetLiquidBalanceByTenant(
             @Param("tenant") Tenant tenant,
             @Param("incomeType") TransactionType incomeType,
-            @Param("excluded") TransactionStatus excluded
+            @Param("paidStatus") TransactionStatus paidStatus
+    );
+
+    // Despesas não planejadas: transações EXPENSE no período do ciclo que não estão
+    // vinculadas a nenhum budget item (sem link transaction_id em budget_items).
+    @Query("""
+            SELECT COALESCE(SUM(t.amount), 0)
+            FROM Transaction t
+            WHERE t.tenant.id = :tenantId
+              AND t.type = com.fintech.api.domain.enums.TransactionType.EXPENSE
+              AND t.date BETWEEN :startDate AND :endDate
+              AND t.id NOT IN (
+                SELECT bi.transaction.id FROM BudgetItem bi
+                WHERE bi.cycle.id = :cycleId AND bi.transaction IS NOT NULL
+              )
+            """)
+    BigDecimal sumUnplannedExpenses(
+            @Param("tenantId") UUID tenantId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("cycleId") UUID cycleId
     );
 }

@@ -1,9 +1,21 @@
-<h2 mat-dialog-title>Vincular transação — {{ data.item.description }}</h2>
+<h2 mat-dialog-title>
+  @if (isRealizeMode()) { Realizar item — {{ data.item.description }} }
+  @else { Vincular transação — {{ data.item.description }} }
+</h2>
 <mat-dialog-content>
+  @if (isRealizeMode()) {
+    <p style="margin:0 0 8px;color:var(--mat-sys-on-surface-variant)">
+      @if (isInstallment()) {
+        Selecione a parcela correspondente na fatura para confirmar o lançamento.
+      } @else {
+        Selecione a transação correspondente ou realize sem vincular para criar um novo lançamento.
+      }
+    </p>
+  }
   @if (loading()) {
     <p>Carregando transações...</p>
   } @else if (transactions().length === 0) {
-    <p>Nenhuma transação encontrada para vincular.</p>
+    <p>Nenhuma transação encontrada.</p>
   } @else {
     <table mat-table [dataSource]="transactions()" style="width:100%">
       <ng-container matColumnDef="date">
@@ -33,5 +45,10 @@
   }
 </mat-dialog-content>
 <mat-dialog-actions align="end">
+  @if (isRealizeMode() && !isInstallment()) {
+    <button mat-stroked-button type="button" (click)="realizeWithoutLink()">
+      Realizar sem vincular
+    </button>
+  }
   <button mat-button type="button" (click)="cancel()">Cancelar</button>
 </mat-dialog-actions>

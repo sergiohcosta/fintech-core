@@ -6,3 +6,4 @@ target/
 .superpowers/
 .env
 .env.local
+.worktrees/

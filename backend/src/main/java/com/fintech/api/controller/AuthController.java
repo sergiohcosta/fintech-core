@@ -1,5 +1,6 @@
 package com.fintech.api.controller;
 
+import com.fintech.api.config.LoginRateLimiter;
 import com.fintech.api.config.TokenService;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.dto.AcceptInviteDTO;
@@ -28,6 +29,7 @@ public class AuthController implements AuthApi {
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
     private final InvitationService invitationService;
+    private final LoginRateLimiter loginRateLimiter;
 
     @Override
     @PostMapping("/register")
@@ -40,15 +42,23 @@ public class AuthController implements AuthApi {
     @Override
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDTO> login(@RequestBody @Valid LoginDTO data) {
-        var user = this.userRepository.findByEmail(data.email())
-                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
-
-        if (passwordEncoder.matches(data.password(), user.getPasswordHash())) {
-            String token = tokenService.generateToken(user);
-            return ResponseEntity.ok(new LoginResponseDTO(token));
+        if (loginRateLimiter.isBlocked(data.email())) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).build();
         }
 
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        var userOpt = this.userRepository.findByEmail(data.email());
+        boolean authenticated = userOpt.isPresent()
+                && userOpt.get().isEnabled()
+                && passwordEncoder.matches(data.password(), userOpt.get().getPasswordHash());
+
+        if (!authenticated) {
+            loginRateLimiter.registerFailure(data.email());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        loginRateLimiter.registerSuccess(data.email());
+        String token = tokenService.generateToken(userOpt.get());
+        return ResponseEntity.ok(new LoginResponseDTO(token));
     }
 
     @PostMapping("/accept-invite")
