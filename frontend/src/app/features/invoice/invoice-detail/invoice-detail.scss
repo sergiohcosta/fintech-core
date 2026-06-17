@@ -108,3 +108,9 @@ table { width: 100%; }
 
 .empty-state { text-align: center; padding: 24px; color: #999; }
 .loading-state { display: flex; justify-content: center; padding: 48px; color: #666; }
+
+.show-more-container {
+  padding: 4px 16px 8px;
+  display: flex;
+  justify-content: center;
+}
