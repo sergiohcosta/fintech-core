@@ -67,7 +67,7 @@ Regra inviolável documentada e aplicada: toda restrição de acesso tem proteç
 
 ### 🔴 Alta prioridade
 
-#### 1. Race condition em `InvoiceService.getOrCreate`
+#### 1. Race condition em `InvoiceService.getOrCreate` — ✅ resolvido em [#83](https://github.com/sergiohcosta/fintech-core/issues/83)
 
 O padrão `findByX().orElseGet(() -> save(...))` tem uma janela de concorrência: duas requisições para a mesma conta/mês chegam simultaneamente, ambas não encontram a fatura, ambas tentam salvar. O banco tem `UNIQUE (account_id, reference_year, reference_month)` (migration V9) como safety net, mas a `DataIntegrityViolationException` resultante sobe sem tratamento e vira um 500 sem mensagem amigável.
 
@@ -76,7 +76,7 @@ O padrão `findByX().orElseGet(() -> save(...))` tem uma janela de concorrência
 *Solução de curto prazo:* capturar `DataIntegrityViolationException` no `getOrCreate` e fazer retry com `findByX()` após a falha.  
 *Solução robusta:* `INSERT ... ON CONFLICT DO NOTHING RETURNING *` com query nativa, ou `@Lock(LockModeType.PESSIMISTIC_WRITE)` no find.
 
-#### 2. `InvoiceService.listDTOs` e `buildDTO` com N+1
+#### 2. `InvoiceService.listDTOs` e `buildDTO` com N+1 — ✅ resolvido em [#84](https://github.com/sergiohcosta/fintech-core/issues/84)
 
 ```java
 return repository.findByAccount(...)
@@ -97,7 +97,7 @@ GROUP BY i
 ORDER BY i.referenceYear DESC, i.referenceMonth DESC
 ```
 
-#### 3. Listagem de transações sem paginação server-side
+#### 3. Listagem de transações sem paginação server-side — [#85](https://github.com/sergiohcosta/fintech-core/issues/85)
 
 `findAllByTenantWithFilters` retorna todas as transações do período/filtro em memória. Com os filtros de período (padrão: mês corrente), o impacto imediato é controlado. Mas:
 - Sem filtro de data: carrega **tudo** do tenant (sentinelas 1000–9999)
@@ -112,7 +112,7 @@ ORDER BY i.referenceYear DESC, i.referenceMonth DESC
 
 ### 🟡 Médio prazo
 
-#### 4. `CategoryService` com N+1 na árvore
+#### 4. `CategoryService` com N+1 na árvore — [#86](https://github.com/sergiohcosta/fintech-core/issues/86)
 
 Os métodos `collectSubtreeIds`, `softDeleteSubtree` e `propagateToDescendants` fazem lazy load de `children` nível a nível. Para uma árvore de profundidade 3 com 5 filhos por nó: ~30 queries. Hoje as árvores são rasas — não é urgente. Mas o `WITH RECURSIVE` do PostgreSQL substituiria toda a recursão Java em uma query:
 
@@ -125,13 +125,13 @@ WITH RECURSIVE subtree AS (
 SELECT id FROM subtree
 ```
 
-#### 5. `TransactionService` acumulando responsabilidades
+#### 5. `TransactionService` acumulando responsabilidades — [#87](https://github.com/sergiohcosta/fintech-core/issues/87)
 
 Hoje: 6 dependências (4 repositories + `InvoiceService` + `CreditCardDetailsRepository`). Gerencia transações, transferências, parcelamento e resolução de fatura. Já existe `TransferController` separado — faz sentido extrair `TransferService` também. O `InstallmentGroupService` já existe mas opera sobre o grupo, não sobre a criação das parcelas.
 
 *Sinal de alerta:* quando a tela de Patrimônio Total chegar e precisar de queries sobre `countInNetWorth`, vai ser tentador adicionar mais uma dependência aqui.
 
-#### 6. `IllegalArgumentException` como 400 é broad demais
+#### 6. `IllegalArgumentException` como 400 é broad demais — [#88](https://github.com/sergiohcosta/fintech-core/issues/88)
 
 O handler atual captura `IllegalArgumentException` como erro de negócio (400). O problema: o JDK e bibliotecas internas também lançam `IllegalArgumentException` em situações inesperadas. Se código de infraestrutura jogar essa exception, vai virar um 400 com mensagem interna exposta.
 
@@ -143,7 +143,7 @@ O handler atual captura `IllegalArgumentException` como erro de negócio (400). 
 
 ### 🟢 Observações de baixo risco
 
-#### 7. `SecurityConfigurations` usa `@Autowired` em campo
+#### 7. `SecurityConfigurations` usa `@Autowired` em campo — ✅ resolvido em [#89](https://github.com/sergiohcosta/fintech-core/issues/89)
 
 ```java
 @Autowired
@@ -152,7 +152,7 @@ SecurityFilter securityFilter;  // único lugar com field injection no projeto
 
 O resto usa `@RequiredArgsConstructor` (construtor). Inconsistente e difícil de testar. Corrigível com `@RequiredArgsConstructor` + `final SecurityFilter securityFilter`.
 
-#### 8. `countInNetWorth` armazenado sem consumidor
+#### 8. `countInNetWorth` armazenado sem consumidor — [#90](https://github.com/sergiohcosta/fintech-core/issues/90)
 
 O campo existe em `Account` desde a migration V5, mas nenhuma query o consome. Intencional para a futura tela de Patrimônio Total. Quando chegar, as queries precisarão de:
 - `SUM(CASE WHEN t.type = INCOME THEN t.amount ELSE -t.amount END)` filtrado por `a.countInNetWorth = true`
@@ -160,7 +160,7 @@ O campo existe em `Account` desde a migration V5, mas nenhuma query o consome. I
 
 Documentar isso em `CLAUDE.md` antes de implementar evita surpresas de modelagem.
 
-#### 9. JWT em `localStorage` no frontend
+#### 9. JWT em `localStorage` no frontend — [#91](https://github.com/sergiohcosta/fintech-core/issues/91)
 
 Padrão amplamente usado, mas vulnerável a XSS — qualquer script injetado pode ler o token. Para um SaaS financeiro com dados sensíveis, o caminho mais seguro a longo prazo são cookies `httpOnly` (imunes a XSS). Não é urgente mudar agora — requer mudança coordenada em backend (enviar `Set-Cookie` em vez de `{ token }`) e frontend (remover toda a lógica de `getToken()`/`localStorage`).
 
@@ -187,16 +187,17 @@ Padrão amplamente usado, mas vulnerável a XSS — qualquer script injetado pod
 
 ## Itens de ação priorizados
 
-| Prioridade | Item | Esforço |
-|---|---|---|
-| 🔴 Alta | Tratar `DataIntegrityViolationException` em `getOrCreate` (retry ou catch) | Pequeno |
-| 🔴 Alta | Projetar query agregada para `InvoiceService.listDTOs` (sum + count em GROUP BY) | Médio |
-| 🟡 Médio | Adicionar coluna `effective_date` em `transactions` como pré-requisito de paginação | Médio |
-| 🟡 Médio | Migrar `collectSubtreeIds` para `WITH RECURSIVE` no PostgreSQL | Pequeno |
-| 🟡 Médio | Extrair `TransferService` de `TransactionService` | Pequeno |
-| 🟡 Médio | Criar `BusinessException` e migrar os 8 `throw new IllegalArgumentException` | Pequeno |
-| 🟢 Baixo | Corrigir `@Autowired` campo em `SecurityConfigurations` | Trivial |
-| 🟢 Baixo | Documentar queries futuras de `countInNetWorth` no CLAUDE.md | Trivial |
+| Status | Prioridade | Item | Issue | Esforço |
+|---|---|---|---|---|
+| ✅ | 🔴 Alta | Tratar `DataIntegrityViolationException` em `getOrCreate` (retry ou catch) | [#83](https://github.com/sergiohcosta/fintech-core/issues/83) | Pequeno |
+| ✅ | 🔴 Alta | Projetar query agregada para `InvoiceService.listDTOs` (sum + count em GROUP BY) | [#84](https://github.com/sergiohcosta/fintech-core/issues/84) | Médio |
+| ⏳ | 🟡 Médio | Adicionar coluna `effective_date` em `transactions` como pré-requisito de paginação | [#85](https://github.com/sergiohcosta/fintech-core/issues/85) | Médio |
+| ⏳ | 🟡 Médio | Migrar `collectSubtreeIds` para `WITH RECURSIVE` no PostgreSQL | [#86](https://github.com/sergiohcosta/fintech-core/issues/86) | Pequeno |
+| ⏳ | 🟡 Médio | Extrair `TransferService` de `TransactionService` | [#87](https://github.com/sergiohcosta/fintech-core/issues/87) | Pequeno |
+| ⏳ | 🟡 Médio | Criar `BusinessException` e migrar os 8 `throw new IllegalArgumentException` | [#88](https://github.com/sergiohcosta/fintech-core/issues/88) | Pequeno |
+| ✅ | 🟢 Baixo | Corrigir `@Autowired` campo em `SecurityConfigurations` | [#89](https://github.com/sergiohcosta/fintech-core/issues/89) | Trivial |
+| ⏳ | 🟢 Baixo | Documentar queries futuras de `countInNetWorth` no CLAUDE.md | [#90](https://github.com/sergiohcosta/fintech-core/issues/90) | Trivial |
+| ⏳ | 🟢 Baixo | Avaliar migração de JWT para cookies `httpOnly` | [#91](https://github.com/sergiohcosta/fintech-core/issues/91) | Grande |
 
 ---
 
