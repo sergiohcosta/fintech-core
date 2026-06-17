@@ -120,6 +120,9 @@ public class BudgetItemService {
         if (item.getStatus() != BudgetItemStatus.PENDING) {
             throw new IllegalStateException("Apenas itens pendentes podem ser realizados.");
         }
+        if (item.getSource() == BudgetItemSource.INSTALLMENT && transactionId == null) {
+            throw new IllegalStateException("Parcelas de cartão devem ser realizadas vinculando a transação existente.");
+        }
 
         Transaction tx;
         if (transactionId != null) {

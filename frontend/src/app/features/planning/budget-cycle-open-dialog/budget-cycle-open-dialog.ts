@@ -8,6 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -22,7 +23,7 @@ import { TransactionsService } from '../../../core/api/transactions/transactions
     CommonModule, ReactiveFormsModule,
     MatDialogModule, MatButtonModule, MatFormFieldModule,
     MatInputModule, MatIconModule, MatProgressSpinnerModule,
-    MatTooltipModule, CurrencyPipe,
+    MatTooltipModule, MatChipsModule, CurrencyPipe,
   ],
   templateUrl: './budget-cycle-open-dialog.html',
   styleUrl: './budget-cycle-open-dialog.scss',

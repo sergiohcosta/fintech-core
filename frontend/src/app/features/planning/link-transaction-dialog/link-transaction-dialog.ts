@@ -31,15 +31,19 @@ export class LinkTransactionDialogComponent implements OnInit {
   readonly transactions = signal<TransactionResponseDTO[]>([]);
   readonly loading = signal(true);
   readonly isRealizeMode = () => this.data.mode === 'realize';
+  readonly isInstallment = () => this.data.item.source === 'INSTALLMENT';
 
   displayedColumns = ['date', 'description', 'amount', 'select'];
 
   ngOnInit(): void {
-    const itemType = this.data.item.type;
-    this.txService.listTransactions({ type: itemType })
+    const item = this.data.item;
+    this.txService.listTransactions({ type: item.type })
       .subscribe({
         next: (result: TransactionResponseDTO[]) => {
-          this.transactions.set(result);
+          const filtered = this.isInstallment() && item.installmentGroupId
+            ? result.filter(tx => tx.installmentGroupId === item.installmentGroupId)
+            : result;
+          this.transactions.set(filtered);
           this.loading.set(false);
         },
         error: () => this.loading.set(false),

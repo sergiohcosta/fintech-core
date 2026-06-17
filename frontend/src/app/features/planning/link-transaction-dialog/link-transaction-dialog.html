@@ -5,7 +5,11 @@
 <mat-dialog-content>
   @if (isRealizeMode()) {
     <p style="margin:0 0 8px;color:var(--mat-sys-on-surface-variant)">
-      Selecione a transação correspondente ou realize sem vincular.
+      @if (isInstallment()) {
+        Selecione a parcela correspondente na fatura para confirmar o lançamento.
+      } @else {
+        Selecione a transação correspondente ou realize sem vincular para criar um novo lançamento.
+      }
     </p>
   }
   @if (loading()) {
@@ -41,7 +45,7 @@
   }
 </mat-dialog-content>
 <mat-dialog-actions align="end">
-  @if (isRealizeMode()) {
+  @if (isRealizeMode() && !isInstallment()) {
     <button mat-stroked-button type="button" (click)="realizeWithoutLink()">
       Realizar sem vincular
     </button>

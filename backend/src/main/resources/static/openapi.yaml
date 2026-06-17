@@ -935,6 +935,8 @@ components:
         expectedDate:
           type: string
           format: date
+        accountName:
+          type: string
 
     BudgetCyclePreview:
       type: object
