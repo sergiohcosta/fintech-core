@@ -62,6 +62,14 @@ export class InvoiceDetail implements OnInit {
     computeBreakdown(this.transactions(), this.totalExpense())
   );
 
+  showAllBreakdown = signal(false);
+
+  visibleBreakdown = computed<CategoryBreakdownRow[]>(() =>
+    this.showAllBreakdown() ? this.breakdown() : this.breakdown().slice(0, 5)
+  );
+
+  hiddenBreakdownCount = computed(() => Math.max(0, this.breakdown().length - 5));
+
   transactionColumns = ['description', 'amount', 'date', 'type', 'status', 'installmentLabel'];
   breakdownColumns = ['categoryName', 'count', 'total', 'percentage'];
 
