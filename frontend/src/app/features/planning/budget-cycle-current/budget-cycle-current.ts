@@ -43,6 +43,7 @@ export class BudgetCycleCurrentComponent implements OnInit {
   readonly items = signal<BudgetItemResponse[]>([]);
   readonly loading = signal(true);
   readonly closing = signal(false);
+  readonly confirmingClose = signal(false);
 
   readonly incomeItems  = computed(() => this.items().filter(i => i.type === 'INCOME'));
   readonly expenseItems = computed(() => this.items().filter(i => i.type === 'EXPENSE' && i.source !== 'INSTALLMENT'));
@@ -82,12 +83,20 @@ export class BudgetCycleCurrentComponent implements OnInit {
     });
   }
 
+  requestClose(): void {
+    this.confirmingClose.set(true);
+  }
+
+  cancelClose(): void {
+    this.confirmingClose.set(false);
+  }
+
   closeCycle(): void {
     const id = this.cycle()?.id;
     if (!id) return;
     this.closing.set(true);
     this.planningService.closeCycle(id)
-      .pipe(finalize(() => this.closing.set(false)))
+      .pipe(finalize(() => { this.closing.set(false); this.confirmingClose.set(false); }))
       .subscribe({
         next: c => {
           this.cycle.set(c);
