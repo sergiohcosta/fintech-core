@@ -62,7 +62,7 @@ export class TransactionList implements OnInit {
   sortCriteria         = signal<SortCriterion[]>([{ col: 'date', dir: 'desc' }]);
 
   filteredTransactions = computed(() => {
-    const { description, types } = this.filters();
+    const { description, types, statuses } = this.filters();
     let txs = this.transactions();
     const desc = description?.toLowerCase().trim();
     if (desc) txs = txs.filter(t => t.description?.toLowerCase().includes(desc));
@@ -73,6 +73,9 @@ export class TransactionList implements OnInit {
         if (types.includes('TRANSFER') && !!t.transferId) return true;
         return false;
       });
+    }
+    if (statuses.length > 0) {
+      txs = txs.filter(t => statuses.includes(t.status as any));
     }
     return txs;
   });
@@ -98,9 +101,9 @@ export class TransactionList implements OnInit {
     } else if (f.accountIds.length > 1) {
       chips.push({ label: `${f.accountIds.length} contas`, field: 'accountIds', colorClass: 'chip-account' });
     }
-    if (f.status === 'PENDING')   chips.push({ label: 'Pendente',  field: 'status', colorClass: 'chip-pending' });
-    if (f.status === 'PAID')      chips.push({ label: 'Pago',      field: 'status', colorClass: 'chip-paid' });
-    if (f.status === 'CANCELLED') chips.push({ label: 'Cancelado', field: 'status', colorClass: 'chip-cancelled' });
+    if (f.statuses.includes('PENDING'))   chips.push({ label: 'Pendente',  field: 'statuses:PENDING',   colorClass: 'chip-pending' });
+    if (f.statuses.includes('PAID'))      chips.push({ label: 'Pago',      field: 'statuses:PAID',       colorClass: 'chip-paid' });
+    if (f.statuses.includes('CANCELLED')) chips.push({ label: 'Cancelado', field: 'statuses:CANCELLED',  colorClass: 'chip-cancelled' });
     if (f.types.includes('EXPENSE'))   chips.push({ label: 'Despesa',       field: 'types:EXPENSE',   colorClass: 'chip-expense' });
     if (f.types.includes('INCOME'))    chips.push({ label: 'Receita',       field: 'types:INCOME',    colorClass: 'chip-income' });
     if (f.types.includes('TRANSFER'))  chips.push({ label: 'Transferência', field: 'types:TRANSFER',  colorClass: 'chip-transfer' });
@@ -141,7 +144,7 @@ export class TransactionList implements OnInit {
       accounts:     this.accountService.listAccounts(),
       transactions: this.service.listTransactions({
         accountIds: saved.accountIds.length > 0 ? saved.accountIds : undefined,
-        status:    saved.status    ?? undefined,
+        status:    saved.statuses.length === 1 ? saved.statuses[0] : undefined,
         type:      saved.types.length === 1 && saved.types[0] !== 'TRANSFER' ? saved.types[0] : undefined,
         startDate: saved.startDate ?? undefined,
         endDate:   saved.endDate   ?? undefined,
@@ -173,9 +176,9 @@ export class TransactionList implements OnInit {
     this.saveToStorage(newFilters);
     // ponytail: compara só os params que chegam ao servidor
     const toServer = (f: TransactionFilters) => ({
-      accountIds: [...f.accountIds].sort().join(','),
-      status:     f.status,
-      serverType: f.types.length === 1 && f.types[0] !== 'TRANSFER' ? f.types[0] : null,
+      accountIds:   [...f.accountIds].sort().join(','),
+      serverStatus: f.statuses.length === 1 ? f.statuses[0] : null,
+      serverType:   f.types.length === 1 && f.types[0] !== 'TRANSFER' ? f.types[0] : null,
       startDate:  f.startDate,
       endDate:    f.endDate,
     });
@@ -189,12 +192,15 @@ export class TransactionList implements OnInit {
   clearFilterChip(field: string): void {
     this.filters.update(f => {
       if (field === 'accountIds')  return { ...f, accountIds: [] };
-      if (field === 'status')      return { ...f, status: null };
       if (field === 'period')      return { ...f, startDate: null, endDate: null };
       if (field === 'description') return { ...f, description: null };
       if (field.startsWith('types:')) {
         const val = field.split(':')[1] as 'INCOME' | 'EXPENSE' | 'TRANSFER';
         return { ...f, types: f.types.filter(t => t !== val) };
+      }
+      if (field.startsWith('statuses:')) {
+        const val = field.split(':')[1] as 'PENDING' | 'PAID' | 'CANCELLED';
+        return { ...f, statuses: f.statuses.filter(s => s !== val) };
       }
       return f;
     });
@@ -204,10 +210,11 @@ export class TransactionList implements OnInit {
   }
 
   loadTransactions(f: TransactionFilters = this.filters()): void {
-    const serverType = f.types.length === 1 && f.types[0] !== 'TRANSFER' ? f.types[0] : undefined;
+    const serverType   = f.types.length === 1 && f.types[0] !== 'TRANSFER' ? f.types[0] : undefined;
+    const serverStatus = f.statuses.length === 1 ? f.statuses[0] : undefined;
     this.service.listTransactions({
       accountIds: f.accountIds.length > 0 ? f.accountIds : undefined,
-      status:    f.status ?? undefined,
+      status:    serverStatus,
       type:      serverType,
       startDate: f.startDate  ?? undefined,
       endDate:   f.endDate    ?? undefined,
@@ -346,7 +353,11 @@ export class TransactionList implements OnInit {
       const raw = localStorage.getItem('fintech.transaction.filters');
       if (!raw) return currentMonthFilters();
       const parsed = JSON.parse(raw);
-      return { ...DEFAULT_FILTERS, ...parsed, description: null, types: Array.isArray(parsed.types) ? parsed.types : [] };
+      return {
+        ...DEFAULT_FILTERS, ...parsed, description: null,
+        types:    Array.isArray(parsed.types)    ? parsed.types    : [],
+        statuses: Array.isArray(parsed.statuses) ? parsed.statuses : [],
+      };
     } catch {
       return currentMonthFilters();
     }

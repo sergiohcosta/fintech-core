@@ -49,17 +49,17 @@
       <span class="section-label">Status</span>
       <div class="chip-group">
         <button type="button" class="fchip"
-                [class.active]="status() === null"
-                (click)="onStatusChange(null)">Todos</button>
+                [class.active]="todosStatusActive()"
+                (click)="onTodosStatusClick()">Todos</button>
         <button type="button" class="fchip pending"
-                [class.active]="status() === 'PENDING'"
-                (click)="onStatusChange('PENDING')">Pendente</button>
+                [class.active]="statuses().includes('PENDING')"
+                (click)="onStatusToggle('PENDING')">Pendente</button>
         <button type="button" class="fchip paid"
-                [class.active]="status() === 'PAID'"
-                (click)="onStatusChange('PAID')">Pago</button>
+                [class.active]="statuses().includes('PAID')"
+                (click)="onStatusToggle('PAID')">Pago</button>
         <button type="button" class="fchip cancelled"
-                [class.active]="status() === 'CANCELLED'"
-                (click)="onStatusChange('CANCELLED')">Cancelado</button>
+                [class.active]="statuses().includes('CANCELLED')"
+                (click)="onStatusToggle('CANCELLED')">Cancelado</button>
       </div>
     </div>
   </div>
