@@ -1758,6 +1758,12 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: force
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
       responses:
         '200':
           description: Ciclo fechado
