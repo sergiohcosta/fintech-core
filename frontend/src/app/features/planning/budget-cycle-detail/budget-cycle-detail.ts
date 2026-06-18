@@ -8,8 +8,8 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { finalize } from 'rxjs/operators';
 import { PlanningService } from '../planning.service';
-import { BudgetCycleResponse, BudgetItemResponse } from '../../../core/api/fintechSaaSAPI.schemas';
-import { buildSummary } from '../budget-cycle-current/budget-cycle.utils';
+import { BudgetCycleResponse, BudgetCycleSummary, BudgetItemResponse } from '../../../core/api/fintechSaaSAPI.schemas';
+import { DEFAULT_SUMMARY } from '../budget-cycle-current/budget-cycle.utils';
 
 @Component({
   selector: 'app-budget-cycle-detail',
@@ -29,8 +29,10 @@ export class BudgetCycleDetail implements OnInit {
   readonly items = signal<BudgetItemResponse[]>([]);
   readonly loading = signal(true);
 
-  readonly summary = computed(() =>
-    buildSummary(this.items(), this.cycle()?.openingBalance ?? 0));
+  readonly summary = computed((): Required<BudgetCycleSummary> => ({
+    ...DEFAULT_SUMMARY,
+    ...(this.cycle()?.summary ?? {}),
+  }));
 
   displayedColumns = ['description', 'expectedDate', 'amount', 'type', 'status'];
 
