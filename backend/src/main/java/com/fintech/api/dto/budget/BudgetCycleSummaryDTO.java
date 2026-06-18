@@ -9,9 +9,11 @@ public record BudgetCycleSummaryDTO(
     BigDecimal projectedBalance,
     BigDecimal realizedIncome,
     BigDecimal realizedExpense,
-    BigDecimal unplannedExpenses,
+    BigDecimal unplannedIncome,
+    BigDecimal unplannedExpense,
+    BigDecimal currentBalance,
     BigDecimal availableToSpend,
-    BigDecimal dailyAllowance,   // null quando status != OPEN
-    Integer remainingDays,       // null quando status != OPEN (era int)
+    BigDecimal dailyAllowance,
+    Integer remainingDays,
     long pendingCount
 ) {}

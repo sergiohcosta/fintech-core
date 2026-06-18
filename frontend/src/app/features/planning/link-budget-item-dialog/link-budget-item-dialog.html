@@ -1,0 +1,45 @@
+<h2 mat-dialog-title>Vincular ao planejamento</h2>
+
+<mat-dialog-content>
+  <p>
+    Transação: <strong>{{ data.transaction.description }}</strong>
+    — {{ data.transaction.amount | currency:'BRL':'symbol':'1.2-2' }}
+  </p>
+  <p>Selecione o item planejado para vincular:</p>
+
+  <mat-table [dataSource]="data.pendingItems">
+
+    <ng-container matColumnDef="description">
+      <mat-header-cell *matHeaderCellDef>Descrição</mat-header-cell>
+      <mat-cell *matCellDef="let item">{{ item.description }}</mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="expectedDate">
+      <mat-header-cell *matHeaderCellDef>Data prevista</mat-header-cell>
+      <mat-cell *matCellDef="let item">{{ item.expectedDate | date:'dd/MM/yyyy' }}</mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="amount">
+      <mat-header-cell *matHeaderCellDef>Valor</mat-header-cell>
+      <mat-cell *matCellDef="let item">
+        {{ item.amount | currency:'BRL':'symbol':'1.2-2' }}
+      </mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="select">
+      <mat-header-cell *matHeaderCellDef></mat-header-cell>
+      <mat-cell *matCellDef="let item">
+        <button mat-stroked-button color="primary" (click)="select(item)">
+          Vincular
+        </button>
+      </mat-cell>
+    </ng-container>
+
+    <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
+    <mat-row *matRowDef="let row; columns: displayedColumns"></mat-row>
+  </mat-table>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancel()">Cancelar</button>
+</mat-dialog-actions>

@@ -140,7 +140,7 @@ class BudgetCycleServiceTest {
             .thenReturn(new BigDecimal("3200.00"));
         when(recurringRepository.findAllByTenantAndActiveTrueOrderByDayOfMonthAscDescriptionAsc(tenant))
             .thenReturn(List.of());
-        when(transactionRepository.findInstallmentsByReferenceMonthAndTenant(any(), anyInt(), anyInt(), any()))
+        when(transactionRepository.findInstallmentsByTenantAndInvoiceMonth(any(), anyInt(), anyInt(), any()))
             .thenReturn(List.of());
 
         var captor = ArgumentCaptor.forClass(BudgetCycle.class);
@@ -193,7 +193,9 @@ class BudgetCycleServiceTest {
             new BigDecimal("3500.00"),  // projectedBalance
             new BigDecimal("5000.00"),  // realizedIncome
             new BigDecimal("2000.00"),  // realizedExpense
-            new BigDecimal("200.00"),   // unplannedExpenses
+            BigDecimal.ZERO,            // unplannedIncome
+            new BigDecimal("200.00"),   // unplannedExpense
+            new BigDecimal("3800.00"),  // currentBalance
             new BigDecimal("2300.00"),  // availableToSpend
             new BigDecimal("115.00"),   // dailyAllowance
             20,                         // remainingDays
@@ -202,7 +204,9 @@ class BudgetCycleServiceTest {
 
         when(cycleRepository.findById(cycleId)).thenReturn(Optional.of(cycle));
         when(itemRepository.findAllByCycleWithDetails(cycle)).thenReturn(items);
-        when(summaryService.calculateSummary(eq(cycle), eq(items), any(LocalDate.class))).thenReturn(summary);
+        when(transactionRepository.findUnplannedByCycle(any(), any(), any(), any(), anyInt(), anyInt(), any()))
+            .thenReturn(List.of());
+        when(summaryService.calculateSummary(eq(cycle), eq(items), any(), any(LocalDate.class))).thenReturn(summary);
         when(cycleRepository.save(any(BudgetCycle.class))).thenAnswer(inv -> inv.getArgument(0));
 
         BudgetCycle result = service.close(cycleId, tenant);
@@ -319,10 +323,13 @@ class BudgetCycleServiceTest {
 
         when(cycleRepository.findById(cycle.getId())).thenReturn(Optional.of(cycle));
         when(itemRepository.findAllByCycleWithDetails(cycle)).thenReturn(List.of());
-        when(summaryService.calculateSummary(eq(cycle), any(), any())).thenReturn(
+        when(transactionRepository.findUnplannedByCycle(any(), any(), any(), any(), anyInt(), anyInt(), any()))
+            .thenReturn(List.of());
+        when(summaryService.calculateSummary(eq(cycle), any(), any(), any(LocalDate.class))).thenReturn(
             new BudgetCycleSummaryDTO(
                 BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
                 BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                BigDecimal.ZERO, BigDecimal.ZERO,
                 null, null, 0L
             )
         );
@@ -386,6 +393,46 @@ class BudgetCycleServiceTest {
         assertThatThrownBy(() -> service.delete(cycle.getId(), tenant))
             .isInstanceOf(IllegalStateException.class)
             .hasMessage("Apenas ciclos fechados podem ser excluídos.");
+    }
+
+    // ---- toResponseDTO ----
+
+    @Test
+    @DisplayName("toResponseDTO busca não planejados pelo mês da fatura (referenceYear/Month do startDate)")
+    void toResponseDTO_chamaFindUnplannedComInvoiceMonth() {
+        Tenant tenant = new Tenant();
+        BudgetCycle cycle = BudgetCycle.builder()
+            .id(UUID.randomUUID())
+            .tenant(tenant)
+            .startDate(LocalDate.of(2026, 6, 10))
+            .endDate(LocalDate.of(2026, 7, 9))
+            .openingBalance(BigDecimal.valueOf(5000))
+            .status(BudgetCycleStatus.OPEN)
+            .build();
+
+        when(itemRepository.findAllByCycleWithDetails(cycle)).thenReturn(List.of());
+        when(transactionRepository.findUnplannedByCycle(
+            eq(tenant), eq(cycle),
+            eq(LocalDate.of(2026, 6, 10)), eq(LocalDate.of(2026, 7, 9)),
+            eq(2026), eq(6),
+            eq(TransactionStatus.CANCELLED)
+        )).thenReturn(List.of());
+        when(summaryService.calculateSummary(eq(cycle), any(), any(), any(LocalDate.class)))
+            .thenReturn(new BudgetCycleSummaryDTO(
+                BigDecimal.valueOf(5000), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.valueOf(5000),
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                BigDecimal.valueOf(5000), BigDecimal.ZERO,
+                BigDecimal.ZERO, 20, 0L
+            ));
+
+        service.toResponseDTO(cycle);
+
+        verify(transactionRepository).findUnplannedByCycle(
+            tenant, cycle,
+            LocalDate.of(2026, 6, 10), LocalDate.of(2026, 7, 9),
+            2026, 6,
+            TransactionStatus.CANCELLED
+        );
     }
 
     // ---- helpers ----

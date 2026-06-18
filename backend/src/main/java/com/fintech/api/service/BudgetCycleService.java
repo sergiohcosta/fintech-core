@@ -4,6 +4,7 @@ import com.fintech.api.domain.budget.BudgetCycle;
 import com.fintech.api.domain.budget.BudgetItem;
 import com.fintech.api.domain.budget.RecurringBudgetItem;
 import com.fintech.api.domain.enums.*;
+import com.fintech.api.dto.budget.BudgetCycleResponseDTO;
 import com.fintech.api.domain.installment.InstallmentGroup;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.transaction.Transaction;
@@ -218,7 +219,7 @@ public class BudgetCycleService {
                 calculateExpectedDate(startDate, sd, t.getDayOfMonth())))
             .toList();
 
-        List<Transaction> installments = transactionRepository.findInstallmentsByReferenceMonthAndTenant(
+        List<Transaction> installments = transactionRepository.findInstallmentsByTenantAndInvoiceMonth(
             managed.getId(), refMonth.getYear(), refMonth.getMonthValue(), TransactionStatus.CANCELLED);
 
         Map<InstallmentGroup, List<Transaction>> byGroup = installments.stream()
@@ -275,13 +276,17 @@ public class BudgetCycleService {
         }
 
         List<BudgetItem> items = itemRepository.findAllByCycleWithDetails(cycle);
-        BudgetCycleSummaryDTO summary = summaryService.calculateSummary(cycle, items, LocalDate.now());
+        YearMonth im = YearMonth.from(cycle.getStartDate());
+        List<Transaction> unplanned = transactionRepository.findUnplannedByCycle(
+            cycle.getTenant(), cycle, cycle.getStartDate(), cycle.getEndDate(),
+            im.getYear(), im.getMonthValue(), TransactionStatus.CANCELLED);
+        BudgetCycleSummaryDTO summary = summaryService.calculateSummary(cycle, items, unplanned, LocalDate.now());
 
         cycle.setSnapshotProjectedBalance(summary.projectedBalance());
         cycle.setSnapshotAvailableToSpend(summary.availableToSpend());
         cycle.setSnapshotRealizedIncome(summary.realizedIncome());
         cycle.setSnapshotRealizedExpense(summary.realizedExpense());
-        cycle.setSnapshotUnplannedExpenses(summary.unplannedExpenses());
+        cycle.setSnapshotUnplannedExpenses(summary.unplannedExpense());
         cycle.setStatus(BudgetCycleStatus.CLOSED);
 
         log.info("Ciclo fechado [cycleId={} tenantId={}]", cycleId, tenant.getId());
@@ -371,9 +376,10 @@ public class BudgetCycleService {
     }
 
     private void populateInstallmentItems(BudgetCycle cycle, Tenant tenant) {
-        YearMonth refMonth = YearMonth.parse(cycle.getReferenceMonth());
-        List<Transaction> installments = transactionRepository.findInstallmentsByReferenceMonthAndTenant(
-            tenant.getId(), refMonth.getYear(), refMonth.getMonthValue(), TransactionStatus.CANCELLED);
+        YearMonth invoiceMonth = YearMonth.from(cycle.getStartDate());
+        List<Transaction> installments = transactionRepository.findInstallmentsByTenantAndInvoiceMonth(
+            tenant.getId(), invoiceMonth.getYear(), invoiceMonth.getMonthValue(),
+            TransactionStatus.CANCELLED);
 
         // Agrupa parcelas pelo InstallmentGroup para criar um único BudgetItem por grupo
         Map<InstallmentGroup, List<Transaction>> byGroup = installments.stream()
@@ -404,5 +410,23 @@ public class BudgetCycleService {
             .toList();
 
         itemRepository.saveAll(items);
+    }
+
+    /**
+     * Monta o DTO completo do ciclo incluindo transações sem budget_item vinculado.
+     * Centraliza a conversão para evitar duplicação nos callers do controller.
+     */
+    @Transactional(readOnly = true)
+    public BudgetCycleResponseDTO toResponseDTO(BudgetCycle cycle) {
+        List<BudgetItem> items = itemRepository.findAllByCycleWithDetails(cycle);
+        YearMonth invoiceMonth = YearMonth.from(cycle.getStartDate());
+        List<Transaction> unplanned = transactionRepository.findUnplannedByCycle(
+            cycle.getTenant(), cycle,
+            cycle.getStartDate(), cycle.getEndDate(),
+            invoiceMonth.getYear(), invoiceMonth.getMonthValue(),
+            TransactionStatus.CANCELLED
+        );
+        BudgetCycleSummaryDTO summary = summaryService.calculateSummary(cycle, items, unplanned, LocalDate.now());
+        return BudgetCycleResponseDTO.fromEntity(cycle, items, summary, unplanned);
     }
 }
