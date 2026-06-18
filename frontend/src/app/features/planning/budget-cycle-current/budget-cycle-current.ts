@@ -1,6 +1,5 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
-import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
@@ -13,7 +12,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { finalize } from 'rxjs/operators';
 
 import { PlanningService } from '../planning.service';
-import { BudgetCycleResponse, BudgetItemResponse, TransactionResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
+import { BudgetCycleResponse, BudgetCycleSummary, BudgetItemResponse, TransactionResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
 import { DEFAULT_SUMMARY } from './budget-cycle.utils';
 import { BudgetItemFormComponent, BudgetItemFormResult } from '../budget-item-form/budget-item-form';
 import { LinkTransactionDialogComponent, LinkTransactionDialogData } from '../link-transaction-dialog/link-transaction-dialog';
@@ -23,10 +22,9 @@ import { LinkBudgetItemDialogComponent, LinkBudgetItemDialogData } from '../link
   selector: 'app-budget-cycle-current',
   standalone: true,
   imports: [
-    CommonModule, CurrencyPipe, DatePipe, RouterLink,
+    CommonModule, CurrencyPipe, DatePipe,
     MatButtonModule, MatCardModule, MatChipsModule, MatExpansionModule,
     MatIconModule, MatSnackBarModule, MatTableModule, MatTooltipModule,
-    LinkBudgetItemDialogComponent,
   ],
   templateUrl: './budget-cycle-current.html',
   styleUrl: './budget-cycle-current.scss',
@@ -44,7 +42,10 @@ export class BudgetCycleCurrentComponent implements OnInit {
   readonly incomeItems  = computed(() => this.items().filter(i => i.type === 'INCOME'));
   readonly expenseItems = computed(() => this.items().filter(i => i.type === 'EXPENSE' && i.source !== 'INSTALLMENT'));
   readonly installmentItems = computed(() => this.items().filter(i => i.source === 'INSTALLMENT'));
-  readonly summary        = computed(() => this.cycle()?.summary ?? DEFAULT_SUMMARY);
+  readonly summary = computed((): Required<BudgetCycleSummary> => ({
+    ...DEFAULT_SUMMARY,
+    ...(this.cycle()?.summary ?? {}),
+  }));
   readonly unplannedItems = computed(() => this.cycle()?.unplannedTransactions ?? []);
 
   ngOnInit(): void {

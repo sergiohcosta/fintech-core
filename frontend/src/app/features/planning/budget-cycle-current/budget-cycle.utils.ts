@@ -1,6 +1,6 @@
 import { BudgetCycleSummary } from '../../../core/api/fintechSaaSAPI.schemas';
 
-export const DEFAULT_SUMMARY: BudgetCycleSummary = {
+export const DEFAULT_SUMMARY: Required<BudgetCycleSummary> = {
   plannedIncome:    0,
   plannedExpense:   0,
   projectedBalance: 0,
