@@ -217,6 +217,7 @@ export function groupByEffectiveMonth(transactions: TransactionResponseDTO[]): P
     .map(([key, txs]) => {
       const [totalIncome, totalExpense] = txs.reduce(
         ([inc, exp], t) => {
+          if (t.transferId) return [inc, exp]; // transferências não entram nos totais
           if (t.type === 'INCOME')  return [inc + (t.amount ?? 0), exp];
           if (t.type === 'EXPENSE') return [inc, exp + (t.amount ?? 0)];
           return [inc, exp];

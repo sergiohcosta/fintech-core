@@ -1,7 +1,7 @@
 export interface TransactionFilters {
   accountIds: string[];
   status: 'PENDING' | 'PAID' | 'CANCELLED' | null;
-  type: 'INCOME' | 'EXPENSE' | null;
+  type: 'INCOME' | 'EXPENSE' | 'TRANSFER' | null;
   startDate: string | null;
   endDate: string | null;
   groupByPeriod: boolean;

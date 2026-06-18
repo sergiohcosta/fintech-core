@@ -62,11 +62,14 @@ export class TransactionList implements OnInit {
   sortCriteria         = signal<SortCriterion[]>([{ col: 'date', dir: 'desc' }]);
 
   filteredTransactions = computed(() => {
-    const desc = this.filters().description?.toLowerCase().trim();
-    if (!desc) return this.transactions();
-    return this.transactions().filter(t =>
-      t.description?.toLowerCase().includes(desc)
-    );
+    const { description, type } = this.filters();
+    let txs = this.transactions();
+    const desc = description?.toLowerCase().trim();
+    if (desc) txs = txs.filter(t => t.description?.toLowerCase().includes(desc));
+    if (type === 'INCOME')   txs = txs.filter(t => t.type === 'INCOME'  && !t.transferId);
+    if (type === 'EXPENSE')  txs = txs.filter(t => t.type === 'EXPENSE' && !t.transferId);
+    if (type === 'TRANSFER') txs = txs.filter(t => !!t.transferId);
+    return txs;
   });
 
   displayedColumns = ['description', 'amount', 'date', 'type', 'status', 'category', 'account', 'actions'];
@@ -93,8 +96,9 @@ export class TransactionList implements OnInit {
     if (f.status === 'PENDING')   chips.push({ label: 'Pendente',  field: 'status', colorClass: 'chip-pending' });
     if (f.status === 'PAID')      chips.push({ label: 'Pago',      field: 'status', colorClass: 'chip-paid' });
     if (f.status === 'CANCELLED') chips.push({ label: 'Cancelado', field: 'status', colorClass: 'chip-cancelled' });
-    if (f.type === 'EXPENSE') chips.push({ label: 'Despesa', field: 'type', colorClass: 'chip-expense' });
-    if (f.type === 'INCOME')  chips.push({ label: 'Receita', field: 'type', colorClass: 'chip-income' });
+    if (f.type === 'EXPENSE')   chips.push({ label: 'Despesa',       field: 'type', colorClass: 'chip-expense' });
+    if (f.type === 'INCOME')    chips.push({ label: 'Receita',       field: 'type', colorClass: 'chip-income' });
+    if (f.type === 'TRANSFER')  chips.push({ label: 'Transferência', field: 'type', colorClass: 'chip-transfer' });
     if (f.startDate && f.endDate) {
       const key = resolveMonthKey(f.startDate, f.endDate);
       const label = key && key !== 'custom'
@@ -162,8 +166,10 @@ export class TransactionList implements OnInit {
     const prev = this.filters();
     this.filters.set(newFilters);
     this.saveToStorage(newFilters);
-    const prevServer = { ...prev,       description: null, groupByPeriod: false, groupByInvoice: false };
-    const newServer  = { ...newFilters, description: null, groupByPeriod: false, groupByInvoice: false };
+    // ponytail: TRANSFER é client-side, não muda a chamada ao servidor
+    const normalizeType = (f: TransactionFilters) => f.type === 'TRANSFER' ? null : f.type;
+    const prevServer = { ...prev,       description: null, groupByPeriod: false, groupByInvoice: false, type: normalizeType(prev) };
+    const newServer  = { ...newFilters, description: null, groupByPeriod: false, groupByInvoice: false, type: normalizeType(newFilters) };
     if (JSON.stringify(prevServer) !== JSON.stringify(newServer)) {
       untracked(() => this.loadTransactions(newFilters));
     }
@@ -186,8 +192,8 @@ export class TransactionList implements OnInit {
   loadTransactions(f: TransactionFilters = this.filters()): void {
     this.service.listTransactions({
       accountIds: f.accountIds.length > 0 ? f.accountIds : undefined,
-      status:    f.status     ?? undefined,
-      type:      f.type       ?? undefined,
+      status:    f.status ?? undefined,
+      type:      (f.type === 'TRANSFER' || f.type === null) ? undefined : f.type,
       startDate: f.startDate  ?? undefined,
       endDate:   f.endDate    ?? undefined,
     }).subscribe({
