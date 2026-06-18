@@ -395,5 +395,69 @@
         </table>
       </ng-template>
     </mat-expansion-panel>
+
+    @if (unplannedItems().length > 0) {
+      <mat-card class="budget-section">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon color="warn">warning_amber</mat-icon>
+            Não planejados ({{ unplannedItems().length }})
+          </mat-card-title>
+          <mat-card-subtitle>Transações do período sem item de planejamento vinculado</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <mat-table [dataSource]="unplannedItems()">
+
+            <ng-container matColumnDef="date">
+              <mat-header-cell *matHeaderCellDef>Data</mat-header-cell>
+              <mat-cell *matCellDef="let tx">{{ (tx.date ?? '') | date:'dd/MM' }}</mat-cell>
+            </ng-container>
+
+            <ng-container matColumnDef="description">
+              <mat-header-cell *matHeaderCellDef>Descrição</mat-header-cell>
+              <mat-cell *matCellDef="let tx">{{ tx.description }}</mat-cell>
+            </ng-container>
+
+            <ng-container matColumnDef="account">
+              <mat-header-cell *matHeaderCellDef>Conta</mat-header-cell>
+              <mat-cell *matCellDef="let tx">{{ tx.accountName ?? '' }}</mat-cell>
+            </ng-container>
+
+            <ng-container matColumnDef="amount">
+              <mat-header-cell *matHeaderCellDef>Valor</mat-header-cell>
+              <mat-cell *matCellDef="let tx"
+                        [style.color]="tx.type === 'INCOME' ? 'var(--mat-sys-primary)' : 'var(--mat-sys-error)'">
+                {{ tx.amount | currency:'BRL':'symbol':'1.2-2' }}
+              </mat-cell>
+            </ng-container>
+
+            <ng-container matColumnDef="actions">
+              <mat-header-cell *matHeaderCellDef></mat-header-cell>
+              <mat-cell *matCellDef="let tx">
+                <button mat-icon-button
+                        matTooltip="Vincular a item planejado"
+                        (click)="linkFromUnplanned(tx)">
+                  <mat-icon>link</mat-icon>
+                </button>
+              </mat-cell>
+            </ng-container>
+
+            <mat-header-row *matHeaderRowDef="['date','description','account','amount','actions']"></mat-header-row>
+            <mat-row *matRowDef="let row; columns: ['date','description','account','amount','actions']"></mat-row>
+          </mat-table>
+
+          @if (summary().unplannedExpense > 0 || summary().unplannedIncome > 0) {
+            <div style="margin-top: 8px; display: flex; gap: 16px; font-size: 0.875rem;">
+              @if (summary().unplannedExpense > 0) {
+                <span>Despesas não planejadas: <strong>{{ summary().unplannedExpense | currency:'BRL':'symbol':'1.2-2' }}</strong></span>
+              }
+              @if (summary().unplannedIncome > 0) {
+                <span>Receitas não planejadas: <strong>{{ summary().unplannedIncome | currency:'BRL':'symbol':'1.2-2' }}</strong></span>
+              }
+            </div>
+          }
+        </mat-card-content>
+      </mat-card>
+    }
   }
 </div>

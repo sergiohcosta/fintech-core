@@ -1,5 +1,6 @@
 package com.fintech.api.repository;
 
+import com.fintech.api.domain.budget.BudgetCycle;
 import com.fintech.api.domain.enums.TransactionStatus;
 import com.fintech.api.domain.enums.TransactionType;
 import com.fintech.api.domain.installment.InstallmentGroup;
@@ -164,8 +165,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
           AND t.status <> :cancelledStatus
         ORDER BY ig.id, inv.dueDate
     """)
-    List<Transaction> findInstallmentsByReferenceMonthAndTenant(
-        @Param("tenantId") UUID tenantId,
+    List<Transaction> findInstallmentsByTenantAndInvoiceMonth(
+        @Param("tenantId")      UUID tenantId,
         @Param("referenceYear") int referenceYear,
         @Param("referenceMonth") int referenceMonth,
         @Param("cancelledStatus") TransactionStatus cancelledStatus
@@ -246,5 +247,41 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,
             @Param("cycleId") UUID cycleId
+    );
+
+    // Retorna transações do período do ciclo que não têm nenhum BudgetItem
+    // apontando para elas naquele ciclo. Aplica a mesma regra de data dos filtros:
+    // parcelas com fatura → invoice.dueDate; demais → t.date.
+    // Transferências (transferId IS NOT NULL) excluídas — movimento interno sem impacto no orçamento.
+    // CANCELLED excluído — não impacta saldo.
+    @Query("""
+        SELECT t FROM Transaction t
+        LEFT JOIN FETCH t.category
+        LEFT JOIN FETCH t.account
+        LEFT JOIN FETCH t.invoice inv
+        WHERE t.tenant = :tenant
+          AND t.transferId IS NULL
+          AND t.status <> :cancelledStatus
+          AND (
+            (t.installmentGroup IS NOT NULL AND inv IS NOT NULL
+              AND inv.referenceYear = :referenceYear AND inv.referenceMonth = :referenceMonth)
+            OR
+            ((t.installmentGroup IS NULL OR inv IS NULL)
+              AND t.date BETWEEN :start AND :end)
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM BudgetItem bi
+            WHERE bi.transaction = t AND bi.cycle = :cycle
+          )
+        ORDER BY t.date DESC
+        """)
+    List<Transaction> findUnplannedByCycle(
+        @Param("tenant")          Tenant tenant,
+        @Param("cycle")           BudgetCycle cycle,
+        @Param("start")           LocalDate start,
+        @Param("end")             LocalDate end,
+        @Param("referenceYear")   int referenceYear,
+        @Param("referenceMonth")  int referenceMonth,
+        @Param("cancelledStatus") TransactionStatus cancelledStatus
     );
 }

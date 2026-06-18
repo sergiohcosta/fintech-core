@@ -432,6 +432,9 @@ export interface BudgetCycleSummary {
   /** @nullable */
   remainingDays?: number | null;
   pendingCount?: number;
+  unplannedIncome?: number;
+  unplannedExpense?: number;
+  availableToSpend?: number;
 }
 
 export interface BudgetItemResponse {
@@ -466,6 +469,7 @@ export interface BudgetCycleResponse {
   status?: BudgetCycleStatus;
   summary?: BudgetCycleSummary;
   items?: BudgetItemResponse[];
+  unplannedTransactions?: TransactionResponseDTO[];
 }
 
 export interface BudgetItemCreateRequest {

@@ -682,7 +682,13 @@ components:
         realizedExpense:
           type: number
           format: double
-        unplannedExpenses:
+        unplannedIncome:
+          type: number
+          format: double
+        unplannedExpense:
+          type: number
+          format: double
+        currentBalance:
           type: number
           format: double
         availableToSpend:
@@ -768,6 +774,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/BudgetItemResponse'
+        unplannedTransactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransactionResponseDTO'
 
     BudgetItemCreateRequest:
       type: object

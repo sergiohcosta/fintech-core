@@ -18,10 +18,12 @@ import {
   BudgetItemCreateRequest,
   BudgetItemResponse,
   BudgetItemUpdateRequest,
+  TransactionResponseDTO,
 } from '../../../core/api/fintechSaaSAPI.schemas';
-import { buildSummary } from './budget-cycle.utils';
+import { DEFAULT_SUMMARY } from './budget-cycle.utils';
 import { BudgetItemFormComponent, BudgetItemFormData } from '../budget-item-form/budget-item-form';
 import { LinkTransactionDialogComponent, LinkTransactionDialogData } from '../link-transaction-dialog/link-transaction-dialog';
+import { LinkBudgetItemDialogComponent, LinkBudgetItemDialogData } from '../link-budget-item-dialog/link-budget-item-dialog';
 
 @Component({
   selector: 'app-budget-cycle-current',
@@ -30,6 +32,7 @@ import { LinkTransactionDialogComponent, LinkTransactionDialogData } from '../li
     CommonModule, CurrencyPipe, DatePipe,
     MatButtonModule, MatCardModule, MatChipsModule, MatExpansionModule,
     MatIconModule, MatSnackBarModule, MatTableModule, MatTooltipModule,
+    LinkBudgetItemDialogComponent,
   ],
   templateUrl: './budget-cycle-current.html',
   styleUrl: './budget-cycle-current.scss',
@@ -45,16 +48,17 @@ export class BudgetCycleCurrentComponent implements OnInit {
   readonly closing = signal(false);
   readonly confirmingClose = signal(false);
 
-  readonly incomeItems  = computed(() => this.items().filter(i => i.type === 'INCOME'));
-  readonly expenseItems = computed(() => this.items().filter(i => i.type === 'EXPENSE' && i.source !== 'INSTALLMENT'));
+  readonly incomeItems      = computed(() => this.items().filter(i => i.type === 'INCOME'));
+  readonly expenseItems     = computed(() => this.items().filter(i => i.type === 'EXPENSE' && i.source !== 'INSTALLMENT'));
   readonly installmentItems = computed(() => this.items().filter(i => i.source === 'INSTALLMENT'));
-  readonly summary = computed(() => buildSummary(this.items(), this.cycle()?.openingBalance ?? 0));
+  readonly summary          = computed(() => this.cycle()?.summary ?? DEFAULT_SUMMARY);
+  readonly unplannedItems   = computed(() => this.cycle()?.unplannedTransactions ?? []);
 
   ngOnInit(): void {
     this.loadCurrentCycle();
   }
 
-  private loadCurrentCycle(): void {
+  loadCurrentCycle(): void {
     this.loading.set(true);
     this.planningService.getCurrentCycle()
       .pipe(finalize(() => this.loading.set(false)))
@@ -74,7 +78,6 @@ export class BudgetCycleCurrentComponent implements OnInit {
   }
 
   openCycle(): void {
-    // BudgetCycleOpenDialogComponent será criado na Task 8 — import dinâmico para evitar dependência circular antecipada
     import('../budget-cycle-open-dialog/budget-cycle-open-dialog').then(m => {
       const ref = this.dialog.open(m.BudgetCycleOpenDialogComponent, { width: '600px' });
       ref.afterClosed().subscribe((opened: boolean) => {
@@ -133,27 +136,26 @@ export class BudgetCycleCurrentComponent implements OnInit {
     if (!cycleId) return;
     const ref = this.dialog.open(LinkTransactionDialogComponent, {
       width: '600px',
-      data: { item, cycleId } satisfies LinkTransactionDialogData,
+      data: {
+        item,
+        cycleId,
+        startDate: this.cycle()!.startDate!,
+        endDate: this.cycle()!.endDate!,
+      } satisfies LinkTransactionDialogData,
     });
     ref.afterClosed().subscribe((transactionId?: string) => {
       if (!transactionId) return;
       this.planningService.linkItem(item.id!, { transactionId }).subscribe({
-        next: updated => this.replaceItem(updated),
-        error: (err: HttpErrorResponse) => {
-          const msg = err.error?.message ?? 'Erro. Tente novamente.';
-          this.snackBar.open(msg, 'OK', { duration: 3000 });
-        },
+        next: () => this.loadCurrentCycle(),
+        error: () => this.snackBar.open('Erro. Tente novamente.', 'OK', { duration: 3000 }),
       });
     });
   }
 
   unlinkTransaction(item: BudgetItemResponse): void {
     this.planningService.unlinkItem(item.id!).subscribe({
-      next: updated => this.replaceItem(updated),
-      error: (err: HttpErrorResponse) => {
-        const msg = err.error?.message ?? 'Erro. Tente novamente.';
-        this.snackBar.open(msg, 'OK', { duration: 3000 });
-      },
+      next: () => this.loadCurrentCycle(),
+      error: () => this.snackBar.open('Erro. Tente novamente.', 'OK', { duration: 3000 }),
     });
   }
 
@@ -259,6 +261,34 @@ export class BudgetCycleCurrentComponent implements OnInit {
         this.snackBar.open('Parcelas sincronizadas.', 'OK', { duration: 2000 });
       },
       error: () => this.snackBar.open('Erro ao sincronizar parcelas.', 'OK', { duration: 3000 }),
+    });
+  }
+
+  linkFromUnplanned(tx: TransactionResponseDTO): void {
+    const pendingItems = this.items().filter(
+      i => i.type === tx.type && i.status === 'PENDING'
+    );
+    if (pendingItems.length === 0) {
+      this.snackBar.open(
+        'Nenhum item planejado pendente do mesmo tipo para vincular.',
+        'OK',
+        { duration: 3000 }
+      );
+      return;
+    }
+    const ref = this.dialog.open(LinkBudgetItemDialogComponent, {
+      width: '600px',
+      data: { transaction: tx, pendingItems } satisfies LinkBudgetItemDialogData,
+    });
+    ref.afterClosed().subscribe((itemId?: string) => {
+      if (!itemId) return;
+      this.planningService.linkItem(itemId, { transactionId: tx.id! }).subscribe({
+        next: () => {
+          this.loadCurrentCycle();
+          this.snackBar.open('Vinculado com sucesso.', 'OK', { duration: 2000 });
+        },
+        error: () => this.snackBar.open('Erro. Tente novamente.', 'OK', { duration: 3000 }),
+      });
     });
   }
 
