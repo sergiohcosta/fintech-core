@@ -626,6 +626,10 @@ export type PreviewBudgetCycleParams = {
 startDay?: number;
 };
 
+export type CloseBudgetCycleParams = {
+force?: boolean;
+};
+
 export type ListRecurringBudgetItemsParams = {
 /**
  * Filtrar por status ativo/inativo

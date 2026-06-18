@@ -209,7 +209,7 @@ class BudgetCycleServiceTest {
         when(summaryService.calculateSummary(eq(cycle), eq(items), any(), any(LocalDate.class))).thenReturn(summary);
         when(cycleRepository.save(any(BudgetCycle.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        BudgetCycle result = service.close(cycleId, tenant);
+        BudgetCycle result = service.close(cycleId, tenant, false);
 
         assertThat(result.getStatus()).isEqualTo(BudgetCycleStatus.CLOSED);
         assertThat(result.getSnapshotProjectedBalance()).isEqualByComparingTo("3500");
@@ -235,7 +235,7 @@ class BudgetCycleServiceTest {
 
         when(cycleRepository.findById(cycle.getId())).thenReturn(Optional.of(cycle));
 
-        assertThatThrownBy(() -> service.close(cycle.getId(), tenant))
+        assertThatThrownBy(() -> service.close(cycle.getId(), tenant, false))
             .isInstanceOf(IllegalStateException.class)
             .hasMessage("O ciclo já está fechado.");
     }
@@ -304,9 +304,40 @@ class BudgetCycleServiceTest {
 
         when(cycleRepository.findById(cycle.getId())).thenReturn(Optional.of(cycle));
 
-        assertThatThrownBy(() -> service.close(cycle.getId(), tenant))
+        assertThatThrownBy(() -> service.close(cycle.getId(), tenant, false))
             .isInstanceOf(IllegalStateException.class)
             .hasMessage("O ciclo ainda está em andamento.");
+    }
+
+    @Test
+    @DisplayName("close() em ciclo OPEN com force=true persiste CLOSED")
+    void close_cicloOpenComForce_persisteFechado() {
+        Tenant tenant = tenantWith(1);
+        BudgetCycle cycle = BudgetCycle.builder()
+            .id(UUID.randomUUID()).tenant(tenant)
+            .startDate(LocalDate.now().minusDays(5))
+            .endDate(LocalDate.now().plusDays(25))
+            .openingBalance(BigDecimal.ZERO)
+            .status(BudgetCycleStatus.OPEN)
+            .build();
+
+        when(cycleRepository.findById(cycle.getId())).thenReturn(Optional.of(cycle));
+        when(itemRepository.findAllByCycleWithDetails(cycle)).thenReturn(List.of());
+        when(transactionRepository.findUnplannedByCycle(any(), any(), any(), any(), anyInt(), anyInt(), any()))
+            .thenReturn(List.of());
+        when(summaryService.calculateSummary(eq(cycle), any(), any(), any(LocalDate.class))).thenReturn(
+            new BudgetCycleSummaryDTO(
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                BigDecimal.ZERO, BigDecimal.ZERO,
+                null, null, 0L
+            )
+        );
+        when(cycleRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        BudgetCycle result = service.close(cycle.getId(), tenant, true);
+
+        assertThat(result.getStatus()).isEqualTo(BudgetCycleStatus.CLOSED);
     }
 
     @Test
@@ -335,7 +366,7 @@ class BudgetCycleServiceTest {
         );
         when(cycleRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        BudgetCycle result = service.close(cycle.getId(), tenant);
+        BudgetCycle result = service.close(cycle.getId(), tenant, false);
 
         assertThat(result.getStatus()).isEqualTo(BudgetCycleStatus.CLOSED);
     }

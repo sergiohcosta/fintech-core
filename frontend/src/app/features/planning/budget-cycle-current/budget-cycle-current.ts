@@ -94,18 +94,21 @@ export class BudgetCycleCurrentComponent implements OnInit {
     this.confirmingClose.set(false);
   }
 
-  closeCycle(): void {
+  closeCycle(force = false): void {
     const id = this.cycle()?.id;
     if (!id) return;
     this.closing.set(true);
-    this.planningService.closeCycle(id)
+    this.planningService.closeCycle(id, force)
       .pipe(finalize(() => { this.closing.set(false); this.confirmingClose.set(false); }))
       .subscribe({
         next: c => {
           this.cycle.set(c);
           this.snackBar.open('Ciclo fechado.', 'OK', { duration: 3000 });
         },
-        error: () => this.snackBar.open('Erro ao fechar ciclo.', 'OK', { duration: 3000 }),
+        error: (err: HttpErrorResponse) => {
+          const msg = err.error?.message ?? 'Erro ao fechar ciclo.';
+          this.snackBar.open(msg, 'OK', { duration: 4000 });
+        },
       });
   }
 

@@ -35,6 +35,7 @@ import type {
   BudgetItemRealizeRequest,
   BudgetItemResponse,
   BudgetItemUpdateRequest,
+  CloseBudgetCycleParams,
   ListBudgetCyclesParams,
   ListRecurringBudgetItemsParams,
   PreviewBudgetCycleParams,
@@ -345,18 +346,24 @@ export class BudgetService {
       }
     );
   }
- closeBudgetCycle<TData = BudgetCycleResponse>(id: string, options?: HttpClientBodyOptions): Observable<TData>;
- closeBudgetCycle<TData = BudgetCycleResponse>(id: string, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
- closeBudgetCycle<TData = BudgetCycleResponse>(id: string, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+ closeBudgetCycle<TData = BudgetCycleResponse>(id: string,
+    params?: CloseBudgetCycleParams, options?: HttpClientBodyOptions): Observable<TData>;
+ closeBudgetCycle<TData = BudgetCycleResponse>(id: string,
+    params?: CloseBudgetCycleParams, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ closeBudgetCycle<TData = BudgetCycleResponse>(id: string,
+    params?: CloseBudgetCycleParams, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
   closeBudgetCycle<TData = BudgetCycleResponse>(
-    id: string, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    id: string,
+    params?: CloseBudgetCycleParams, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    const filteredParams = filterParams({...params, ...options?.params}, new Set<string>([]));
+
     if (options?.observe === 'events') {
       return this.http.post<TData>(
       `/api/budget-cycles/${id}/close`,
       undefined,{
-        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+    ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'events',
-      }
+        params: filteredParams,}
     );
     }
 
@@ -364,18 +371,18 @@ export class BudgetService {
       return this.http.post<TData>(
       `/api/budget-cycles/${id}/close`,
       undefined,{
-        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+    ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'response',
-      }
+        params: filteredParams,}
     );
     }
 
     return this.http.post<TData>(
       `/api/budget-cycles/${id}/close`,
       undefined,{
-        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+    ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'body',
-      }
+        params: filteredParams,}
     );
   }
  syncInstallments<TData = BudgetCycleResponse>(id: string, options?: HttpClientBodyOptions): Observable<TData>;

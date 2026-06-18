@@ -59,8 +59,8 @@
               Fechar ciclo
             </button>
           } @else {
-            <span class="confirm-label">Tem certeza?</span>
-            <button mat-flat-button color="warn" [disabled]="closing()" (click)="closeCycle()">Sim, fechar</button>
+            <span class="confirm-label">O ciclo ainda está em andamento. Fechar agora mesmo?</span>
+            <button mat-flat-button color="warn" [disabled]="closing()" (click)="closeCycle(true)">Sim, fechar</button>
             <button mat-stroked-button [disabled]="closing()" (click)="cancelClose()">Cancelar</button>
           }
         }

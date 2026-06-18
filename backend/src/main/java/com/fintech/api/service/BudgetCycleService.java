@@ -265,10 +265,13 @@ public class BudgetCycleService {
      * os snapshots reflitam o estado completo do ciclo.
      */
     @Transactional
-    public BudgetCycle close(UUID cycleId, Tenant tenant) {
+    public BudgetCycle close(UUID cycleId, Tenant tenant, boolean force) {
         BudgetCycle cycle = findByIdAndTenant(cycleId, tenant);
 
-        if (cycle.getStatus() != BudgetCycleStatus.ENDED) {
+        boolean canClose = cycle.getStatus() == BudgetCycleStatus.ENDED
+            || (force && cycle.getStatus() == BudgetCycleStatus.OPEN);
+
+        if (!canClose) {
             String msg = cycle.getStatus() == BudgetCycleStatus.OPEN
                 ? "O ciclo ainda está em andamento."
                 : "O ciclo já está fechado.";

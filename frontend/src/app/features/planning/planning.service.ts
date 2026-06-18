@@ -30,8 +30,8 @@ export class PlanningService {
     return this.budget.openBudgetCycle(req);
   }
 
-  closeCycle(id: string): Observable<BudgetCycleResponse> {
-    return this.budget.closeBudgetCycle(id);
+  closeCycle(id: string, force = false): Observable<BudgetCycleResponse> {
+    return this.budget.closeBudgetCycle(id, force ? { force } : undefined);
   }
 
   listCycles(page = 0, size = 12): Observable<BudgetCyclePageResponse> {
