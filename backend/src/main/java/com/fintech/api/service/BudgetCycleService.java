@@ -4,6 +4,7 @@ import com.fintech.api.domain.budget.BudgetCycle;
 import com.fintech.api.domain.budget.BudgetItem;
 import com.fintech.api.domain.budget.RecurringBudgetItem;
 import com.fintech.api.domain.enums.*;
+import com.fintech.api.dto.budget.BudgetCycleResponseDTO;
 import com.fintech.api.domain.installment.InstallmentGroup;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.transaction.Transaction;
@@ -228,5 +229,20 @@ public class BudgetCycleService {
     @Transactional(readOnly = true)
     public List<BudgetItem> listItems(BudgetCycle cycle) {
         return itemRepository.findAllByCycleWithDetails(cycle);
+    }
+
+    /**
+     * Monta o DTO completo do ciclo incluindo transações sem budget_item vinculado.
+     * Centraliza a conversão para evitar duplicação nos callers do controller.
+     */
+    @Transactional(readOnly = true)
+    public BudgetCycleResponseDTO toResponseDTO(BudgetCycle cycle) {
+        List<BudgetItem> items = itemRepository.findAllByCycleWithDetails(cycle);
+        List<Transaction> unplanned = transactionRepository.findUnplannedByCycle(
+            cycle.getTenant(), cycle,
+            cycle.getStartDate(), cycle.getEndDate(),
+            TransactionStatus.CANCELLED
+        );
+        return BudgetCycleResponseDTO.fromEntity(cycle, items, unplanned);
     }
 }

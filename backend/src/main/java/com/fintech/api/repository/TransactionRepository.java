@@ -233,14 +233,15 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
     // Retorna transações do período do ciclo que não têm nenhum BudgetItem
     // apontando para elas naquele ciclo. Aplica a mesma regra de data dos filtros:
     // parcelas com fatura → invoice.dueDate; demais → t.date.
-    // TRANSFER excluído (movimento interno); CANCELLED excluído (não impacta saldo).
+    // Transferências (transferId IS NOT NULL) excluídas — movimento interno sem impacto no orçamento.
+    // CANCELLED excluído — não impacta saldo.
     @Query("""
         SELECT t FROM Transaction t
         LEFT JOIN FETCH t.category
         LEFT JOIN FETCH t.account
         LEFT JOIN FETCH t.invoice inv
         WHERE t.tenant = :tenant
-          AND t.type <> :transferType
+          AND t.transferId IS NULL
           AND t.status <> :cancelledStatus
           AND (
             (t.installmentGroup IS NOT NULL AND inv IS NOT NULL
@@ -260,7 +261,6 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
         @Param("cycle")           BudgetCycle cycle,
         @Param("start")           LocalDate start,
         @Param("end")             LocalDate end,
-        @Param("transferType")    TransactionType transferType,
         @Param("cancelledStatus") TransactionStatus cancelledStatus
     );
 }

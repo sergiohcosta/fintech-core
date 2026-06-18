@@ -30,7 +30,7 @@ public class BudgetCycleController {
         User user = getUser();
         Page<BudgetCycleResponseDTO> result = cycleService
             .listByTenant(user.getTenant(), PageRequest.of(page, size))
-            .map(c -> BudgetCycleResponseDTO.fromEntity(c, cycleService.listItems(c)));
+            .map(c -> cycleService.toResponseDTO(c));
         return ResponseEntity.ok(result);
     }
 
@@ -39,14 +39,14 @@ public class BudgetCycleController {
         User user = getUser();
         var cycle = cycleService.open(user.getTenant(), user, req.referenceMonth());
         return ResponseEntity.status(201)
-            .body(BudgetCycleResponseDTO.fromEntity(cycle, cycleService.listItems(cycle)));
+            .body(cycleService.toResponseDTO(cycle));
     }
 
     @GetMapping("/current")
     public ResponseEntity<BudgetCycleResponseDTO> current() {
         User user = getUser();
         return cycleService.findOpenByTenant(user.getTenant())
-            .map(c -> ResponseEntity.ok(BudgetCycleResponseDTO.fromEntity(c, cycleService.listItems(c))))
+            .map(c -> ResponseEntity.ok(cycleService.toResponseDTO(c)))
             .orElse(ResponseEntity.notFound().build());
     }
 
@@ -54,21 +54,21 @@ public class BudgetCycleController {
     public ResponseEntity<BudgetCycleResponseDTO> get(@PathVariable UUID id) {
         User user = getUser();
         var cycle = cycleService.findByIdAndTenant(id, user.getTenant());
-        return ResponseEntity.ok(BudgetCycleResponseDTO.fromEntity(cycle, cycleService.listItems(cycle)));
+        return ResponseEntity.ok(cycleService.toResponseDTO(cycle));
     }
 
     @PostMapping("/{id}/close")
     public ResponseEntity<BudgetCycleResponseDTO> close(@PathVariable UUID id) {
         User user = getUser();
         var cycle = cycleService.close(id, user.getTenant());
-        return ResponseEntity.ok(BudgetCycleResponseDTO.fromEntity(cycle, cycleService.listItems(cycle)));
+        return ResponseEntity.ok(cycleService.toResponseDTO(cycle));
     }
 
     @PostMapping("/{id}/sync-installments")
     public ResponseEntity<BudgetCycleResponseDTO> syncInstallments(@PathVariable UUID id) {
         User user = getUser();
         var cycle = cycleService.syncInstallments(id, user.getTenant(), user);
-        return ResponseEntity.ok(BudgetCycleResponseDTO.fromEntity(cycle, cycleService.listItems(cycle)));
+        return ResponseEntity.ok(cycleService.toResponseDTO(cycle));
     }
 
     @GetMapping("/{cycleId}/items")
