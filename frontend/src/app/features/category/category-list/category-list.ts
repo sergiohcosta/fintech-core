@@ -18,6 +18,7 @@ import {
   CategoryArchiveDialogData,
   CategoryArchiveDialogResult,
 } from '../category-archive-dialog/category-archive-dialog';
+import { AuthService } from '../../../core/services/auth';
 
 interface FlatCategory extends CategoryResponseDTO {
   level: number;
@@ -46,6 +47,9 @@ export class CategoryList implements OnInit {
   private service = inject(CategoriesService);
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
+  private authService = inject(AuthService);
+
+  isAdmin = this.authService.isAdmin;
 
   categories = signal<FlatCategory[]>([]);
   showArchived = signal(false);
