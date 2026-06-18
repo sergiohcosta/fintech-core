@@ -62,13 +62,18 @@ export class TransactionList implements OnInit {
   sortCriteria         = signal<SortCriterion[]>([{ col: 'date', dir: 'desc' }]);
 
   filteredTransactions = computed(() => {
-    const { description, type } = this.filters();
+    const { description, types } = this.filters();
     let txs = this.transactions();
     const desc = description?.toLowerCase().trim();
     if (desc) txs = txs.filter(t => t.description?.toLowerCase().includes(desc));
-    if (type === 'INCOME')   txs = txs.filter(t => t.type === 'INCOME'  && !t.transferId);
-    if (type === 'EXPENSE')  txs = txs.filter(t => t.type === 'EXPENSE' && !t.transferId);
-    if (type === 'TRANSFER') txs = txs.filter(t => !!t.transferId);
+    if (types.length > 0) {
+      txs = txs.filter(t => {
+        if (types.includes('INCOME')   && t.type === 'INCOME'  && !t.transferId) return true;
+        if (types.includes('EXPENSE')  && t.type === 'EXPENSE' && !t.transferId) return true;
+        if (types.includes('TRANSFER') && !!t.transferId) return true;
+        return false;
+      });
+    }
     return txs;
   });
 
@@ -96,9 +101,9 @@ export class TransactionList implements OnInit {
     if (f.status === 'PENDING')   chips.push({ label: 'Pendente',  field: 'status', colorClass: 'chip-pending' });
     if (f.status === 'PAID')      chips.push({ label: 'Pago',      field: 'status', colorClass: 'chip-paid' });
     if (f.status === 'CANCELLED') chips.push({ label: 'Cancelado', field: 'status', colorClass: 'chip-cancelled' });
-    if (f.type === 'EXPENSE')   chips.push({ label: 'Despesa',       field: 'type', colorClass: 'chip-expense' });
-    if (f.type === 'INCOME')    chips.push({ label: 'Receita',       field: 'type', colorClass: 'chip-income' });
-    if (f.type === 'TRANSFER')  chips.push({ label: 'Transferência', field: 'type', colorClass: 'chip-transfer' });
+    if (f.types.includes('EXPENSE'))   chips.push({ label: 'Despesa',       field: 'types:EXPENSE',   colorClass: 'chip-expense' });
+    if (f.types.includes('INCOME'))    chips.push({ label: 'Receita',       field: 'types:INCOME',    colorClass: 'chip-income' });
+    if (f.types.includes('TRANSFER'))  chips.push({ label: 'Transferência', field: 'types:TRANSFER',  colorClass: 'chip-transfer' });
     if (f.startDate && f.endDate) {
       const key = resolveMonthKey(f.startDate, f.endDate);
       const label = key && key !== 'custom'
@@ -137,7 +142,7 @@ export class TransactionList implements OnInit {
       transactions: this.service.listTransactions({
         accountIds: saved.accountIds.length > 0 ? saved.accountIds : undefined,
         status:    saved.status    ?? undefined,
-        type:      (saved.type === 'TRANSFER' || saved.type === null) ? undefined : saved.type,
+        type:      saved.types.length === 1 && saved.types[0] !== 'TRANSFER' ? saved.types[0] : undefined,
         startDate: saved.startDate ?? undefined,
         endDate:   saved.endDate   ?? undefined,
       }),
@@ -166,10 +171,16 @@ export class TransactionList implements OnInit {
     const prev = this.filters();
     this.filters.set(newFilters);
     this.saveToStorage(newFilters);
-    // ponytail: TRANSFER é client-side, não muda a chamada ao servidor
-    const normalizeType = (f: TransactionFilters) => f.type === 'TRANSFER' ? null : f.type;
-    const prevServer = { ...prev,       description: null, groupByPeriod: false, groupByInvoice: false, type: normalizeType(prev) };
-    const newServer  = { ...newFilters, description: null, groupByPeriod: false, groupByInvoice: false, type: normalizeType(newFilters) };
+    // ponytail: compara só os params que chegam ao servidor
+    const toServer = (f: TransactionFilters) => ({
+      accountIds: [...f.accountIds].sort().join(','),
+      status:     f.status,
+      serverType: f.types.length === 1 && f.types[0] !== 'TRANSFER' ? f.types[0] : null,
+      startDate:  f.startDate,
+      endDate:    f.endDate,
+    });
+    const prevServer = toServer(prev);
+    const newServer  = toServer(newFilters);
     if (JSON.stringify(prevServer) !== JSON.stringify(newServer)) {
       untracked(() => this.loadTransactions(newFilters));
     }
@@ -179,9 +190,12 @@ export class TransactionList implements OnInit {
     this.filters.update(f => {
       if (field === 'accountIds')  return { ...f, accountIds: [] };
       if (field === 'status')      return { ...f, status: null };
-      if (field === 'type')        return { ...f, type: null };
       if (field === 'period')      return { ...f, startDate: null, endDate: null };
       if (field === 'description') return { ...f, description: null };
+      if (field.startsWith('types:')) {
+        const val = field.split(':')[1] as 'INCOME' | 'EXPENSE' | 'TRANSFER';
+        return { ...f, types: f.types.filter(t => t !== val) };
+      }
       return f;
     });
     if (field !== 'description') {
@@ -190,10 +204,11 @@ export class TransactionList implements OnInit {
   }
 
   loadTransactions(f: TransactionFilters = this.filters()): void {
+    const serverType = f.types.length === 1 && f.types[0] !== 'TRANSFER' ? f.types[0] : undefined;
     this.service.listTransactions({
       accountIds: f.accountIds.length > 0 ? f.accountIds : undefined,
       status:    f.status ?? undefined,
-      type:      (f.type === 'TRANSFER' || f.type === null) ? undefined : f.type,
+      type:      serverType,
       startDate: f.startDate  ?? undefined,
       endDate:   f.endDate    ?? undefined,
     }).subscribe({
@@ -331,7 +346,7 @@ export class TransactionList implements OnInit {
       const raw = localStorage.getItem('fintech.transaction.filters');
       if (!raw) return currentMonthFilters();
       const parsed = JSON.parse(raw);
-      return { ...DEFAULT_FILTERS, ...parsed, description: null };
+      return { ...DEFAULT_FILTERS, ...parsed, description: null, types: Array.isArray(parsed.types) ? parsed.types : [] };
     } catch {
       return currentMonthFilters();
     }

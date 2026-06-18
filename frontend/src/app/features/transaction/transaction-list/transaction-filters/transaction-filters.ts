@@ -9,7 +9,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AccountResponse } from '../../../../core/api/fintechSaaSAPI.schemas';
-import { TransactionFilters, DEFAULT_FILTERS, currentMonthFilters, currentMonthKey } from './transaction-filters.types';
+import { TransactionFilters, TransactionType, DEFAULT_FILTERS, currentMonthFilters, currentMonthKey } from './transaction-filters.types';
 import { monthBounds, computeMonthChipStates, resolveMonthKey } from '../transaction-list.utils';
 
 @Component({
@@ -30,7 +30,7 @@ export class TransactionFiltersComponent implements OnInit {
 
   accountIds         = signal<string[]>([]);
   status             = signal<'PENDING' | 'PAID' | 'CANCELLED' | null>(null);
-  type               = signal<'INCOME' | 'EXPENSE' | 'TRANSFER' | null>(null);
+  types              = signal<TransactionType[]>([]);
   startDate          = signal<string | null>(null);
   endDate            = signal<string | null>(null);
   groupByPeriod      = signal(false);
@@ -54,7 +54,7 @@ export class TransactionFiltersComponent implements OnInit {
     const f = this.initialFilters();
     this.accountIds.set(f.accountIds);
     this.status.set(f.status);
-    this.type.set(f.type);
+    this.types.set(f.types);
     this.startDate.set(f.startDate);
     this.endDate.set(f.endDate);
     this.groupByPeriod.set(f.groupByPeriod);
@@ -80,8 +80,19 @@ export class TransactionFiltersComponent implements OnInit {
     this.emit();
   }
 
-  onTypeChange(val: 'INCOME' | 'EXPENSE' | 'TRANSFER' | null): void {
-    this.type.set(val !== null && this.type() === val ? null : val);
+  readonly ALL_TYPES: TransactionType[] = ['INCOME', 'EXPENSE', 'TRANSFER'];
+
+  todosActive = computed(() => this.types().length === 0);
+
+  onTodosClick(): void {
+    this.types.set(this.types().length === 0 ? [...this.ALL_TYPES] : []);
+    this.emit();
+  }
+
+  onTypeToggle(val: TransactionType): void {
+    const current = this.types();
+    const next = current.includes(val) ? current.filter(t => t !== val) : [...current, val];
+    this.types.set(next);
     this.emit();
   }
 
@@ -156,7 +167,7 @@ export class TransactionFiltersComponent implements OnInit {
     const defaults = currentMonthFilters();
     this.accountIds.set([]);
     this.status.set(null);
-    this.type.set(null);
+    this.types.set([]);
     this.startDate.set(defaults.startDate);
     this.endDate.set(defaults.endDate);
     this.groupByPeriod.set(false);
@@ -171,7 +182,7 @@ export class TransactionFiltersComponent implements OnInit {
     this.filterChange.emit({
       accountIds:     this.accountIds(),
       status:         this.status(),
-      type:           this.type(),
+      types:          this.types(),
       startDate:      this.startDate(),
       endDate:        this.endDate(),
       groupByPeriod:  this.groupByPeriod(),

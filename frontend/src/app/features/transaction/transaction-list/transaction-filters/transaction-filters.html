@@ -32,17 +32,17 @@
       <span class="section-label">Tipo</span>
       <div class="chip-group">
         <button type="button" class="fchip"
-                [class.active]="type() === null"
-                (click)="onTypeChange(null)">Todos</button>
+                [class.active]="todosActive()"
+                (click)="onTodosClick()">Todos</button>
         <button type="button" class="fchip expense"
-                [class.active]="type() === 'EXPENSE'"
-                (click)="onTypeChange('EXPENSE')">Despesa</button>
+                [class.active]="types().includes('EXPENSE')"
+                (click)="onTypeToggle('EXPENSE')">Despesa</button>
         <button type="button" class="fchip income"
-                [class.active]="type() === 'INCOME'"
-                (click)="onTypeChange('INCOME')">Receita</button>
+                [class.active]="types().includes('INCOME')"
+                (click)="onTypeToggle('INCOME')">Receita</button>
         <button type="button" class="fchip transfer"
-                [class.active]="type() === 'TRANSFER'"
-                (click)="onTypeChange('TRANSFER')">Transferência</button>
+                [class.active]="types().includes('TRANSFER')"
+                (click)="onTypeToggle('TRANSFER')">Transferência</button>
       </div>
     </div>
     <div class="filter-section">
