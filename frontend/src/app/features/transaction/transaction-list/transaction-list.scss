@@ -329,8 +329,7 @@ table {
   &.chip-pending  { background: #fef7e0; color: #f29900; border-color: #fbcc64; }
   &.chip-paid     { background: #e6f4ea; color: #1e8e3e; border-color: #81c995; }
   &.chip-cancelled{ background: #f1f3f4; color: #80868b; border-color: #bdc1c6; }
-  &.chip-account   { background: #f3e8fd; color: #7b1fa2; border-color: #ce93d8; }
-  &.chip-transfer  { background: #e8f0fe; color: #1a73e8; border-color: #4285f4; }
+  &.chip-account  { background: #f3e8fd; color: #7b1fa2; border-color: #ce93d8; }
 }
 
 // --- Period header row ---
@@ -373,8 +372,6 @@ table {
   &.negative { color: #c62828; }
 }
 
-// --- Sort headers ---
-
 .sort-header {
   background: none;
   border: none;
@@ -387,14 +384,8 @@ table {
   color: inherit;
   padding: 0;
   white-space: nowrap;
-
-  &:hover {
-    color: var(--mat-sys-primary, #1976d2);
-  }
-
-  &:focus {
-    outline: none;
-  }
+  &:hover { color: var(--mat-sys-primary, #1976d2); }
+  &:focus  { outline: none; }
 }
 
 .sort-badge {
