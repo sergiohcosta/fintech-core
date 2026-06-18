@@ -98,7 +98,7 @@ public class BudgetCycleService {
         }
 
         BigDecimal opening = accountRepository.sumLiquidBalanceByTenant(
-            tenant.getId(), TransactionType.INCOME, TransactionStatus.CANCELLED);
+            tenant.getId(), TransactionType.INCOME, TransactionStatus.PAID);
 
         BudgetCycle cycle = cycleRepository.save(BudgetCycle.builder()
             .tenant(tenant)
@@ -187,7 +187,7 @@ public class BudgetCycleService {
     @Transactional
     public BudgetCycle close(UUID cycleId, Tenant tenant, boolean force) {
         BudgetCycle cycle = findByIdAndTenant(cycleId, tenant);
-        if (cycle.getStatus() != BudgetCycleStatus.OPEN) {
+        if (cycle.getStatus() == BudgetCycleStatus.CLOSED) {
             throw new IllegalStateException("O ciclo já está fechado.");
         }
         if (!force && !LocalDate.now().isAfter(cycle.getEndDate())) {
@@ -201,8 +201,8 @@ public class BudgetCycleService {
     @Transactional
     public void delete(UUID cycleId, Tenant tenant) {
         BudgetCycle cycle = findByIdAndTenant(cycleId, tenant);
-        if (cycle.getStatus() == BudgetCycleStatus.OPEN) {
-            throw new IllegalStateException("Não é possível excluir um ciclo em aberto.");
+        if (cycle.getStatus() != BudgetCycleStatus.CLOSED) {
+            throw new IllegalStateException("Apenas ciclos fechados podem ser excluídos.");
         }
         itemRepository.deleteAllByCycle(cycle);
         cycleRepository.delete(cycle);

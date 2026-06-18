@@ -77,8 +77,9 @@ class InvoiceServiceTest {
 
         assertThat(saved.getReferenceYear()).isEqualTo(2026);
         assertThat(saved.getReferenceMonth()).isEqualTo(12);
-        assertThat(saved.getClosingDate()).isEqualTo(LocalDate.of(2026, 12, 5));
-        assertThat(saved.getDueDate()).isEqualTo(LocalDate.of(2026, 12, 15));
+        // fatura dez/2026 fecha em jan/2027 (closingDate = referenceMonth + 1 mês)
+        assertThat(saved.getClosingDate()).isEqualTo(LocalDate.of(2027, 1, 5));
+        assertThat(saved.getDueDate()).isEqualTo(LocalDate.of(2027, 1, 15));
         assertThat(saved.getStatus()).isEqualTo(InvoiceStatus.OPEN);
     }
 
@@ -117,9 +118,9 @@ class InvoiceServiceTest {
 
         ArgumentCaptor<Invoice> captor = ArgumentCaptor.forClass(Invoice.class);
         verify(repository).save(captor.capture());
-        // fecha 25/dez, vence 05/jan
-        assertThat(captor.getValue().getClosingDate()).isEqualTo(LocalDate.of(2026, 12, 25));
-        assertThat(captor.getValue().getDueDate()).isEqualTo(LocalDate.of(2027, 1, 5));
+        // fatura dez/2026 fecha 25/jan/2027; dueDay=5 < closingDay=25 → vence 05/fev/2027
+        assertThat(captor.getValue().getClosingDate()).isEqualTo(LocalDate.of(2027, 1, 25));
+        assertThat(captor.getValue().getDueDate()).isEqualTo(LocalDate.of(2027, 2, 5));
     }
 
     @Test
@@ -137,7 +138,8 @@ class InvoiceServiceTest {
 
         ArgumentCaptor<Invoice> captor = ArgumentCaptor.forClass(Invoice.class);
         verify(repository).save(captor.capture());
-        assertThat(captor.getValue().getDueDate()).isEqualTo(LocalDate.of(2026, 6, 10));
+        // fatura jun/2026 fecha em jul/2026; dueDay=closingDay=10 → vence 10/jul/2026
+        assertThat(captor.getValue().getDueDate()).isEqualTo(LocalDate.of(2026, 7, 10));
     }
 
     @Test

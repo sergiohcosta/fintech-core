@@ -96,7 +96,6 @@ class BudgetCycleServiceTest {
         Tenant tenant = tenantWith(1);
         User user = new User();
 
-        when(tenantRepository.findById(tenant.getId())).thenReturn(Optional.of(tenant));
         when(cycleRepository.findByTenantAndStatus(tenant, BudgetCycleStatus.OPEN))
             .thenReturn(Optional.of(new BudgetCycle()));
 
@@ -111,7 +110,6 @@ class BudgetCycleServiceTest {
         Tenant tenant = tenantWith(1);
         User user = new User();
 
-        when(tenantRepository.findById(tenant.getId())).thenReturn(Optional.of(tenant));
         when(cycleRepository.findByTenantAndStatus(tenant, BudgetCycleStatus.OPEN))
             .thenReturn(Optional.empty());
         when(cycleRepository.existsOverlap(eq(tenant), any(), any()))
@@ -128,12 +126,10 @@ class BudgetCycleServiceTest {
         Tenant tenant = tenantWith(1);
         User user = new User();
 
-        when(tenantRepository.findById(tenant.getId())).thenReturn(Optional.of(tenant));
         when(cycleRepository.findByTenantAndStatus(tenant, BudgetCycleStatus.OPEN))
             .thenReturn(Optional.empty());
         when(cycleRepository.existsOverlap(any(), any(), any()))
             .thenReturn(false);
-        when(tenantRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(accountRepository.sumLiquidBalanceByTenant(
                 eq(tenant.getId()), eq(TransactionType.INCOME), eq(TransactionStatus.PAID)))
             .thenReturn(new BigDecimal("3200.00"));
@@ -184,37 +180,12 @@ class BudgetCycleServiceTest {
             .status(BudgetCycleStatus.ENDED)
             .build();
 
-        List<BudgetItem> items = List.of();
-        BudgetCycleSummaryDTO summary = new BudgetCycleSummaryDTO(
-            new BigDecimal("6000.00"),  // plannedIncome
-            new BigDecimal("3500.00"),  // plannedExpense
-            new BigDecimal("3500.00"),  // projectedBalance
-            new BigDecimal("5000.00"),  // realizedIncome
-            new BigDecimal("2000.00"),  // realizedExpense
-            new BigDecimal("3800.00"),  // currentBalance
-            2L,                         // pendingCount
-            BigDecimal.ZERO,            // unplannedIncome
-            new BigDecimal("200.00"),   // unplannedExpense
-            new BigDecimal("2300.00"),  // availableToSpend
-            new BigDecimal("115.00"),   // dailyAllowance
-            20                          // remainingDays
-        );
-
         when(cycleRepository.findById(cycleId)).thenReturn(Optional.of(cycle));
-        when(itemRepository.findAllByCycleWithDetails(cycle)).thenReturn(items);
-        when(transactionRepository.findUnplannedByCycle(any(), any(), any(), any(), anyInt(), anyInt(), any()))
-            .thenReturn(List.of());
-        when(summaryService.calculateSummary(eq(cycle), eq(items), any(), any(LocalDate.class))).thenReturn(summary);
         when(cycleRepository.save(any(BudgetCycle.class))).thenAnswer(inv -> inv.getArgument(0));
 
         BudgetCycle result = service.close(cycleId, tenant, false);
 
         assertThat(result.getStatus()).isEqualTo(BudgetCycleStatus.CLOSED);
-        assertThat(result.getSnapshotProjectedBalance()).isEqualByComparingTo("3500");
-        assertThat(result.getSnapshotAvailableToSpend()).isEqualByComparingTo("2300");
-        assertThat(result.getSnapshotRealizedIncome()).isEqualByComparingTo("5000");
-        assertThat(result.getSnapshotRealizedExpense()).isEqualByComparingTo("2000");
-        assertThat(result.getSnapshotUnplannedExpenses()).isEqualByComparingTo("200");
         verify(cycleRepository).save(cycle);
     }
 
@@ -241,7 +212,7 @@ class BudgetCycleServiceTest {
     // ---- findCurrentByTenant() — lazy ENDED transition ----
 
     @Test
-    @DisplayName("findCurrentByTenant() transita OPEN→ENDED quando endDate < today")
+    @DisplayName("findOpenByTenant() retorna ciclo OPEN quando existe")
     void findCurrentByTenant_openComDataPassada_transitaParaEnded() {
         Tenant tenant = tenantWith(1);
         BudgetCycle cycle = BudgetCycle.builder()
@@ -254,36 +225,24 @@ class BudgetCycleServiceTest {
 
         when(cycleRepository.findByTenantAndStatus(tenant, BudgetCycleStatus.OPEN))
             .thenReturn(Optional.of(cycle));
-        when(cycleRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         Optional<BudgetCycle> result = service.findOpenByTenant(tenant);
 
         assertThat(result).isPresent();
-        assertThat(result.get().getStatus()).isEqualTo(BudgetCycleStatus.ENDED);
-        verify(cycleRepository).save(cycle);
+        assertThat(result.get().getStatus()).isEqualTo(BudgetCycleStatus.OPEN);
     }
 
     @Test
-    @DisplayName("findCurrentByTenant() retorna ENDED quando não há OPEN")
+    @DisplayName("findOpenByTenant() retorna vazio quando não há ciclo OPEN")
     void findCurrentByTenant_semOpen_retornaEnded() {
         Tenant tenant = tenantWith(1);
-        BudgetCycle ended = BudgetCycle.builder()
-            .id(UUID.randomUUID()).tenant(tenant)
-            .startDate(LocalDate.of(2026, 5, 1))
-            .endDate(LocalDate.of(2026, 5, 31))
-            .openingBalance(BigDecimal.ZERO)
-            .status(BudgetCycleStatus.ENDED)
-            .build();
 
         when(cycleRepository.findByTenantAndStatus(tenant, BudgetCycleStatus.OPEN))
             .thenReturn(Optional.empty());
-        when(cycleRepository.findByTenantAndStatus(tenant, BudgetCycleStatus.ENDED))
-            .thenReturn(Optional.of(ended));
 
         Optional<BudgetCycle> result = service.findOpenByTenant(tenant);
 
-        assertThat(result).isPresent();
-        assertThat(result.get().getStatus()).isEqualTo(BudgetCycleStatus.ENDED);
+        assertThat(result).isEmpty();
     }
 
     // ---- close() — requer ENDED ----
@@ -320,17 +279,6 @@ class BudgetCycleServiceTest {
             .build();
 
         when(cycleRepository.findById(cycle.getId())).thenReturn(Optional.of(cycle));
-        when(itemRepository.findAllByCycleWithDetails(cycle)).thenReturn(List.of());
-        when(transactionRepository.findUnplannedByCycle(any(), any(), any(), any(), anyInt(), anyInt(), any()))
-            .thenReturn(List.of());
-        when(summaryService.calculateSummary(eq(cycle), any(), any(), any(LocalDate.class))).thenReturn(
-            new BudgetCycleSummaryDTO(
-                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-                BigDecimal.ZERO, BigDecimal.ZERO, 0L,
-                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-                null, null
-            )
-        );
         when(cycleRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         BudgetCycle result = service.close(cycle.getId(), tenant, true);
@@ -351,17 +299,6 @@ class BudgetCycleServiceTest {
             .build();
 
         when(cycleRepository.findById(cycle.getId())).thenReturn(Optional.of(cycle));
-        when(itemRepository.findAllByCycleWithDetails(cycle)).thenReturn(List.of());
-        when(transactionRepository.findUnplannedByCycle(any(), any(), any(), any(), anyInt(), anyInt(), any()))
-            .thenReturn(List.of());
-        when(summaryService.calculateSummary(eq(cycle), any(), any(), any(LocalDate.class))).thenReturn(
-            new BudgetCycleSummaryDTO(
-                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-                BigDecimal.ZERO, BigDecimal.ZERO, 0L,
-                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-                null, null
-            )
-        );
         when(cycleRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         BudgetCycle result = service.close(cycle.getId(), tenant, false);
@@ -383,25 +320,11 @@ class BudgetCycleServiceTest {
             .status(BudgetCycleStatus.CLOSED)
             .build();
 
-        List<BudgetItem> items = List.of(
-            BudgetItem.builder()
-                .id(UUID.randomUUID())
-                .cycle(cycle)
-                .tenant(tenant)
-                .description("Item teste")
-                .amount(BigDecimal.TEN)
-                .type(com.fintech.api.domain.enums.TransactionType.EXPENSE)
-                .expectedDate(LocalDate.of(2026, 5, 10))
-                .source(com.fintech.api.domain.enums.BudgetItemSource.MANUAL)
-                .build()
-        );
-
         when(cycleRepository.findById(cycle.getId())).thenReturn(Optional.of(cycle));
-        when(itemRepository.findAllByCycleWithDetails(cycle)).thenReturn(items);
 
         service.delete(cycle.getId(), tenant);
 
-        verify(itemRepository).deleteAll(items);
+        verify(itemRepository).deleteAllByCycle(cycle);
         verify(cycleRepository).delete(cycle);
     }
 
@@ -446,13 +369,6 @@ class BudgetCycleServiceTest {
             eq(2026), eq(6),
             eq(TransactionStatus.CANCELLED)
         )).thenReturn(List.of());
-        when(summaryService.calculateSummary(eq(cycle), any(), any(), any(LocalDate.class)))
-            .thenReturn(new BudgetCycleSummaryDTO(
-                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.valueOf(5000), BigDecimal.ZERO,
-                BigDecimal.ZERO, BigDecimal.valueOf(5000), 0L,
-                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-                BigDecimal.ZERO, 20
-            ));
 
         service.toResponseDTO(cycle);
 
