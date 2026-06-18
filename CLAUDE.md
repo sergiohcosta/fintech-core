@@ -70,11 +70,14 @@ Dataset realista é **artefato vivo** (parte da spec). Toda mudança de banco **
 | Situação | Ação obrigatória |
 |----------|------------------|
 | Nova tabela/coluna de negócio | Atualizar INSERTs em `db/seed/V13__seed_dev.sql` |
+| Feature que afeta planejamento (`budget_cycles`, `budget_items`, `recurring_budget_items`) | Atualizar o ciclo de junho no seed: ajustar itens, valores ou vínculos conforme o novo comportamento |
 | Entidade p/ setup mínimo de teste | Atualizar `seed_base.sql` |
 | Novo endpoint/param | Adicionar request em `docs/http/seed-dataset.http` |
 | Feature só frontend / refactor sem schema | Nenhuma atualização |
 
 UUIDs predefinidos por série (nunca `gen_random_uuid()` para cross-reference). Seed sempre com versão maior que todas as migrations de schema. Credenciais e reset: @tech.md
+
+**Séries de UUID:** `10`=Tenant · `20`=Usuários · `30`=Contas · `40`=Categorias · `50`=Faturas · `60`=InstallmentGroups · `70`=Transfers · `80`=Convites · `a0`=BudgetCycles · `b0`=BudgetItems · `c0`=RecurringItems · `d0`=Transações com UUID fixo (vínculos de budget)
 
 ## Estado Atual
 
