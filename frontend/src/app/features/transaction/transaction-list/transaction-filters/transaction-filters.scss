@@ -77,7 +77,7 @@
   }
 
   // Neutro (Todos)
-  &:not(.income):not(.expense):not(.pending):not(.paid):not(.cancelled) {
+  &:not(.income):not(.expense):not(.pending):not(.paid):not(.cancelled):not(.transfer) {
     &.active {
       background: #f1f3f4;
       border-color: #bdc1c6;
@@ -103,6 +103,10 @@
 
   &.cancelled {
     &:hover, &.active { background: #f1f3f4; border-color: #bdc1c6; color: #80868b; }
+  }
+
+  &.transfer {
+    &:hover, &.active { background: #e8f0fe; border-color: #4285f4; color: #1a73e8; }
   }
 }
 

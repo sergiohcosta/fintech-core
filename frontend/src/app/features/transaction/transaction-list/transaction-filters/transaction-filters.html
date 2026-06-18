@@ -40,6 +40,9 @@
         <button type="button" class="fchip income"
                 [class.active]="type() === 'INCOME'"
                 (click)="onTypeChange('INCOME')">Receita</button>
+        <button type="button" class="fchip transfer"
+                [class.active]="type() === 'TRANSFER'"
+                (click)="onTypeChange('TRANSFER')">Transferência</button>
       </div>
     </div>
     <div class="filter-section">
