@@ -425,16 +425,15 @@ export interface BudgetCycleSummary {
   projectedBalance?: number;
   realizedIncome?: number;
   realizedExpense?: number;
-  unplannedExpenses?: number;
+  unplannedIncome?: number;
+  unplannedExpense?: number;
+  currentBalance?: number;
   availableToSpend?: number;
   /** @nullable */
   dailyAllowance?: number | null;
   /** @nullable */
   remainingDays?: number | null;
   pendingCount?: number;
-  unplannedIncome?: number;
-  unplannedExpense?: number;
-  availableToSpend?: number;
 }
 
 export interface BudgetItemResponse {
