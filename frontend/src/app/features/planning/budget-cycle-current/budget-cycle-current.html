@@ -83,6 +83,26 @@
           </div>
         </mat-card-content>
       </mat-card>
+
+      @if (cycle()!.status === 'OPEN') {
+        <mat-card>
+          <mat-card-header><mat-card-title>Disponível</mat-card-title></mat-card-header>
+          <mat-card-content>
+            <div class="summary-line" [class.negative]="(summary().availableToSpend ?? 0) < 0">
+              <span>Para gastar</span>
+              <strong>{{ summary().availableToSpend | currency:'BRL' }}</strong>
+            </div>
+            <div class="summary-line">
+              <span>Por dia</span>
+              <strong>{{ summary().dailyAllowance | currency:'BRL' }}</strong>
+            </div>
+            <div class="summary-line">
+              <span>Dias restantes</span>
+              <strong>{{ summary().remainingDays }}</strong>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      }
     </div>
 
     @if (cycle()!.status === 'OPEN') {

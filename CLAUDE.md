@@ -212,13 +212,30 @@ O projeto mantém um dataset realista (`V10__seed_dev.sql`) que deve ser tratado
 
 | Situação | Ação obrigatória |
 |----------|-----------------|
-| Nova tabela de negócio adicionada | Inserir dados representativos no `V10__seed_dev.sql` |
-| Nova coluna relevante em tabela existente | Atualizar os INSERTs do `V10__seed_dev.sql` |
+| Nova tabela de negócio adicionada | Inserir dados representativos no `V13__seed_dev.sql` |
+| Nova coluna relevante em tabela existente | Atualizar os INSERTs do `V13__seed_dev.sql` |
+| Feature que afeta planejamento (`budget_cycles`, `budget_items`, `recurring_budget_items`) | Atualizar o ciclo de junho no seed: ajustar itens, valores ou vínculos conforme o novo comportamento |
 | Nova entidade necessária para setup mínimo de testes | Atualizar `seed_base.sql` |
 | Novo endpoint ou novo parâmetro de endpoint | Adicionar request em `docs/http/seed-dataset.http` |
 | Feature puramente de frontend / refatoração | Nenhuma atualização necessária |
 
-**Ao atualizar `V10__seed_dev.sql`:** manter o padrão de UUIDs predefinidos. Novas entidades recebem UUIDs na série correspondente (ver spec). Nunca usar `gen_random_uuid()` para entidades que precisam de cross-reference.
+**Ao atualizar `V13__seed_dev.sql`:** manter o padrão de UUIDs predefinidos por série (ver tabela abaixo). Nunca usar `gen_random_uuid()` para entidades que precisam de cross-reference.
+
+**Séries de UUID do seed:**
+| Série | Entidade |
+|-------|----------|
+| `10000000-...` | Tenant |
+| `20000000-...` | Usuários |
+| `30000000-...` | Contas |
+| `40000000-...` | Categorias |
+| `50000000-...` | Faturas |
+| `60000000-...` | Grupos de parcelamento |
+| `70000000-...` | Transfer IDs |
+| `80000000-...` | Convites |
+| `a0000000-...` | Ciclos de planejamento |
+| `b0000000-...` | Budget items |
+| `c0000000-...` | Itens recorrentes |
+| `d0000000-...` | Transações com UUID fixo (para vincular a budget items) |
 
 **Credenciais:**
 - Dev (banco com seed): `carlos@costa.com` / `costa123`

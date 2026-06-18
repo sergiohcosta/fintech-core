@@ -77,6 +77,36 @@ type HttpClientObserveOptions = HttpClientOptions & {
 @Injectable({ providedIn: 'root' })
 export class TenantService {
   private readonly http = inject(HttpClient);
+ getTenantSettings<TData = TenantSettingsPatchRequest>( options?: HttpClientBodyOptions): Observable<TData>;
+ getTenantSettings<TData = TenantSettingsPatchRequest>( options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ getTenantSettings<TData = TenantSettingsPatchRequest>( options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  getTenantSettings<TData = TenantSettingsPatchRequest>(
+     options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    if (options?.observe === 'events') {
+      return this.http.get<TData>(
+      `/api/tenant/settings`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'events',
+      }
+    );
+    }
+
+    if (options?.observe === 'response') {
+      return this.http.get<TData>(
+      `/api/tenant/settings`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'response',
+      }
+    );
+    }
+
+    return this.http.get<TData>(
+      `/api/tenant/settings`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'body',
+      }
+    );
+  }
  patchTenantSettings<TData = void>(tenantSettingsPatchRequest: TenantSettingsPatchRequest, options?: HttpClientBodyOptions): Observable<TData>;
  patchTenantSettings<TData = void>(tenantSettingsPatchRequest: TenantSettingsPatchRequest, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
  patchTenantSettings<TData = void>(tenantSettingsPatchRequest: TenantSettingsPatchRequest, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;

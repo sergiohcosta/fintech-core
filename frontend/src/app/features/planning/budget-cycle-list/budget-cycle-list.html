@@ -29,9 +29,14 @@
       <ng-container matColumnDef="actions">
         <th mat-header-cell *matHeaderCellDef></th>
         <td mat-cell *matCellDef="let c">
-          <a mat-icon-button [routerLink]="['/planning/cycles', c.id]">
+          <a mat-icon-button [routerLink]="['/planning/cycles', c.id]" matTooltip="Ver detalhes">
             <mat-icon>visibility</mat-icon>
           </a>
+          @if (c.status !== 'OPEN') {
+            <button mat-icon-button matTooltip="Excluir ciclo" (click)="deleteCycle(c)">
+              <mat-icon>delete_outline</mat-icon>
+            </button>
+          }
         </td>
       </ng-container>
       <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>

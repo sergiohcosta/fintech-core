@@ -16,10 +16,14 @@ public class TenantController {
 
     private final TenantRepository tenantRepository;
 
+    @GetMapping("/settings")
+    public ResponseEntity<TenantSettingsPatchRequest> getSettings() {
+        return ResponseEntity.ok(new TenantSettingsPatchRequest(getUser().getTenant().getBudgetCycleStartDay()));
+    }
+
     @PatchMapping("/settings")
     public ResponseEntity<Void> patchSettings(@Valid @RequestBody TenantSettingsPatchRequest req) {
-        User user = getUser();
-        var tenant = user.getTenant();
+        var tenant = getUser().getTenant();
         tenant.setBudgetCycleStartDay(req.budgetCycleStartDay());
         tenantRepository.save(tenant);
         return ResponseEntity.noContent().build();

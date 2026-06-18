@@ -17,6 +17,7 @@ import { DEFAULT_SUMMARY } from './budget-cycle.utils';
 import { BudgetItemFormComponent, BudgetItemFormResult } from '../budget-item-form/budget-item-form';
 import { LinkTransactionDialogComponent, LinkTransactionDialogData } from '../link-transaction-dialog/link-transaction-dialog';
 import { LinkBudgetItemDialogComponent, LinkBudgetItemDialogData } from '../link-budget-item-dialog/link-budget-item-dialog';
+import { ConfirmationDialogComponent, ConfirmationDialogData } from '../../../components/confirmation-dialog/confirmation-dialog';
 
 @Component({
   selector: 'app-budget-cycle-current',
@@ -92,16 +93,27 @@ export class BudgetCycleCurrentComponent implements OnInit {
   closeCycle(): void {
     const id = this.cycle()?.id;
     if (!id) return;
-    this.closing.set(true);
-    this.planningService.closeCycle(id)
-      .pipe(finalize(() => this.closing.set(false)))
-      .subscribe({
-        next: c => {
-          this.cycle.set(c);
-          this.snackBar.open('Ciclo fechado.', 'OK', { duration: 3000 });
-        },
-        error: () => this.snackBar.open('Erro ao fechar ciclo.', 'OK', { duration: 3000 }),
-      });
+    const ref = this.dialog.open(ConfirmationDialogComponent, {
+      data: {
+        title: 'Fechar ciclo em andamento',
+        message: 'Este ciclo ainda está em andamento. Fechar agora encerrará o planejamento antes do fim do período. Deseja continuar?',
+        confirmText: 'Fechar ciclo',
+        cancelText: 'Cancelar',
+      } satisfies ConfirmationDialogData,
+    });
+    ref.afterClosed().subscribe((confirmed: boolean) => {
+      if (!confirmed) return;
+      this.closing.set(true);
+      this.planningService.closeCycle(id, true)
+        .pipe(finalize(() => this.closing.set(false)))
+        .subscribe({
+          next: c => {
+            this.cycle.set(c);
+            this.snackBar.open('Ciclo fechado.', 'OK', { duration: 3000 });
+          },
+          error: () => this.snackBar.open('Erro ao fechar ciclo.', 'OK', { duration: 3000 }),
+        });
+    });
   }
 
   addItem(): void {

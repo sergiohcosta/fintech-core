@@ -1,11 +1,22 @@
 @if (isOpenCycleMode()) {
   <h2 mat-dialog-title>Abrir ciclo de planejamento</h2>
   <mat-dialog-content>
-    <form [formGroup]="cycleForm">
-      <mat-form-field appearance="outline" style="width:100%">
-        <mat-label>Mês de referência (yyyy-MM)</mat-label>
-        <input matInput formControlName="referenceMonth" placeholder="2026-06" />
-        <mat-error>Formato esperado: yyyy-MM (ex: 2026-06)</mat-error>
+    <form [formGroup]="cycleForm" style="display:flex;gap:12px;padding-top:8px">
+      <mat-form-field appearance="outline" style="flex:1">
+        <mat-label>Mês</mat-label>
+        <mat-select formControlName="month">
+          @for (m of months; track m) {
+            <mat-option [value]="m">{{ monthLabels[m - 1] }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline" style="flex:0 0 110px">
+        <mat-label>Ano</mat-label>
+        <mat-select formControlName="year">
+          @for (y of years; track y) {
+            <mat-option [value]="y">{{ y }}</mat-option>
+          }
+        </mat-select>
       </mat-form-field>
     </form>
   </mat-dialog-content>

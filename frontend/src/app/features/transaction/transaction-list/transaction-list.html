@@ -61,73 +61,131 @@
         </td>
       </ng-container>
 
-      <ng-container matColumnDef="invoiceHeader">
-        <td mat-cell *matCellDef="let row" [attr.colspan]="displayedColumns.length" class="invoice-header-cell">
-          <div class="invoice-header-content">
-            <span class="invoice-header-label">{{ $any(row).label }}</span>
-            @if ($any(row).status) {
-              <span [class]="invoiceHeaderChipClass($any(row).status)">
-                {{ invoiceHeaderStatusLabel($any(row).status) }}
-              </span>
-            }
-            <span class="invoice-header-total">
-              {{ $any(row).totalAmount | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}
-            </span>
-            <span class="invoice-header-count">{{ $any(row).transactionCount }} lançamento(s)</span>
-          </div>
-        </td>
-      </ng-container>
-
       <ng-container matColumnDef="description">
-        <th mat-header-cell *matHeaderCellDef>Descrição</th>
+        <th mat-header-cell *matHeaderCellDef>
+          <button class="sort-header" (click)="onSortClick('description', $event)">
+            Descrição
+            @if (sortInfo('description'); as info) {
+              @if (sortCriteria().length > 1) { <span class="sort-badge">{{ info.priority }}</span> }
+              <mat-icon class="sort-arrow">{{ info.dir === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
+            }
+          </button>
+        </th>
         <td mat-cell *matCellDef="let row">
-          <span class="description-text">{{ $any(row).data?.description }}</span>
-          @if ($any(row).data?.installmentLabel) {
-            <span class="installment-badge">{{ $any(row).data.installmentLabel }}</span>
+          @if (row.kind === 'invoice-summary') {
+            <span class="description-text">{{ $any(row).label }}</span>
+            <span class="installment-badge">{{ $any(row).transactionCount }} lançamentos</span>
+          } @else {
+            <span class="description-text">{{ $any(row).data?.description }}</span>
+            @if ($any(row).data?.installmentLabel) {
+              <span class="installment-badge">{{ $any(row).data.installmentLabel }}</span>
+            }
           }
         </td>
       </ng-container>
 
       <ng-container matColumnDef="amount">
-        <th mat-header-cell *matHeaderCellDef>Valor</th>
+        <th mat-header-cell *matHeaderCellDef>
+          <button class="sort-header" (click)="onSortClick('amount', $event)">
+            Valor
+            @if (sortInfo('amount'); as info) {
+              @if (sortCriteria().length > 1) { <span class="sort-badge">{{ info.priority }}</span> }
+              <mat-icon class="sort-arrow">{{ info.dir === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
+            }
+          </button>
+        </th>
         <td mat-cell *matCellDef="let row">
-          <span [class]="'amount ' + ($any(row).data?.type ?? '').toLowerCase()">
-            {{ $any(row).data?.amount | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}
-          </span>
+          @if (row.kind === 'invoice-summary') {
+            <span class="amount expense">
+              {{ $any(row).totalAmount | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}
+            </span>
+          } @else {
+            <span [class]="'amount ' + ($any(row).data?.type ?? '').toLowerCase()">
+              {{ $any(row).data?.amount | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}
+            </span>
+          }
         </td>
       </ng-container>
 
       <ng-container matColumnDef="date">
-        <th mat-header-cell *matHeaderCellDef>Data</th>
+        <th mat-header-cell *matHeaderCellDef>
+          <button class="sort-header" (click)="onSortClick('date', $event)">
+            Data
+            @if (sortInfo('date'); as info) {
+              @if (sortCriteria().length > 1) { <span class="sort-badge">{{ info.priority }}</span> }
+              <mat-icon class="sort-arrow">{{ info.dir === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
+            }
+          </button>
+        </th>
         <td mat-cell *matCellDef="let row">
-          {{ ($any(row).data?.installmentGroupId && $any(row).data?.invoiceDueDate
-              ? $any(row).data?.invoiceDueDate
-              : $any(row).data?.date) | date:'dd/MM/yyyy' }}
+          @if (row.kind === 'invoice-summary') {
+            {{ $any(row).dueDate | date:'dd/MM/yyyy' }}
+          } @else {
+            {{ ($any(row).data?.installmentGroupId && $any(row).data?.invoiceDueDate
+                ? $any(row).data?.invoiceDueDate
+                : $any(row).data?.date) | date:'dd/MM/yyyy' }}
+          }
         </td>
       </ng-container>
 
       <ng-container matColumnDef="type">
-        <th mat-header-cell *matHeaderCellDef>Tipo</th>
+        <th mat-header-cell *matHeaderCellDef>
+          <button class="sort-header" (click)="onSortClick('type', $event)">
+            Tipo
+            @if (sortInfo('type'); as info) {
+              @if (sortCriteria().length > 1) { <span class="sort-badge">{{ info.priority }}</span> }
+              <mat-icon class="sort-arrow">{{ info.dir === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
+            }
+          </button>
+        </th>
         <td mat-cell *matCellDef="let row">
-          <span [class]="'type-badge type-' + ($any(row).data?.transferId ? 'transfer' : ($any(row).data?.type ?? '').toLowerCase())">
-            {{ typeLabel($any(row).data) }}
-          </span>
+          @if (row.kind === 'invoice-summary') {
+            <span class="type-badge type-expense">Fatura</span>
+          } @else {
+            <span [class]="'type-badge type-' + ($any(row).data?.transferId ? 'transfer' : ($any(row).data?.type ?? '').toLowerCase())">
+              {{ typeLabel($any(row).data) }}
+            </span>
+          }
         </td>
       </ng-container>
 
       <ng-container matColumnDef="status">
-        <th mat-header-cell *matHeaderCellDef>Status</th>
+        <th mat-header-cell *matHeaderCellDef>
+          <button class="sort-header" (click)="onSortClick('status', $event)">
+            Status
+            @if (sortInfo('status'); as info) {
+              @if (sortCriteria().length > 1) { <span class="sort-badge">{{ info.priority }}</span> }
+              <mat-icon class="sort-arrow">{{ info.dir === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
+            }
+          </button>
+        </th>
         <td mat-cell *matCellDef="let row">
-          <span [class]="'status-badge status-' + ($any(row).data?.status ?? '').toLowerCase()">
-            {{ statusLabel($any(row).data?.status ?? '') }}
-          </span>
+          @if (row.kind === 'invoice-summary') {
+            <span [class]="invoiceStatusChipClass($any(row).status)">
+              {{ invoiceStatusLabel($any(row).status) }}
+            </span>
+          } @else {
+            <span [class]="'status-badge status-' + ($any(row).data?.status ?? '').toLowerCase()">
+              {{ statusLabel($any(row).data?.status ?? '') }}
+            </span>
+          }
         </td>
       </ng-container>
 
       <ng-container matColumnDef="category">
-        <th mat-header-cell *matHeaderCellDef>Categoria</th>
+        <th mat-header-cell *matHeaderCellDef>
+          <button class="sort-header" (click)="onSortClick('category', $event)">
+            Categoria
+            @if (sortInfo('category'); as info) {
+              @if (sortCriteria().length > 1) { <span class="sort-badge">{{ info.priority }}</span> }
+              <mat-icon class="sort-arrow">{{ info.dir === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
+            }
+          </button>
+        </th>
         <td mat-cell *matCellDef="let row">
-          @if ($any(row).data?.categoryName) {
+          @if (row.kind === 'invoice-summary') {
+            —
+          } @else if ($any(row).data?.categoryName) {
             <span
               [class.category-archived]="$any(row).data.categoryArchived"
               [matTooltip]="$any(row).data.categoryArchived ? 'Categoria arquivada' : ''">
@@ -138,42 +196,62 @@
       </ng-container>
 
       <ng-container matColumnDef="account">
-        <th mat-header-cell *matHeaderCellDef>Conta</th>
-        <td mat-cell *matCellDef="let row">
-          <div class="account-cell">
-            <span>{{ $any(row).data?.accountName ?? '—' }}</span>
-            @if (invoiceLabel($any(row).data); as label) {
-              <a [routerLink]="['/invoices', $any(row).data?.invoiceId]"
-                 [class]="invoiceChipClass($any(row).data?.invoiceStatus)"
-                 style="text-decoration: none;"
-                 matTooltip="Ver fatura">{{ label }}</a>
+        <th mat-header-cell *matHeaderCellDef>
+          <button class="sort-header" (click)="onSortClick('account', $event)">
+            Conta
+            @if (sortInfo('account'); as info) {
+              @if (sortCriteria().length > 1) { <span class="sort-badge">{{ info.priority }}</span> }
+              <mat-icon class="sort-arrow">{{ info.dir === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
             }
-          </div>
+          </button>
+        </th>
+        <td mat-cell *matCellDef="let row">
+          @if (row.kind === 'invoice-summary') {
+            <span>{{ $any(row).accountName }}</span>
+          } @else {
+            <div class="account-cell">
+              <span>{{ $any(row).data?.accountName ?? '—' }}</span>
+              @if (invoiceLabel($any(row).data); as label) {
+                <a [routerLink]="['/invoices', $any(row).data?.invoiceId]"
+                   [class]="invoiceChipClass($any(row).data?.invoiceStatus)"
+                   style="text-decoration: none;"
+                   matTooltip="Ver fatura">{{ label }}</a>
+              }
+            </div>
+          }
         </td>
       </ng-container>
 
       <ng-container matColumnDef="actions">
         <th mat-header-cell *matHeaderCellDef></th>
         <td mat-cell *matCellDef="let row">
-          <div class="actions-group">
-            @if (row.kind === 'installment') {
-              <button mat-icon-button
-                      [class.expand-active]="$any(row).isExpanded"
-                      (click)="toggleExpand($any(row).data?.id); $event.stopPropagation()"
-                      matTooltip="Ver detalhes do parcelamento">
-                <mat-icon>{{ $any(row).isExpanded ? 'expand_less' : 'expand_more' }}</mat-icon>
+          @if (row.kind === 'invoice-summary') {
+            <div class="actions-group">
+              <button mat-icon-button [routerLink]="['/invoices', $any(row).invoiceId]" matTooltip="Ver fatura">
+                <mat-icon>open_in_new</mat-icon>
               </button>
-            }
-            <button mat-icon-button color="primary"
-                    (click)="onEdit($any(row).data)"
-                    [disabled]="!!$any(row).data?.transferId"
-                    [matTooltip]="$any(row).data?.transferId ? 'Transferências não podem ser editadas' : 'Editar'">
-              <mat-icon>edit</mat-icon>
-            </button>
-            <button mat-icon-button color="warn" (click)="onDelete($any(row).data)" matTooltip="Excluir">
-              <mat-icon>delete</mat-icon>
-            </button>
-          </div>
+            </div>
+          } @else {
+            <div class="actions-group">
+              @if (row.kind === 'installment') {
+                <button mat-icon-button
+                        [class.expand-active]="$any(row).isExpanded"
+                        (click)="toggleExpand($any(row).data?.id); $event.stopPropagation()"
+                        matTooltip="Ver detalhes do parcelamento">
+                  <mat-icon>{{ $any(row).isExpanded ? 'expand_less' : 'expand_more' }}</mat-icon>
+                </button>
+              }
+              <button mat-icon-button color="primary"
+                      (click)="onEdit($any(row).data)"
+                      [disabled]="!!$any(row).data?.transferId"
+                      [matTooltip]="$any(row).data?.transferId ? 'Transferências não podem ser editadas' : 'Editar'">
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button mat-icon-button color="warn" (click)="onDelete($any(row).data)" matTooltip="Excluir">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </div>
+          }
         </td>
       </ng-container>
 
@@ -222,11 +300,11 @@
       <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
       <tr mat-row *matRowDef="let row; columns: displayedColumns; when: isDataRow" class="element-row"
           [class.installment-row]="row.kind === 'installment'"
+          [class.invoice-summary-row]="row.kind === 'invoice-summary'"
           [class.expanded-row]="$any(row).isExpanded">
       </tr>
       <tr mat-row *matRowDef="let row; columns: ['expandedDetail']; when: isDetailRow" class="detail-row"></tr>
       <tr mat-row *matRowDef="let row; columns: ['periodHeader']; when: isPeriodHeader" class="period-header-row"></tr>
-      <tr mat-row *matRowDef="let row; columns: ['invoiceHeader']; when: isInvoiceHeader" class="invoice-header-row"></tr>
 
       <tr class="mat-row" *matNoDataRow>
         <td class="mat-cell empty-state" [attr.colspan]="displayedColumns.length">

@@ -268,9 +268,12 @@ public class TransactionService {
 
     // Compras até o fechamento ficam na fatura do mesmo mês; após o fechamento, vão para o próximo.
     private YearMonth resolveInvoiceMonth(LocalDate purchaseDate, int closingDay) {
+        // Compras ATÉ o fechamento encerram a fatura do mês anterior.
+        // Compras APÓS o fechamento iniciam a fatura do mês corrente.
+        // Ex: closingDay=2 → compra em 03/06 → fatura de junho; compra em 02/07 → fatura de junho.
         return purchaseDate.getDayOfMonth() <= closingDay
-                ? YearMonth.from(purchaseDate)
-                : YearMonth.from(purchaseDate).plusMonths(1);
+                ? YearMonth.from(purchaseDate).minusMonths(1)
+                : YearMonth.from(purchaseDate);
     }
 
     private Category resolveCategory(UUID categoryId, User user) {

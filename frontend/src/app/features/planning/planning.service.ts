@@ -28,8 +28,12 @@ export class PlanningService {
     return this.budget.openBudgetCycle(req);
   }
 
-  closeCycle(id: string): Observable<BudgetCycleResponse> {
-    return this.budget.closeBudgetCycle(id);
+  closeCycle(id: string, force = false): Observable<BudgetCycleResponse> {
+    return this.budget.closeBudgetCycle(id, force ? { force: true } : undefined);
+  }
+
+  deleteCycle(id: string): Observable<void> {
+    return this.budget.deleteBudgetCycle(id);
   }
 
   listCycles(page = 0, size = 12): Observable<BudgetCyclePageResponse> {
@@ -78,6 +82,10 @@ export class PlanningService {
 
   deleteRecurring(id: string): Observable<void> {
     return this.budget.deleteRecurringBudgetItem(id);
+  }
+
+  getSettings(): Observable<TenantSettingsPatchRequest> {
+    return this.tenant.getTenantSettings();
   }
 
   patchTenantSettings(req: TenantSettingsPatchRequest): Observable<void> {
