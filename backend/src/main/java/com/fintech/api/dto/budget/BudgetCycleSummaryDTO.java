@@ -9,5 +9,8 @@ public record BudgetCycleSummaryDTO(
     BigDecimal realizedIncome,
     BigDecimal realizedExpense,
     BigDecimal currentBalance,
-    long pendingCount
+    long       pendingCount,
+    BigDecimal unplannedIncome,
+    BigDecimal unplannedExpense,
+    BigDecimal availableToSpend
 ) {}
