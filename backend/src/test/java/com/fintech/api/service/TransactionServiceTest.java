@@ -336,7 +336,7 @@ class TransactionServiceTest {
 
         Invoice invoice = Invoice.builder()
                 .id(UUID.randomUUID()).account(account)
-                .referenceYear(2026).referenceMonth(6)
+                .referenceYear(2026).referenceMonth(5)
                 .closingDate(LocalDate.of(2026, 6, 5))
                 .dueDate(LocalDate.of(2026, 6, 15))
                 .status(InvoiceStatus.OPEN).build();
@@ -348,13 +348,13 @@ class TransactionServiceTest {
         when(accountRepository.findByIdAndTenant(account.getId(), user.getTenant()))
                 .thenReturn(Optional.of(account));
         when(creditCardDetailsRepository.findByAccount(account)).thenReturn(Optional.of(details));
-        when(invoiceService.getOrCreate(account, 2026, 6)).thenReturn(invoice);
+        when(invoiceService.getOrCreate(account, 2026, 5)).thenReturn(invoice);
         when(repository.save(any(Transaction.class))).thenAnswer(i -> i.getArgument(0));
 
         List<TransactionResponseDTO> result = service.create(dto, user);
 
         assertThat(result).hasSize(1);
-        verify(invoiceService).getOrCreate(account, 2026, 6);
+        verify(invoiceService).getOrCreate(account, 2026, 5);
     }
 
     @Test
@@ -388,9 +388,9 @@ class TransactionServiceTest {
 
         service.create(dto, user);
 
+        verify(invoiceService).getOrCreate(account, 2026, 5);
         verify(invoiceService).getOrCreate(account, 2026, 6);
         verify(invoiceService).getOrCreate(account, 2026, 7);
-        verify(invoiceService).getOrCreate(account, 2026, 8);
     }
 
     @Test
@@ -413,7 +413,7 @@ class TransactionServiceTest {
         when(creditCardDetailsRepository.findByAccount(account)).thenReturn(Optional.of(details));
         when(invoiceService.getOrCreate(any(), anyInt(), anyInt()))
                 .thenReturn(Invoice.builder().id(UUID.randomUUID()).account(account)
-                        .referenceYear(2026).referenceMonth(7)
+                        .referenceYear(2026).referenceMonth(6)
                         .closingDate(LocalDate.of(2026, 7, 5))
                         .dueDate(LocalDate.of(2026, 7, 15))
                         .status(InvoiceStatus.OPEN).build());
@@ -421,8 +421,8 @@ class TransactionServiceTest {
 
         service.create(dto, user);
 
-        // Compra do dia 8 (pós-fechamento dia 5) → fatura de julho (mês 7)
-        verify(invoiceService).getOrCreate(account, 2026, 7);
+        // Compra do dia 8 (pós-fechamento dia 5) → fatura de junho (mês 6): dia > fechamento → mês da compra
+        verify(invoiceService).getOrCreate(account, 2026, 6);
     }
 
     @Test
