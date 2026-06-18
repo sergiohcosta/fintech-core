@@ -159,6 +159,38 @@ class BudgetCycleServiceTest {
         assertThat(result).isEqualTo(LocalDate.of(2026, 6, 5));
     }
 
+    // ---- toResponseDTO ----
+
+    // TODO: implementado na Task 3 — service.toResponseDTO(cycle) não existe ainda
+    @Test
+    @DisplayName("toResponseDTO busca transações não planejadas com parâmetros do ciclo")
+    void toResponseDTO_chamaFindUnplannedComParametrosCorretos() {
+        Tenant tenant = new Tenant();
+        BudgetCycle cycle = BudgetCycle.builder()
+            .id(UUID.randomUUID())
+            .tenant(tenant)
+            .startDate(LocalDate.of(2026, 6, 1))
+            .endDate(LocalDate.of(2026, 6, 30))
+            .openingBalance(BigDecimal.valueOf(5000))
+            .status(BudgetCycleStatus.OPEN)
+            .build();
+
+        when(itemRepository.findAllByCycleWithDetails(cycle)).thenReturn(List.of());
+        when(transactionRepository.findUnplannedByCycle(
+            eq(tenant), eq(cycle),
+            eq(LocalDate.of(2026, 6, 1)), eq(LocalDate.of(2026, 6, 30)),
+            eq(TransactionStatus.CANCELLED)
+        )).thenReturn(List.of());
+
+        service.toResponseDTO(cycle);
+
+        verify(transactionRepository).findUnplannedByCycle(
+            tenant, cycle,
+            LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30),
+            TransactionStatus.CANCELLED
+        );
+    }
+
     private Tenant tenantWith(int startDay) {
         Tenant t = new Tenant();
         t.setId(UUID.randomUUID());
