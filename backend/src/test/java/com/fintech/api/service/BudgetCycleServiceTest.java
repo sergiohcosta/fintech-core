@@ -7,7 +7,6 @@ import com.fintech.api.domain.enums.TransactionStatus;
 import com.fintech.api.domain.enums.TransactionType;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.user.User;
-import com.fintech.api.dto.budget.BudgetCycleOpenRequest;
 import com.fintech.api.dto.budget.BudgetCycleSummaryDTO;
 import com.fintech.api.repository.AccountRepository;
 import com.fintech.api.repository.BudgetCycleRepository;
@@ -101,7 +100,7 @@ class BudgetCycleServiceTest {
         when(cycleRepository.findByTenantAndStatus(tenant, BudgetCycleStatus.OPEN))
             .thenReturn(Optional.of(new BudgetCycle()));
 
-        assertThatThrownBy(() -> service.open(tenant, user, new BudgetCycleOpenRequest("2026-06", 1, null)))
+        assertThatThrownBy(() -> service.open(tenant, user, "2026-06"))
             .isInstanceOf(IllegalStateException.class)
             .hasMessage("Já existe um ciclo aberto para este tenant.");
     }
@@ -118,7 +117,7 @@ class BudgetCycleServiceTest {
         when(cycleRepository.existsOverlap(eq(tenant), any(), any()))
             .thenReturn(true);
 
-        assertThatThrownBy(() -> service.open(tenant, user, new BudgetCycleOpenRequest("2026-06", 1, null)))
+        assertThatThrownBy(() -> service.open(tenant, user, "2026-06"))
             .isInstanceOf(IllegalStateException.class)
             .hasMessage("O período solicitado conflita com um ciclo já existente.");
     }
@@ -146,7 +145,7 @@ class BudgetCycleServiceTest {
         var captor = ArgumentCaptor.forClass(BudgetCycle.class);
         when(cycleRepository.save(captor.capture())).thenAnswer(inv -> inv.getArgument(0));
 
-        service.open(tenant, user, new BudgetCycleOpenRequest("2026-06", 1, null));
+        service.open(tenant, user, "2026-06");
 
         assertThat(captor.getValue().getOpeningBalance()).isEqualByComparingTo("3200.00");
     }
@@ -257,7 +256,7 @@ class BudgetCycleServiceTest {
             .thenReturn(Optional.of(cycle));
         when(cycleRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        Optional<BudgetCycle> result = service.findCurrentByTenant(tenant);
+        Optional<BudgetCycle> result = service.findOpenByTenant(tenant);
 
         assertThat(result).isPresent();
         assertThat(result.get().getStatus()).isEqualTo(BudgetCycleStatus.ENDED);
@@ -281,7 +280,7 @@ class BudgetCycleServiceTest {
         when(cycleRepository.findByTenantAndStatus(tenant, BudgetCycleStatus.ENDED))
             .thenReturn(Optional.of(ended));
 
-        Optional<BudgetCycle> result = service.findCurrentByTenant(tenant);
+        Optional<BudgetCycle> result = service.findOpenByTenant(tenant);
 
         assertThat(result).isPresent();
         assertThat(result.get().getStatus()).isEqualTo(BudgetCycleStatus.ENDED);
