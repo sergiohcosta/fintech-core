@@ -187,19 +187,18 @@ class BudgetCycleServiceTest {
 
         List<BudgetItem> items = List.of();
         BudgetCycleSummaryDTO summary = new BudgetCycleSummaryDTO(
-            new BigDecimal("1000.00"),  // openingBalance
             new BigDecimal("6000.00"),  // plannedIncome
             new BigDecimal("3500.00"),  // plannedExpense
             new BigDecimal("3500.00"),  // projectedBalance
             new BigDecimal("5000.00"),  // realizedIncome
             new BigDecimal("2000.00"),  // realizedExpense
+            new BigDecimal("3800.00"),  // currentBalance
+            2L,                         // pendingCount
             BigDecimal.ZERO,            // unplannedIncome
             new BigDecimal("200.00"),   // unplannedExpense
-            new BigDecimal("3800.00"),  // currentBalance
             new BigDecimal("2300.00"),  // availableToSpend
             new BigDecimal("115.00"),   // dailyAllowance
-            20,                         // remainingDays
-            2L                          // pendingCount
+            20                          // remainingDays
         );
 
         when(cycleRepository.findById(cycleId)).thenReturn(Optional.of(cycle));
@@ -328,9 +327,9 @@ class BudgetCycleServiceTest {
         when(summaryService.calculateSummary(eq(cycle), any(), any(), any(LocalDate.class))).thenReturn(
             new BudgetCycleSummaryDTO(
                 BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-                BigDecimal.ZERO, BigDecimal.ZERO,
-                null, null, 0L
+                BigDecimal.ZERO, BigDecimal.ZERO, 0L,
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                null, null
             )
         );
         when(cycleRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -359,9 +358,9 @@ class BudgetCycleServiceTest {
         when(summaryService.calculateSummary(eq(cycle), any(), any(), any(LocalDate.class))).thenReturn(
             new BudgetCycleSummaryDTO(
                 BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-                BigDecimal.ZERO, BigDecimal.ZERO,
-                null, null, 0L
+                BigDecimal.ZERO, BigDecimal.ZERO, 0L,
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                null, null
             )
         );
         when(cycleRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -450,10 +449,10 @@ class BudgetCycleServiceTest {
         )).thenReturn(List.of());
         when(summaryService.calculateSummary(eq(cycle), any(), any(), any(LocalDate.class)))
             .thenReturn(new BudgetCycleSummaryDTO(
-                BigDecimal.valueOf(5000), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.valueOf(5000),
-                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-                BigDecimal.valueOf(5000), BigDecimal.ZERO,
-                BigDecimal.ZERO, 20, 0L
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.valueOf(5000), BigDecimal.ZERO,
+                BigDecimal.ZERO, BigDecimal.valueOf(5000), 0L,
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                BigDecimal.ZERO, 20
             ));
 
         service.toResponseDTO(cycle);
