@@ -1,5 +1,6 @@
 package com.fintech.api.repository;
 
+import com.fintech.api.domain.budget.BudgetCycle;
 import com.fintech.api.domain.enums.TransactionStatus;
 import com.fintech.api.domain.enums.TransactionType;
 import com.fintech.api.domain.installment.InstallmentGroup;
@@ -227,5 +228,39 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             @Param("tenant") Tenant tenant,
             @Param("incomeType") TransactionType incomeType,
             @Param("excluded") TransactionStatus excluded
+    );
+
+    // Retorna transações do período do ciclo que não têm nenhum BudgetItem
+    // apontando para elas naquele ciclo. Aplica a mesma regra de data dos filtros:
+    // parcelas com fatura → invoice.dueDate; demais → t.date.
+    // TRANSFER excluído (movimento interno); CANCELLED excluído (não impacta saldo).
+    @Query("""
+        SELECT t FROM Transaction t
+        LEFT JOIN FETCH t.category
+        LEFT JOIN FETCH t.account
+        LEFT JOIN FETCH t.invoice inv
+        WHERE t.tenant = :tenant
+          AND t.type <> :transferType
+          AND t.status <> :cancelledStatus
+          AND (
+            (t.installmentGroup IS NOT NULL AND inv IS NOT NULL
+              AND inv.dueDate BETWEEN :start AND :end)
+            OR
+            ((t.installmentGroup IS NULL OR inv IS NULL)
+              AND t.date BETWEEN :start AND :end)
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM BudgetItem bi
+            WHERE bi.transaction = t AND bi.cycle = :cycle
+          )
+        ORDER BY t.date DESC
+        """)
+    List<Transaction> findUnplannedByCycle(
+        @Param("tenant")          Tenant tenant,
+        @Param("cycle")           BudgetCycle cycle,
+        @Param("start")           LocalDate start,
+        @Param("end")             LocalDate end,
+        @Param("transferType")    TransactionType transferType,
+        @Param("cancelledStatus") TransactionStatus cancelledStatus
     );
 }
