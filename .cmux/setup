@@ -1,0 +1,16 @@
+#!/bin/bash
+REPO_ROOT="$(git rev-parse --git-common-dir | xargs dirname)"
+
+# secret files used by sync-db.sh and docker scripts
+ln -sf "$REPO_ROOT/scripts/.env" scripts/.env
+[ -f "$REPO_ROOT/.env" ] && ln -sf "$REPO_ROOT/.env" .env
+[ -f "$REPO_ROOT/.env.local" ] && ln -sf "$REPO_ROOT/.env.local" .env.local
+
+# frontend deps
+cd frontend && npm ci && cd ..
+
+# regenerate OpenAPI client (depends on api-spec/openapi.yaml)
+cd frontend && npm run api:generate && cd ..
+
+# backend codegen (generates Spring interfaces into target/)
+cd backend && ./mvnw -q generate-sources && cd ..
