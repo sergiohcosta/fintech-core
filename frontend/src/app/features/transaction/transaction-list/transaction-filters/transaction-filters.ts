@@ -30,7 +30,7 @@ export class TransactionFiltersComponent implements OnInit {
 
   accountIds         = signal<string[]>([]);
   status             = signal<'PENDING' | 'PAID' | 'CANCELLED' | null>(null);
-  type               = signal<'INCOME' | 'EXPENSE' | null>(null);
+  type               = signal<'INCOME' | 'EXPENSE' | 'TRANSFER' | null>(null);
   startDate          = signal<string | null>(null);
   endDate            = signal<string | null>(null);
   groupByPeriod      = signal(false);
