@@ -17,6 +17,7 @@ import { BudgetCycleResponse, BudgetItemResponse, TransactionResponseDTO } from 
 import { DEFAULT_SUMMARY } from './budget-cycle.utils';
 import { BudgetItemFormComponent, BudgetItemFormResult } from '../budget-item-form/budget-item-form';
 import { LinkTransactionDialogComponent, LinkTransactionDialogData } from '../link-transaction-dialog/link-transaction-dialog';
+import { LinkBudgetItemDialogComponent, LinkBudgetItemDialogData } from '../link-budget-item-dialog/link-budget-item-dialog';
 
 @Component({
   selector: 'app-budget-cycle-current',
@@ -25,6 +26,7 @@ import { LinkTransactionDialogComponent, LinkTransactionDialogData } from '../li
     CommonModule, CurrencyPipe, DatePipe, RouterLink,
     MatButtonModule, MatCardModule, MatChipsModule, MatExpansionModule,
     MatIconModule, MatSnackBarModule, MatTableModule, MatTooltipModule,
+    LinkBudgetItemDialogComponent,
   ],
   templateUrl: './budget-cycle-current.html',
   styleUrl: './budget-cycle-current.scss',
@@ -167,12 +169,19 @@ export class BudgetCycleCurrentComponent implements OnInit {
       );
       return;
     }
-    // TODO: abrir LinkBudgetItemDialogComponent (criado na Task 7)
-    // Por ora, apenas exibir snackbar informativo
-    this.snackBar.open(
-      `${pendingItems.length} item(s) disponível(is) para vincular. Dialog será adicionado na Task 7.`,
-      'OK',
-      { duration: 3000 }
-    );
+    const ref = this.dialog.open(LinkBudgetItemDialogComponent, {
+      width: '600px',
+      data: { transaction: tx, pendingItems } satisfies LinkBudgetItemDialogData,
+    });
+    ref.afterClosed().subscribe((itemId?: string) => {
+      if (!itemId) return;
+      this.planningService.linkItem(itemId, { transactionId: tx.id! }).subscribe({
+        next: () => {
+          this.loadCurrentCycle();
+          this.snackBar.open('Vinculado com sucesso.', 'OK', { duration: 2000 });
+        },
+        error: () => this.snackBar.open('Erro. Tente novamente.', 'OK', { duration: 3000 }),
+      });
+    });
   }
 }
