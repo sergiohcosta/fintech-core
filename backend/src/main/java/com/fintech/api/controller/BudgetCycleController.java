@@ -37,23 +37,17 @@ public class BudgetCycleController {
     @PostMapping
     public ResponseEntity<BudgetCycleResponseDTO> open(@Valid @RequestBody BudgetCycleOpenRequest req) {
         User user = getUser();
-        var cycle = cycleService.open(user.getTenant(), user, req);
-        return ResponseEntity.status(201).body(cycleService.toResponseDTO(cycle));
+        var cycle = cycleService.open(user.getTenant(), user, req.referenceMonth());
+        return ResponseEntity.status(201)
+            .body(cycleService.toResponseDTO(cycle));
     }
 
     @GetMapping("/current")
     public ResponseEntity<BudgetCycleResponseDTO> current() {
         User user = getUser();
-        return cycleService.findCurrentByTenant(user.getTenant())
+        return cycleService.findOpenByTenant(user.getTenant())
             .map(c -> ResponseEntity.ok(cycleService.toResponseDTO(c)))
             .orElse(ResponseEntity.notFound().build());
-    }
-
-    @GetMapping("/preview")
-    public ResponseEntity<BudgetCyclePreviewDTO> preview(
-            @RequestParam(required = false) Integer startDay) {
-        User user = getUser();
-        return ResponseEntity.ok(cycleService.preview(user.getTenant(), startDay));
     }
 
     @GetMapping("/{id}")
@@ -61,6 +55,13 @@ public class BudgetCycleController {
         User user = getUser();
         var cycle = cycleService.findByIdAndTenant(id, user.getTenant());
         return ResponseEntity.ok(cycleService.toResponseDTO(cycle));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        User user = getUser();
+        cycleService.delete(id, user.getTenant());
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{id}/close")
@@ -77,13 +78,6 @@ public class BudgetCycleController {
         User user = getUser();
         var cycle = cycleService.syncInstallments(id, user.getTenant(), user);
         return ResponseEntity.ok(cycleService.toResponseDTO(cycle));
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        User user = getUser();
-        cycleService.delete(id, user.getTenant());
-        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{cycleId}/items")

@@ -27,6 +27,11 @@ export const planningRoutes: Routes = [
         loadComponent: () =>
           import('./recurring-item-list/recurring-item-list').then(m => m.RecurringItemList),
       },
+      {
+        path: 'settings',
+        loadComponent: () =>
+          import('./planning-settings/planning-settings').then(m => m.PlanningSettingsComponent),
+      },
     ],
   },
 ];

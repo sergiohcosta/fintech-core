@@ -73,10 +73,13 @@ public class InvoiceService {
         int closingDay = details.getClosingDay();
         int dueDay = details.getDueDay();
 
-        LocalDate closingDate = LocalDate.of(referenceYear, referenceMonth, closingDay);
+        // A fatura de referenceMonth fecha no mês seguinte (ex: fatura de junho fecha em 02/julho).
+        LocalDate closingDate = LocalDate.of(referenceYear, referenceMonth, 1)
+                .plusMonths(1)
+                .withDayOfMonth(closingDay);
         LocalDate dueDate = dueDay >= closingDay
-                ? LocalDate.of(referenceYear, referenceMonth, dueDay)
-                : LocalDate.of(referenceYear, referenceMonth, dueDay).plusMonths(1);
+                ? closingDate.withDayOfMonth(dueDay)
+                : closingDate.plusMonths(1).withDayOfMonth(dueDay);
 
         return repository.save(Invoice.builder()
                 .account(account)

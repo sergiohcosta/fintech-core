@@ -5,11 +5,9 @@ import { TenantService } from '../../core/api/tenant/tenant.service';
 import {
   BudgetCycleOpenRequest,
   BudgetCyclePageResponse,
-  BudgetCyclePreview,
   BudgetCycleResponse,
   BudgetItemCreateRequest,
   BudgetItemLinkRequest,
-  BudgetItemRealizeRequest,
   BudgetItemResponse,
   BudgetItemUpdateRequest,
   RecurringBudgetItemRequest,
@@ -31,15 +29,15 @@ export class PlanningService {
   }
 
   closeCycle(id: string, force = false): Observable<BudgetCycleResponse> {
-    return this.budget.closeBudgetCycle(id, force ? { force } : undefined);
-  }
-
-  listCycles(page = 0, size = 12): Observable<BudgetCyclePageResponse> {
-    return this.budget.listBudgetCycles({ page, size });
+    return this.budget.closeBudgetCycle(id, force ? { force: true } : undefined);
   }
 
   deleteCycle(id: string): Observable<void> {
     return this.budget.deleteBudgetCycle(id);
+  }
+
+  listCycles(page = 0, size = 12): Observable<BudgetCyclePageResponse> {
+    return this.budget.listBudgetCycles({ page, size });
   }
 
   getCycle(id: string): Observable<BudgetCycleResponse> {
@@ -48,10 +46,6 @@ export class PlanningService {
 
   syncInstallments(id: string): Observable<BudgetCycleResponse> {
     return this.budget.syncInstallments(id);
-  }
-
-  previewCycle(startDay?: number): Observable<BudgetCyclePreview> {
-    return this.budget.previewBudgetCycle(startDay !== undefined ? { startDay } : undefined);
   }
 
   createItem(cycleId: string, req: BudgetItemCreateRequest): Observable<BudgetItemResponse> {
@@ -74,28 +68,8 @@ export class PlanningService {
     return this.budget.unlinkBudgetItem(id);
   }
 
-  realizeItem(id: string, req: BudgetItemRealizeRequest): Observable<BudgetItemResponse> {
-    return this.budget.realizeBudgetItem(id, req);
-  }
-
-  unrealizeItem(id: string): Observable<BudgetItemResponse> {
-    return this.budget.unrealizeBudgetItem(id);
-  }
-
-  skipItem(id: string): Observable<BudgetItemResponse> {
-    return this.budget.skipBudgetItem(id);
-  }
-
-  unskipItem(id: string): Observable<BudgetItemResponse> {
-    return this.budget.unskipBudgetItem(id);
-  }
-
-  reactivateRecurring(id: string): Observable<RecurringBudgetItemResponse> {
-    return this.budget.reactivateRecurringBudgetItem(id);
-  }
-
-  listRecurring(active?: boolean): Observable<RecurringBudgetItemResponse[]> {
-    return this.budget.listRecurringBudgetItems(active !== undefined ? { active } : undefined);
+  listRecurring(): Observable<RecurringBudgetItemResponse[]> {
+    return this.budget.listRecurringBudgetItems();
   }
 
   createRecurring(req: RecurringBudgetItemRequest): Observable<RecurringBudgetItemResponse> {
@@ -108,6 +82,10 @@ export class PlanningService {
 
   deleteRecurring(id: string): Observable<void> {
     return this.budget.deleteRecurringBudgetItem(id);
+  }
+
+  getSettings(): Observable<TenantSettingsPatchRequest> {
+    return this.tenant.getTenantSettings();
   }
 
   patchTenantSettings(req: TenantSettingsPatchRequest): Observable<void> {
