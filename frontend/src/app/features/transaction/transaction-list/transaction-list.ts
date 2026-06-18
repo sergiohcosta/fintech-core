@@ -137,7 +137,7 @@ export class TransactionList implements OnInit {
       transactions: this.service.listTransactions({
         accountIds: saved.accountIds.length > 0 ? saved.accountIds : undefined,
         status:    saved.status    ?? undefined,
-        type:      saved.type      ?? undefined,
+        type:      (saved.type === 'TRANSFER' || saved.type === null) ? undefined : saved.type,
         startDate: saved.startDate ?? undefined,
         endDate:   saved.endDate   ?? undefined,
       }),
