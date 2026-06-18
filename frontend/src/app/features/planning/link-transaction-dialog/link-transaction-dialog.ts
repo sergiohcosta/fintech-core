@@ -36,7 +36,11 @@ export class LinkTransactionDialogComponent implements OnInit {
 
   ngOnInit(): void {
     const itemType = this.data.item.type;
-    this.txService.listTransactions({ type: itemType })
+    this.txService.listTransactions({
+      type: itemType,
+      startDate: this.data.startDate,
+      endDate: this.data.endDate,
+    })
       .subscribe({
         next: (result: TransactionResponseDTO[]) => {
           this.transactions.set(result);
