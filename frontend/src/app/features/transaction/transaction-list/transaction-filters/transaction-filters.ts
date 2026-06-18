@@ -80,7 +80,7 @@ export class TransactionFiltersComponent implements OnInit {
     this.emit();
   }
 
-  onTypeChange(val: 'INCOME' | 'EXPENSE' | null): void {
+  onTypeChange(val: 'INCOME' | 'EXPENSE' | 'TRANSFER' | null): void {
     this.type.set(val !== null && this.type() === val ? null : val);
     this.emit();
   }
