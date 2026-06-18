@@ -11,6 +11,8 @@ import { BudgetItemResponse, TransactionResponseDTO } from '../../../core/api/fi
 export interface LinkTransactionDialogData {
   item: BudgetItemResponse;
   cycleId: string;
+  startDate: string;
+  endDate: string;
 }
 
 @Component({
