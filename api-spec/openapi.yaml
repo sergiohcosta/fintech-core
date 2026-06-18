@@ -670,6 +670,15 @@ components:
           format: double
         pendingCount:
           type: integer
+        unplannedIncome:
+          type: number
+          format: double
+        unplannedExpense:
+          type: number
+          format: double
+        availableToSpend:
+          type: number
+          format: double
 
     BudgetItemResponse:
       type: object
@@ -737,6 +746,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/BudgetItemResponse'
+        unplannedTransactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransactionResponseDTO'
 
     BudgetItemCreateRequest:
       type: object
