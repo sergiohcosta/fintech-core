@@ -66,19 +66,18 @@ public class BudgetSummaryService {
             .count();
 
         return new BudgetCycleSummaryDTO(
-            openingBalance,
             plannedIncome,
             plannedExpense,
             projectedBalance,
             realizedIncome,
             realizedExpense,
+            currentBalance,
+            pendingCount,
             unplannedIncome,
             unplannedExpense,
-            currentBalance,
             availableToSpend,
             dailyAllowance,
-            remainingDays,
-            pendingCount
+            remainingDays
         );
     }
 
