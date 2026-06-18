@@ -12,5 +12,7 @@ public record BudgetCycleSummaryDTO(
     long       pendingCount,
     BigDecimal unplannedIncome,
     BigDecimal unplannedExpense,
-    BigDecimal availableToSpend
+    BigDecimal availableToSpend,
+    BigDecimal dailyAllowance,
+    Integer    remainingDays
 ) {}

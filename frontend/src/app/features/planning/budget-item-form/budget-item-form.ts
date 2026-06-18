@@ -17,6 +17,11 @@ export interface BudgetItemFormData {
   mode?: 'openCycle';
 }
 
+const MONTH_LABELS = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+];
+
 @Component({
   selector: 'app-budget-item-form',
   standalone: true,
@@ -34,8 +39,16 @@ export class BudgetItemFormComponent implements OnInit {
 
   readonly isOpenCycleMode = signal(false);
 
+  readonly monthLabels = MONTH_LABELS;
+  readonly months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  readonly years = (() => {
+    const y = new Date().getFullYear();
+    return [y - 1, y, y + 1];
+  })();
+
   readonly cycleForm = this.fb.group({
-    referenceMonth: ['', [Validators.required, Validators.pattern(/^\d{4}-\d{2}$/)]],
+    year:  [new Date().getFullYear(), Validators.required],
+    month: [new Date().getMonth() + 1, Validators.required],
   });
 
   readonly itemForm = this.fb.group({
@@ -52,7 +65,9 @@ export class BudgetItemFormComponent implements OnInit {
   onSubmit(): void {
     if (this.isOpenCycleMode()) {
       if (this.cycleForm.invalid) return;
-      this.dialogRef.close(this.cycleForm.value.referenceMonth);
+      const { year, month } = this.cycleForm.getRawValue();
+      const mm = String(month).padStart(2, '0');
+      this.dialogRef.close(`${year}-${mm}`);
     } else {
       if (this.itemForm.invalid) return;
       const v = this.itemForm.getRawValue();

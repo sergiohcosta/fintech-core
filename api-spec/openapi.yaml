@@ -679,6 +679,13 @@ components:
         availableToSpend:
           type: number
           format: double
+        dailyAllowance:
+          type: number
+          format: double
+          nullable: true
+        remainingDays:
+          type: integer
+          nullable: true
 
     BudgetItemResponse:
       type: object
@@ -1516,6 +1523,16 @@ paths:
   # --- Tenant Settings ---
 
   /api/tenant/settings:
+    get:
+      tags: [tenant]
+      operationId: getTenantSettings
+      responses:
+        '200':
+          description: Configurações do tenant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantSettingsPatchRequest'
     patch:
       tags: [tenant]
       operationId: patchTenantSettings
@@ -1604,6 +1621,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BudgetCycleResponse'
+    delete:
+      tags: [budget]
+      operationId: deleteBudgetCycle
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Ciclo excluído
+        '422':
+          description: Ciclo em aberto não pode ser excluído
 
   /api/budget-cycles/{id}/close:
     post:
@@ -1616,6 +1648,12 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: force
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
       responses:
         '200':
           description: Ciclo fechado
@@ -1623,6 +1661,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BudgetCycleResponse'
+        '409':
+          description: Ciclo ainda em andamento — use force=true para confirmar
 
   /api/budget-cycles/{id}/sync-installments:
     post:

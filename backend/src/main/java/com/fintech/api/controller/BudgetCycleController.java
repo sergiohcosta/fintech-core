@@ -57,10 +57,19 @@ public class BudgetCycleController {
         return ResponseEntity.ok(cycleService.toResponseDTO(cycle));
     }
 
-    @PostMapping("/{id}/close")
-    public ResponseEntity<BudgetCycleResponseDTO> close(@PathVariable UUID id) {
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
         User user = getUser();
-        var cycle = cycleService.close(id, user.getTenant());
+        cycleService.delete(id, user.getTenant());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/close")
+    public ResponseEntity<BudgetCycleResponseDTO> close(
+            @PathVariable UUID id,
+            @RequestParam(defaultValue = "false") boolean force) {
+        User user = getUser();
+        var cycle = cycleService.close(id, user.getTenant(), force);
         return ResponseEntity.ok(cycleService.toResponseDTO(cycle));
     }
 

@@ -26,4 +26,6 @@ public interface BudgetItemRepository extends JpaRepository<BudgetItem, UUID> {
     Optional<BudgetItem> findByTransactionAndCycleNot(Transaction transaction, BudgetCycle cycle);
 
     boolean existsByCycleAndSource(BudgetCycle cycle, BudgetItemSource source);
+
+    void deleteAllByCycle(BudgetCycle cycle);
 }

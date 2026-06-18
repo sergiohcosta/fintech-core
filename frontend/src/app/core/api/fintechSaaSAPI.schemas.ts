@@ -414,6 +414,10 @@ export interface BudgetCycleSummary {
   unplannedIncome?: number;
   unplannedExpense?: number;
   availableToSpend?: number;
+  /** @nullable */
+  dailyAllowance?: number | null;
+  /** @nullable */
+  remainingDays?: number | null;
 }
 
 export interface BudgetItemResponse {
@@ -552,5 +556,9 @@ accountId: string;
 export type ListBudgetCyclesParams = {
 page?: number;
 size?: number;
+};
+
+export type CloseBudgetCycleParams = {
+force?: boolean;
 };
 

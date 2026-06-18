@@ -1,4 +1,4 @@
-import { TransactionResponseDTO, InvoiceStatus } from '../../../core/api/fintechSaaSAPI.schemas';
+import { TransactionResponseDTO, InvoiceResponseDTO, InvoiceStatus } from '../../../core/api/fintechSaaSAPI.schemas';
 
 export type InstallmentGroupInfo = {
   groupId: string;
@@ -21,13 +21,14 @@ export type PeriodGroup = {
   isCurrentMonth: boolean;
 };
 
-export type InvoiceHeaderRow = {
-  kind: 'invoice-header';
-  invoiceId: string | null;
+export type InvoiceSummaryRow = {
+  kind: 'invoice-summary';
+  invoiceId: string;
   label: string;
-  dueDate: string | null;
+  dueDate: string;
   totalAmount: number;
-  status: InvoiceStatus | null;
+  status: InvoiceStatus;
+  accountName: string;
   transactionCount: number;
 };
 
@@ -36,7 +37,7 @@ export type DisplayRow =
   | { kind: 'installment';        data: TransactionResponseDTO; group: InstallmentGroupInfo; isExpanded: boolean }
   | { kind: 'installment-detail'; data: TransactionResponseDTO; group: InstallmentGroupInfo }
   | { kind: 'period-header';      key: string; label: string; totalIncome: number; totalExpense: number; balance: number }
-  | InvoiceHeaderRow;
+  | InvoiceSummaryRow;
 
 function sortTransferPairsTogether(transactions: TransactionResponseDTO[]): TransactionResponseDTO[] {
   const result: TransactionResponseDTO[] = [];
@@ -102,73 +103,67 @@ function buildFlatRows(
 
 function buildDisplayRowsGroupedByInvoice(
   transactions: TransactionResponseDTO[],
-  expandedIds: Set<string>
+  expandedIds: Set<string>,
+  sortCriteria: SortCriterion[] = [],
+  invoices: InvoiceResponseDTO[] = []
 ): DisplayRow[] {
-  const withInvoice    = transactions.filter(t => t.invoiceId);
   const withoutInvoice = transactions.filter(t => !t.invoiceId);
 
-  type InvoiceBucket = { dueDate: string | null; status: InvoiceStatus | null; label: string; transactions: TransactionResponseDTO[] };
-  const invoiceMap = new Map<string, InvoiceBucket>();
+  let summaryRows: DisplayRow[];
 
-  for (const t of withInvoice) {
-    const id = t.invoiceId!;
-    if (!invoiceMap.has(id)) {
-      const label = t.invoiceDueDate
-        ? 'Fatura ' + new Date(t.invoiceDueDate + 'T00:00:00').toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })
-        : 'Fatura';
-      invoiceMap.set(id, { dueDate: t.invoiceDueDate ?? null, status: t.invoiceStatus ?? null, label, transactions: [] });
+  if (invoices.length > 0) {
+    // ponytail: totais reais vindos da API — sem recalcular a partir das transações
+    const sorted = [...invoices].sort((a, b) => b.dueDate.localeCompare(a.dueDate));
+    summaryRows = sorted.map(inv => ({
+      kind: 'invoice-summary' as const,
+      invoiceId: inv.id,
+      label: inv.label,
+      dueDate: inv.dueDate,
+      totalAmount: inv.totalAmount,
+      status: inv.status,
+      accountName: inv.accountName,
+      transactionCount: inv.transactionCount,
+    }));
+  } else {
+    // fallback: agrupa a partir das transações disponíveis (sem filtro de período ativo)
+    const withInvoice = transactions.filter(t => t.invoiceId);
+    type Bucket = { dueDate: string; status: InvoiceStatus; label: string; accountName: string; txs: TransactionResponseDTO[] };
+    const map = new Map<string, Bucket>();
+    for (const t of withInvoice) {
+      const id = t.invoiceId!;
+      if (!map.has(id)) {
+        const label = t.invoiceDueDate
+          ? 'Fatura ' + new Date(t.invoiceDueDate + 'T00:00:00').toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })
+          : 'Fatura';
+        map.set(id, { dueDate: t.invoiceDueDate ?? '', status: t.invoiceStatus ?? 'OPEN', label, accountName: t.accountName ?? '', txs: [] });
+      }
+      map.get(id)!.txs.push(t);
     }
-    invoiceMap.get(id)!.transactions.push(t);
+    const calcTotal = (txs: TransactionResponseDTO[]) =>
+      txs.reduce((s, t) => t.type === 'EXPENSE' ? s + (t.amount ?? 0) : t.type === 'INCOME' ? s - (t.amount ?? 0) : s, 0);
+    summaryRows = [...map.entries()]
+      .sort(([, a], [, b]) => b.dueDate.localeCompare(a.dueDate))
+      .map(([invoiceId, b]) => ({
+        kind: 'invoice-summary' as const,
+        invoiceId, label: b.label, dueDate: b.dueDate,
+        totalAmount: calcTotal(b.txs), status: b.status,
+        accountName: b.accountName, transactionCount: b.txs.length,
+      }));
   }
 
-  const sorted = [...invoiceMap.entries()].sort(([, a], [, b]) => {
-    if (!a.dueDate) return 1;
-    if (!b.dueDate) return -1;
-    return b.dueDate.localeCompare(a.dueDate);
-  });
-
-  const calcTotal = (txs: TransactionResponseDTO[]) =>
-    txs.reduce((sum, t) => t.type === 'EXPENSE' ? sum + (t.amount ?? 0) : t.type === 'INCOME' ? sum - (t.amount ?? 0) : sum, 0);
-
-  const rows: DisplayRow[] = [];
-
-  for (const [invoiceId, bucket] of sorted) {
-    rows.push({
-      kind: 'invoice-header',
-      invoiceId,
-      label: bucket.label,
-      dueDate: bucket.dueDate,
-      totalAmount: calcTotal(bucket.transactions),
-      status: bucket.status,
-      transactionCount: bucket.transactions.length,
-    });
-    rows.push(...buildFlatRows(bucket.transactions, expandedIds));
-  }
-
-  if (withoutInvoice.length > 0) {
-    rows.push({
-      kind: 'invoice-header',
-      invoiceId: null,
-      label: 'Avulsas',
-      dueDate: null,
-      totalAmount: calcTotal(withoutInvoice),
-      status: null,
-      transactionCount: withoutInvoice.length,
-    });
-    rows.push(...buildFlatRows(withoutInvoice, expandedIds));
-  }
-
-  return rows;
+  return [...summaryRows, ...buildFlatRows(sortTransactions(withoutInvoice, sortCriteria), expandedIds)];
 }
 
 export function buildDisplayRows(
   transactions: TransactionResponseDTO[],
   expandedIds: Set<string>,
   groupByPeriod = false,
-  groupByInvoice = false
+  groupByInvoice = false,
+  sortCriteria: SortCriterion[] = [],
+  invoices: InvoiceResponseDTO[] = []
 ): DisplayRow[] {
-  if (groupByInvoice) return buildDisplayRowsGroupedByInvoice(transactions, expandedIds);
-  if (!groupByPeriod) return buildFlatRows(transactions, expandedIds);
+  if (groupByInvoice) return buildDisplayRowsGroupedByInvoice(transactions, expandedIds, sortCriteria, invoices);
+  if (!groupByPeriod) return buildFlatRows(sortTransactions(transactions, sortCriteria), expandedIds);
   const groups = groupByEffectiveMonth(transactions);
   return groups.flatMap(group => [
     {
@@ -179,7 +174,7 @@ export function buildDisplayRows(
       totalExpense: group.totalExpense,
       balance: group.balance,
     },
-    ...buildFlatRows(group.transactions, expandedIds),
+    ...buildFlatRows(sortTransactions(group.transactions, sortCriteria), expandedIds),
   ]);
 }
 
@@ -284,4 +279,80 @@ export function computeMonthChipStates(
       disabled: monthNum > nowMonth,
     };
   });
+}
+
+// --- Multi-sort ---
+
+export type SortCol = 'description' | 'amount' | 'date' | 'type' | 'status' | 'category' | 'account';
+export type SortDir = 'asc' | 'desc';
+export type SortCriterion = { col: SortCol; dir: SortDir };
+
+function effectiveSortDate(t: TransactionResponseDTO): string {
+  if (t.installmentGroupId && t.invoiceDueDate) return t.invoiceDueDate;
+  return t.date ?? '';
+}
+
+function compareBy(col: SortCol, a: TransactionResponseDTO, b: TransactionResponseDTO): number {
+  switch (col) {
+    case 'date':        return effectiveSortDate(a).localeCompare(effectiveSortDate(b));
+    case 'amount':      return (a.amount ?? 0) - (b.amount ?? 0);
+    case 'description': return (a.description ?? '').localeCompare(b.description ?? '', 'pt-BR', { sensitivity: 'base' });
+    case 'category': {
+      const ac = a.categoryName ?? null, bc = b.categoryName ?? null;
+      if (!ac && !bc) return 0; if (!ac) return 1; if (!bc) return -1;
+      return ac.localeCompare(bc, 'pt-BR', { sensitivity: 'base' });
+    }
+    case 'account': {
+      const aa = a.accountName ?? null, ba = b.accountName ?? null;
+      if (!aa && !ba) return 0; if (!aa) return 1; if (!ba) return -1;
+      return aa.localeCompare(ba, 'pt-BR', { sensitivity: 'base' });
+    }
+    case 'type': {
+      const order: Record<string, number> = { INCOME: 0, EXPENSE: 1 };
+      return (a.transferId ? 2 : (order[a.type ?? ''] ?? 1)) - (b.transferId ? 2 : (order[b.type ?? ''] ?? 1));
+    }
+    case 'status': {
+      const order: Record<string, number> = { PENDING: 0, PAID: 1, CANCELLED: 2 };
+      return (order[a.status ?? ''] ?? 0) - (order[b.status ?? ''] ?? 0);
+    }
+  }
+}
+
+export function sortTransactions(
+  transactions: TransactionResponseDTO[],
+  criteria: SortCriterion[]
+): TransactionResponseDTO[] {
+  if (!criteria.length) return transactions;
+  return [...transactions].sort((a, b) => {
+    for (const { col, dir } of criteria) {
+      const cmp = compareBy(col, a, b);
+      if (cmp !== 0) return dir === 'asc' ? cmp : -cmp;
+    }
+    return 0;
+  });
+}
+
+export function applySort(criteria: SortCriterion[], col: SortCol, shiftKey: boolean): SortCriterion[] {
+  if (shiftKey) {
+    const idx = criteria.findIndex(c => c.col === col);
+    if (idx >= 0) {
+      const updated = [...criteria];
+      updated[idx] = { col, dir: criteria[idx].dir === 'asc' ? 'desc' : 'asc' };
+      return updated;
+    }
+    return [...criteria, { col, dir: 'asc' }];
+  }
+  if (criteria.length === 1 && criteria[0].col === col) {
+    return [{ col, dir: criteria[0].dir === 'asc' ? 'desc' : 'asc' }];
+  }
+  return [{ col, dir: 'asc' }];
+}
+
+export function getSortInfo(
+  criteria: SortCriterion[],
+  col: SortCol
+): { priority: number; dir: SortDir } | null {
+  const idx = criteria.findIndex(c => c.col === col);
+  if (idx < 0) return null;
+  return { priority: idx + 1, dir: criteria[idx].dir };
 }

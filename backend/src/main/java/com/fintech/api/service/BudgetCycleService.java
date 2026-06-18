@@ -181,17 +181,32 @@ public class BudgetCycleService {
 
     /**
      * Fecha um ciclo aberto (OPEN → CLOSED).
-     * Operação administrativa sem side effects — registra que o planejamento foi encerrado.
+     * Se o ciclo ainda está em andamento (hoje <= endDate) e force=false, lança 409.
+     * Use force=true para fechar mesmo com o ciclo ativo (requer confirmação explícita).
      */
     @Transactional
-    public BudgetCycle close(UUID cycleId, Tenant tenant) {
+    public BudgetCycle close(UUID cycleId, Tenant tenant, boolean force) {
         BudgetCycle cycle = findByIdAndTenant(cycleId, tenant);
         if (cycle.getStatus() != BudgetCycleStatus.OPEN) {
             throw new IllegalStateException("O ciclo já está fechado.");
         }
+        if (!force && !LocalDate.now().isAfter(cycle.getEndDate())) {
+            throw new IllegalStateException("O ciclo ainda está em andamento.");
+        }
         cycle.setStatus(BudgetCycleStatus.CLOSED);
-        log.info("Ciclo fechado [cycleId={} tenantId={}]", cycleId, tenant.getId());
+        log.info("Ciclo fechado [cycleId={} tenantId={} force={}]", cycleId, tenant.getId(), force);
         return cycleRepository.save(cycle);
+    }
+
+    @Transactional
+    public void delete(UUID cycleId, Tenant tenant) {
+        BudgetCycle cycle = findByIdAndTenant(cycleId, tenant);
+        if (cycle.getStatus() == BudgetCycleStatus.OPEN) {
+            throw new IllegalStateException("Não é possível excluir um ciclo em aberto.");
+        }
+        itemRepository.deleteAllByCycle(cycle);
+        cycleRepository.delete(cycle);
+        log.info("Ciclo excluído [cycleId={} tenantId={}]", cycleId, tenant.getId());
     }
 
     /**

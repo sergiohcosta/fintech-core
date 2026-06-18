@@ -11,4 +11,6 @@ export const DEFAULT_SUMMARY: Required<BudgetCycleSummary> = {
   unplannedIncome:  0,
   unplannedExpense: 0,
   availableToSpend: 0,
+  dailyAllowance:   null,
+  remainingDays:    null,
 };

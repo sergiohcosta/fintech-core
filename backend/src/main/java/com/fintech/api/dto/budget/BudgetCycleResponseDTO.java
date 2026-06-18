@@ -8,7 +8,9 @@ import com.fintech.api.domain.enums.TransactionType;
 import com.fintech.api.domain.transaction.Transaction;
 import com.fintech.api.dto.transaction.TransactionResponseDTO;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
@@ -40,17 +42,18 @@ public record BudgetCycleResponseDTO(
             cycle.getEndDate(),
             cycle.getOpeningBalance(),
             cycle.getStatus(),
-            buildSummary(items, unplanned, cycle.getOpeningBalance()),
+            buildSummary(cycle, items, unplanned),
             itemDTOs,
             unplannedDTOs
         );
     }
 
     private static BudgetCycleSummaryDTO buildSummary(
+            BudgetCycle cycle,
             List<BudgetItem> items,
-            List<Transaction> unplanned,
-            BigDecimal openingBalance) {
+            List<Transaction> unplanned) {
 
+        BigDecimal openingBalance  = cycle.getOpeningBalance();
         BigDecimal plannedIncome   = BigDecimal.ZERO;
         BigDecimal plannedExpense  = BigDecimal.ZERO;
         BigDecimal realizedIncome  = BigDecimal.ZERO;
@@ -85,6 +88,17 @@ public record BudgetCycleResponseDTO(
         BigDecimal availableToSpend = currentBalance
             .subtract(plannedExpense.subtract(realizedExpense));
 
+        Integer remainingDays = null;
+        BigDecimal dailyAllowance = null;
+        if (cycle.getStatus() == BudgetCycleStatus.OPEN) {
+            LocalDate today = LocalDate.now();
+            long days = ChronoUnit.DAYS.between(today, cycle.getEndDate());
+            remainingDays = (int) days;
+            dailyAllowance = availableToSpend.compareTo(BigDecimal.ZERO) > 0 && days > 0
+                ? availableToSpend.divide(BigDecimal.valueOf(days), 2, RoundingMode.FLOOR)
+                : BigDecimal.ZERO;
+        }
+
         return new BudgetCycleSummaryDTO(
             plannedIncome,
             plannedExpense,
@@ -95,7 +109,9 @@ public record BudgetCycleResponseDTO(
             pendingCount,
             unplannedIncome,
             unplannedExpense,
-            availableToSpend
+            availableToSpend,
+            dailyAllowance,
+            remainingDays
         );
     }
 }
