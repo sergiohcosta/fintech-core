@@ -152,8 +152,9 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
 
     // Para transações de cartão, usa invoice.dueDate como referência de mês.
     // Para demais contas (sem fatura), usa transaction.date.
-    // LEFT JOIN explícito é obrigatório: t.invoice.dueDate em WHERE gera INNER JOIN implícito
-    // no Hibernate, excluindo transações sem fatura e quebrando o branch invoice IS NULL.
+    // Busca parcelas de cartão cujas faturas correspondem ao mês de referência do ciclo.
+    // Usa inv.referenceYear/Month (não dueDate) porque a fatura de junho tem dueDate em julho
+    // — filtrar por intervalo de datas excluiria essas parcelas em ciclos não-calendário.
     @Query("""
         SELECT t FROM Transaction t
         LEFT JOIN FETCH t.installmentGroup ig
@@ -161,14 +162,15 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
         WHERE t.account.tenant.id = :tenantId
           AND t.installmentGroup IS NOT NULL
           AND inv IS NOT NULL
-          AND inv.dueDate BETWEEN :startDate AND :endDate
+          AND inv.referenceYear  = :referenceYear
+          AND inv.referenceMonth = :referenceMonth
           AND t.status <> :cancelledStatus
         ORDER BY ig.id, inv.dueDate
     """)
-    List<Transaction> findInstallmentsInPeriodByTenant(
-        @Param("tenantId") UUID tenantId,
-        @Param("startDate") LocalDate startDate,
-        @Param("endDate") LocalDate endDate,
+    List<Transaction> findInstallmentsByTenantAndInvoiceMonth(
+        @Param("tenantId")      UUID tenantId,
+        @Param("referenceYear") int referenceYear,
+        @Param("referenceMonth") int referenceMonth,
         @Param("cancelledStatus") TransactionStatus cancelledStatus
     );
 
@@ -245,7 +247,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
           AND t.status <> :cancelledStatus
           AND (
             (t.installmentGroup IS NOT NULL AND inv IS NOT NULL
-              AND inv.dueDate BETWEEN :start AND :end)
+              AND inv.referenceYear = :referenceYear AND inv.referenceMonth = :referenceMonth)
             OR
             ((t.installmentGroup IS NULL OR inv IS NULL)
               AND t.date BETWEEN :start AND :end)
@@ -261,6 +263,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
         @Param("cycle")           BudgetCycle cycle,
         @Param("start")           LocalDate start,
         @Param("end")             LocalDate end,
+        @Param("referenceYear")   int referenceYear,
+        @Param("referenceMonth")  int referenceMonth,
         @Param("cancelledStatus") TransactionStatus cancelledStatus
     );
 }

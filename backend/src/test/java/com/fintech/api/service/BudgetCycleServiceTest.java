@@ -130,7 +130,7 @@ class BudgetCycleServiceTest {
             .thenReturn(new BigDecimal("3200.00"));
         when(recurringRepository.findAllByTenantAndActiveTrueOrderByDayOfMonthAscDescriptionAsc(tenant))
             .thenReturn(List.of());
-        when(transactionRepository.findInstallmentsInPeriodByTenant(any(), any(), any(), any()))
+        when(transactionRepository.findInstallmentsByTenantAndInvoiceMonth(any(), anyInt(), anyInt(), any()))
             .thenReturn(List.of());
 
         var captor = ArgumentCaptor.forClass(BudgetCycle.class);
@@ -161,16 +161,16 @@ class BudgetCycleServiceTest {
 
     // ---- toResponseDTO ----
 
-    // TODO: implementado na Task 3 — service.toResponseDTO(cycle) não existe ainda
     @Test
-    @DisplayName("toResponseDTO busca transações não planejadas com parâmetros do ciclo")
-    void toResponseDTO_chamaFindUnplannedComParametrosCorretos() {
+    @DisplayName("toResponseDTO busca não planejados pelo mês da fatura (referenceYear/Month do startDate)")
+    void toResponseDTO_chamaFindUnplannedComInvoiceMonth() {
         Tenant tenant = new Tenant();
+        // Ciclo 10/06 a 09/07 → startDate é junho → referenceMonth = 6
         BudgetCycle cycle = BudgetCycle.builder()
             .id(UUID.randomUUID())
             .tenant(tenant)
-            .startDate(LocalDate.of(2026, 6, 1))
-            .endDate(LocalDate.of(2026, 6, 30))
+            .startDate(LocalDate.of(2026, 6, 10))
+            .endDate(LocalDate.of(2026, 7, 9))
             .openingBalance(BigDecimal.valueOf(5000))
             .status(BudgetCycleStatus.OPEN)
             .build();
@@ -178,7 +178,8 @@ class BudgetCycleServiceTest {
         when(itemRepository.findAllByCycleWithDetails(cycle)).thenReturn(List.of());
         when(transactionRepository.findUnplannedByCycle(
             eq(tenant), eq(cycle),
-            eq(LocalDate.of(2026, 6, 1)), eq(LocalDate.of(2026, 6, 30)),
+            eq(LocalDate.of(2026, 6, 10)), eq(LocalDate.of(2026, 7, 9)),
+            eq(2026), eq(6),
             eq(TransactionStatus.CANCELLED)
         )).thenReturn(List.of());
 
@@ -186,7 +187,8 @@ class BudgetCycleServiceTest {
 
         verify(transactionRepository).findUnplannedByCycle(
             tenant, cycle,
-            LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30),
+            LocalDate.of(2026, 6, 10), LocalDate.of(2026, 7, 9),
+            2026, 6,
             TransactionStatus.CANCELLED
         );
     }
