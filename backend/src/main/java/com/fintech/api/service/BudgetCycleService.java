@@ -143,8 +143,10 @@ public class BudgetCycleService {
 
     private void populateInstallmentItems(BudgetCycle cycle, Tenant tenant,
                                           LocalDate startDate, LocalDate endDate) {
-        List<Transaction> installments = transactionRepository.findInstallmentsInPeriodByTenant(
-            tenant.getId(), startDate, endDate, TransactionStatus.CANCELLED);
+        YearMonth invoiceMonth = YearMonth.from(startDate);
+        List<Transaction> installments = transactionRepository.findInstallmentsByTenantAndInvoiceMonth(
+            tenant.getId(), invoiceMonth.getYear(), invoiceMonth.getMonthValue(),
+            TransactionStatus.CANCELLED);
 
         // Agrupa parcelas pelo InstallmentGroup para criar um único BudgetItem por grupo
         Map<InstallmentGroup, List<Transaction>> byGroup = installments.stream()
@@ -238,9 +240,11 @@ public class BudgetCycleService {
     @Transactional(readOnly = true)
     public BudgetCycleResponseDTO toResponseDTO(BudgetCycle cycle) {
         List<BudgetItem> items = itemRepository.findAllByCycleWithDetails(cycle);
+        YearMonth invoiceMonth = YearMonth.from(cycle.getStartDate());
         List<Transaction> unplanned = transactionRepository.findUnplannedByCycle(
             cycle.getTenant(), cycle,
             cycle.getStartDate(), cycle.getEndDate(),
+            invoiceMonth.getYear(), invoiceMonth.getMonthValue(),
             TransactionStatus.CANCELLED
         );
         return BudgetCycleResponseDTO.fromEntity(cycle, items, unplanned);
