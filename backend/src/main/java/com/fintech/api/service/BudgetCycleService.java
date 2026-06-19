@@ -38,20 +38,18 @@ public class BudgetCycleService {
     /**
      * Calcula as datas de início e fim do ciclo para um dado mês de referência.
      *
-     * Quando startDay=1, o ciclo coincide com o mês calendário (1º ao último dia).
-     * Para outros valores, o ciclo começa no startDay do mês anterior e termina
-     * no dia (startDay - 1) do mês de referência.
+     * O ciclo começa no dia {@code startDay} do mês de referência e termina na
+     * véspera do mesmo dia no mês seguinte. Com startDay=1 isso coincide
+     * naturalmente com o mês calendário (1º ao último dia) — sem caso especial.
      *
-     * Exemplo: startDay=11, referência=jun/2026 → 11/mai a 10/jun
+     * startDay é validado em 1..28 ({@code TenantSettingsPatchRequest}), logo
+     * {@code atDay(startDay)} nunca estoura (todo mês tem ≥ 28 dias).
+     *
+     * Exemplo: startDay=11, referência=jun/2026 → 11/jun a 10/jul
      */
     LocalDate[] calculateCycleDates(YearMonth referenceMonth, int startDay) {
-        if (startDay == 1) {
-            return new LocalDate[]{referenceMonth.atDay(1), referenceMonth.atEndOfMonth()};
-        }
-        return new LocalDate[]{
-            referenceMonth.minusMonths(1).atDay(startDay),
-            referenceMonth.atDay(startDay - 1)
-        };
+        LocalDate start = referenceMonth.atDay(startDay);
+        return new LocalDate[]{ start, start.plusMonths(1).minusDays(1) };
     }
 
     /**
@@ -60,9 +58,9 @@ public class BudgetCycleService {
      * Se dayOfMonth >= startDay, a despesa/receita cai no primeiro mês do ciclo.
      * Caso contrário, cai no segundo mês (após a virada do ciclo).
      *
-     * Exemplo: ciclo 11/mai–10/jun, startDay=11
-     *   - dayOfMonth=15 → 15/mai (mesmo mês do início)
-     *   - dayOfMonth=5  → 5/jun  (mês seguinte)
+     * Exemplo: ciclo 11/jun–10/jul, startDay=11
+     *   - dayOfMonth=15 → 15/jun (mesmo mês do início)
+     *   - dayOfMonth=5  → 5/jul  (mês seguinte)
      */
     LocalDate calculateExpectedDate(LocalDate cycleStartDate, int startDay, int dayOfMonth) {
         if (dayOfMonth >= startDay) {

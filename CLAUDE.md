@@ -427,7 +427,8 @@ SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run
 
 - **Planejamento Mensal — Budget Cycles fullstack (issue #74 — 2026-06-12)** — PR #92 aberto:
   - Migration V12: `budget_cycles`, `budget_items`, `recurring_budget_items` + `budget_cycle_start_day` em `tenant`
-  - `BudgetCycleService`: cálculo de datas do ciclo (startDay=1 → mês calendário; startDay=N → dia N do mês anterior até N-1 do mês atual); sincronização automática de parcelas de cartão ao abrir ciclo
+  - `BudgetCycleService`: cálculo de datas do ciclo — **o ciclo inicia no dia `startDay` do mês de referência e termina na véspera do mesmo dia no mês seguinte** (ex.: startDay=10, ref=jun/2026 → 10/jun a 09/jul). startDay=1 cai naturalmente no mês calendário, sem caso especial. Sincronização automática de parcelas de cartão ao abrir ciclo
+  - **Correção de convenção do ciclo (2026-06-19):** antes o `referenceMonth` ancorava o **fim** do ciclo (startDay=N → N do mês anterior até N-1 do mês de referência); agora ancora o **início**. Motivos: fórmula uniforme (eliminou o branch especial `if (startDay==1)`), rótulo coerente (o "ciclo de junho" passa a ser majoritariamente junho), e `YearMonth.from(startDate) == referenceMonth` — o que dissolve o descasamento de competência na seleção de parcelas. `startDay` validado em 1..28 (`TenantSettingsPatchRequest`) garante que `atDay(startDay)` nunca estoura. Seed inalterado (usa startDay=1, onde A≡B)
   - `BudgetItemService`: criação, atualização, link/unlink para transações, guard anti-duplicação
   - `RecurringBudgetItemService`: CRUD de templates; `deactivate` faz soft-delete (`active=false`)
   - `TenantController` com `PATCH /api/tenant/settings`; 17 endpoints no OpenAPI spec
