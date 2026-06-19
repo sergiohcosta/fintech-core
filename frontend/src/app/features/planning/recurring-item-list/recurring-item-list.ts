@@ -8,7 +8,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
-import { filter, finalize, forkJoin, switchMap } from 'rxjs';
+import { filter, finalize, switchMap } from 'rxjs';
 
 import { PlanningService } from '../planning.service';
 import { RecurringBudgetItemRequest, RecurringBudgetItemResponse } from '../../../core/api/fintechSaaSAPI.schemas';
@@ -42,15 +42,12 @@ export class RecurringItemList implements OnInit {
   }
 
   private load(): void {
-    forkJoin({
-      active: this.planningService.listRecurring(true),
-      inactive: this.planningService.listRecurring(false),
-    })
+    this.planningService.listRecurring()
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
-        next: ({ active, inactive }) => {
-          this.items.set(active);
-          this.inactiveItems.set(inactive);
+        next: all => {
+          this.items.set(all.filter(i => i.active !== false));
+          this.inactiveItems.set(all.filter(i => i.active === false));
         },
         error: () => this.snackBar.open('Erro ao carregar templates.', 'OK', { duration: 3000 }),
       });
@@ -88,7 +85,7 @@ export class RecurringItemList implements OnInit {
 
   reactivate(item: RecurringBudgetItemResponse): void {
     this.planningService.reactivateRecurring(item.id!).subscribe({
-      next: reactivated => {
+      next: (reactivated: RecurringBudgetItemResponse) => {
         this.inactiveItems.update(list => list.filter(i => i.id !== item.id));
         this.items.update(list => [...list, reactivated]);
         this.snackBar.open('Template reativado.', 'OK', { duration: 2000 });

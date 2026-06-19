@@ -1,5 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
 import { BudgetService } from '../../core/api/budget/budget.service';
 import { TenantService } from '../../core/api/tenant/tenant.service';
 import {
@@ -19,6 +20,7 @@ import {
 export class PlanningService {
   private readonly budget = inject(BudgetService);
   private readonly tenant = inject(TenantService);
+  private readonly http   = inject(HttpClient);
 
   getCurrentCycle(): Observable<BudgetCycleResponse> {
     return this.budget.getCurrentBudgetCycle();
@@ -82,6 +84,10 @@ export class PlanningService {
 
   deleteRecurring(id: string): Observable<void> {
     return this.budget.deleteRecurringBudgetItem(id);
+  }
+
+  reactivateRecurring(id: string): Observable<RecurringBudgetItemResponse> {
+    return this.http.patch<RecurringBudgetItemResponse>(`/api/recurring-budget-items/${id}/reactivate`, {});
   }
 
   getSettings(): Observable<TenantSettingsPatchRequest> {
