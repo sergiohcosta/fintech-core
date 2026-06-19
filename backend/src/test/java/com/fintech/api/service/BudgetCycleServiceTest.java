@@ -57,27 +57,27 @@ class BudgetCycleServiceTest {
     }
 
     @Test
-    @DisplayName("startDay=11, junho → 11/mai a 10/jun")
-    void calculateCycleDates_startDay11_abrangeDoiMeses() {
+    @DisplayName("startDay=11, junho → 11/jun a 10/jul (ciclo inicia no mês de referência)")
+    void calculateCycleDates_startDay11_iniciaNoMesDeReferencia() {
         LocalDate[] dates = service.calculateCycleDates(YearMonth.of(2026, 6), 11);
-        assertThat(dates[0]).isEqualTo(LocalDate.of(2026, 5, 11));
-        assertThat(dates[1]).isEqualTo(LocalDate.of(2026, 6, 10));
+        assertThat(dates[0]).isEqualTo(LocalDate.of(2026, 6, 11));
+        assertThat(dates[1]).isEqualTo(LocalDate.of(2026, 7, 10));
     }
 
     @Test
-    @DisplayName("startDay=28 → 28/mai a 27/jun")
+    @DisplayName("startDay=28 (máximo permitido) → 28/jun a 27/jul")
     void calculateCycleDates_startDay28() {
         LocalDate[] dates = service.calculateCycleDates(YearMonth.of(2026, 6), 28);
-        assertThat(dates[0]).isEqualTo(LocalDate.of(2026, 5, 28));
-        assertThat(dates[1]).isEqualTo(LocalDate.of(2026, 6, 27));
+        assertThat(dates[0]).isEqualTo(LocalDate.of(2026, 6, 28));
+        assertThat(dates[1]).isEqualTo(LocalDate.of(2026, 7, 27));
     }
 
     @Test
-    @DisplayName("startDay=11, janeiro → virada de ano (11/dez ano anterior a 10/jan)")
+    @DisplayName("startDay=11, dezembro → virada de ano no fim do ciclo (11/dez a 10/jan do ano seguinte)")
     void calculateCycleDates_viradaDeAno() {
-        LocalDate[] dates = service.calculateCycleDates(YearMonth.of(2026, 1), 11);
-        assertThat(dates[0]).isEqualTo(LocalDate.of(2025, 12, 11));
-        assertThat(dates[1]).isEqualTo(LocalDate.of(2026, 1, 10));
+        LocalDate[] dates = service.calculateCycleDates(YearMonth.of(2026, 12), 11);
+        assertThat(dates[0]).isEqualTo(LocalDate.of(2026, 12, 11));
+        assertThat(dates[1]).isEqualTo(LocalDate.of(2027, 1, 10));
     }
 
     @Test
