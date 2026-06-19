@@ -140,11 +140,11 @@ export class TransactionList implements OnInit {
     } else if (f.accountIds.length > 1) {
       chips.push({ label: `${f.accountIds.length} contas`, field: 'accountIds', colorClass: 'chip-account' });
     }
-    if (f.status === 'PENDING')   chips.push({ label: 'Pendente',  field: 'status', colorClass: 'chip-pending' });
-    if (f.status === 'PAID')      chips.push({ label: 'Pago',      field: 'status', colorClass: 'chip-paid' });
-    if (f.status === 'CANCELLED') chips.push({ label: 'Cancelado', field: 'status', colorClass: 'chip-cancelled' });
-    if (f.type === 'EXPENSE') chips.push({ label: 'Despesa', field: 'type', colorClass: 'chip-expense' });
-    if (f.type === 'INCOME')  chips.push({ label: 'Receita', field: 'type', colorClass: 'chip-income' });
+    const statusLabels: Record<string, string> = { PENDING: 'Pendente', PAID: 'Pago', CANCELLED: 'Cancelado' };
+    const statusColors: Record<string, string> = { PENDING: 'chip-pending', PAID: 'chip-paid', CANCELLED: 'chip-cancelled' };
+    f.statuses.forEach(s => chips.push({ label: statusLabels[s] ?? s, field: 'statuses', colorClass: statusColors[s] ?? 'chip-pending' }));
+    const typeLabels: Record<string, string> = { EXPENSE: 'Despesa', INCOME: 'Receita', TRANSFER: 'Transferência' };
+    f.types.forEach(t => chips.push({ label: typeLabels[t] ?? t, field: 'types', colorClass: t === 'INCOME' ? 'chip-income' : 'chip-expense' }));
     if (f.startDate && f.endDate) {
       const key = resolveMonthKey(f.startDate, f.endDate);
       const label = key && key !== 'custom'
@@ -187,8 +187,8 @@ export class TransactionList implements OnInit {
       accounts:     this.accountService.listAccounts(),
       transactions: this.service.listTransactions({
         accountIds: saved.accountIds.length > 0 ? saved.accountIds : undefined,
-        status:    saved.status    ?? undefined,
-        type:      saved.type      ?? undefined,
+        status:    saved.statuses[0],
+        type:      saved.types.find((t): t is 'INCOME' | 'EXPENSE' => t === 'INCOME' || t === 'EXPENSE'),
         startDate: saved.startDate ?? undefined,
         endDate:   saved.endDate   ?? undefined,
       }),
@@ -219,8 +219,8 @@ export class TransactionList implements OnInit {
   clearFilterChip(field: string): void {
     this.filters.update(f => {
       if (field === 'accountIds')  return { ...f, accountIds: [] };
-      if (field === 'status')      return { ...f, status: null };
-      if (field === 'type')        return { ...f, type: null };
+      if (field === 'statuses')    return { ...f, statuses: [] };
+      if (field === 'types')       return { ...f, types: [] };
       if (field === 'period')      return { ...f, startDate: null, endDate: null };
       if (field === 'description') return { ...f, description: null };
       return f;
@@ -233,8 +233,8 @@ export class TransactionList implements OnInit {
   loadTransactions(f: TransactionFilters = this.filters()): void {
     this.service.listTransactions({
       accountIds: f.accountIds.length > 0 ? f.accountIds : undefined,
-      status:    f.status     ?? undefined,
-      type:      f.type       ?? undefined,
+      status:    f.statuses[0],
+      type:      f.types.find((t): t is 'INCOME' | 'EXPENSE' => t === 'INCOME' || t === 'EXPENSE'),
       startDate: f.startDate  ?? undefined,
       endDate:   f.endDate    ?? undefined,
     }).subscribe({
