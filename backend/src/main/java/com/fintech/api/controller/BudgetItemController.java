@@ -1,6 +1,7 @@
 package com.fintech.api.controller;
 
 import com.fintech.api.domain.user.User;
+import com.fintech.api.dto.budget.BudgetItemLinkRequest;
 import com.fintech.api.dto.budget.BudgetItemRealizeRequest;
 import com.fintech.api.dto.budget.BudgetItemResponseDTO;
 import com.fintech.api.dto.budget.BudgetItemUpdateRequest;
@@ -35,6 +36,23 @@ public class BudgetItemController {
         var item = itemService.findByIdAndTenant(id, user.getTenant());
         itemService.delete(item);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/link")
+    public ResponseEntity<BudgetItemResponseDTO> link(
+            @PathVariable UUID id,
+            @Valid @RequestBody BudgetItemLinkRequest req) {
+        User user = getUser();
+        var item = itemService.findByIdAndTenant(id, user.getTenant());
+        return ResponseEntity.ok(BudgetItemResponseDTO.fromEntity(
+            itemService.link(item, req.transactionId())));
+    }
+
+    @DeleteMapping("/{id}/link")
+    public ResponseEntity<BudgetItemResponseDTO> unlink(@PathVariable UUID id) {
+        User user = getUser();
+        var item = itemService.findByIdAndTenant(id, user.getTenant());
+        return ResponseEntity.ok(BudgetItemResponseDTO.fromEntity(itemService.unlink(item)));
     }
 
     @PostMapping("/{id}/realize")

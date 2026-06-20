@@ -18,12 +18,13 @@ public class TenantController {
 
     @GetMapping("/settings")
     public ResponseEntity<TenantSettingsPatchRequest> getSettings() {
-        return ResponseEntity.ok(new TenantSettingsPatchRequest(getUser().getTenant().getBudgetCycleStartDay()));
+        var tenant = tenantRepository.findById(getUser().getTenant().getId()).orElseThrow();
+        return ResponseEntity.ok(new TenantSettingsPatchRequest(tenant.getBudgetCycleStartDay()));
     }
 
     @PatchMapping("/settings")
     public ResponseEntity<Void> patchSettings(@Valid @RequestBody TenantSettingsPatchRequest req) {
-        var tenant = getUser().getTenant();
+        var tenant = tenantRepository.findById(getUser().getTenant().getId()).orElseThrow();
         tenant.setBudgetCycleStartDay(req.budgetCycleStartDay());
         tenantRepository.save(tenant);
         return ResponseEntity.noContent().build();
