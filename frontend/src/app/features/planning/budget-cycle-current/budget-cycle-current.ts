@@ -39,6 +39,9 @@ export class BudgetCycleCurrentComponent implements OnInit {
   readonly items = signal<BudgetItemResponse[]>([]);
   readonly loading = signal(true);
   readonly closing = signal(false);
+  // Confirmação inline de exclusão: guarda o id do item em estado "confirmar?".
+  // Como é um único signal, abrir a confirmação numa linha cancela a de outra.
+  readonly confirmingDeleteId = signal<string | null>(null);
 
   readonly incomeItems  = computed(() => this.items().filter(i => i.type === 'INCOME'));
   readonly expenseItems = computed(() => this.items().filter(i => i.type === 'EXPENSE' && i.source !== 'INSTALLMENT'));
@@ -165,7 +168,10 @@ export class BudgetCycleCurrentComponent implements OnInit {
 
   deleteItem(item: BudgetItemResponse): void {
     this.planningService.deleteItem(item.id!).subscribe({
-      next: () => this.items.update(list => list.filter(i => i.id !== item.id)),
+      next: () => {
+        this.confirmingDeleteId.set(null);
+        this.items.update(list => list.filter(i => i.id !== item.id));
+      },
       error: () => this.snackBar.open('Erro. Tente novamente.', 'OK', { duration: 3000 }),
     });
   }

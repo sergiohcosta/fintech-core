@@ -151,9 +151,22 @@
                 </button>
               }
               @if (item.source !== 'INSTALLMENT' && cycle()!.status === 'OPEN') {
-                <button mat-icon-button matTooltip="Remover" (click)="deleteItem(item)">
-                  <mat-icon>delete_outline</mat-icon>
-                </button>
+                @if (confirmingDeleteId() === item.id) {
+                  <span style="font-size:0.75rem;color:var(--mat-sys-error)">Remover?</span>
+                  <button mat-icon-button color="warn" matTooltip="Confirmar remoção"
+                          (click)="deleteItem(item)">
+                    <mat-icon>check</mat-icon>
+                  </button>
+                  <button mat-icon-button matTooltip="Cancelar"
+                          (click)="confirmingDeleteId.set(null)">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                } @else {
+                  <button mat-icon-button matTooltip="Remover"
+                          (click)="confirmingDeleteId.set(item.id!)">
+                    <mat-icon>delete_outline</mat-icon>
+                  </button>
+                }
               }
             </td>
           </ng-container>
@@ -202,9 +215,22 @@
                 </button>
               }
               @if (cycle()!.status === 'OPEN') {
-                <button mat-icon-button (click)="deleteItem(item)">
-                  <mat-icon>delete_outline</mat-icon>
-                </button>
+                @if (confirmingDeleteId() === item.id) {
+                  <span style="font-size:0.75rem;color:var(--mat-sys-error)">Remover?</span>
+                  <button mat-icon-button color="warn" matTooltip="Confirmar remoção"
+                          (click)="deleteItem(item)">
+                    <mat-icon>check</mat-icon>
+                  </button>
+                  <button mat-icon-button matTooltip="Cancelar"
+                          (click)="confirmingDeleteId.set(null)">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                } @else {
+                  <button mat-icon-button matTooltip="Remover"
+                          (click)="confirmingDeleteId.set(item.id!)">
+                    <mat-icon>delete_outline</mat-icon>
+                  </button>
+                }
               }
             </td>
           </ng-container>
