@@ -12,6 +12,8 @@ export interface LinkTransactionDialogData {
   item: BudgetItemResponse;
   cycleId: string;
   mode?: 'link' | 'realize';
+  startDate?: string;
+  endDate?: string;
 }
 
 @Component({
@@ -37,7 +39,11 @@ export class LinkTransactionDialogComponent implements OnInit {
 
   ngOnInit(): void {
     const item = this.data.item;
-    this.txService.listTransactions({ type: item.type })
+    this.txService.listTransactions({
+      type: item.type,
+      ...(this.data.startDate && { startDate: this.data.startDate }),
+      ...(this.data.endDate   && { endDate:   this.data.endDate   }),
+    })
       .subscribe({
         next: (result: TransactionResponseDTO[]) => {
           const filtered = this.isInstallment() && item.installmentGroupId

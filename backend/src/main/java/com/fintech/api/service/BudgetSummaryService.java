@@ -5,8 +5,8 @@ import com.fintech.api.domain.budget.BudgetItem;
 import com.fintech.api.domain.enums.BudgetCycleStatus;
 import com.fintech.api.domain.enums.BudgetItemStatus;
 import com.fintech.api.domain.enums.TransactionType;
+import com.fintech.api.domain.transaction.Transaction;
 import com.fintech.api.dto.budget.BudgetCycleSummaryDTO;
-import com.fintech.api.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,31 +21,38 @@ import java.util.List;
 @RequiredArgsConstructor
 public class BudgetSummaryService {
 
-    private final TransactionRepository transactionRepository;
-
     @Transactional(readOnly = true)
-    public BudgetCycleSummaryDTO calculateSummary(BudgetCycle cycle, List<BudgetItem> items, LocalDate today) {
+    public BudgetCycleSummaryDTO calculateSummary(BudgetCycle cycle, List<BudgetItem> items,
+                                                  List<Transaction> unplanned, LocalDate today) {
         BigDecimal openingBalance = cycle.getOpeningBalance();
 
-        // Filter out SKIPPED items from all calculations
         List<BudgetItem> activeItems = items.stream()
             .filter(i -> i.getStatus() != BudgetItemStatus.SKIPPED)
             .toList();
 
-        BigDecimal plannedIncome = sumByType(activeItems, TransactionType.INCOME);
+        BigDecimal plannedIncome  = sumByType(activeItems, TransactionType.INCOME);
         BigDecimal plannedExpense = sumByType(activeItems, TransactionType.EXPENSE);
 
-        BigDecimal realizedIncome = sumByTypeAndStatus(activeItems, TransactionType.INCOME, BudgetItemStatus.REALIZED);
+        BigDecimal realizedIncome  = sumByTypeAndStatus(activeItems, TransactionType.INCOME,  BudgetItemStatus.REALIZED);
         BigDecimal realizedExpense = sumByTypeAndStatus(activeItems, TransactionType.EXPENSE, BudgetItemStatus.REALIZED);
 
-        // Projected Balance = openingBalance + sum(INCOME, PENDING|REALIZED) - sum(EXPENSE, PENDING|REALIZED)
         BigDecimal projectedBalance = openingBalance.add(plannedIncome).subtract(plannedExpense);
 
-        // Unplanned Expenses = sum of EXPENSE transactions in cycle period with no budget item link
-        BigDecimal unplannedExpenses = calculateUnplannedExpenses(cycle);
+        BigDecimal unplannedIncome  = BigDecimal.ZERO;
+        BigDecimal unplannedExpense = BigDecimal.ZERO;
+        for (Transaction t : unplanned) {
+            if (t.getType() == TransactionType.INCOME)
+                unplannedIncome  = unplannedIncome.add(t.getAmount());
+            else
+                unplannedExpense = unplannedExpense.add(t.getAmount());
+        }
 
-        // Available to Spend = sum(INCOME, PENDING|REALIZED) - sum(EXPENSE, PENDING|REALIZED) - unplannedExpenses
-        BigDecimal availableToSpend = plannedIncome.subtract(plannedExpense).subtract(unplannedExpenses);
+        BigDecimal currentBalance = openingBalance
+            .add(realizedIncome).add(unplannedIncome)
+            .subtract(realizedExpense).subtract(unplannedExpense);
+
+        BigDecimal availableToSpend = currentBalance
+            .subtract(plannedExpense.subtract(realizedExpense));
 
         Integer remainingDays = cycle.getStatus() == BudgetCycleStatus.OPEN
             ? (int) ChronoUnit.DAYS.between(today, cycle.getEndDate())
@@ -59,50 +66,26 @@ public class BudgetSummaryService {
             .count();
 
         return new BudgetCycleSummaryDTO(
-            openingBalance,
             plannedIncome,
             plannedExpense,
             projectedBalance,
             realizedIncome,
             realizedExpense,
-            unplannedExpenses,
+            currentBalance,
+            pendingCount,
+            unplannedIncome,
+            unplannedExpense,
             availableToSpend,
             dailyAllowance,
-            remainingDays,
-            pendingCount
+            remainingDays
         );
     }
 
-    /**
-     * Calcula a mesada diária (daily allowance).
-     * Retorna ZERO se disponível ≤ 0 ou dias restantes ≤ 0.
-     * Caso contrário: floor(disponível / diasRestantes, 2 casas decimais).
-     */
     public BigDecimal calculateDailyAllowance(BigDecimal availableToSpend, LocalDate endDate, LocalDate today) {
-        if (availableToSpend.compareTo(BigDecimal.ZERO) <= 0) {
-            return BigDecimal.ZERO;
-        }
-
+        if (availableToSpend.compareTo(BigDecimal.ZERO) <= 0) return BigDecimal.ZERO;
         long remainingDays = ChronoUnit.DAYS.between(today, endDate);
-        if (remainingDays <= 0) {
-            return BigDecimal.ZERO;
-        }
-
+        if (remainingDays <= 0) return BigDecimal.ZERO;
         return availableToSpend.divide(BigDecimal.valueOf(remainingDays), 2, RoundingMode.FLOOR);
-    }
-
-    /**
-     * Soma despesas não planejadas: transações EXPENSE no período do ciclo
-     * que não estão vinculadas a nenhum budget item.
-     */
-    @Transactional(readOnly = true)
-    public BigDecimal calculateUnplannedExpenses(BudgetCycle cycle) {
-        return transactionRepository.sumUnplannedExpenses(
-            cycle.getTenant().getId(),
-            cycle.getStartDate(),
-            cycle.getEndDate(),
-            cycle.getId()
-        );
     }
 
     private BigDecimal sumByType(List<BudgetItem> items, TransactionType type) {

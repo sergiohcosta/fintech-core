@@ -6,31 +6,26 @@ import com.fintech.api.domain.enums.BudgetCycleStatus;
 import com.fintech.api.domain.enums.BudgetItemStatus;
 import com.fintech.api.domain.enums.TransactionType;
 import com.fintech.api.domain.tenant.Tenant;
+import com.fintech.api.domain.transaction.Transaction;
 import com.fintech.api.dto.budget.BudgetCycleSummaryDTO;
-import com.fintech.api.repository.TransactionRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
-import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class BudgetSummaryServiceTest {
-
-    @Mock TransactionRepository transactionRepository;
 
     @InjectMocks BudgetSummaryService summaryService;
 
@@ -65,6 +60,13 @@ class BudgetSummaryServiceTest {
                 .build();
     }
 
+    private Transaction mockTx(TransactionType type, BigDecimal amount) {
+        Transaction tx = mock(Transaction.class);
+        when(tx.getType()).thenReturn(type);
+        when(tx.getAmount()).thenReturn(amount);
+        return tx;
+    }
+
     // ---- calculateSummary ----
 
     @Nested
@@ -72,7 +74,7 @@ class BudgetSummaryServiceTest {
     class CalculateSummaryTests {
 
         @Test
-        @DisplayName("itens mistos (PENDING, REALIZED, SKIPPED) — calcula corretamente")
+        @DisplayName("itens mistos (PENDING, REALIZED, SKIPPED) — calcula planejados e realizados corretamente")
         void calculateSummary_withMixedItems_calculatesCorrectly() {
             Tenant tenant = createTenant();
             LocalDate start = LocalDate.of(2026, 6, 1);
@@ -86,12 +88,11 @@ class BudgetSummaryServiceTest {
                     createItem(TransactionType.INCOME, BudgetItemStatus.SKIPPED, new BigDecimal("300"))
             );
 
-            when(transactionRepository.sumUnplannedExpenses(
-                    eq(tenant.getId()), eq(start), eq(end), eq(cycle.getId())
-            )).thenReturn(new BigDecimal("200"));
+            // Transação não planejada de despesa
+            List<Transaction> unplanned = List.of(mockTx(TransactionType.EXPENSE, new BigDecimal("200")));
 
             LocalDate today = LocalDate.of(2026, 6, 10);
-            BudgetCycleSummaryDTO summary = summaryService.calculateSummary(cycle, items, today);
+            BudgetCycleSummaryDTO summary = summaryService.calculateSummary(cycle, items, unplanned, today);
 
             // plannedIncome = 5000 (SKIPPED excluído)
             assertThat(summary.plannedIncome()).isEqualByComparingTo("5000");
@@ -99,25 +100,26 @@ class BudgetSummaryServiceTest {
             assertThat(summary.plannedExpense()).isEqualByComparingTo("2500");
             // projectedBalance = 1000 + 5000 - 2500 = 3500
             assertThat(summary.projectedBalance()).isEqualByComparingTo("3500");
-            // realizedIncome = 0 (nenhum INCOME REALIZED)
+            // realizedIncome = 0, realizedExpense = 500
             assertThat(summary.realizedIncome()).isEqualByComparingTo("0");
-            // realizedExpense = 500
             assertThat(summary.realizedExpense()).isEqualByComparingTo("500");
-            // unplannedExpenses = 200
-            assertThat(summary.unplannedExpenses()).isEqualByComparingTo("200");
-            // availableToSpend = 5000 - 2500 - 200 = 2300
-            assertThat(summary.availableToSpend()).isEqualByComparingTo("2300");
-            // pendingCount = 2 (somente itens PENDING: INCOME/PENDING + EXPENSE/PENDING)
+            // unplannedExpense = 200 (da lista), unplannedIncome = 0
+            assertThat(summary.unplannedExpense()).isEqualByComparingTo("200");
+            assertThat(summary.unplannedIncome()).isEqualByComparingTo("0");
+            // currentBalance = 1000 + 0 + 0 - 500 - 200 = 300
+            assertThat(summary.currentBalance()).isEqualByComparingTo("300");
+            // availableToSpend = currentBalance - (plannedExpense - realizedExpense) = 300 - 2000 = -1700
+            assertThat(summary.availableToSpend()).isEqualByComparingTo("-1700");
+            // pendingCount = 2 (INCOME/PENDING + EXPENSE/PENDING)
             assertThat(summary.pendingCount()).isEqualTo(2);
-            // dailyAllowance calculado com base nos dias restantes (30 - 10 = 20 dias)
-            // floor(2300 / 20) = 115.00
-            assertThat(summary.dailyAllowance()).isEqualByComparingTo("115.00");
-            // remainingDays = days between 2026-06-10 e 2026-06-30 = 20
+            // dailyAllowance = 0 (availableToSpend < 0)
+            assertThat(summary.dailyAllowance()).isEqualByComparingTo("0");
+            // remainingDays = 20 (10/jun → 30/jun)
             assertThat(summary.remainingDays()).isEqualTo(20);
         }
 
         @Test
-        @DisplayName("todos SKIPPED — somatórios zerados")
+        @DisplayName("todos SKIPPED — somatórios de itens zerados, currentBalance = openingBalance")
         void calculateSummary_skippedItemsExcluded() {
             Tenant tenant = createTenant();
             LocalDate start = LocalDate.of(2026, 6, 1);
@@ -130,21 +132,42 @@ class BudgetSummaryServiceTest {
                     createItem(TransactionType.EXPENSE, BudgetItemStatus.SKIPPED, new BigDecimal("300"))
             );
 
-            when(transactionRepository.sumUnplannedExpenses(
-                    eq(tenant.getId()), eq(start), eq(end), eq(cycle.getId())
-            )).thenReturn(BigDecimal.ZERO);
-
             LocalDate today = LocalDate.of(2026, 6, 10);
-            BudgetCycleSummaryDTO summary = summaryService.calculateSummary(cycle, items, today);
+            BudgetCycleSummaryDTO summary = summaryService.calculateSummary(cycle, items, List.of(), today);
 
             assertThat(summary.plannedIncome()).isEqualByComparingTo("0");
             assertThat(summary.plannedExpense()).isEqualByComparingTo("0");
-            assertThat(summary.projectedBalance()).isEqualByComparingTo("1000"); // apenas openingBalance
+            assertThat(summary.projectedBalance()).isEqualByComparingTo("1000");
             assertThat(summary.realizedIncome()).isEqualByComparingTo("0");
             assertThat(summary.realizedExpense()).isEqualByComparingTo("0");
-            assertThat(summary.unplannedExpenses()).isEqualByComparingTo("0");
-            assertThat(summary.availableToSpend()).isEqualByComparingTo("0");
+            assertThat(summary.unplannedExpense()).isEqualByComparingTo("0");
+            assertThat(summary.unplannedIncome()).isEqualByComparingTo("0");
+            assertThat(summary.currentBalance()).isEqualByComparingTo("1000");
+            assertThat(summary.availableToSpend()).isEqualByComparingTo("1000");
             assertThat(summary.pendingCount()).isEqualTo(0);
+        }
+
+        @Test
+        @DisplayName("receita não planejada aumenta currentBalance e availableToSpend")
+        void calculateSummary_unplannedIncome_aumentaBalance() {
+            Tenant tenant = createTenant();
+            LocalDate start = LocalDate.of(2026, 6, 1);
+            LocalDate end = LocalDate.of(2026, 6, 30);
+            BudgetCycle cycle = createCycle(tenant, new BigDecimal("0"), start, end);
+
+            List<Transaction> unplanned = List.of(
+                    mockTx(TransactionType.INCOME,  new BigDecimal("500")),
+                    mockTx(TransactionType.EXPENSE, new BigDecimal("100"))
+            );
+
+            BudgetCycleSummaryDTO summary = summaryService.calculateSummary(cycle, List.of(), unplanned, LocalDate.of(2026, 6, 1));
+
+            assertThat(summary.unplannedIncome()).isEqualByComparingTo("500");
+            assertThat(summary.unplannedExpense()).isEqualByComparingTo("100");
+            // currentBalance = 0 + 500 - 100 = 400
+            assertThat(summary.currentBalance()).isEqualByComparingTo("400");
+            // availableToSpend = 400 - 0 = 400
+            assertThat(summary.availableToSpend()).isEqualByComparingTo("400");
         }
     }
 
@@ -160,7 +183,6 @@ class BudgetSummaryServiceTest {
             BigDecimal available = new BigDecimal("1000");
             LocalDate today = LocalDate.of(2026, 6, 10);
             LocalDate endDate = LocalDate.of(2026, 6, 20);
-            // remainingDays = 10, expected = 1000/10 = 100.00
 
             BigDecimal result = summaryService.calculateDailyAllowance(available, endDate, today);
 
@@ -173,7 +195,6 @@ class BudgetSummaryServiceTest {
             BigDecimal available = new BigDecimal("1000");
             LocalDate today = LocalDate.of(2026, 6, 13);
             LocalDate endDate = LocalDate.of(2026, 6, 20);
-            // remainingDays = 7, expected = floor(1000/7) = 142.85
 
             BigDecimal result = summaryService.calculateDailyAllowance(available, endDate, today);
 
@@ -217,33 +238,6 @@ class BudgetSummaryServiceTest {
         }
     }
 
-    // ---- calculateUnplannedExpenses ----
-
-    @Nested
-    @DisplayName("calculateUnplannedExpenses")
-    class CalculateUnplannedExpensesTests {
-
-        @Test
-        @DisplayName("delega ao repositório e retorna valor correto")
-        void calculateUnplannedExpenses_delegatesToRepository() {
-            Tenant tenant = createTenant();
-            LocalDate start = LocalDate.of(2026, 6, 1);
-            LocalDate end = LocalDate.of(2026, 6, 30);
-            BudgetCycle cycle = createCycle(tenant, BigDecimal.ZERO, start, end);
-
-            when(transactionRepository.sumUnplannedExpenses(
-                    eq(tenant.getId()), eq(start), eq(end), eq(cycle.getId())
-            )).thenReturn(new BigDecimal("350.00"));
-
-            BigDecimal result = summaryService.calculateUnplannedExpenses(cycle);
-
-            assertThat(result).isEqualByComparingTo("350.00");
-            verify(transactionRepository).sumUnplannedExpenses(
-                    tenant.getId(), start, end, cycle.getId()
-            );
-        }
-    }
-
     // ---- remainingDays e dailyAllowance — nulos fora de OPEN ----
 
     @Nested
@@ -263,10 +257,7 @@ class BudgetSummaryServiceTest {
                     .status(BudgetCycleStatus.ENDED)
                     .build();
 
-            when(transactionRepository.sumUnplannedExpenses(any(), any(), any(), any()))
-                    .thenReturn(BigDecimal.ZERO);
-
-            BudgetCycleSummaryDTO summary = summaryService.calculateSummary(cycle, List.of(), LocalDate.of(2026, 6, 10));
+            BudgetCycleSummaryDTO summary = summaryService.calculateSummary(cycle, List.of(), List.of(), LocalDate.of(2026, 6, 10));
 
             assertThat(summary.remainingDays()).isNull();
             assertThat(summary.dailyAllowance()).isNull();
@@ -279,14 +270,11 @@ class BudgetSummaryServiceTest {
             LocalDate start = LocalDate.of(2026, 6, 1);
             LocalDate end = LocalDate.of(2026, 6, 30);
             LocalDate today = LocalDate.of(2026, 6, 10);
-            BudgetCycle cycle = createCycle(tenant, BigDecimal.ZERO, start, end); // status OPEN
+            BudgetCycle cycle = createCycle(tenant, BigDecimal.ZERO, start, end);
 
-            when(transactionRepository.sumUnplannedExpenses(any(), any(), any(), any()))
-                    .thenReturn(BigDecimal.ZERO);
+            BudgetCycleSummaryDTO summary = summaryService.calculateSummary(cycle, List.of(), List.of(), today);
 
-            BudgetCycleSummaryDTO summary = summaryService.calculateSummary(cycle, List.of(), today);
-
-            assertThat(summary.remainingDays()).isEqualTo(20); // entre 10/jun e 30/jun
+            assertThat(summary.remainingDays()).isEqualTo(20);
         }
     }
 }

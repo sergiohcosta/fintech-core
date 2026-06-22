@@ -4,7 +4,7 @@ import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { registerLocaleData } from '@angular/common';
 import localePtBr from '@angular/common/locales/pt';
-import { MAT_DATE_LOCALE } from '@angular/material/core';
+import { MAT_DATE_LOCALE, provideNativeDateAdapter } from '@angular/material/core';
 
 import { routes } from './app.routes';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
@@ -22,6 +22,10 @@ export const appConfig: ApplicationConfig = {
       withInterceptors([apiUrlInterceptor, authInterceptor])
     ),
     provideAnimationsAsync(),
+    // DateAdapter global: o popup do datepicker dentro de um MatDialog resolve via
+    // Environment Injector, que MatNativeDateModule (importado no componente) não
+    // alcança. Registrar aqui cobre datepickers em qualquer contexto, incluindo diálogos.
+    provideNativeDateAdapter(),
     { provide: LOCALE_ID, useValue: 'pt-BR' },
     { provide: MAT_DATE_LOCALE, useValue: 'pt-BR' }
   ]

@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, computed, untracked } from '@angular/core';
+import { Component, inject, OnInit, signal, computed, effect, untracked } from '@angular/core';
 import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { MatTableModule } from '@angular/material/table';
@@ -15,14 +15,15 @@ import { TransactionsService } from '../../../core/api/transactions/transactions
 import { AccountsService } from '../../../core/api/accounts/accounts.service';
 import { InstallmentGroupsService } from '../../../core/api/installment-groups/installment-groups.service';
 import { TransfersService } from '../../../core/api/transfers/transfers.service';
-import { TransactionResponseDTO, AccountResponse, InvoiceStatus } from '../../../core/api/fintechSaaSAPI.schemas';
+import { InvoicesService } from '../../../core/api/invoices/invoices.service';
+import { TransactionResponseDTO, AccountResponse, InvoiceResponseDTO, InvoiceStatus } from '../../../core/api/fintechSaaSAPI.schemas';
 import { ConfirmationDialogComponent } from '../../../components/confirmation-dialog/confirmation-dialog';
 import { DeleteInstallmentDialogComponent, DeleteInstallmentDialogResult } from './delete-installment-dialog/delete-installment-dialog';
 import { TransactionFiltersComponent } from './transaction-filters/transaction-filters';
 import { TransactionFilters, DEFAULT_FILTERS, currentMonthFilters } from './transaction-filters/transaction-filters.types';
-import { buildDisplayRows, InstallmentGroupInfo, DisplayRow, InvoiceHeaderRow, resolveMonthKey, formatMonthLabel, SortCol, SortCriterion, applySort, getSortInfo } from './transaction-list.utils';
+import { buildDisplayRows, InstallmentGroupInfo, DisplayRow, InvoiceSummaryRow, resolveMonthKey, formatMonthLabel, SortCol, SortCriterion, applySort, getSortInfo } from './transaction-list.utils';
 export { buildDisplayRows } from './transaction-list.utils';
-export type { InstallmentGroupInfo, DisplayRow, InvoiceHeaderRow } from './transaction-list.utils';
+export type { InstallmentGroupInfo, DisplayRow, InvoiceSummaryRow, SortCriterion } from './transaction-list.utils';
 
 @Component({
   selector: 'app-transaction-list',
@@ -50,6 +51,7 @@ export class TransactionList implements OnInit {
   private accountService  = inject(AccountsService);
   private groupService    = inject(InstallmentGroupsService);
   private transferService = inject(TransfersService);
+  private invoiceService  = inject(InvoicesService);
   private router   = inject(Router);
   private dialog   = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
@@ -60,13 +62,60 @@ export class TransactionList implements OnInit {
   filters              = signal<TransactionFilters>(DEFAULT_FILTERS);
   showFilters          = signal(false);
   sortCriteria         = signal<SortCriterion[]>([{ col: 'date', dir: 'desc' }]);
+  invoicesForGrouping  = signal<InvoiceResponseDTO[]>([]);
+
+  constructor() {
+    effect(() => {
+      const f = this.filters();
+      if (!f.groupByInvoice || !f.startDate || !f.endDate) {
+        this.invoicesForGrouping.set([]);
+        return;
+      }
+      const allAccounts = this.accounts();
+      if (!allAccounts.length) return;
+
+      const ccAccounts = allAccounts
+        .filter(a => a.type === 'CREDIT_CARD' && (f.accountIds.length === 0 || f.accountIds.includes(a.id)));
+
+      if (!ccAccounts.length) {
+        this.invoicesForGrouping.set([]);
+        return;
+      }
+
+      const [sy, sm] = f.startDate!.split('-').map(Number);
+      const [ey, em] = f.endDate!.split('-').map(Number);
+      const startOrd = sy * 12 + sm;
+      const endOrd   = ey * 12 + em;
+
+      forkJoin(ccAccounts.map(a => this.invoiceService.listInvoices({ accountId: a.id }))).subscribe({
+        next: (results) => {
+          const filtered = results.flat().filter(inv => {
+            const ord = inv.referenceYear * 12 + inv.referenceMonth;
+            return ord >= startOrd && ord <= endOrd;
+          });
+          untracked(() => this.invoicesForGrouping.set(filtered));
+        },
+      });
+    });
+  }
 
   filteredTransactions = computed(() => {
-    const desc = this.filters().description?.toLowerCase().trim();
-    if (!desc) return this.transactions();
-    return this.transactions().filter(t =>
-      t.description?.toLowerCase().includes(desc)
-    );
+    const f = this.filters();
+    let txs = this.transactions();
+
+    // Quando agrupando por fatura, o backend filtra transações avulsas de cartão por t.date,
+    // mas a referência financeira correta é invoice.dueDate. Refiltramos aqui para evitar
+    // que uma compra feita após o fechamento apareça numa fatura do mês seguinte ao filtrado.
+    if (f.groupByInvoice && f.startDate && f.endDate) {
+      txs = txs.filter(t => {
+        if (!t.invoiceId || !t.invoiceDueDate) return true;
+        return t.invoiceDueDate >= f.startDate! && t.invoiceDueDate <= f.endDate!;
+      });
+    }
+
+    const desc = f.description?.toLowerCase().trim();
+    if (!desc) return txs;
+    return txs.filter(t => t.description?.toLowerCase().includes(desc));
   });
 
   displayedColumns = ['description', 'amount', 'date', 'type', 'status', 'category', 'account', 'actions'];
@@ -78,6 +127,7 @@ export class TransactionList implements OnInit {
       this.filters().groupByPeriod,
       this.filters().groupByInvoice,
       this.sortCriteria(),
+      this.invoicesForGrouping(),
     )
   );
 
@@ -90,11 +140,11 @@ export class TransactionList implements OnInit {
     } else if (f.accountIds.length > 1) {
       chips.push({ label: `${f.accountIds.length} contas`, field: 'accountIds', colorClass: 'chip-account' });
     }
-    if (f.status === 'PENDING')   chips.push({ label: 'Pendente',  field: 'status', colorClass: 'chip-pending' });
-    if (f.status === 'PAID')      chips.push({ label: 'Pago',      field: 'status', colorClass: 'chip-paid' });
-    if (f.status === 'CANCELLED') chips.push({ label: 'Cancelado', field: 'status', colorClass: 'chip-cancelled' });
-    if (f.type === 'EXPENSE') chips.push({ label: 'Despesa', field: 'type', colorClass: 'chip-expense' });
-    if (f.type === 'INCOME')  chips.push({ label: 'Receita', field: 'type', colorClass: 'chip-income' });
+    const statusLabels: Record<string, string> = { PENDING: 'Pendente', PAID: 'Pago', CANCELLED: 'Cancelado' };
+    const statusColors: Record<string, string> = { PENDING: 'chip-pending', PAID: 'chip-paid', CANCELLED: 'chip-cancelled' };
+    f.statuses.forEach(s => chips.push({ label: statusLabels[s] ?? s, field: 'statuses', colorClass: statusColors[s] ?? 'chip-pending' }));
+    const typeLabels: Record<string, string> = { EXPENSE: 'Despesa', INCOME: 'Receita', TRANSFER: 'Transferência' };
+    f.types.forEach(t => chips.push({ label: typeLabels[t] ?? t, field: 'types', colorClass: t === 'INCOME' ? 'chip-income' : 'chip-expense' }));
     if (f.startDate && f.endDate) {
       const key = resolveMonthKey(f.startDate, f.endDate);
       const label = key && key !== 'custom'
@@ -108,19 +158,24 @@ export class TransactionList implements OnInit {
     return chips;
   });
 
-  isDataRow       = (_: number, row: DisplayRow) => row.kind === 'single' || row.kind === 'installment';
-  isDetailRow     = (_: number, row: DisplayRow) => row.kind === 'installment-detail';
-  isPeriodHeader  = (_: number, row: DisplayRow) => row.kind === 'period-header';
-  isInvoiceHeader = (_: number, row: DisplayRow) => row.kind === 'invoice-header';
+  isDataRow      = (_: number, row: DisplayRow) => row.kind === 'single' || row.kind === 'installment' || row.kind === 'invoice-summary';
+  isDetailRow    = (_: number, row: DisplayRow) => row.kind === 'installment-detail';
+  isPeriodHeader = (_: number, row: DisplayRow) => row.kind === 'period-header';
 
-  invoiceHeaderChipClass(status: InvoiceStatus | null): string {
-    if (!status) return '';
+  onSortClick(col: SortCol, event: MouseEvent): void {
+    this.sortCriteria.update(criteria => applySort(criteria, col, event.shiftKey));
+  }
+
+  sortInfo(col: SortCol): { priority: number; dir: 'asc' | 'desc' } | null {
+    return getSortInfo(this.sortCriteria(), col);
+  }
+
+  invoiceStatusChipClass(status: InvoiceStatus): string {
     const map: Record<InvoiceStatus, string> = { OPEN: 'invoice-open', CLOSED: 'invoice-closed', PAID: 'invoice-paid' };
     return 'invoice-chip ' + (map[status] ?? '');
   }
 
-  invoiceHeaderStatusLabel(status: InvoiceStatus | null): string {
-    if (!status) return '';
+  invoiceStatusLabel(status: InvoiceStatus): string {
     const map: Record<InvoiceStatus, string> = { OPEN: 'Aberta', CLOSED: 'Fechada', PAID: 'Paga' };
     return map[status] ?? status;
   }
@@ -132,8 +187,8 @@ export class TransactionList implements OnInit {
       accounts:     this.accountService.listAccounts(),
       transactions: this.service.listTransactions({
         accountIds: saved.accountIds.length > 0 ? saved.accountIds : undefined,
-        status:    saved.status    ?? undefined,
-        type:      saved.type      ?? undefined,
+        status:    saved.statuses[0],
+        type:      saved.types.find((t): t is 'INCOME' | 'EXPENSE' => t === 'INCOME' || t === 'EXPENSE'),
         startDate: saved.startDate ?? undefined,
         endDate:   saved.endDate   ?? undefined,
       }),
@@ -144,14 +199,6 @@ export class TransactionList implements OnInit {
       },
       error: () => this.snackBar.open('Erro ao carregar dados.', 'Fechar', { duration: 5000 }),
     });
-  }
-
-  onSortClick(col: SortCol, event: MouseEvent): void {
-    this.sortCriteria.update(criteria => applySort(criteria, col, event.shiftKey));
-  }
-
-  sortInfo(col: SortCol): { priority: number; dir: 'asc' | 'desc' } | null {
-    return getSortInfo(this.sortCriteria(), col);
   }
 
   toggleFilters(): void {
@@ -172,8 +219,8 @@ export class TransactionList implements OnInit {
   clearFilterChip(field: string): void {
     this.filters.update(f => {
       if (field === 'accountIds')  return { ...f, accountIds: [] };
-      if (field === 'status')      return { ...f, status: null };
-      if (field === 'type')        return { ...f, type: null };
+      if (field === 'statuses')    return { ...f, statuses: [] };
+      if (field === 'types')       return { ...f, types: [] };
       if (field === 'period')      return { ...f, startDate: null, endDate: null };
       if (field === 'description') return { ...f, description: null };
       return f;
@@ -186,8 +233,8 @@ export class TransactionList implements OnInit {
   loadTransactions(f: TransactionFilters = this.filters()): void {
     this.service.listTransactions({
       accountIds: f.accountIds.length > 0 ? f.accountIds : undefined,
-      status:    f.status     ?? undefined,
-      type:      f.type       ?? undefined,
+      status:    f.statuses[0],
+      type:      f.types.find((t): t is 'INCOME' | 'EXPENSE' => t === 'INCOME' || t === 'EXPENSE'),
       startDate: f.startDate  ?? undefined,
       endDate:   f.endDate    ?? undefined,
     }).subscribe({

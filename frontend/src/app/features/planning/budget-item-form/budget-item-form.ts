@@ -2,34 +2,32 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { provideNativeDateAdapter } from '@angular/material/core';
+import { MatNativeDateModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import {
-  BudgetCycleOpenRequest,
-  BudgetItemCreateRequest,
-  BudgetItemResponse,
-  BudgetItemUpdateRequest,
-} from '../../../core/api/fintechSaaSAPI.schemas';
+import { BudgetItemCreateRequest } from '../../../core/api/fintechSaaSAPI.schemas';
 
-export type BudgetItemFormResult = BudgetItemCreateRequest | BudgetItemUpdateRequest;
+export type BudgetItemFormResult = BudgetItemCreateRequest;
 
 export interface BudgetItemFormData {
   cycleId?: string;
-  mode?: 'openCycle' | 'edit';
-  item?: BudgetItemResponse;
+  mode?: 'openCycle';
 }
+
+const MONTH_LABELS = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+];
 
 @Component({
   selector: 'app-budget-item-form',
   standalone: true,
-  providers: [provideNativeDateAdapter()],
   imports: [
     CommonModule, ReactiveFormsModule,
-    MatButtonModule, MatDatepickerModule, MatDialogModule,
+    MatButtonModule, MatDatepickerModule, MatNativeDateModule, MatDialogModule,
     MatFormFieldModule, MatInputModule, MatSelectModule,
   ],
   templateUrl: './budget-item-form.html',
@@ -40,11 +38,17 @@ export class BudgetItemFormComponent implements OnInit {
   readonly data: BudgetItemFormData = inject(MAT_DIALOG_DATA);
 
   readonly isOpenCycleMode = signal(false);
-  readonly isEditMode = signal(false);
+
+  readonly monthLabels = MONTH_LABELS;
+  readonly months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  readonly years = (() => {
+    const y = new Date().getFullYear();
+    return [y - 1, y, y + 1];
+  })();
 
   readonly cycleForm = this.fb.group({
-    referenceMonth: ['', [Validators.required, Validators.pattern(/^\d{4}-\d{2}$/)]],
-    startDay: [1, [Validators.required, Validators.min(1), Validators.max(28)]],
+    year:  [new Date().getFullYear(), Validators.required],
+    month: [new Date().getMonth() + 1, Validators.required],
   });
 
   readonly itemForm = this.fb.group({
@@ -56,34 +60,14 @@ export class BudgetItemFormComponent implements OnInit {
 
   ngOnInit(): void {
     this.isOpenCycleMode.set(this.data?.mode === 'openCycle');
-    this.isEditMode.set(this.data?.mode === 'edit');
-
-    if (this.isEditMode()) {
-      const item = this.data.item!;
-      this.itemForm.patchValue({
-        description: item.description ?? '',
-        amount: item.amount ?? null,
-        type: item.type ?? 'EXPENSE',
-        expectedDate: item.expectedDate ? new Date(item.expectedDate + 'T00:00:00') : null,
-      });
-      this.itemForm.get('type')!.disable();
-    }
   }
 
   onSubmit(): void {
     if (this.isOpenCycleMode()) {
       if (this.cycleForm.invalid) return;
-      const v = this.cycleForm.getRawValue();
-      this.dialogRef.close({ referenceMonth: v.referenceMonth!, startDay: v.startDay! } satisfies BudgetCycleOpenRequest);
-    } else if (this.isEditMode()) {
-      if (this.itemForm.invalid) return;
-      const v = this.itemForm.getRawValue();
-      const result: BudgetItemUpdateRequest = {
-        description: v.description!,
-        amount: v.amount!,
-        expectedDate: v.expectedDate!.toISOString().substring(0, 10),
-      };
-      this.dialogRef.close(result);
+      const { year, month } = this.cycleForm.getRawValue();
+      const mm = String(month).padStart(2, '0');
+      this.dialogRef.close(`${year}-${mm}`);
     } else {
       if (this.itemForm.invalid) return;
       const v = this.itemForm.getRawValue();

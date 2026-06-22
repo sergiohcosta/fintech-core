@@ -48,7 +48,6 @@ export class ShellComponent {
     { label: 'Planejamento', icon: 'event_note', route: '/planning' },
     { label: 'Contas',     icon: 'credit_card',  route: '/accounts' },
     { label: 'Categorias', icon: 'category',     route: '/categories' },
-    { label: 'Taxonomia',  icon: 'account_tree', route: '/categories/taxonomy', adminOnly: true },
     { label: 'Equipe',     icon: 'group',        route: '/team', adminOnly: true },
   ];
 
