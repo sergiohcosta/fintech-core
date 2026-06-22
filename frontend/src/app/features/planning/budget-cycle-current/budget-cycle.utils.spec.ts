@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { DEFAULT_SUMMARY } from './budget-cycle.utils';
+import { DEFAULT_SUMMARY, findDuplicateRecurring } from './budget-cycle.utils';
+import { RecurringBudgetItemResponse } from '../../../core/api/fintechSaaSAPI.schemas';
 
 describe('DEFAULT_SUMMARY', () => {
   it('tem todos os campos numéricos zerados', () => {
@@ -11,5 +12,30 @@ describe('DEFAULT_SUMMARY', () => {
     expect(DEFAULT_SUMMARY.unplannedExpense).toBe(0);
     expect(DEFAULT_SUMMARY.availableToSpend).toBe(0);
     expect(DEFAULT_SUMMARY.pendingCount).toBe(0);
+  });
+});
+
+describe('findDuplicateRecurring', () => {
+  const rec = (over: Partial<RecurringBudgetItemResponse>): RecurringBudgetItemResponse =>
+    ({ description: 'Aluguel', type: 'EXPENSE', active: true, ...over });
+
+  it('encontra match ignorando caixa e espaços nas bordas', () => {
+    const existing = [rec({ description: '  aLuGuel ' })];
+    expect(findDuplicateRecurring(existing, 'Aluguel', 'EXPENSE')).toBeDefined();
+  });
+
+  it('diferencia por tipo (mesma descrição, tipo diferente não é duplicata)', () => {
+    const existing = [rec({ description: 'Aluguel', type: 'EXPENSE' })];
+    expect(findDuplicateRecurring(existing, 'Aluguel', 'INCOME')).toBeUndefined();
+  });
+
+  it('ignora recorrentes desativados (active === false)', () => {
+    const existing = [rec({ description: 'Aluguel', active: false })];
+    expect(findDuplicateRecurring(existing, 'Aluguel', 'EXPENSE')).toBeUndefined();
+  });
+
+  it('retorna undefined quando não há match', () => {
+    const existing = [rec({ description: 'Internet' })];
+    expect(findDuplicateRecurring(existing, 'Aluguel', 'EXPENSE')).toBeUndefined();
   });
 });

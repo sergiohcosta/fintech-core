@@ -1,4 +1,4 @@
-import { BudgetCycleSummary } from '../../../core/api/fintechSaaSAPI.schemas';
+import { BudgetCycleSummary, RecurringBudgetItemResponse, TransactionType } from '../../../core/api/fintechSaaSAPI.schemas';
 
 export const DEFAULT_SUMMARY: Required<BudgetCycleSummary> = {
   plannedIncome:    0,
@@ -14,3 +14,19 @@ export const DEFAULT_SUMMARY: Required<BudgetCycleSummary> = {
   dailyAllowance:   null,
   remainingDays:    null,
 };
+
+// Procura um recorrente ATIVO com mesma descrição (case-insensitive, sem espaços nas bordas)
+// e mesmo tipo. Usado para alertar sobre duplicação ao "tornar recorrente".
+// Recorrentes desativados (active === false, soft-delete) não contam como duplicata.
+export function findDuplicateRecurring(
+  existing: RecurringBudgetItemResponse[],
+  description: string,
+  type: TransactionType,
+): RecurringBudgetItemResponse | undefined {
+  const desc = description.trim().toLowerCase();
+  return existing.find(
+    r => r.active !== false
+      && r.type === type
+      && (r.description ?? '').trim().toLowerCase() === desc,
+  );
+}
