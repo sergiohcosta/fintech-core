@@ -18,6 +18,7 @@ public interface BudgetItemRepository extends JpaRepository<BudgetItem, UUID> {
         SELECT i FROM BudgetItem i
         LEFT JOIN FETCH i.category
         LEFT JOIN FETCH i.account
+        LEFT JOIN FETCH i.transaction
         WHERE i.cycle = :cycle
         ORDER BY i.expectedDate ASC, i.type ASC
     """)
