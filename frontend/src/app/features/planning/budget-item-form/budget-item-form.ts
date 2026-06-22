@@ -15,6 +15,13 @@ export type BudgetItemFormResult = BudgetItemCreateRequest;
 export interface BudgetItemFormData {
   cycleId?: string;
   mode?: 'openCycle';
+  // Valores iniciais ao criar um item a partir de uma transação não planejada.
+  prefill?: {
+    description?: string;
+    amount?: number;
+    type?: 'INCOME' | 'EXPENSE';
+    expectedDate?: Date;
+  };
 }
 
 const MONTH_LABELS = [
@@ -60,6 +67,9 @@ export class BudgetItemFormComponent implements OnInit {
 
   ngOnInit(): void {
     this.isOpenCycleMode.set(this.data?.mode === 'openCycle');
+    if (this.data?.prefill) {
+      this.itemForm.patchValue(this.data.prefill);
+    }
   }
 
   onSubmit(): void {
