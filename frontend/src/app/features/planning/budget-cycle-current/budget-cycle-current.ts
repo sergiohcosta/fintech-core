@@ -18,6 +18,8 @@ import { BudgetItemFormComponent, BudgetItemFormResult } from '../budget-item-fo
 import { LinkTransactionDialogComponent, LinkTransactionDialogData } from '../link-transaction-dialog/link-transaction-dialog';
 import { LinkBudgetItemDialogComponent, LinkBudgetItemDialogData } from '../link-budget-item-dialog/link-budget-item-dialog';
 import { ConfirmationDialogComponent, ConfirmationDialogData } from '../../../components/confirmation-dialog/confirmation-dialog';
+import { BreakdownDialogComponent } from '../breakdown/breakdown-dialog';
+import { buildBreakdown, BreakdownCard } from '../breakdown/budget-cycle-breakdown';
 
 @Component({
   selector: 'app-budget-cycle-current',
@@ -54,6 +56,22 @@ export class BudgetCycleCurrentComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadCurrentCycle();
+  }
+
+  // Abre o modal de composição do card. A conta é montada por buildBreakdown a partir
+  // dos dados que o componente já tem (sem chamada à API).
+  openBreakdown(card: BreakdownCard): void {
+    const c = this.cycle();
+    if (!c) return;
+    this.dialog.open(BreakdownDialogComponent, {
+      width: '480px',
+      data: buildBreakdown(card, {
+        openingBalance: c.openingBalance ?? 0,
+        summary: this.summary(),
+        items: this.items(),
+        unplanned: this.unplannedItems(),
+      }),
+    });
   }
 
   loadCurrentCycle(): void {
