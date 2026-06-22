@@ -5,6 +5,7 @@ import com.fintech.api.domain.budget.BudgetItem;
 import com.fintech.api.domain.budget.RecurringBudgetItem;
 import com.fintech.api.domain.enums.*;
 import com.fintech.api.dto.budget.BudgetCycleResponseDTO;
+import com.fintech.api.dto.budget.BudgetCycleSummaryDTO;
 import com.fintech.api.domain.installment.InstallmentGroup;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.transaction.Transaction;
@@ -34,6 +35,7 @@ public class BudgetCycleService {
     private final RecurringBudgetItemRepository recurringRepository;
     private final AccountRepository accountRepository;
     private final TransactionRepository transactionRepository;
+    private final BudgetSummaryService summaryService;
 
     /**
      * Calcula as datas de início e fim do ciclo para um dado mês de referência.
@@ -95,8 +97,10 @@ public class BudgetCycleService {
             throw new IllegalStateException("O período solicitado conflita com um ciclo já existente.");
         }
 
+        // openingBalance = caixa líquido PAID acumulado ATÉ a véspera do ciclo (date < startDate).
+        // Garante que transações dentro do período só sejam contadas via realized/unplanned.
         BigDecimal opening = accountRepository.sumLiquidBalanceByTenant(
-            tenant.getId(), TransactionType.INCOME, TransactionStatus.PAID);
+            tenant.getId(), TransactionType.INCOME, TransactionStatus.PAID, startDate);
 
         BudgetCycle cycle = cycleRepository.save(BudgetCycle.builder()
             .tenant(tenant)
@@ -260,6 +264,9 @@ public class BudgetCycleService {
             invoiceMonth.getYear(), invoiceMonth.getMonthValue(),
             TransactionStatus.CANCELLED
         );
-        return BudgetCycleResponseDTO.fromEntity(cycle, items, unplanned);
+        // Cálculo do resumo é responsabilidade do service (DTO é só mapeador).
+        BudgetCycleSummaryDTO summary =
+            summaryService.calculateSummary(cycle, items, unplanned, LocalDate.now());
+        return BudgetCycleResponseDTO.fromEntity(cycle, items, unplanned, summary);
     }
 }

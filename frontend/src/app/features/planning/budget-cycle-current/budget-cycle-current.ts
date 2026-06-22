@@ -12,12 +12,15 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { finalize } from 'rxjs/operators';
 
 import { PlanningService } from '../planning.service';
-import { BudgetCycleResponse, BudgetCycleSummary, BudgetItemResponse, TransactionResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
-import { DEFAULT_SUMMARY } from './budget-cycle.utils';
+import { BudgetCycleResponse, BudgetCycleSummary, BudgetItemResponse, RecurringBudgetItemRequest, TransactionResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
+import { RecurringItemFormComponent } from '../recurring-item-form/recurring-item-form';
+import { DEFAULT_SUMMARY, findDuplicateRecurring } from './budget-cycle.utils';
 import { BudgetItemFormComponent, BudgetItemFormResult } from '../budget-item-form/budget-item-form';
 import { LinkTransactionDialogComponent, LinkTransactionDialogData } from '../link-transaction-dialog/link-transaction-dialog';
 import { LinkBudgetItemDialogComponent, LinkBudgetItemDialogData } from '../link-budget-item-dialog/link-budget-item-dialog';
 import { ConfirmationDialogComponent, ConfirmationDialogData } from '../../../components/confirmation-dialog/confirmation-dialog';
+import { BreakdownDialogComponent } from '../breakdown/breakdown-dialog';
+import { buildBreakdown, BreakdownCard } from '../breakdown/budget-cycle-breakdown';
 
 @Component({
   selector: 'app-budget-cycle-current',
@@ -56,6 +59,22 @@ export class BudgetCycleCurrentComponent implements OnInit {
     this.loadCurrentCycle();
   }
 
+  // Abre o modal de composição do card. A conta é montada por buildBreakdown a partir
+  // dos dados que o componente já tem (sem chamada à API).
+  openBreakdown(card: BreakdownCard): void {
+    const c = this.cycle();
+    if (!c) return;
+    this.dialog.open(BreakdownDialogComponent, {
+      width: '480px',
+      data: buildBreakdown(card, {
+        openingBalance: c.openingBalance ?? 0,
+        summary: this.summary(),
+        items: this.items(),
+        unplanned: this.unplannedItems(),
+      }),
+    });
+  }
+
   loadCurrentCycle(): void {
     this.loading.set(true);
     this.planningService.getCurrentCycle()
@@ -73,6 +92,15 @@ export class BudgetCycleCurrentComponent implements OnInit {
           }
         },
       });
+  }
+
+  // Refresh silencioso após mutações: re-busca o ciclo (items + não planejados + summary,
+  // todos consistentes pelo backend) sem ligar o loading — os cards atualizam sem flash.
+  private refreshCycle(): void {
+    this.planningService.getCurrentCycle().subscribe({
+      next: c => { this.cycle.set(c); this.items.set(c.items ?? []); },
+      error: () => this.snackBar.open('Erro ao atualizar o resumo.', 'OK', { duration: 3000 }),
+    });
   }
 
   openCycle(): void {
@@ -129,12 +157,54 @@ export class BudgetCycleCurrentComponent implements OnInit {
     ref.afterClosed().subscribe((result?: BudgetItemFormResult) => {
       if (!result) return;
       this.planningService.createItem(cycleId, result).subscribe({
-        next: item => {
-          this.items.update(list => [...list, item]);
+        next: () => {
+          this.refreshCycle();
           this.snackBar.open('Item adicionado.', 'OK', { duration: 2000 });
         },
         error: () => this.snackBar.open('Erro. Tente novamente.', 'OK', { duration: 3000 }),
       });
+    });
+  }
+
+  // Cria um template recorrente a partir de um item do ciclo. Abre o form prefilled;
+  // dayOfMonth vem do dia do expectedDate, limitado a 28 (constraint do recorrente).
+  // Não altera o ciclo atual — o template só afeta ciclos futuros — então sem refresh.
+  makeRecurring(item: BudgetItemResponse): void {
+    const day = item.expectedDate
+      ? Math.min(new Date(item.expectedDate + 'T00:00:00').getDate(), 28)
+      : 1;
+    const ref = this.dialog.open(RecurringItemFormComponent, {
+      width: '460px',
+      data: { description: item.description, amount: item.amount, type: item.type, dayOfMonth: day },
+    });
+    ref.afterClosed().subscribe((result?: RecurringBudgetItemRequest) => {
+      if (!result) return;
+      // Guard de deduplicação: avisa se já existe recorrente ativo com mesma descrição/tipo.
+      this.planningService.listRecurring().subscribe(existing => {
+        const dup = findDuplicateRecurring(existing, result.description, result.type);
+        if (!dup) {
+          this.persistRecurring(result);
+          return;
+        }
+        const confirmRef = this.dialog.open(ConfirmationDialogComponent, {
+          data: {
+            title: 'Recorrente já existe',
+            message: `Já existe um item recorrente "${dup.description}" do mesmo tipo. Criar mesmo assim?`,
+            confirmText: 'Criar mesmo assim',
+            cancelText: 'Cancelar',
+          } satisfies ConfirmationDialogData,
+        });
+        confirmRef.afterClosed().subscribe((confirmed: boolean) => {
+          if (confirmed) this.persistRecurring(result);
+        });
+      });
+    });
+  }
+
+  private persistRecurring(result: RecurringBudgetItemRequest): void {
+    this.planningService.createRecurring(result).subscribe({
+      next: () => this.snackBar.open('Item recorrente criado.', 'OK', { duration: 2000 }),
+      error: () => this.snackBar.open('Erro ao criar recorrente.', 'OK', { duration: 3000 }),
     });
   }
 
@@ -153,7 +223,7 @@ export class BudgetCycleCurrentComponent implements OnInit {
     ref.afterClosed().subscribe((transactionId?: string) => {
       if (!transactionId) return;
       this.planningService.linkItem(item.id!, { transactionId }).subscribe({
-        next: () => this.loadCurrentCycle(),
+        next: () => this.refreshCycle(),
         error: () => this.snackBar.open('Erro. Tente novamente.', 'OK', { duration: 3000 }),
       });
     });
@@ -161,7 +231,7 @@ export class BudgetCycleCurrentComponent implements OnInit {
 
   unlinkTransaction(item: BudgetItemResponse): void {
     this.planningService.unlinkItem(item.id!).subscribe({
-      next: () => this.loadCurrentCycle(),
+      next: () => this.refreshCycle(),
       error: () => this.snackBar.open('Erro. Tente novamente.', 'OK', { duration: 3000 }),
     });
   }
@@ -170,9 +240,43 @@ export class BudgetCycleCurrentComponent implements OnInit {
     this.planningService.deleteItem(item.id!).subscribe({
       next: () => {
         this.confirmingDeleteId.set(null);
-        this.items.update(list => list.filter(i => i.id !== item.id));
+        this.refreshCycle();
       },
       error: () => this.snackBar.open('Erro. Tente novamente.', 'OK', { duration: 3000 }),
+    });
+  }
+
+  // Cria um item planejado a partir de uma transação não planejada e já o vincula a ela
+  // (vira realizado e sai da lista de não planejados). Form prefilled com os dados da transação.
+  createPlannedFromUnplanned(tx: TransactionResponseDTO): void {
+    const cycleId = this.cycle()?.id;
+    if (!cycleId) return;
+    const ref = this.dialog.open(BudgetItemFormComponent, {
+      width: '500px',
+      data: {
+        cycleId,
+        prefill: {
+          description: tx.description,
+          amount: tx.amount,
+          type: tx.type,
+          expectedDate: tx.date ? new Date(tx.date + 'T00:00:00') : undefined,
+        },
+      },
+    });
+    ref.afterClosed().subscribe((result?: BudgetItemFormResult) => {
+      if (!result) return;
+      this.planningService.createItem(cycleId, result).subscribe({
+        next: item => {
+          this.planningService.linkItem(item.id!, { transactionId: tx.id! }).subscribe({
+            next: () => {
+              this.refreshCycle();
+              this.snackBar.open('Item planejado criado e vinculado.', 'OK', { duration: 2000 });
+            },
+            error: () => this.snackBar.open('Item criado, mas falha ao vincular.', 'OK', { duration: 3000 }),
+          });
+        },
+        error: () => this.snackBar.open('Erro ao criar item.', 'OK', { duration: 3000 }),
+      });
     });
   }
 
@@ -196,7 +300,7 @@ export class BudgetCycleCurrentComponent implements OnInit {
       if (!itemId) return;
       this.planningService.linkItem(itemId, { transactionId: tx.id! }).subscribe({
         next: () => {
-          this.loadCurrentCycle();
+          this.refreshCycle();
           this.snackBar.open('Vinculado com sucesso.', 'OK', { duration: 2000 });
         },
         error: () => this.snackBar.open('Erro. Tente novamente.', 'OK', { duration: 3000 }),
