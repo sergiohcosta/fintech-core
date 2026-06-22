@@ -115,6 +115,14 @@ AND t.status <> CANCELLED
 - `BudgetItem`: criação, update, link/unlink a transações (guard anti-duplicação).
 - `RecurringBudgetItem`: templates; `deactivate` = soft-delete (`active=false`).
 
+**`openingBalance` (ao abrir):** `sumLiquidBalanceByTenant` = caixa líquido PAID **anterior** ao ciclo (`t.date < startDate`, contas `countInLiquidBalance=true`). O corte de data evita dupla contagem: transações dentro do período só entram via realizados/avulsas, nunca no opening.
+
+**Resumo do ciclo (`BudgetSummaryService` — fonte única; o DTO é só mapeador):**
+- `currentBalance` = **caixa real agora** = `opening + realizados + avulsas`, contando **só PAID** (realizado = item REALIZED cuja transação está PAID).
+- `availableToSpend` = **projeção do que dá pra gastar** = `opening + toda receita − toda despesa` (itens ativos exceto SKIPPED + avulsas), **independente de PAID/PENDING**. Conservadorismo simétrico: receita só ajuda quando lançada; despesa pesa assim que existe no sistema. Equivale a `projectedBalance + (avulsas: receitas − despesas)`.
+- `dailyAllowance` = `availableToSpend / dias restantes` (FLOOR 2 casas; 0 se ≤0 ou sem dias; null fora de OPEN).
+- `unplannedIncome/Expense` no DTO = **total** das avulsas (PAID+PENDING), para exibição; a lista de avulsas inclui PENDING com badge.
+
 ## Logging Estruturado (MDC)
 
 | Chave | Quando | Valor |
