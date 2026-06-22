@@ -115,6 +115,21 @@ AND t.status <> CANCELLED
 - `BudgetItem`: criação, update, link/unlink a transações (guard anti-duplicação).
 - `RecurringBudgetItem`: templates; `deactivate` = soft-delete (`active=false`).
 
+**`openingBalance` (ao abrir):** `sumLiquidBalanceByTenant` = caixa líquido PAID **anterior** ao ciclo (`t.date < startDate`, contas `countInLiquidBalance=true`). O corte de data evita dupla contagem: transações dentro do período só entram via realizados/avulsas, nunca no opening.
+
+**Resumo do ciclo (`BudgetSummaryService` — fonte única; o DTO é só mapeador):**
+- `currentBalance` = **caixa real agora** = `opening + realizados + avulsas`, contando **só PAID** (realizado = item REALIZED cuja transação está PAID).
+- `availableToSpend` = **projeção do que dá pra gastar** = `opening + toda receita − toda despesa` (itens ativos exceto SKIPPED + avulsas), **independente de PAID/PENDING**. Conservadorismo simétrico: receita só ajuda quando lançada; despesa pesa assim que existe no sistema. Equivale a `projectedBalance + (avulsas: receitas − despesas)`.
+- `dailyAllowance` = `availableToSpend / dias restantes` (FLOOR 2 casas; 0 se ≤0 ou sem dias; null fora de OPEN).
+- `unplannedIncome/Expense` no DTO = **total** das avulsas (PAID+PENDING), para exibição; a lista de avulsas inclui PENDING com badge.
+- `BudgetItemResponse.transactionStatus`: status (PAID/PENDING) da transação vinculada — permite ao frontend distinguir realizado-em-caixa de realizado-pendente sem assumir `REALIZED = pago`.
+
+**Frontend do Planejamento (ciclo atual):**
+- Cada card (Receitas, Despesas, Saldo, Disponível) tem ícone de "olho" → modal de composição (fórmula + itens contribuintes), montado de `BudgetSummaryService` no frontend a partir dos dados já carregados.
+- Cards atualizam em tempo real após mutações (refresh silencioso do ciclo, sem flash de loading).
+- Lista de não planejados: coluna de status (Pago/Pendente), ação "vincular a item planejado" e "criar item planejado" (cria + vincula à transação de origem).
+- Item de receita/despesa pode ser transformado em recorrente (template), com guard de deduplicação (avisa se já existe recorrente ativo de mesma descrição/tipo).
+
 ## Logging Estruturado (MDC)
 
 | Chave | Quando | Valor |

@@ -12,7 +12,13 @@
 
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px">
       <mat-card>
-        <mat-card-header><mat-card-title>Receitas</mat-card-title></mat-card-header>
+        <mat-card-header style="display:flex;justify-content:space-between;align-items:flex-start">
+          <mat-card-title>Receitas</mat-card-title>
+          <button mat-icon-button (click)="openBreakdown('income')" style="margin:-8px -8px 0 0"
+                  matTooltip="Ver composição" aria-label="Ver composição de Receitas">
+            <mat-icon>visibility</mat-icon>
+          </button>
+        </mat-card-header>
         <mat-card-content>
           <div style="display:flex;justify-content:space-between;padding:4px 0">
             <span>Previsto</span><strong>{{ summary().plannedIncome | currency:'BRL' }}</strong>
@@ -23,7 +29,13 @@
         </mat-card-content>
       </mat-card>
       <mat-card>
-        <mat-card-header><mat-card-title>Despesas</mat-card-title></mat-card-header>
+        <mat-card-header style="display:flex;justify-content:space-between;align-items:flex-start">
+          <mat-card-title>Despesas</mat-card-title>
+          <button mat-icon-button (click)="openBreakdown('expense')" style="margin:-8px -8px 0 0"
+                  matTooltip="Ver composição" aria-label="Ver composição de Despesas">
+            <mat-icon>visibility</mat-icon>
+          </button>
+        </mat-card-header>
         <mat-card-content>
           <div style="display:flex;justify-content:space-between;padding:4px 0">
             <span>Previsto</span><strong>{{ summary().plannedExpense | currency:'BRL' }}</strong>
@@ -34,7 +46,13 @@
         </mat-card-content>
       </mat-card>
       <mat-card>
-        <mat-card-header><mat-card-title>Saldo</mat-card-title></mat-card-header>
+        <mat-card-header style="display:flex;justify-content:space-between;align-items:flex-start">
+          <mat-card-title>Saldo</mat-card-title>
+          <button mat-icon-button (click)="openBreakdown('balance')" style="margin:-8px -8px 0 0"
+                  matTooltip="Ver composição" aria-label="Ver composição de Saldo">
+            <mat-icon>visibility</mat-icon>
+          </button>
+        </mat-card-header>
         <mat-card-content>
           <div style="display:flex;justify-content:space-between;padding:4px 0">
             <span>Abertura</span><strong>{{ cycle()!.openingBalance | currency:'BRL' }}</strong>
