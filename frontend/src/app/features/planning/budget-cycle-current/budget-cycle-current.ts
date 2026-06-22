@@ -14,7 +14,7 @@ import { finalize } from 'rxjs/operators';
 import { PlanningService } from '../planning.service';
 import { BudgetCycleResponse, BudgetCycleSummary, BudgetItemResponse, RecurringBudgetItemRequest, TransactionResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
 import { RecurringItemFormComponent } from '../recurring-item-form/recurring-item-form';
-import { DEFAULT_SUMMARY } from './budget-cycle.utils';
+import { DEFAULT_SUMMARY, findDuplicateRecurring } from './budget-cycle.utils';
 import { BudgetItemFormComponent, BudgetItemFormResult } from '../budget-item-form/budget-item-form';
 import { LinkTransactionDialogComponent, LinkTransactionDialogData } from '../link-transaction-dialog/link-transaction-dialog';
 import { LinkBudgetItemDialogComponent, LinkBudgetItemDialogData } from '../link-budget-item-dialog/link-budget-item-dialog';
@@ -179,10 +179,32 @@ export class BudgetCycleCurrentComponent implements OnInit {
     });
     ref.afterClosed().subscribe((result?: RecurringBudgetItemRequest) => {
       if (!result) return;
-      this.planningService.createRecurring(result).subscribe({
-        next: () => this.snackBar.open('Item recorrente criado.', 'OK', { duration: 2000 }),
-        error: () => this.snackBar.open('Erro ao criar recorrente.', 'OK', { duration: 3000 }),
+      // Guard de deduplicação: avisa se já existe recorrente ativo com mesma descrição/tipo.
+      this.planningService.listRecurring().subscribe(existing => {
+        const dup = findDuplicateRecurring(existing, result.description, result.type);
+        if (!dup) {
+          this.persistRecurring(result);
+          return;
+        }
+        const confirmRef = this.dialog.open(ConfirmationDialogComponent, {
+          data: {
+            title: 'Recorrente já existe',
+            message: `Já existe um item recorrente "${dup.description}" do mesmo tipo. Criar mesmo assim?`,
+            confirmText: 'Criar mesmo assim',
+            cancelText: 'Cancelar',
+          } satisfies ConfirmationDialogData,
+        });
+        confirmRef.afterClosed().subscribe((confirmed: boolean) => {
+          if (confirmed) this.persistRecurring(result);
+        });
       });
+    });
+  }
+
+  private persistRecurring(result: RecurringBudgetItemRequest): void {
+    this.planningService.createRecurring(result).subscribe({
+      next: () => this.snackBar.open('Item recorrente criado.', 'OK', { duration: 2000 }),
+      error: () => this.snackBar.open('Erro ao criar recorrente.', 'OK', { duration: 3000 }),
     });
   }
 
