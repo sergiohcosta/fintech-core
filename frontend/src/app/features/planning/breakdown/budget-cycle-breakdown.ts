@@ -96,19 +96,16 @@ function sideBreakdown(ctx: BreakdownContext, type: 'INCOME' | 'EXPENSE'): CardB
 }
 
 // Card Saldo: o "Atual" (currentBalance) é caixa real — só entradas/saídas PAGAS.
-// Itens realizados são proxy de "pago" (ver ponytail abaixo).
+// Itens contam quando a transação vinculada está PAID (transactionStatus), espelhando
+// exatamente a regra do backend (item REALIZED ligado a transação PENDING não é caixa).
 function balanceBreakdown(ctx: BreakdownContext): CardBreakdown {
-  // ponytail: usa item.status === 'REALIZED' como proxy de "transação paga". O DTO do item
-  // não expõe o status da transação vinculada; só diverge no caso raro de REALIZED ligado a
-  // transação PENDING. O total "Atual" abaixo vem do summary (exato). Upgrade: expor
-  // transactionStatus em BudgetItemResponse se a fidelidade nesse caso de borda for necessária.
-  const realizedIncome  = ctx.items.filter(i => i.type === 'INCOME'  && i.status === 'REALIZED');
-  const realizedExpense = ctx.items.filter(i => i.type === 'EXPENSE' && i.status === 'REALIZED');
+  const paidIncomeItems  = ctx.items.filter(i => i.type === 'INCOME'  && i.transactionStatus === 'PAID');
+  const paidExpenseItems = ctx.items.filter(i => i.type === 'EXPENSE' && i.transactionStatus === 'PAID');
   const unplIncomePaid  = ctx.unplanned.filter(t => t.type === 'INCOME'  && t.status === 'PAID');
   const unplExpensePaid = ctx.unplanned.filter(t => t.type === 'EXPENSE' && t.status === 'PAID');
 
-  const incomeEntries  = [...realizedIncome.map(itemEntry),  ...unplIncomePaid.map(txEntry)];
-  const expenseEntries = [...realizedExpense.map(itemEntry), ...unplExpensePaid.map(txEntry)];
+  const incomeEntries  = [...paidIncomeItems.map(itemEntry),  ...unplIncomePaid.map(txEntry)];
+  const expenseEntries = [...paidExpenseItems.map(itemEntry), ...unplExpensePaid.map(txEntry)];
 
   return {
     title: 'Saldo — composição',
