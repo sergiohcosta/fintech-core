@@ -77,11 +77,8 @@ WHERE tenant_id = v_tenant AND status = 'OPEN'
 LIMIT 1;
 
 IF v_cycle_id IS NULL THEN
-  -- opening_balance = caixa líquido PAID acumulado ANTES do ciclo (date < start_date),
-  -- exatamente o que open() calcula via sumLiquidBalanceByTenant. Para o dataset Família Costa
-  -- (contas líquidas Bradesco Corrente + Carteira, transações PAID até 2026-05-31) = 18123.10.
   INSERT INTO budget_cycles (id, tenant_id, start_date, end_date, opening_balance, status, created_by)
-  VALUES (v_cycle_jun, v_tenant, '2026-06-01', '2026-06-30', 18123.10, 'OPEN', v_carlos);
+  VALUES (v_cycle_jun, v_tenant, '2026-06-01', '2026-06-30', 1200.00, 'OPEN', v_carlos);
   v_cycle_id := v_cycle_jun;
 END IF;
 
