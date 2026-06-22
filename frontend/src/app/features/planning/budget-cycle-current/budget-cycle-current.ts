@@ -93,6 +93,15 @@ export class BudgetCycleCurrentComponent implements OnInit {
       });
   }
 
+  // Refresh silencioso após mutações: re-busca o ciclo (items + não planejados + summary,
+  // todos consistentes pelo backend) sem ligar o loading — os cards atualizam sem flash.
+  private refreshCycle(): void {
+    this.planningService.getCurrentCycle().subscribe({
+      next: c => { this.cycle.set(c); this.items.set(c.items ?? []); },
+      error: () => this.snackBar.open('Erro ao atualizar o resumo.', 'OK', { duration: 3000 }),
+    });
+  }
+
   openCycle(): void {
     const ref = this.dialog.open(BudgetItemFormComponent, {
       width: '400px',
@@ -147,8 +156,8 @@ export class BudgetCycleCurrentComponent implements OnInit {
     ref.afterClosed().subscribe((result?: BudgetItemFormResult) => {
       if (!result) return;
       this.planningService.createItem(cycleId, result).subscribe({
-        next: item => {
-          this.items.update(list => [...list, item]);
+        next: () => {
+          this.refreshCycle();
           this.snackBar.open('Item adicionado.', 'OK', { duration: 2000 });
         },
         error: () => this.snackBar.open('Erro. Tente novamente.', 'OK', { duration: 3000 }),
@@ -171,7 +180,7 @@ export class BudgetCycleCurrentComponent implements OnInit {
     ref.afterClosed().subscribe((transactionId?: string) => {
       if (!transactionId) return;
       this.planningService.linkItem(item.id!, { transactionId }).subscribe({
-        next: () => this.loadCurrentCycle(),
+        next: () => this.refreshCycle(),
         error: () => this.snackBar.open('Erro. Tente novamente.', 'OK', { duration: 3000 }),
       });
     });
@@ -179,7 +188,7 @@ export class BudgetCycleCurrentComponent implements OnInit {
 
   unlinkTransaction(item: BudgetItemResponse): void {
     this.planningService.unlinkItem(item.id!).subscribe({
-      next: () => this.loadCurrentCycle(),
+      next: () => this.refreshCycle(),
       error: () => this.snackBar.open('Erro. Tente novamente.', 'OK', { duration: 3000 }),
     });
   }
@@ -188,7 +197,7 @@ export class BudgetCycleCurrentComponent implements OnInit {
     this.planningService.deleteItem(item.id!).subscribe({
       next: () => {
         this.confirmingDeleteId.set(null);
-        this.items.update(list => list.filter(i => i.id !== item.id));
+        this.refreshCycle();
       },
       error: () => this.snackBar.open('Erro. Tente novamente.', 'OK', { duration: 3000 }),
     });
@@ -217,7 +226,7 @@ export class BudgetCycleCurrentComponent implements OnInit {
         next: item => {
           this.planningService.linkItem(item.id!, { transactionId: tx.id! }).subscribe({
             next: () => {
-              this.loadCurrentCycle();
+              this.refreshCycle();
               this.snackBar.open('Item planejado criado e vinculado.', 'OK', { duration: 2000 });
             },
             error: () => this.snackBar.open('Item criado, mas falha ao vincular.', 'OK', { duration: 3000 }),
@@ -248,7 +257,7 @@ export class BudgetCycleCurrentComponent implements OnInit {
       if (!itemId) return;
       this.planningService.linkItem(itemId, { transactionId: tx.id! }).subscribe({
         next: () => {
-          this.loadCurrentCycle();
+          this.refreshCycle();
           this.snackBar.open('Vinculado com sucesso.', 'OK', { duration: 2000 });
         },
         error: () => this.snackBar.open('Erro. Tente novamente.', 'OK', { duration: 3000 }),
