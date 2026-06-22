@@ -1,6 +1,7 @@
 ### Workflow de Branches e PRs
 **Regras invioláveis:**
 - Toda branch de feature parte de `develop` (nunca de `main` ou de outra feature branch)
+- **Cada agente trabalha na sua própria branch separada**, sempre derivada de `develop`. Concluído e aprovado o trabalho, faz merge na `develop`. Agentes em paralelo nunca compartilham branch.
 - Ao concluir uma feature com sucesso, fazer merge imediato na `develop` local e push
 - PRs devem ser o mais cumulativos possível: agrupar issues relacionadas da mesma sessão em uma única PR em vez de abrir uma por issue
 - PRs sempre apontam para `main` e partem de `develop` (o fluxo é `feature → develop → PR → main`)
