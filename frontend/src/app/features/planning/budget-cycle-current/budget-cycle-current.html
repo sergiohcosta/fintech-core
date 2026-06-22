@@ -329,9 +329,23 @@
               </mat-cell>
             </ng-container>
 
+            <ng-container matColumnDef="status">
+              <mat-header-cell *matHeaderCellDef>Status</mat-header-cell>
+              <mat-cell *matCellDef="let tx">
+                <mat-chip [highlighted]="tx.status === 'PAID'">
+                  {{ tx.status === 'PAID' ? 'Pago' : 'Pendente' }}
+                </mat-chip>
+              </mat-cell>
+            </ng-container>
+
             <ng-container matColumnDef="actions">
               <mat-header-cell *matHeaderCellDef></mat-header-cell>
               <mat-cell *matCellDef="let tx">
+                <button mat-icon-button
+                        matTooltip="Criar item planejado"
+                        (click)="createPlannedFromUnplanned(tx)">
+                  <mat-icon>add_task</mat-icon>
+                </button>
                 <button mat-icon-button
                         matTooltip="Vincular a item planejado"
                         (click)="linkFromUnplanned(tx)">
@@ -340,8 +354,8 @@
               </mat-cell>
             </ng-container>
 
-            <mat-header-row *matHeaderRowDef="['date','description','account','amount','actions']"></mat-header-row>
-            <mat-row *matRowDef="let row; columns: ['date','description','account','amount','actions']"></mat-row>
+            <mat-header-row *matHeaderRowDef="['date','description','account','amount','status','actions']"></mat-header-row>
+            <mat-row *matRowDef="let row; columns: ['date','description','account','amount','status','actions']"></mat-row>
           </mat-table>
 
           @if (summary().unplannedExpense > 0 || summary().unplannedIncome > 0) {

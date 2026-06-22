@@ -194,6 +194,40 @@ export class BudgetCycleCurrentComponent implements OnInit {
     });
   }
 
+  // Cria um item planejado a partir de uma transação não planejada e já o vincula a ela
+  // (vira realizado e sai da lista de não planejados). Form prefilled com os dados da transação.
+  createPlannedFromUnplanned(tx: TransactionResponseDTO): void {
+    const cycleId = this.cycle()?.id;
+    if (!cycleId) return;
+    const ref = this.dialog.open(BudgetItemFormComponent, {
+      width: '500px',
+      data: {
+        cycleId,
+        prefill: {
+          description: tx.description,
+          amount: tx.amount,
+          type: tx.type,
+          expectedDate: tx.date ? new Date(tx.date + 'T00:00:00') : undefined,
+        },
+      },
+    });
+    ref.afterClosed().subscribe((result?: BudgetItemFormResult) => {
+      if (!result) return;
+      this.planningService.createItem(cycleId, result).subscribe({
+        next: item => {
+          this.planningService.linkItem(item.id!, { transactionId: tx.id! }).subscribe({
+            next: () => {
+              this.loadCurrentCycle();
+              this.snackBar.open('Item planejado criado e vinculado.', 'OK', { duration: 2000 });
+            },
+            error: () => this.snackBar.open('Item criado, mas falha ao vincular.', 'OK', { duration: 3000 }),
+          });
+        },
+        error: () => this.snackBar.open('Erro ao criar item.', 'OK', { duration: 3000 }),
+      });
+    });
+  }
+
   linkFromUnplanned(tx: TransactionResponseDTO): void {
     const pendingItems = this.items().filter(
       i => i.type === tx.type && i.status === 'PENDING'
