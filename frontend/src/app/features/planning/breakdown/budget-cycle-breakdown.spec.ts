@@ -27,7 +27,8 @@ const item = (
   amount: number,
   status: 'PENDING' | 'REALIZED' | 'SKIPPED',
   description = 'item',
-): BudgetItemResponse => ({ description, amount, type, status });
+  transactionStatus?: 'PAID' | 'PENDING',
+): BudgetItemResponse => ({ description, amount, type, status, transactionStatus });
 
 describe('buildBreakdown', () => {
   // Exemplo de referência da feature: opening 10.000, 4 avulsas (1000 PAID/1000 PENDING despesa,
@@ -77,6 +78,23 @@ describe('buildBreakdown', () => {
     // opening + entradas pagas − saídas pagas = currentBalance
     expect(referenceCtx.openingBalance + income.total - expense.total).toBe(9500);
     expect(bd.results.find(r => r.label === 'Atual (em caixa)')?.amount).toBe(9500);
+  });
+
+  it('balance: item realizado conta no caixa só se a transação está PAID', () => {
+    const ctx: BreakdownContext = {
+      openingBalance: 0,
+      summary: summary({ currentBalance: 500 }),
+      items: [
+        item('EXPENSE', 500, 'REALIZED', 'Pago', 'PAID'),
+        item('EXPENSE', 300, 'REALIZED', 'Agendado', 'PENDING'),
+      ],
+      unplanned: [],
+    };
+    const bd = buildBreakdown('balance', ctx);
+    const expense = bd.sections[1];
+    expect(expense.entries).toHaveLength(1);          // só o PAID entra
+    expect(expense.entries[0].label).toBe('Pago');
+    expect(expense.total).toBe(500);
   });
 
   it('income/expense: lista itens ativos (exclui SKIPPED) e usa totais do summary', () => {

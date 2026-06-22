@@ -725,6 +725,9 @@ components:
           type: string
           format: uuid
           nullable: true
+        transactionStatus:
+          $ref: '#/components/schemas/TransactionStatus'
+          nullable: true
         installmentGroupId:
           type: string
           format: uuid
