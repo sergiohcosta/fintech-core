@@ -39,7 +39,13 @@
 
     <div class="summary-grid">
       <mat-card>
-        <mat-card-header><mat-card-title>Receitas</mat-card-title></mat-card-header>
+        <mat-card-header class="card-head">
+          <mat-card-title>Receitas</mat-card-title>
+          <button mat-icon-button class="card-head__eye" (click)="openBreakdown('income')"
+                  matTooltip="Ver composição" aria-label="Ver composição de Receitas">
+            <mat-icon>visibility</mat-icon>
+          </button>
+        </mat-card-header>
         <mat-card-content>
           <div class="summary-line">
             <span>Previsto</span>
@@ -53,7 +59,13 @@
       </mat-card>
 
       <mat-card>
-        <mat-card-header><mat-card-title>Despesas</mat-card-title></mat-card-header>
+        <mat-card-header class="card-head">
+          <mat-card-title>Despesas</mat-card-title>
+          <button mat-icon-button class="card-head__eye" (click)="openBreakdown('expense')"
+                  matTooltip="Ver composição" aria-label="Ver composição de Despesas">
+            <mat-icon>visibility</mat-icon>
+          </button>
+        </mat-card-header>
         <mat-card-content>
           <div class="summary-line">
             <span>Previsto</span>
@@ -67,7 +79,13 @@
       </mat-card>
 
       <mat-card>
-        <mat-card-header><mat-card-title>Saldo</mat-card-title></mat-card-header>
+        <mat-card-header class="card-head">
+          <mat-card-title>Saldo</mat-card-title>
+          <button mat-icon-button class="card-head__eye" (click)="openBreakdown('balance')"
+                  matTooltip="Ver composição" aria-label="Ver composição de Saldo">
+            <mat-icon>visibility</mat-icon>
+          </button>
+        </mat-card-header>
         <mat-card-content>
           <div class="summary-line">
             <span>Abertura</span>
@@ -86,7 +104,13 @@
 
       @if (cycle()!.status === 'OPEN') {
         <mat-card>
-          <mat-card-header><mat-card-title>Disponível</mat-card-title></mat-card-header>
+          <mat-card-header class="card-head">
+            <mat-card-title>Disponível</mat-card-title>
+            <button mat-icon-button class="card-head__eye" (click)="openBreakdown('available')"
+                    matTooltip="Ver composição" aria-label="Ver composição de Disponível">
+              <mat-icon>visibility</mat-icon>
+            </button>
+          </mat-card-header>
           <mat-card-content>
             <div class="summary-line" [class.negative]="summary().availableToSpend < 0">
               <span>Para gastar</span>
