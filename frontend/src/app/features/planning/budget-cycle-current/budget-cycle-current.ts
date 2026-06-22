@@ -12,7 +12,8 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { finalize } from 'rxjs/operators';
 
 import { PlanningService } from '../planning.service';
-import { BudgetCycleResponse, BudgetCycleSummary, BudgetItemResponse, TransactionResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
+import { BudgetCycleResponse, BudgetCycleSummary, BudgetItemResponse, RecurringBudgetItemRequest, TransactionResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
+import { RecurringItemFormComponent } from '../recurring-item-form/recurring-item-form';
 import { DEFAULT_SUMMARY } from './budget-cycle.utils';
 import { BudgetItemFormComponent, BudgetItemFormResult } from '../budget-item-form/budget-item-form';
 import { LinkTransactionDialogComponent, LinkTransactionDialogData } from '../link-transaction-dialog/link-transaction-dialog';
@@ -161,6 +162,26 @@ export class BudgetCycleCurrentComponent implements OnInit {
           this.snackBar.open('Item adicionado.', 'OK', { duration: 2000 });
         },
         error: () => this.snackBar.open('Erro. Tente novamente.', 'OK', { duration: 3000 }),
+      });
+    });
+  }
+
+  // Cria um template recorrente a partir de um item do ciclo. Abre o form prefilled;
+  // dayOfMonth vem do dia do expectedDate, limitado a 28 (constraint do recorrente).
+  // Não altera o ciclo atual — o template só afeta ciclos futuros — então sem refresh.
+  makeRecurring(item: BudgetItemResponse): void {
+    const day = item.expectedDate
+      ? Math.min(new Date(item.expectedDate + 'T00:00:00').getDate(), 28)
+      : 1;
+    const ref = this.dialog.open(RecurringItemFormComponent, {
+      width: '460px',
+      data: { description: item.description, amount: item.amount, type: item.type, dayOfMonth: day },
+    });
+    ref.afterClosed().subscribe((result?: RecurringBudgetItemRequest) => {
+      if (!result) return;
+      this.planningService.createRecurring(result).subscribe({
+        next: () => this.snackBar.open('Item recorrente criado.', 'OK', { duration: 2000 }),
+        error: () => this.snackBar.open('Erro ao criar recorrente.', 'OK', { duration: 3000 }),
       });
     });
   }
