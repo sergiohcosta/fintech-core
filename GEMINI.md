@@ -88,4 +88,4 @@ Para manter o banco de dados local sincronizado com a Neon.tech (fonte da verdad
 - \`backend/\`: Spring Boot application.
 - \`frontend/\`: Angular application.
 - \`.docker/\`: Persistent database data.
-- \`summary.md\`: A historical log of the project's evolution.
+- \`summary.md\`: Referência de contratos de API e regras de negócio (estado atual, SDD).
