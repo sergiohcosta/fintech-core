@@ -21,3 +21,6 @@
 ### Templates
 - `.github/ISSUE_TEMPLATE/` — templates de issue (bug, feature, chore) + config.yml
 - `.github/pull_request_template.md` — template de PR com checklist das regras invioláveis
+
+### Referências
+- [Conventional Commits](https://www.conventionalcommits.org/) - Commit format
