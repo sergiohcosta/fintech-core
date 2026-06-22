@@ -31,6 +31,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -184,15 +185,19 @@ class AuthControllerTest {
     }
 
     @Test
-    @DisplayName("Should return 429 when rate limit exceeded for the email")
+    @DisplayName("Should return 429 with Retry-After header when rate limit exceeded")
     void shouldReturn429WhenRateLimited() throws Exception {
         LoginDTO loginDTO = new LoginDTO("test@email.com", "password");
-        when(loginRateLimiter.isBlocked("test@email.com")).thenReturn(true);
+        // A chave agora é ip:email; MockMvc usa remoteAddr 127.0.0.1 por padrão.
+        // any(String.class) evita acoplamento ao formato exato da chave composta.
+        when(loginRateLimiter.isBlocked(any(String.class))).thenReturn(true);
+        when(loginRateLimiter.secondsUntilUnblock(any(String.class))).thenReturn(42L);
 
         mockMvc.perform(post("/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(loginDTO)))
-                .andExpect(status().isTooManyRequests());
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().string("Retry-After", "42"));
 
         verify(userRepository, never()).findByEmail(any());
         verify(loginRateLimiter, never()).registerFailure(any());
