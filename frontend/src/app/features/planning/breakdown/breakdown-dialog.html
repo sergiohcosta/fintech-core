@@ -1,0 +1,42 @@
+<h2 mat-dialog-title>{{ data.title }}</h2>
+
+<mat-dialog-content>
+  @for (section of data.sections; track section.title) {
+    <section class="bd-section">
+      <header class="bd-section__head">
+        <span>{{ section.title }}</span>
+        <strong>{{ section.total | currency:'BRL' }}</strong>
+      </header>
+      @if (section.entries.length) {
+        <ul class="bd-entries">
+          @for (e of section.entries; track $index) {
+            <li class="bd-entry">
+              <span class="bd-entry__label">{{ e.label }} <em>{{ e.detail }}</em></span>
+              <span class="bd-entry__amount">{{ e.amount | currency:'BRL' }}</span>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="bd-empty">Nenhum lançamento.</p>
+      }
+    </section>
+  }
+
+  <hr class="bd-divider" />
+
+  <section class="bd-results">
+    @for (r of data.results; track r.label) {
+      <div class="bd-result" [class.bd-result--emphasis]="r.emphasis">
+        <span class="bd-result__label">
+          {{ r.label }}
+          @if (r.note) { <em class="bd-note">{{ r.note }}</em> }
+        </span>
+        <strong>{{ r.amount | currency:'BRL' }}</strong>
+      </div>
+    }
+  </section>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button mat-dialog-close>Fechar</button>
+</mat-dialog-actions>
