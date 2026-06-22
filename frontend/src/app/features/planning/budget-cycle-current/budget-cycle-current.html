@@ -174,6 +174,10 @@
                   <mat-icon>link_off</mat-icon>
                 </button>
               }
+              <button mat-icon-button matTooltip="Tornar recorrente"
+                      (click)="makeRecurring(item)">
+                <mat-icon>event_repeat</mat-icon>
+              </button>
               @if (item.source !== 'INSTALLMENT' && cycle()!.status === 'OPEN') {
                 @if (confirmingDeleteId() === item.id) {
                   <span style="font-size:0.75rem;color:var(--mat-sys-error)">Remover?</span>
@@ -238,6 +242,10 @@
                   <mat-icon>link_off</mat-icon>
                 </button>
               }
+              <button mat-icon-button matTooltip="Tornar recorrente"
+                      (click)="makeRecurring(item)">
+                <mat-icon>event_repeat</mat-icon>
+              </button>
               @if (cycle()!.status === 'OPEN') {
                 @if (confirmingDeleteId() === item.id) {
                   <span style="font-size:0.75rem;color:var(--mat-sys-error)">Remover?</span>
