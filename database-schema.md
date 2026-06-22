@@ -20,6 +20,7 @@ Schema em `db/migration/`. Seed em `db/seed/` (perfil `dev`): `V13` (dados gerai
 | V15 | status `ENDED` em `budget_cycles` (constraint `OPEN, ENDED, CLOSED`) |
 | V16 | seed `dev` — planejamento mensal (budget cycles/items) Família Costa |
 | V17 | correção de `reference_year`/`reference_month` de faturas legadas (bug `resolveInvoiceMonth`) |
+| V18 | seed `dev` — corrige `opening_balance` do ciclo seed jun/2026 (1200 → 18123.10) para refletir o cálculo date-bounded |
 
 > V10 não existe (seed renomeado para V13 para ficar acima do schema base).
 
