@@ -52,22 +52,7 @@ Ao escrever código, comente brevemente o "porquê" das decisões não óbvias. 
 
 Não polua o código com comentários óbvios — só os de valor pedagógico.
 
-**4. Provocar reflexão**
 
-Ao terminar uma feature, faça perguntas que consolidam aprendizado:
-- "Você consegue explicar com suas próprias palavras o que esse filtro faz?"
-- "Por que escolhemos um Service em vez de colocar a lógica no Controller?"
-- "O que aconteceria se removêssemos `@Transactional` deste método?"
-
-Não exagere — uma ou duas perguntas pertinentes ao final de blocos significativos.
-
-**5. Oferecer aprofundamento opcional**
-
-Após explicar o básico necessário, ofereça caminhos extras: *"Se quiser ir mais fundo em como o Spring Security monta a SecurityFilterChain, posso mostrar."* Deixe o desenvolvedor escolher o ritmo.
-
-**6. Não pular etapas "para economizar tempo"**
-
-Se o desenvolvedor pedir algo que parece simples mas envolve um conceito não dominado, **pare e ensine**. Exemplo: ele pede "adiciona paginação nessa listagem" — antes de codar, explique brevemente como `Pageable` funciona no Spring Data, o que é `Page<T>` vs `Slice<T>`, e como isso se reflete no contrato com o frontend.
 
 **7. Idioma**
 
@@ -200,10 +185,12 @@ Ocultar no frontend **não substitui** proteção no backend. O frontend é cont
 
 ### Dataset de Testes — Família Costa
 
-O projeto mantém um dataset realista (`V10__seed_dev.sql`) que deve ser tratado como **artefato vivo** — parte da especificação do sistema. Mantê-lo desatualizado equivale a ter documentação errada.
+O projeto mantém um dataset realista (`V13__seed_dev.sql`) que deve ser tratado como **artefato vivo** — parte da especificação do sistema. Mantê-lo desatualizado equivale a ter documentação errada.
+
+**Regra inviolável:** toda alteração que envolva banco de dados **deve** atualizar o dataset de testes para contemplar as mudanças realizadas. Não existe "vou atualizar depois" — a atualização faz parte da entrega, não é opcional.
 
 **Artefatos:**
-- `backend/src/main/resources/db/seed/V10__seed_dev.sql` — seed Flyway, perfil `dev` apenas
+- `backend/src/main/resources/db/seed/V13__seed_dev.sql` — seed Flyway, perfil `dev` apenas
 - `backend/src/test/resources/sql/seed_base.sql` / `cleanup.sql` — fixture para Testcontainers
 - `docs/http/seed-dataset.http` — HTTP collection IntelliJ/VS Code
 - Spec completa: `docs/superpowers/specs/2026-06-09-test-dataset-design.md`
@@ -214,28 +201,14 @@ O projeto mantém um dataset realista (`V10__seed_dev.sql`) que deve ser tratado
 |----------|-----------------|
 | Nova tabela de negócio adicionada | Inserir dados representativos no `V13__seed_dev.sql` |
 | Nova coluna relevante em tabela existente | Atualizar os INSERTs do `V13__seed_dev.sql` |
-| Feature que afeta planejamento (`budget_cycles`, `budget_items`, `recurring_budget_items`) | Atualizar o ciclo de junho no seed: ajustar itens, valores ou vínculos conforme o novo comportamento |
+| Nova coluna adicionada por migration | Atualizar os INSERTs existentes no `V13__seed_dev.sql` para incluir o novo campo |
 | Nova entidade necessária para setup mínimo de testes | Atualizar `seed_base.sql` |
 | Novo endpoint ou novo parâmetro de endpoint | Adicionar request em `docs/http/seed-dataset.http` |
-| Feature puramente de frontend / refatoração | Nenhuma atualização necessária |
+| Feature puramente de frontend / refatoração sem schema | Nenhuma atualização necessária |
 
-**Ao atualizar `V13__seed_dev.sql`:** manter o padrão de UUIDs predefinidos por série (ver tabela abaixo). Nunca usar `gen_random_uuid()` para entidades que precisam de cross-reference.
+**Ao atualizar `V13__seed_dev.sql`:** manter o padrão de UUIDs predefinidos. Novas entidades recebem UUIDs na série correspondente (ver spec). Nunca usar `gen_random_uuid()` para entidades que precisam de cross-reference.
 
-**Séries de UUID do seed:**
-| Série | Entidade |
-|-------|----------|
-| `10000000-...` | Tenant |
-| `20000000-...` | Usuários |
-| `30000000-...` | Contas |
-| `40000000-...` | Categorias |
-| `50000000-...` | Faturas |
-| `60000000-...` | Grupos de parcelamento |
-| `70000000-...` | Transfer IDs |
-| `80000000-...` | Convites |
-| `a0000000-...` | Ciclos de planejamento |
-| `b0000000-...` | Budget items |
-| `c0000000-...` | Itens recorrentes |
-| `d0000000-...` | Transações com UUID fixo (para vincular a budget items) |
+**Atenção — posição do arquivo seed:** o seed deve sempre ter versão maior que todas as migrations de schema. Ao adicionar uma nova migration (ex: V14), verificar se o seed precisa ser renomeado para V15 (após o novo schema).
 
 **Credenciais:**
 - Dev (banco com seed): `carlos@costa.com` / `costa123`
@@ -427,8 +400,7 @@ SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run
 
 - **Planejamento Mensal — Budget Cycles fullstack (issue #74 — 2026-06-12)** — PR #92 aberto:
   - Migration V12: `budget_cycles`, `budget_items`, `recurring_budget_items` + `budget_cycle_start_day` em `tenant`
-  - `BudgetCycleService`: cálculo de datas do ciclo — **o ciclo inicia no dia `startDay` do mês de referência e termina na véspera do mesmo dia no mês seguinte** (ex.: startDay=10, ref=jun/2026 → 10/jun a 09/jul). startDay=1 cai naturalmente no mês calendário, sem caso especial. Sincronização automática de parcelas de cartão ao abrir ciclo
-  - **Correção de convenção do ciclo (2026-06-19):** antes o `referenceMonth` ancorava o **fim** do ciclo (startDay=N → N do mês anterior até N-1 do mês de referência); agora ancora o **início**. Motivos: fórmula uniforme (eliminou o branch especial `if (startDay==1)`), rótulo coerente (o "ciclo de junho" passa a ser majoritariamente junho), e `YearMonth.from(startDate) == referenceMonth` — o que dissolve o descasamento de competência na seleção de parcelas. `startDay` validado em 1..28 (`TenantSettingsPatchRequest`) garante que `atDay(startDay)` nunca estoura. Seed inalterado (usa startDay=1, onde A≡B)
+  - `BudgetCycleService`: cálculo de datas do ciclo (startDay=1 → mês calendário; startDay=N → dia N do mês anterior até N-1 do mês atual); sincronização automática de parcelas de cartão ao abrir ciclo
   - `BudgetItemService`: criação, atualização, link/unlink para transações, guard anti-duplicação
   - `RecurringBudgetItemService`: CRUD de templates; `deactivate` faz soft-delete (`active=false`)
   - `TenantController` com `PATCH /api/tenant/settings`; 17 endpoints no OpenAPI spec
@@ -438,6 +410,33 @@ SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run
   - **#83 — Race condition em `getOrCreate`**: extraído `createNewInvoice()` com `@Transactional(REQUIRES_NEW)` chamado via self-injection `@Lazy`. Conflito de chave única reverte apenas a transação interna; catch faz retry com `findBy` e retorna a fatura vencedora. Sem REQUIRES_NEW, a `DataIntegrityViolationException` marcaria a transação externa como rollback-only, impossibilitando o retry
   - **#84 — N+1 em `listDTOs`**: `findByAccountWithTotals` com `LEFT JOIN Transaction ON t.invoice = i GROUP BY i` — substitui `1 + 2N` queries por uma única query, independente do volume de faturas
   - **Fix Flyway em testes**: `src/test/resources/application-dev.properties` sobrescreve `spring.flyway.locations` para excluir `db/seed`. O arquivo de test-classpath substitui (não faz merge com) o de main-classpath — necessário replicar todas as props relevantes
+
+- **Bug fix: saldo de contas incluía transações pendentes (issue #79 — 2026-06-12)**:
+  - `calculateBalance`, `sumLiquidBalanceByTenant` e `sumNetLiquidBalanceByTenant` filtravam `<> CANCELLED` (blacklist), incluindo PENDING no cálculo
+  - Corrigido para `= PAID` (whitelist) — saldo reflete apenas o que foi efetivado; qualquer status futuro fica automaticamente de fora
+  - Impacto: listagem de contas, saldo de abertura de ciclos de orçamento e card "Posição atual" no dashboard
+
+- **Planning Shell com abas roteadas (issue #96 — 2026-06-12)**:
+  - `PlanningShellComponent` com `<nav mat-tab-nav-bar>` + `<mat-tab-nav-panel>` + `<router-outlet>` — abas "Ciclo atual", "Histórico", "Recorrentes"
+  - `planning.routes.ts` reestruturado: shell como rota pai (`path: ''`), filhos como `children`; o `mat-tab-nav-bar` aparece em todas as rotas sem duplicação
+  - Bug #96 resolvido: aba "Histórico" sempre visível — ciclos fechados acessíveis mesmo sem ciclo aberto
+  - Empty state atualizado: menção à aba "Histórico" para guiar o usuário
+  - Botão "Ciclo atual" removido do `BudgetCycleList` — redundante com as abas do shell
+  - Fix de seletor: `MatTabsModule` importado como módulo falha em standalone; importar `MatTabNav`, `MatTabNavPanel`, `MatTabLink` diretamente funciona
+
+- **Bug fixes de planejamento mensal (issue #95 — 2026-06-12)**:
+  - **Bug 1 — Dia de início do ciclo:** `startDay` adicionado ao `BudgetCycleOpenRequest` (OpenAPI spec + DTO Java + `BudgetCycleService.open()` + Controller); dialog de abertura agora exibe campo "Dia de início (1–28)"; preferência persistida no `Tenant`; testes de `BudgetCycleServiceTest` atualizados com `@Mock TenantRepository` e novo request
+  - **Bug 2 — Datepicker não abria:** `matSuffix` → `matIconSuffix` no toggle; workaround Zoneless adicional via `picker.open()` no evento `(click)` do campo de data — Angular Material 21 Zoneless não dispara CD para toggle automático do datepicker
+  - **Bug 3 — Status em inglês:** `statusLabel()` no `BudgetCycleCurrentComponent` traduz `PENDING/REALIZED/SKIPPED` → `Pendente/Realizado/Ignorado`; chips com classes `chip-realized` e `chip-skipped` para diferenciação visual
+
+- **Hardening do rate limiter de login (issues #121–#125 — 2026-06-22)**:
+  - **`LoginRateLimiter` — chave composta `ip:email`** (issue #125): `AuthController` extrai IP via `X-Forwarded-For` (fallback `remoteAddr`) e monta `ip:email` como chave; `RequestContextHolder` preserva `implements AuthApi` sem alterar assinatura do método
+  - **Header `Retry-After`** (issue #121): `secondsUntilUnblock(key)` expõe tempo restante; resposta 429 inclui `Retry-After: <segundos>` (RFC 6585)
+  - **Log WARN em bloqueios** (issue #122): `log.warn("Login bloqueado por rate limit: {}", email)` emitido antes do return 429; `@Slf4j` adicionado ao controller
+  - **Limites configuráveis via properties** (issue #123): `@Value("${security.rate-limit.max-attempts:5}")` e `@Value("${security.rate-limit.window-seconds:60}")`; `Duration window` calculada em `@PostConstruct` para preservar `ReflectionTestUtils.setField` nos testes unitários sem contexto Spring
+  - **Lazy eviction de entradas expiradas** (issue #124): `windows.remove(k, w)` (remoção condicional por instância — segura contra TOCTOU) em `isBlocked()` quando janela expirada é detectada
+  - **Fix DevTools classloader** (regressão): `RateLimitWindow` movido para tipo de nível de pacote — `LoginRateLimiter$Window.class` não era encontrado pelo `RestartClassLoader` do Spring Boot DevTools
+  - Testes: `LoginRateLimiterTest` expandido de 5 para 8 testes (3 novos para `secondsUntilUnblock`); `AuthControllerTest` atualizado com asserção de `Retry-After: 42`
 
 **Próximos passos:**
 - Issues médias do ADR-001: #85 (`effective_date`), #86 (`WITH RECURSIVE`), #87 (`TransferService`), #88 (`BusinessException`)
