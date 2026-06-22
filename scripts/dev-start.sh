@@ -16,10 +16,14 @@ fi
 kill_port() {
   local port="$1"
   local pids
-  pids=$(lsof -ti tcp:"$port" 2>/dev/null || true)
+  
+  # Extração direta via ss restrita ao seu usuário, sem sudo
+  # pids=$(ss -lptn "sport = :$port" 2>/dev/null | grep -o 'pid=[0-9]*' | cut -d= -f2 | sort -u | tr '\n' ' ')
+  pids=$(ss -lptn "sport = :$port" 2>/dev/null | grep -o 'pid=[0-9]*' | cut -d= -f2 | sort -u | tr '\n' ' ' || true)
+  
   if [ -n "$pids" ]; then
-    echo "Encerrando processo(s) na porta $port: $pids"
-    kill -9 $pids
+    echo "Encerrando processo(s) na porta $port (PIDs: $pids)..."
+    kill -9 $pids 2>/dev/null || true
   else
     echo "Porta $port livre."
   fi
@@ -40,7 +44,7 @@ if [[ "$MODE" == "back" || "$MODE" == "both" ]]; then
   ./mvnw spring-boot:run -q &
   BACKEND_PID=$!
   PIDS+=($BACKEND_PID)
-  echo "Backend PID : $BACKEND_PID"
+  echo "Backend PID principal: $BACKEND_PID"
 fi
 
 if [[ "$MODE" == "front" || "$MODE" == "both" ]]; then
@@ -49,12 +53,21 @@ if [[ "$MODE" == "front" || "$MODE" == "both" ]]; then
   npm start &
   FRONTEND_PID=$!
   PIDS+=($FRONTEND_PID)
-  echo "Frontend PID: $FRONTEND_PID"
+  echo "Frontend PID principal: $FRONTEND_PID"
 fi
 
 echo ""
 echo "Pressione Ctrl+C para encerrar."
 
-trap 'echo ""; echo "Encerrando..."; kill "${PIDS[@]}" 2>/dev/null; exit 0' INT TERM
+# Limpeza profunda de processos filhos (evita os processos órfãos do Node)
+trap '
+  echo ""; 
+  echo "Encerrando serviços de forma limpa..."; 
+  for pid in "${PIDS[@]}"; do
+    pkill -P "$pid" 2>/dev/null || true;
+    kill -9 "$pid" 2>/dev/null || true;
+  done;
+  exit 0
+' INT TERM
 
 wait

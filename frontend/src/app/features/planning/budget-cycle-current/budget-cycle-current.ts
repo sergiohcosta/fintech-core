@@ -9,19 +9,15 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { HttpErrorResponse } from '@angular/common/http';
 import { finalize } from 'rxjs/operators';
 
 import { PlanningService } from '../planning.service';
-import {
-  BudgetCycleResponse,
-  BudgetItemCreateRequest,
-  BudgetItemResponse,
-  BudgetItemUpdateRequest,
-} from '../../../core/api/fintechSaaSAPI.schemas';
-import { buildSummary } from './budget-cycle.utils';
-import { BudgetItemFormComponent, BudgetItemFormData } from '../budget-item-form/budget-item-form';
+import { BudgetCycleResponse, BudgetCycleSummary, BudgetItemResponse, TransactionResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
+import { DEFAULT_SUMMARY } from './budget-cycle.utils';
+import { BudgetItemFormComponent, BudgetItemFormResult } from '../budget-item-form/budget-item-form';
 import { LinkTransactionDialogComponent, LinkTransactionDialogData } from '../link-transaction-dialog/link-transaction-dialog';
+import { LinkBudgetItemDialogComponent, LinkBudgetItemDialogData } from '../link-budget-item-dialog/link-budget-item-dialog';
+import { ConfirmationDialogComponent, ConfirmationDialogData } from '../../../components/confirmation-dialog/confirmation-dialog';
 
 @Component({
   selector: 'app-budget-cycle-current',
@@ -43,18 +39,24 @@ export class BudgetCycleCurrentComponent implements OnInit {
   readonly items = signal<BudgetItemResponse[]>([]);
   readonly loading = signal(true);
   readonly closing = signal(false);
-  readonly confirmingClose = signal(false);
+  // Confirmação inline de exclusão: guarda o id do item em estado "confirmar?".
+  // Como é um único signal, abrir a confirmação numa linha cancela a de outra.
+  readonly confirmingDeleteId = signal<string | null>(null);
 
   readonly incomeItems  = computed(() => this.items().filter(i => i.type === 'INCOME'));
   readonly expenseItems = computed(() => this.items().filter(i => i.type === 'EXPENSE' && i.source !== 'INSTALLMENT'));
   readonly installmentItems = computed(() => this.items().filter(i => i.source === 'INSTALLMENT'));
-  readonly summary = computed(() => buildSummary(this.items(), this.cycle()?.openingBalance ?? 0));
+  readonly summary = computed((): Required<BudgetCycleSummary> => ({
+    ...DEFAULT_SUMMARY,
+    ...(this.cycle()?.summary ?? {}),
+  }));
+  readonly unplannedItems = computed(() => this.cycle()?.unplannedTransactions ?? []);
 
   ngOnInit(): void {
     this.loadCurrentCycle();
   }
 
-  private loadCurrentCycle(): void {
+  loadCurrentCycle(): void {
     this.loading.set(true);
     this.planningService.getCurrentCycle()
       .pipe(finalize(() => this.loading.set(false)))
@@ -74,36 +76,47 @@ export class BudgetCycleCurrentComponent implements OnInit {
   }
 
   openCycle(): void {
-    // BudgetCycleOpenDialogComponent será criado na Task 8 — import dinâmico para evitar dependência circular antecipada
-    import('../budget-cycle-open-dialog/budget-cycle-open-dialog').then(m => {
-      const ref = this.dialog.open(m.BudgetCycleOpenDialogComponent, { width: '600px' });
-      ref.afterClosed().subscribe((opened: boolean) => {
-        if (opened) this.loadCurrentCycle();
+    const ref = this.dialog.open(BudgetItemFormComponent, {
+      width: '400px',
+      data: { mode: 'openCycle' },
+    });
+    ref.afterClosed().subscribe((referenceMonth?: string) => {
+      if (!referenceMonth) return;
+      this.planningService.openCycle({ referenceMonth }).subscribe({
+        next: c => {
+          this.cycle.set(c);
+          this.items.set(c.items ?? []);
+          this.snackBar.open('Ciclo aberto com sucesso.', 'OK', { duration: 3000 });
+        },
+        error: () => this.snackBar.open('Erro ao abrir ciclo.', 'OK', { duration: 3000 }),
       });
     });
-  }
-
-  requestClose(): void {
-    this.confirmingClose.set(true);
-  }
-
-  cancelClose(): void {
-    this.confirmingClose.set(false);
   }
 
   closeCycle(): void {
     const id = this.cycle()?.id;
     if (!id) return;
-    this.closing.set(true);
-    this.planningService.closeCycle(id)
-      .pipe(finalize(() => { this.closing.set(false); this.confirmingClose.set(false); }))
-      .subscribe({
-        next: c => {
-          this.cycle.set(c);
-          this.snackBar.open('Ciclo fechado.', 'OK', { duration: 3000 });
-        },
-        error: () => this.snackBar.open('Erro ao fechar ciclo.', 'OK', { duration: 3000 }),
-      });
+    const ref = this.dialog.open(ConfirmationDialogComponent, {
+      data: {
+        title: 'Fechar ciclo em andamento',
+        message: 'Este ciclo ainda está em andamento. Fechar agora encerrará o planejamento antes do fim do período. Deseja continuar?',
+        confirmText: 'Fechar ciclo',
+        cancelText: 'Cancelar',
+      } satisfies ConfirmationDialogData,
+    });
+    ref.afterClosed().subscribe((confirmed: boolean) => {
+      if (!confirmed) return;
+      this.closing.set(true);
+      this.planningService.closeCycle(id, true)
+        .pipe(finalize(() => this.closing.set(false)))
+        .subscribe({
+          next: c => {
+            this.cycle.set(c);
+            this.snackBar.open('Ciclo fechado.', 'OK', { duration: 3000 });
+          },
+          error: () => this.snackBar.open('Erro ao fechar ciclo.', 'OK', { duration: 3000 }),
+        });
+    });
   }
 
   addItem(): void {
@@ -113,17 +126,14 @@ export class BudgetCycleCurrentComponent implements OnInit {
       width: '500px',
       data: { cycleId },
     });
-    ref.afterClosed().subscribe((result?: BudgetItemCreateRequest) => {
+    ref.afterClosed().subscribe((result?: BudgetItemFormResult) => {
       if (!result) return;
       this.planningService.createItem(cycleId, result).subscribe({
         next: item => {
           this.items.update(list => [...list, item]);
           this.snackBar.open('Item adicionado.', 'OK', { duration: 2000 });
         },
-        error: (err: HttpErrorResponse) => {
-          const msg = err.error?.message ?? 'Erro. Tente novamente.';
-          this.snackBar.open(msg, 'OK', { duration: 3000 });
-        },
+        error: () => this.snackBar.open('Erro. Tente novamente.', 'OK', { duration: 3000 }),
       });
     });
   }
@@ -133,145 +143,64 @@ export class BudgetCycleCurrentComponent implements OnInit {
     if (!cycleId) return;
     const ref = this.dialog.open(LinkTransactionDialogComponent, {
       width: '600px',
-      data: { item, cycleId } satisfies LinkTransactionDialogData,
+      data: {
+        item,
+        cycleId,
+        startDate: this.cycle()!.startDate!,
+        endDate: this.cycle()!.endDate!,
+      } satisfies LinkTransactionDialogData,
     });
     ref.afterClosed().subscribe((transactionId?: string) => {
       if (!transactionId) return;
       this.planningService.linkItem(item.id!, { transactionId }).subscribe({
-        next: updated => this.replaceItem(updated),
-        error: (err: HttpErrorResponse) => {
-          const msg = err.error?.message ?? 'Erro. Tente novamente.';
-          this.snackBar.open(msg, 'OK', { duration: 3000 });
-        },
+        next: () => this.loadCurrentCycle(),
+        error: () => this.snackBar.open('Erro. Tente novamente.', 'OK', { duration: 3000 }),
       });
     });
   }
 
   unlinkTransaction(item: BudgetItemResponse): void {
     this.planningService.unlinkItem(item.id!).subscribe({
-      next: updated => this.replaceItem(updated),
-      error: (err: HttpErrorResponse) => {
-        const msg = err.error?.message ?? 'Erro. Tente novamente.';
-        this.snackBar.open(msg, 'OK', { duration: 3000 });
-      },
+      next: () => this.loadCurrentCycle(),
+      error: () => this.snackBar.open('Erro. Tente novamente.', 'OK', { duration: 3000 }),
     });
   }
 
   deleteItem(item: BudgetItemResponse): void {
     this.planningService.deleteItem(item.id!).subscribe({
-      next: () => this.items.update(list => list.filter(i => i.id !== item.id)),
-      error: (err: HttpErrorResponse) => {
-        const msg = err.error?.message ?? 'Erro. Tente novamente.';
-        this.snackBar.open(msg, 'OK', { duration: 3000 });
+      next: () => {
+        this.confirmingDeleteId.set(null);
+        this.items.update(list => list.filter(i => i.id !== item.id));
       },
+      error: () => this.snackBar.open('Erro. Tente novamente.', 'OK', { duration: 3000 }),
     });
   }
 
-  realizeItem(item: BudgetItemResponse): void {
-    const cycleId = this.cycle()?.id;
-    if (!cycleId) return;
-    const ref = this.dialog.open(LinkTransactionDialogComponent, {
+  linkFromUnplanned(tx: TransactionResponseDTO): void {
+    const pendingItems = this.items().filter(
+      i => i.type === tx.type && i.status === 'PENDING'
+    );
+    if (pendingItems.length === 0) {
+      this.snackBar.open(
+        'Nenhum item planejado pendente do mesmo tipo para vincular.',
+        'OK',
+        { duration: 3000 }
+      );
+      return;
+    }
+    const ref = this.dialog.open(LinkBudgetItemDialogComponent, {
       width: '600px',
-      data: { item, cycleId, mode: 'realize' } satisfies LinkTransactionDialogData,
+      data: { transaction: tx, pendingItems } satisfies LinkBudgetItemDialogData,
     });
-    ref.afterClosed().subscribe((result: string | null | undefined) => {
-      if (result === undefined) return;
-      const req = result ? { transactionId: result } : {};
-      this.planningService.realizeItem(item.id!, req).subscribe({
-        next: updated => {
-          this.replaceItem(updated);
-          this.snackBar.open('Item realizado.', 'OK', { duration: 2000 });
+    ref.afterClosed().subscribe((itemId?: string) => {
+      if (!itemId) return;
+      this.planningService.linkItem(itemId, { transactionId: tx.id! }).subscribe({
+        next: () => {
+          this.loadCurrentCycle();
+          this.snackBar.open('Vinculado com sucesso.', 'OK', { duration: 2000 });
         },
-        error: (err: HttpErrorResponse) => {
-          const msg = err.error?.message ?? 'Erro ao realizar item.';
-          this.snackBar.open(msg, 'OK', { duration: 3000 });
-        },
+        error: () => this.snackBar.open('Erro. Tente novamente.', 'OK', { duration: 3000 }),
       });
     });
-  }
-
-  skipItem(item: BudgetItemResponse): void {
-    this.planningService.skipItem(item.id!).subscribe({
-      next: updated => {
-        this.replaceItem(updated);
-        this.snackBar.open('Item pulado.', 'OK', { duration: 2000 });
-      },
-      error: (err: HttpErrorResponse) => {
-        const msg = err.error?.message ?? 'Erro ao pular item.';
-        this.snackBar.open(msg, 'OK', { duration: 3000 });
-      },
-    });
-  }
-
-  unrealizeItem(item: BudgetItemResponse): void {
-    this.planningService.unrealizeItem(item.id!).subscribe({
-      next: updated => {
-        this.replaceItem(updated);
-        this.snackBar.open('Realização desfeita.', 'OK', { duration: 2000 });
-      },
-      error: (err: HttpErrorResponse) => {
-        const msg = err.error?.message ?? 'Erro ao desfazer realização.';
-        this.snackBar.open(msg, 'OK', { duration: 3000 });
-      },
-    });
-  }
-
-  unskipItem(item: BudgetItemResponse): void {
-    this.planningService.unskipItem(item.id!).subscribe({
-      next: updated => {
-        this.replaceItem(updated);
-        this.snackBar.open('Item reativado.', 'OK', { duration: 2000 });
-      },
-      error: (err: HttpErrorResponse) => {
-        const msg = err.error?.message ?? 'Erro ao desfazer pulo.';
-        this.snackBar.open(msg, 'OK', { duration: 3000 });
-      },
-    });
-  }
-
-  editItem(item: BudgetItemResponse): void {
-    const ref = this.dialog.open(BudgetItemFormComponent, {
-      width: '500px',
-      data: { mode: 'edit', item } satisfies BudgetItemFormData,
-    });
-    ref.afterClosed().subscribe((result?: BudgetItemUpdateRequest) => {
-      if (!result) return;
-      this.planningService.updateItem(item.id!, result).subscribe({
-        next: updated => {
-          this.replaceItem(updated);
-          this.snackBar.open('Item atualizado.', 'OK', { duration: 2000 });
-        },
-        error: (err: HttpErrorResponse) => {
-          const msg = err.error?.message ?? 'Erro ao atualizar item.';
-          this.snackBar.open(msg, 'OK', { duration: 3000 });
-        },
-      });
-    });
-  }
-
-  syncInstallments(): void {
-    const id = this.cycle()?.id;
-    if (!id) return;
-    this.planningService.syncInstallments(id).subscribe({
-      next: c => {
-        this.cycle.set(c);
-        this.items.set(c.items ?? []);
-        this.snackBar.open('Parcelas sincronizadas.', 'OK', { duration: 2000 });
-      },
-      error: () => this.snackBar.open('Erro ao sincronizar parcelas.', 'OK', { duration: 3000 }),
-    });
-  }
-
-  statusLabel(status: string | undefined): string {
-    const labels: Record<string, string> = {
-      PENDING: 'Pendente',
-      REALIZED: 'Realizado',
-      SKIPPED: 'Ignorado',
-    };
-    return labels[status ?? ''] ?? (status ?? '');
-  }
-
-  private replaceItem(updated: BudgetItemResponse): void {
-    this.items.update(list => list.map(i => i.id === updated.id ? updated : i));
   }
 }

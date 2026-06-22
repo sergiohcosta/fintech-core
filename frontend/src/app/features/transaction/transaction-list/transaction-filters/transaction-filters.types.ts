@@ -1,7 +1,10 @@
+export type TransactionType   = 'INCOME' | 'EXPENSE' | 'TRANSFER';
+export type TransactionStatus = 'PENDING' | 'PAID' | 'CANCELLED';
+
 export interface TransactionFilters {
   accountIds: string[];
-  status: 'PENDING' | 'PAID' | 'CANCELLED' | null;
-  type: 'INCOME' | 'EXPENSE' | null;
+  statuses: TransactionStatus[];
+  types: TransactionType[];
   startDate: string | null;
   endDate: string | null;
   groupByPeriod: boolean;
@@ -11,8 +14,8 @@ export interface TransactionFilters {
 
 export const DEFAULT_FILTERS: TransactionFilters = {
   accountIds: [],
-  status: null,
-  type: null,
+  statuses: [],
+  types: [],
   startDate: null,
   endDate: null,
   groupByPeriod: false,
@@ -28,6 +31,8 @@ export function currentMonthFilters(): TransactionFilters {
   const lastDay = new Date(year, month, 0).getDate();
   return {
     ...DEFAULT_FILTERS,
+    statuses: [],
+    types: [],
     startDate: `${year}-${pad(month)}-01`,
     endDate:   `${year}-${pad(month)}-${pad(lastDay)}`,
   };

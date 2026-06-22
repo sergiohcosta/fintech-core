@@ -372,8 +372,6 @@ table {
   &.negative { color: #c62828; }
 }
 
-// --- Sort headers ---
-
 .sort-header {
   background: none;
   border: none;
@@ -386,14 +384,8 @@ table {
   color: inherit;
   padding: 0;
   white-space: nowrap;
-
-  &:hover {
-    color: var(--mat-sys-primary, #1976d2);
-  }
-
-  &:focus {
-    outline: none;
-  }
+  &:hover { color: var(--mat-sys-primary, #1976d2); }
+  &:focus  { outline: none; }
 }
 
 .sort-badge {

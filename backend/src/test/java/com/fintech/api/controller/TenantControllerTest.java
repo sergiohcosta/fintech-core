@@ -60,6 +60,7 @@ class TenantControllerTest {
 
         when(tokenService.validateToken(anyString())).thenReturn(authUser.getEmail());
         when(userRepository.findByEmail(authUser.getEmail())).thenReturn(Optional.of(authUser));
+        when(tenantRepository.findById(any())).thenReturn(Optional.of(tenant));
         when(tenantRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
     }
 

@@ -28,7 +28,7 @@
     </form>
 
     <!-- Seção 3: itens recorrentes com data -->
-    @if ((p.recurringItems?.length ?? 0) > 0) {
+    @if (p.recurringItems.length > 0) {
       <h4 class="section-title">Itens recorrentes ({{ p.recurringItems!.length }})</h4>
       <div class="item-list">
         @for (item of p.recurringItems; track item.description) {
@@ -44,7 +44,7 @@
     }
 
     <!-- Seção 3: parcelas do cartão com data -->
-    @if ((p.installmentItems?.length ?? 0) > 0) {
+    @if (p.installmentItems.length > 0) {
       <h4 class="section-title">Parcelas do cartão ({{ p.installmentItems!.length }})</h4>
       <div class="item-list">
         @for (item of p.installmentItems; track item.description) {

@@ -1,15 +1,14 @@
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
 import { BudgetService } from '../../core/api/budget/budget.service';
 import { TenantService } from '../../core/api/tenant/tenant.service';
 import {
   BudgetCycleOpenRequest,
   BudgetCyclePageResponse,
-  BudgetCyclePreview,
   BudgetCycleResponse,
   BudgetItemCreateRequest,
   BudgetItemLinkRequest,
-  BudgetItemRealizeRequest,
   BudgetItemResponse,
   BudgetItemUpdateRequest,
   RecurringBudgetItemRequest,
@@ -21,6 +20,7 @@ import {
 export class PlanningService {
   private readonly budget = inject(BudgetService);
   private readonly tenant = inject(TenantService);
+  private readonly http   = inject(HttpClient);
 
   getCurrentCycle(): Observable<BudgetCycleResponse> {
     return this.budget.getCurrentBudgetCycle();
@@ -30,16 +30,16 @@ export class PlanningService {
     return this.budget.openBudgetCycle(req);
   }
 
-  closeCycle(id: string): Observable<BudgetCycleResponse> {
-    return this.budget.closeBudgetCycle(id);
-  }
-
-  listCycles(page = 0, size = 12): Observable<BudgetCyclePageResponse> {
-    return this.budget.listBudgetCycles({ page, size });
+  closeCycle(id: string, force = false): Observable<BudgetCycleResponse> {
+    return this.budget.closeBudgetCycle(id, force ? { force: true } : undefined);
   }
 
   deleteCycle(id: string): Observable<void> {
     return this.budget.deleteBudgetCycle(id);
+  }
+
+  listCycles(page = 0, size = 12): Observable<BudgetCyclePageResponse> {
+    return this.budget.listBudgetCycles({ page, size });
   }
 
   getCycle(id: string): Observable<BudgetCycleResponse> {
@@ -48,10 +48,6 @@ export class PlanningService {
 
   syncInstallments(id: string): Observable<BudgetCycleResponse> {
     return this.budget.syncInstallments(id);
-  }
-
-  previewCycle(startDay?: number): Observable<BudgetCyclePreview> {
-    return this.budget.previewBudgetCycle(startDay !== undefined ? { startDay } : undefined);
   }
 
   createItem(cycleId: string, req: BudgetItemCreateRequest): Observable<BudgetItemResponse> {
@@ -74,28 +70,8 @@ export class PlanningService {
     return this.budget.unlinkBudgetItem(id);
   }
 
-  realizeItem(id: string, req: BudgetItemRealizeRequest): Observable<BudgetItemResponse> {
-    return this.budget.realizeBudgetItem(id, req);
-  }
-
-  unrealizeItem(id: string): Observable<BudgetItemResponse> {
-    return this.budget.unrealizeBudgetItem(id);
-  }
-
-  skipItem(id: string): Observable<BudgetItemResponse> {
-    return this.budget.skipBudgetItem(id);
-  }
-
-  unskipItem(id: string): Observable<BudgetItemResponse> {
-    return this.budget.unskipBudgetItem(id);
-  }
-
-  reactivateRecurring(id: string): Observable<RecurringBudgetItemResponse> {
-    return this.budget.reactivateRecurringBudgetItem(id);
-  }
-
-  listRecurring(active?: boolean): Observable<RecurringBudgetItemResponse[]> {
-    return this.budget.listRecurringBudgetItems(active !== undefined ? { active } : undefined);
+  listRecurring(): Observable<RecurringBudgetItemResponse[]> {
+    return this.budget.listRecurringBudgetItems();
   }
 
   createRecurring(req: RecurringBudgetItemRequest): Observable<RecurringBudgetItemResponse> {
@@ -108,6 +84,14 @@ export class PlanningService {
 
   deleteRecurring(id: string): Observable<void> {
     return this.budget.deleteRecurringBudgetItem(id);
+  }
+
+  reactivateRecurring(id: string): Observable<RecurringBudgetItemResponse> {
+    return this.http.patch<RecurringBudgetItemResponse>(`/api/recurring-budget-items/${id}/reactivate`, {});
+  }
+
+  getSettings(): Observable<TenantSettingsPatchRequest> {
+    return this.tenant.getTenantSettings();
   }
 
   patchTenantSettings(req: TenantSettingsPatchRequest): Observable<void> {

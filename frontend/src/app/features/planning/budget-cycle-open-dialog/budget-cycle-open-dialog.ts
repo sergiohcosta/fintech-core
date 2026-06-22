@@ -12,9 +12,19 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
-import { BudgetCyclePreview } from '../../../core/api/fintechSaaSAPI.schemas';
 import { PlanningService } from '../planning.service';
 import { TransactionsService } from '../../../core/api/transactions/transactions.service';
+
+interface CyclePreview {
+  startDate: string;
+  endDate: string;
+  referenceMonth: string;
+  suggestedOpeningBalance: number;
+  projectedIncome: number;
+  projectedExpense: number;
+  recurringItems: Array<{ description?: string; expectedDate?: string; amount?: number; type?: string }>;
+  installmentItems: Array<{ description?: string; accountName?: string; expectedDate?: string; amount?: number }>;
+}
 
 @Component({
   selector: 'app-budget-cycle-open-dialog',
@@ -34,7 +44,7 @@ export class BudgetCycleOpenDialogComponent implements OnInit {
   private readonly dialogRef           = inject(MatDialogRef<BudgetCycleOpenDialogComponent>);
   private readonly snackBar            = inject(MatSnackBar);
 
-  readonly preview             = signal<BudgetCyclePreview | null>(null);
+  readonly preview             = signal<CyclePreview | null>(null);
   readonly loadingPreview      = signal(true);
   readonly saving              = signal(false);
   readonly previewError        = signal<string | null>(null);
@@ -70,14 +80,33 @@ export class BudgetCycleOpenDialogComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    this.planningService.previewCycle().subscribe({
-      next: p => {
-        this.preview.set(p);
-        this.form.patchValue({ openingBalance: p.suggestedOpeningBalance ?? 0 });
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const end   = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+    const refMonth = `${start.getFullYear()}-${pad(start.getMonth() + 1)}`;
+
+    this.planningService.listRecurring().subscribe({
+      next: recurring => {
+        this.preview.set({
+          startDate:              fmt(start),
+          endDate:                fmt(end),
+          referenceMonth:         refMonth,
+          suggestedOpeningBalance: 0,
+          projectedIncome:  recurring.filter(r => r.type === 'INCOME').reduce((s, r) => s + (r.amount ?? 0), 0),
+          projectedExpense: recurring.filter(r => r.type === 'EXPENSE').reduce((s, r) => s + (r.amount ?? 0), 0),
+          recurringItems: recurring.map(r => ({
+            description: r.description,
+            expectedDate: fmt(new Date(start.getFullYear(), start.getMonth(), r.dayOfMonth ?? 1)),
+            amount: r.amount,
+            type: r.type,
+          })),
+          installmentItems: [],
+        });
+        this.form.patchValue({ openingBalance: 0 });
         this.loadingPreview.set(false);
-        if (p.startDate && p.endDate) {
-          this.loadExistingTransactions(p.startDate, p.endDate);
-        }
+        this.loadExistingTransactions(fmt(start), fmt(end));
       },
       error: (err: HttpErrorResponse) => {
         const body = err.error as { message?: string } | null;
@@ -109,9 +138,7 @@ export class BudgetCycleOpenDialogComponent implements OnInit {
     this.saving.set(true);
 
     this.planningService.openCycle({
-      referenceMonth: p.referenceMonth!,
-      startDay: p.startDay!,
-      openingBalance: this.form.value.openingBalance ?? null,
+      referenceMonth: p.referenceMonth,
     }).subscribe({
       next: () => {
         this.snackBar.open('Ciclo aberto com sucesso.', 'OK', { duration: 2000 });
