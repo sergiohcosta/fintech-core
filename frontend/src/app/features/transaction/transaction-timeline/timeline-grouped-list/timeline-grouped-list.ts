@@ -1,7 +1,6 @@
 import { Component, input, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
-import { ScrollingModule } from '@angular/cdk/scrolling';
 import { TransactionResponseDTO } from '../../../../core/api/fintechSaaSAPI.schemas';
 import { groupByRelativePeriod, RelativeGroup } from './grouped-list.utils';
 
@@ -14,7 +13,7 @@ function todayIso(): string {
   selector: 'app-timeline-grouped-list',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, MatIconModule, ScrollingModule],
+  imports: [CurrencyPipe, MatIconModule],
   templateUrl: './timeline-grouped-list.html',
   styleUrl: './timeline-grouped-list.scss',
 })

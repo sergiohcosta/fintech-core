@@ -2,7 +2,11 @@
   @for (g of groups(); track g.bucket) {
     <section class="group">
       <header class="group-header" (click)="toggle(g.bucket)"
-              [attr.aria-expanded]="!isCollapsed(g.bucket)">
+              [attr.aria-expanded]="!isCollapsed(g.bucket)"
+              role="button"
+              tabindex="0"
+              (keydown.enter)="toggle(g.bucket)"
+              (keydown.space)="toggle(g.bucket)">
         <mat-icon>{{ isCollapsed(g.bucket) ? 'chevron_right' : 'expand_more' }}</mat-icon>
         <span class="group-label">{{ g.label }}</span>
         <span class="group-summary">
