@@ -38,6 +38,17 @@ export class TransactionTimelineComponent {
   monthAnchor = computed(() => this.filters().startDate ?? this.firstOfCurrentMonth());
   selectedTab = computed(() => Math.max(0, VIEW_MODES.indexOf(this.filters().viewMode)));
 
+  // Régua da timeline horizontal: usa o período filtrado; sem filtro, cobre o mês inteiro
+  // do anchor (1º ao último dia) — evita régua degenerada de um único dia.
+  rangeStart = computed(() => this.filters().startDate ?? this.monthAnchor());
+  rangeEnd = computed(() => {
+    const end = this.filters().endDate;
+    if (end) return end;
+    const [y, m] = this.monthAnchor().split('-').map(Number);
+    const lastDay = new Date(y, m, 0).getDate();
+    return `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+  });
+
   constructor() {
     // Recarrega sempre que mudam os campos que o backend conhece. description é client-side,
     // então é deliberadamente lida fora do effect para não disparar fetch.
