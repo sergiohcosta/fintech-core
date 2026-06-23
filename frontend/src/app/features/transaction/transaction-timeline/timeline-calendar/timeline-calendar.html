@@ -20,7 +20,7 @@
         [class.empty]="!cell.date"
         [class.has-tx]="cell.transactions.length > 0"
         [class.expanded]="cell.date === expandedDay()"
-        [attr.aria-label]="cell.date"
+        [attr.aria-label]="cell.date || null"
         (click)="toggleDay(cell)">
         @if (cell.date) {
           <span class="day-number">{{ cell.dayOfMonth }}</span>
