@@ -40,4 +40,13 @@ describe('resolveCollisions', () => {
     );
     expect(markers[0].stackIndex).toBe(0);
   });
+
+  it('agrupa parcela de cartão pelo dia da invoiceDueDate, não da date', () => {
+    const card = { id: 'p1', description: 'd', amount: 1, date: '2026-05-20',
+      type: 'EXPENSE', status: 'PAID', installmentGroupId: 'g1', invoiceDueDate: '2026-06-08' } as TransactionResponseDTO;
+    const markers = resolveCollisions([card], '2026-06-01', '2026-06-30', 290);
+    expect(markers).toHaveLength(1);
+    expect(markers[0].date).toBe('2026-06-08');
+    expect(markers[0].transactions[0].id).toBe('p1');
+  });
 });
