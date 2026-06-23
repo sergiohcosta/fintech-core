@@ -42,4 +42,24 @@ describe('groupByRelativePeriod', () => {
     // ambas em "older" → mais recente primeiro
     expect(groups[0].transactions.map(t => t.id)).toEqual(['b', 'a']);
   });
+
+  it('classifica bordas de thisWeek corretamente (diff=2 e diff=6)', () => {
+    // today = 2026-06-15; diff=2 → 2026-06-13; diff=6 → 2026-06-09
+    const groups = groupByRelativePeriod(
+      [tx('a', '2026-06-13'), tx('b', '2026-06-09')],
+      today,
+    );
+    expect(groups[0].bucket).toBe('thisWeek');
+    expect(groups[0].transactions.map(t => t.id)).toEqual(['a', 'b']);
+  });
+
+  it('classifica bordas de lastWeek corretamente (diff=7 e diff=13)', () => {
+    // today = 2026-06-15; diff=7 → 2026-06-08; diff=13 → 2026-06-02
+    const groups = groupByRelativePeriod(
+      [tx('c', '2026-06-08'), tx('d', '2026-06-02')],
+      today,
+    );
+    expect(groups[0].bucket).toBe('lastWeek');
+    expect(groups[0].transactions.map(t => t.id)).toEqual(['c', 'd']);
+  });
 });
