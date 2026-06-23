@@ -34,10 +34,11 @@ function classify(date: string, today: string): RelativeBucket {
   const diff = daysBetween(today, date); // hoje - data; positivo = passado
   if (diff === 0) return 'today';
   if (diff === 1) return 'yesterday';
-  // Semana = janela de 7 dias a partir de hoje; semana passada = 8..14.
+  // thisWeek: diff 2..6 (9..13 de junho quando hoje é 15)
   if (diff >= 2 && diff <= 6) return 'thisWeek';
+  // lastWeek: diff 7..13 (2..8 de junho quando hoje é 15)
   if (diff >= 7 && diff <= 13) return 'lastWeek';
-  // Mesmo mês-calendário e ainda mais recente que o início do mês
+  // thisMonth: mesmo mês-calendário (junho) que não caiu em yesterday, thisWeek ou lastWeek
   if (date.slice(0, 7) === today.slice(0, 7)) return 'thisMonth';
   return 'older';
 }
