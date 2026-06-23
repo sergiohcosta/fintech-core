@@ -1,0 +1,27 @@
+<!-- transaction-timeline.html -->
+<div class="timeline-page">
+  <header class="page-header">
+    <h2>Linha do tempo</h2>
+    <button mat-stroked-button (click)="goToTransactionList()">
+      <mat-icon>list</mat-icon> Ver lista
+    </button>
+  </header>
+
+  <mat-tab-group [selectedIndex]="selectedTab()" (selectedIndexChange)="onTabChange($event)">
+    <mat-tab label="Calendário">
+      <app-timeline-calendar
+        [transactions]="visibleTransactions()"
+        [monthAnchor]="monthAnchor()"
+        (monthChange)="onMonthChange($event)" />
+    </mat-tab>
+    <mat-tab label="Lista agrupada">
+      <app-timeline-grouped-list [transactions]="visibleTransactions()" />
+    </mat-tab>
+    <mat-tab label="Linha horizontal">
+      <app-timeline-horizontal
+        [transactions]="visibleTransactions()"
+        [rangeStart]="filters().startDate ?? monthAnchor()"
+        [rangeEnd]="filters().endDate ?? monthAnchor()" />
+    </mat-tab>
+  </mat-tab-group>
+</div>
