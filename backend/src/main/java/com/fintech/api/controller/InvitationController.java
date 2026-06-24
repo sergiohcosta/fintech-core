@@ -10,7 +10,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
+import com.fintech.api.config.SecurityUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,13 +25,13 @@ public class InvitationController {
 
     @PostMapping
     public ResponseEntity<InvitationResponseDTO> create(@RequestBody @Valid CreateInvitationDTO dto) {
-        User admin = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        User admin = SecurityUtils.currentUser();
         return ResponseEntity.status(HttpStatus.CREATED).body(invitationService.create(dto, admin));
     }
 
     @GetMapping
     public ResponseEntity<List<InvitationSummaryDTO>> list() {
-        User admin = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        User admin = SecurityUtils.currentUser();
         return ResponseEntity.ok(invitationService.list(admin));
     }
 
@@ -42,7 +42,7 @@ public class InvitationController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> revoke(@PathVariable UUID id) {
-        User admin = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        User admin = SecurityUtils.currentUser();
         invitationService.revoke(id, admin);
         return ResponseEntity.noContent().build();
     }

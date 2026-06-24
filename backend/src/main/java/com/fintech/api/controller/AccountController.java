@@ -9,7 +9,7 @@ import com.fintech.api.service.AccountService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
+import com.fintech.api.config.SecurityUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -60,6 +60,6 @@ public class AccountController implements AccountsApi {
     }
 
     private User getAuthenticatedUser() {
-        return (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        return SecurityUtils.currentUser();
     }
 }
