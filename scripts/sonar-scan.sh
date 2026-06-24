@@ -33,7 +33,7 @@ export SONAR_HOST_URL="${SONAR_HOST_URL:-http://localhost:9000}"
 
 if [ -z "${SONAR_TOKEN:-}" ]; then
   echo "❌ SONAR_TOKEN não definida. Gere um token na UI do Sonar"
-  echo "   (My Account → Security → Generate Token) e adicione ao .env:"
+  echo "   (My Account → Security → Generate Token) e adicione ao .env (ou .env.local):"
   echo "   SONAR_TOKEN=seu_token"
   exit 1
 fi
