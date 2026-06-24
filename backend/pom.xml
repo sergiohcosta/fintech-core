@@ -28,6 +28,11 @@
 	</scm>
 	<properties>
 		<java.version>21</java.version>
+		<!-- SonarQube: chave do projeto e caminho do relatório JaCoCo.
+		     Manter a chave aqui também é onde o MCP do Sonar resolve o projeto. -->
+		<sonar.projectKey>fintech-core-backend</sonar.projectKey>
+		<sonar.projectName>Fintech Core Backend</sonar.projectName>
+		<sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -223,6 +228,36 @@
 						</configuration>
 					</execution>
 				</executions>
+			</plugin>
+
+			<!-- JaCoCo: prepare-agent instrumenta os testes; report gera o XML
+			     que o Sonar lê para calcular cobertura. -->
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>0.8.13</version>
+				<executions>
+					<execution>
+						<id>prepare-agent</id>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>report</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>report</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- Scanner do SonarQube via Maven. Versão pinada para não puxar RELEASE instável. -->
+			<plugin>
+				<groupId>org.sonarsource.scanner.maven</groupId>
+				<artifactId>sonar-maven-plugin</artifactId>
+				<version>5.1.0.4751</version>
 			</plugin>
 		</plugins>
 	</build>
