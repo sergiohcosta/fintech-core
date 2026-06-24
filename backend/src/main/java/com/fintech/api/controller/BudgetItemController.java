@@ -9,7 +9,7 @@ import com.fintech.api.service.BudgetItemService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
+import com.fintech.api.config.SecurityUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -88,6 +88,6 @@ public class BudgetItemController {
     }
 
     private User getUser() {
-        return (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        return SecurityUtils.currentUser();
     }
 }
