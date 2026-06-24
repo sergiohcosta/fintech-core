@@ -65,6 +65,15 @@ export const routes: Routes = [
         loadComponent: () => import('./features/transaction/transaction-list/transaction-list').then(m => m.TransactionList)
       },
       {
+        // CRÍTICO: precisa vir antes de 'transactions/:id', senão o param :id captura
+        // a string "timeline" e tenta abrir o form de edição.
+        path: 'transactions/timeline',
+        loadComponent: () =>
+          import('./features/transaction/transaction-timeline/transaction-timeline').then(
+            m => m.TransactionTimelineComponent
+          )
+      },
+      {
         path: 'transactions/new',
         loadComponent: () => import('./features/transaction/transaction-form/transaction-form').then(m => m.TransactionForm)
       },
