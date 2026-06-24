@@ -10,7 +10,7 @@ import com.fintech.api.service.CategoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
+import com.fintech.api.config.SecurityUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -84,9 +84,7 @@ public class CategoryController implements CategoriesApi {
         return ResponseEntity.noContent().build();
     }
 
-    // Obtém o usuário autenticado via SecurityContextHolder em vez de @AuthenticationPrincipal,
-    // pois a interface OpenAPI não inclui esse parâmetro extra nas assinaturas dos métodos.
     private User getAuthenticatedUser() {
-        return (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        return SecurityUtils.currentUser();
     }
 }
