@@ -13,7 +13,7 @@
 Estes contratos são compartilhados entre tarefas — todo passo os assume:
 
 - **Chaves de projeto Sonar:** `fintech-core-backend` (Java) e `fintech-core-frontend` (TS). Verbatim.
-- **Variáveis de ambiente:** `SONAR_HOST_URL` (default `http://localhost:9000`) e `SONAR_TOKEN` (obrigatória; vem do `.env`). Nunca hardcodar o token.
+- **Variáveis de ambiente:** `SONAR_HOST_URL` (default `http://localhost:9000`), `SONAR_TOKEN` (obrigatória; vem do `.env`; nunca hardcodar) e `SONAR_AUTO_SCAN` (opcional, default `0`; liga o auto-scan no merge da develop).
 - **Caminho do orquestrador:** `scripts/sonar-scan.sh` — consumido pelo hook `.githooks/post-merge`.
 - **Scripts npm do frontend:** `test:cov` (gera `frontend/coverage/lcov.info`) e `sonar` (roda o scanner). Consumidos por `scan_frontend()` no orquestrador.
 - **Git/commits:** PT-BR, imperativo, **sem** `Co-Authored-By`. Trabalho na branch `feat/sonarqube-integration` (worktree já criada).
@@ -297,6 +297,9 @@ Em `scripts/.env.template`, acrescentar ao final:
 SONAR_HOST_URL=http://localhost:9000
 # Token de análise gerado na UI do Sonar (My Account → Security → Generate Token)
 SONAR_TOKEN=your_sonar_token_here
+# Auto-scan no merge da develop (hook post-merge). 0 = só lembra; 1 = roda em background.
+# Default 0 porque mvn verify + scanner pesa para rodar a cada merge.
+SONAR_AUTO_SCAN=0
 ```
 
 - [ ] **Step 5: Documentar em `commands.md`**
@@ -317,8 +320,10 @@ Instância local do SonarQube Community. Pré-requisito: `SONAR_TOKEN` no `.env`
 ```
 
 Projetos são auto-provisionados no 1º scan. Resultados em `http://localhost:9000`.
-A análise também dispara automaticamente em background a cada merge na `develop`
-(hook `.githooks/post-merge`; ativar uma vez com `git config core.hooksPath .githooks`).
+
+Opcional: o hook `.githooks/post-merge` lembra (ou roda) a análise a cada merge na
+`develop`. Ativar uma vez: `git config core.hooksPath .githooks`. Por padrão só lembra;
+para auto-scan em background, defina `SONAR_AUTO_SCAN=1` no `.env` (pesa — `mvn verify`).
 ```
 
 - [ ] **Step 6: Commit**
@@ -330,14 +335,14 @@ git commit -m "feat(scripts): adiciona orquestrador sonar-scan e documenta o flu
 
 ---
 
-### Task 4: Hook `post-merge` na develop (`.githooks/`)
+### Task 4: Hook `post-merge` na develop com auto-scan opt-in (`.githooks/`)
 
 **Files:**
 - Create: `.githooks/post-merge`
 
 **Interfaces:**
-- Consumes: `scripts/sonar-scan.sh` (Task 3).
-- Produces: hook que, ativado via `core.hooksPath`, dispara o scan em background só na `develop`.
+- Consumes: `scripts/sonar-scan.sh` (Task 3); flag `SONAR_AUTO_SCAN` no `.env` (Task 3 Step 4).
+- Produces: hook que, ativado via `core.hooksPath`, na `develop` lembra (default) ou — com `SONAR_AUTO_SCAN=1` — roda o scan em background.
 
 - [ ] **Step 1: Criar o hook**
 
@@ -345,22 +350,30 @@ Create `.githooks/post-merge`:
 
 ```bash
 #!/bin/bash
-# fintech-core — dispara análise do SonarQube após merges na develop.
-# Ativar uma vez: git config core.hooksPath .githooks
+# fintech-core — (opcional) análise do SonarQube após merges na develop.
+# Ativar o hook: git config core.hooksPath .githooks
 #
 # Só age na develop — a única branch que o Sonar Community analisa.
-# Roda em background para não travar o terminal após merge/pull.
+# Default: só LEMBRA (mvn verify + scanner pesa para rodar a cada merge).
+# Auto-scan em background: defina SONAR_AUTO_SCAN=1 (ou true) no .env.
 
 branch=$(git rev-parse --abbrev-ref HEAD)
 [ "$branch" != "develop" ] && exit 0
 
 repo_root=$(git rev-parse --show-toplevel)
-log="$repo_root/.sonar-scan.log"
 
-echo "🔍 Merge na develop — análise do Sonar em background (log: .sonar-scan.log)"
-# ponytail: mvn verify roda a suíte toda (Testcontainers) — é pesado; o background
-# mitiga. Se incomodar, criar uma variante do sonar-scan.sh com -DskipITs.
-nohup "$repo_root/scripts/sonar-scan.sh" all > "$log" 2>&1 &
+# Lê só a flag do .env (sem exportar o arquivo inteiro neste contexto)
+auto=$(grep -E '^SONAR_AUTO_SCAN=' "$repo_root/.env" 2>/dev/null | tail -1 | cut -d= -f2)
+
+if [ "$auto" = "1" ] || [ "$auto" = "true" ]; then
+  log="$repo_root/.sonar-scan.log"
+  echo "🔍 Merge na develop — análise do Sonar em background (log: .sonar-scan.log)"
+  # ponytail: mvn verify roda a suíte toda (Testcontainers) — pesado; o background mitiga.
+  nohup "$repo_root/scripts/sonar-scan.sh" all > "$log" 2>&1 &
+else
+  echo "💡 Merge na develop. Rode a análise quando quiser: ./scripts/sonar-scan.sh"
+  echo "   (auto-scan no merge: defina SONAR_AUTO_SCAN=1 no .env)"
+fi
 ```
 
 - [ ] **Step 2: Tornar o hook executável**
@@ -373,13 +386,13 @@ Expected: sem saída (sucesso).
 Pré-requisito: você está na branch `feat/sonarqube-integration` (não `develop`).
 
 Run: `bash .githooks/post-merge; echo "exit=$?"`
-Expected: **nenhuma** saída de scan e `exit=0` (o guard barrou por não estar na develop). O disparo real na develop é validado na Task 5.
+Expected: **nenhuma** saída e `exit=0` (o guard barrou por não estar na develop). O comportamento na develop (lembrete por default; background com `SONAR_AUTO_SCAN=1`) é validado na Task 5.
 
 - [ ] **Step 4: Commit**
 
 ```bash
 git add .githooks/post-merge
-git commit -m "feat(git): adiciona hook post-merge que analisa o Sonar na develop"
+git commit -m "feat(git): adiciona hook post-merge com auto-scan opt-in na develop"
 ```
 
 ---
@@ -415,12 +428,12 @@ Expected: `BUILD SUCCESS`; no fim, `✅ Análise concluída`. Na UI, o projeto `
 Run: `./scripts/sonar-scan.sh frontend`
 Expected: scanner conclui (`EXECUTION SUCCESS`). Na UI, `fintech-core-frontend` aparece com cobertura > 0% e **sem** os arquivos de `core/api/**` na análise.
 
-- [ ] **Step 5: Ativar o hook e validar o disparo na develop**
+- [ ] **Step 5: Ativar o hook e validar o comportamento na develop**
 
 Run: `git config core.hooksPath .githooks`
 Expected: sem saída.
 
-Depois (após esta feature ser mergeada na develop, ou num teste de merge na develop): confirmar que o terminal **não** trava e que `.sonar-scan.log` é criado com a saída do scan.
+Num merge na `develop` (ou após esta feature ser mergeada): por **default** o terminal só mostra o lembrete `💡 Merge na develop...` e segue. Só se você tiver definido `SONAR_AUTO_SCAN=1` no `.env` é que o scan roda em background (terminal não trava) e `.sonar-scan.log` é criado.
 
 - [ ] **Step 6: (Opcional) Resumo via MCP**
 
@@ -436,7 +449,7 @@ Indicar que a branch `feat/sonarqube-integration` está pronta e sugerir o merge
 
 **Spec coverage:**
 - Gatilho sob demanda → Task 3 (script). ✔
-- Gatilho hook na develop → Task 4. ✔
+- Gatilho hook na develop (auto-scan **opt-in** via `SONAR_AUTO_SCAN`) → Task 4. ✔
 - Dois projetos separados → keys em Task 1 (pom) e Task 2 (properties). ✔
 - Cobertura back → Task 1 (JaCoCo). ✔
 - Cobertura front → Task 2 (lcov). ✔

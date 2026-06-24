@@ -25,7 +25,7 @@ então a consulta de resultados a partir do assistente já tem trilho — não e
 
 | Decisão | Escolha | Por quê |
 |---------|---------|---------|
-| Gatilho | Sob demanda (local) **+** hook `post-merge` na `develop` | Controle no dia a dia + foto consolidada automática a cada integração |
+| Gatilho | Sob demanda (local) **+** hook `post-merge` na `develop` com auto-scan **opt-in** | Controle no dia a dia; o auto-scan no merge é pesado (`mvn verify` + scanner), então default desligado — o hook só lembra, e quem quiser liga via flag |
 | Escopo | Dois projetos Sonar separados | Scanners e quality gates distintos por stack (Java ≠ TS) |
 | Cobertura | Back **e** front | Cobertura é valor central do projeto (meta 80%+ em lógica de negócio) |
 | Host | `http://localhost:9000` (configurável via `.env`) | Default são da instância local |
@@ -77,20 +77,21 @@ scripts/sonar-scan.sh [backend|frontend|all]   ← ponto de entrada único (DRY)
 - Exporta `SONAR_HOST_URL`/`SONAR_TOKEN` e dispara o(s) scanner(s) do(s) lado(s) pedido(s).
 - É o comando que o dev roda sob demanda antes de pedir merge na `develop`.
 
-### Componente 4 — Hook de merge (`.githooks/post-merge`)
+### Componente 4 — Hook de merge (`.githooks/post-merge`), auto-scan opt-in
 
 - Versionado no repo; ativado uma vez com `git config core.hooksPath .githooks`.
-- **Guarda:** só age se `git rev-parse --abbrev-ref HEAD == develop`.
-- Roda `scripts/sonar-scan.sh all` em **background** (log em arquivo) para não bloquear
-  `git merge` / `git pull`.
-- **Ceiling conhecido** (`ponytail:`): `mvn verify` roda a suíte inteira (Testcontainers/Docker),
-  é pesado; background mitiga; se incomodar, aliviar com `-DskipITs`.
-- **Efeito colateral aceito:** `git pull` na `develop` também é um merge → dispara o hook.
-  Desejável (foto fresca após puxar), mas documentado.
+- **Guarda de branch:** só age se `git rev-parse --abbrev-ref HEAD == develop`.
+- **Default desligado:** `mvn verify` + scanner a cada merge pesa demais para rodar sempre.
+  Sem `SONAR_AUTO_SCAN`, o hook apenas **lembra** (uma linha) que dá pra rodar `sonar-scan.sh`.
+- **Auto-scan (opt-in):** com `SONAR_AUTO_SCAN=1` (ou `true`) no `.env`, o hook roda
+  `scripts/sonar-scan.sh all` em **background** (log em arquivo) sem travar `git merge`/`git pull`.
+- **Efeito colateral conhecido:** `git pull` na `develop` também é um merge → dispara o hook;
+  com o default desligado, é só a linha de lembrete (inócuo).
 
 ### Componente 5 — Env (`scripts/.env.template`)
 
-- Acrescenta `SONAR_HOST_URL` (default `http://localhost:9000`) e `SONAR_TOKEN` (vazio, a preencher).
+- Acrescenta `SONAR_HOST_URL` (default `http://localhost:9000`), `SONAR_TOKEN` (vazio, a preencher)
+  e `SONAR_AUTO_SCAN` (default `0` — liga o auto-scan no merge da develop).
 
 ### Componente 6 — Consulta via MCP (sem código)
 
@@ -110,8 +111,9 @@ Após um scan, o assistente consulta a instância local: status do quality gate,
 2. `./scripts/sonar-scan.sh frontend` publica análise + cobertura do TS no projeto
    `fintech-core-frontend`, com o cliente Orval excluído.
 3. `./scripts/sonar-scan.sh` (sem arg) faz os dois.
-4. Após `git config core.hooksPath .githooks`, um merge na `develop` dispara o scan em
-   background sem travar o terminal; um merge em qualquer outra branch **não** dispara.
+4. Após `git config core.hooksPath .githooks`: merge fora da `develop` **não** dispara nada;
+   merge na `develop` sem `SONAR_AUTO_SCAN` só imprime o lembrete; com `SONAR_AUTO_SCAN=1`
+   dispara o scan em background sem travar o terminal.
 5. Segredo (`SONAR_TOKEN`) nunca aparece versionado — só no `.env` local (gitignored).
 
 ## Documentação a atualizar na entrega
