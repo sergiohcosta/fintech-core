@@ -1,6 +1,6 @@
 import { Component, inject, OnInit, signal, computed, effect, untracked } from '@angular/core';
 import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -20,7 +20,7 @@ import { TransactionResponseDTO, AccountResponse, InvoiceResponseDTO, InvoiceSta
 import { ConfirmationDialogComponent } from '../../../components/confirmation-dialog/confirmation-dialog';
 import { DeleteInstallmentDialogComponent, DeleteInstallmentDialogResult } from './delete-installment-dialog/delete-installment-dialog';
 import { TransactionFiltersComponent } from './transaction-filters/transaction-filters';
-import { TransactionFilters, DEFAULT_FILTERS, currentMonthFilters } from './transaction-filters/transaction-filters.types';
+import { TransactionFilters, DEFAULT_FILTERS, currentMonthFilters, TransactionType, TransactionStatus } from './transaction-filters/transaction-filters.types';
 import { buildDisplayRows, InstallmentGroupInfo, DisplayRow, InvoiceSummaryRow, resolveMonthKey, formatMonthLabel, SortCol, SortCriterion, applySort, getSortInfo } from './transaction-list.utils';
 export { buildDisplayRows } from './transaction-list.utils';
 export type { InstallmentGroupInfo, DisplayRow, InvoiceSummaryRow, SortCriterion } from './transaction-list.utils';
@@ -53,6 +53,7 @@ export class TransactionList implements OnInit {
   private transferService = inject(TransfersService);
   private invoiceService  = inject(InvoicesService);
   private router   = inject(Router);
+  private route    = inject(ActivatedRoute);
   private dialog   = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
 
@@ -180,17 +181,37 @@ export class TransactionList implements OnInit {
     return map[status] ?? status;
   }
 
+  // Mescla queryParams (vindos da timeline via "Ver lista") sobre uma base de filtros.
+  // queryParams têm prioridade: o usuário pediu explicitamente esses filtros pela URL.
+  // Estática e pura → testável no Vitest sem TestBed.
+  static mergeFiltersFromQueryParams(
+    base: TransactionFilters,
+    qp: Record<string, string | undefined>,
+  ): TransactionFilters {
+    const next = { ...base };
+    if (qp['accountIds']) next.accountIds = qp['accountIds'].split(',').filter(Boolean);
+    if (qp['status'])     next.statuses   = [qp['status'] as TransactionStatus];
+    if (qp['type'])       next.types      = [qp['type'] as TransactionType];
+    if (qp['startDate'])  next.startDate  = qp['startDate'];
+    if (qp['endDate'])    next.endDate    = qp['endDate'];
+    if (qp['description']) next.description = qp['description'];
+    return next;
+  }
+
   ngOnInit(): void {
     const saved = this.loadFromStorage();
-    this.filters.set(saved);
+    // Snapshot (leitura única na entrada): se a timeline mandou filtros pela URL, eles vencem.
+    const qp = this.route.snapshot.queryParams as Record<string, string | undefined>;
+    const initial = TransactionList.mergeFiltersFromQueryParams(saved, qp);
+    this.filters.set(initial);
     forkJoin({
       accounts:     this.accountService.listAccounts(),
       transactions: this.service.listTransactions({
-        accountIds: saved.accountIds.length > 0 ? saved.accountIds : undefined,
-        status:    saved.statuses[0],
-        type:      saved.types.find((t): t is 'INCOME' | 'EXPENSE' => t === 'INCOME' || t === 'EXPENSE'),
-        startDate: saved.startDate ?? undefined,
-        endDate:   saved.endDate   ?? undefined,
+        accountIds: initial.accountIds.length > 0 ? initial.accountIds : undefined,
+        status:    initial.statuses[0],
+        type:      initial.types.find((t): t is 'INCOME' | 'EXPENSE' => t === 'INCOME' || t === 'EXPENSE'),
+        startDate: initial.startDate ?? undefined,
+        endDate:   initial.endDate   ?? undefined,
       }),
     }).subscribe({
       next: ({ accounts, transactions }) => {

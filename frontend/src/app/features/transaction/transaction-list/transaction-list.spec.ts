@@ -4,6 +4,8 @@ import {
   effectiveMonth, groupByEffectiveMonth, resolveMonthKey, monthBounds, formatMonthLabel,
   PeriodGroup, computeMonthChipStates,
 } from './transaction-list.utils';
+import { TransactionList } from './transaction-list';
+import { TransactionFilters } from './transaction-filters/transaction-filters.types';
 
 describe('buildDisplayRows', () => {
   it('cada parcela do mesmo grupo aparece como linha individual', () => {
@@ -243,5 +245,30 @@ describe('computeMonthChipStates', () => {
   it('intervalo personalizado (não exato de mês): nenhum chip fica active', () => {
     const chips = computeMonthChipStates(2026, 6, '2026-06-05', '2026-06-20');
     expect(chips.every(c => !c.active)).toBe(true);
+  });
+});
+
+describe('TransactionList.mergeFiltersFromQueryParams', () => {
+  const base: TransactionFilters = {
+    accountIds: [], statuses: [], types: [], startDate: null, endDate: null,
+    groupByPeriod: false, groupByInvoice: false, description: null,
+  };
+
+  it('sobrepõe accountIds, status, type, período e descrição vindos da timeline', () => {
+    const merged = TransactionList.mergeFiltersFromQueryParams(base, {
+      accountIds: 'a1,a2', status: 'PAID', type: 'EXPENSE',
+      startDate: '2026-06-01', endDate: '2026-06-30', description: 'luz',
+    });
+    expect(merged.accountIds).toEqual(['a1', 'a2']);
+    expect(merged.statuses).toEqual(['PAID']);
+    expect(merged.types).toEqual(['EXPENSE']);
+    expect(merged.startDate).toBe('2026-06-01');
+    expect(merged.endDate).toBe('2026-06-30');
+    expect(merged.description).toBe('luz');
+  });
+
+  it('sem params devolve a base inalterada', () => {
+    expect(TransactionList.mergeFiltersFromQueryParams({ ...base, accountIds: ['x'] }, {}))
+      .toEqual({ ...base, accountIds: ['x'] });
   });
 });
