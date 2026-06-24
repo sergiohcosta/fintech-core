@@ -74,6 +74,16 @@ para i=0..N-1:
 
 **PUT `propagate: string[]`:** aplica campos às parcelas futuras `PENDING` (`installmentNumber >` atual). PAID nunca revertido.
 
+## Linha do Tempo (`/transactions/timeline`) — só frontend
+
+Visualização alternativa das mesmas transações (consome `GET /api/transactions` — **nenhum endpoint novo**). Três views em tabs: **Calendário** (heatmap mensal), **Lista agrupada** (períodos relativos: Hoje/Ontem/Esta semana/Semana passada/Este mês/Mais antigos) e **Linha horizontal** (marcadores por dia-efetivo, colisão agrupada por data).
+
+- **Filtros independentes** da lista principal, persistidos em `localStorage` (`fintech.timeline.filters`); `description` é filtro client-side e **nunca** é persistida.
+- Reusa a regra `effectiveSortDate` do backend (parcela de cartão → `invoiceDueDate`; demais → `date`) — replicada em `timeline-shared.ts`.
+- **"Ver lista"** navega para `/transactions` passando os filtros via `queryParams` (`accountIds,status,type,startDate,endDate,description`); a lista os aplica em `TransactionList.mergeFiltersFromQueryParams` (queryParams **vencem** o `localStorage`).
+- Rota registrada **antes** de `transactions/:id` (senão `:id` capturaria a string `"timeline"`).
+- Lógica pura testável sem `TestBed` (`*-utils.ts`); o shell é coberto por spec com `overrideComponent()`. Specs de componente exigem `ng test` (não `npx vitest` cru). Spec/design: `docs/superpowers/specs/2026-06-23-transaction-timeline-design.md`.
+
 ## Transferências (`/api/transfers`)
 
 POST (cria par EXPENSE origem + INCOME destino) · DELETE/{transferId} (remove ambos).
