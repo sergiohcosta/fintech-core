@@ -33,7 +33,7 @@ public class TokenService {
     }
 
     private Instant genExpirationDate() {
-        return Instant.now().plusSeconds(2 * 3600);
+        return Instant.now().plusSeconds(2L * 3600);
     }
 
     public String validateToken(String token) {
