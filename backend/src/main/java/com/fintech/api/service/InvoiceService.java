@@ -94,6 +94,15 @@ public class InvoiceService {
 
     @Transactional(readOnly = true)
     public Invoice findByIdAndTenant(UUID id, Tenant tenant) {
+        return loadByIdAndTenant(id, tenant);
+    }
+
+    // Lookup interno SEM @Transactional, usado pelos métodos deste service (getDTO/close/pay),
+    // que já abrem transação própria — o find participa dela. Evita o self-invocation de um
+    // método @Transactional via 'this', que passaria por fora do proxy do Spring e ignoraria a
+    // anotação (regra S6809). O finder público acima mantém o @Transactional(readOnly=true) para
+    // quando é ponto de entrada via proxy (ex.: chamado por TransactionService).
+    private Invoice loadByIdAndTenant(UUID id, Tenant tenant) {
         // Comparação por ID evita Lombok canEqual() em proxy detached do SecurityContext
         return repository.findById(id)
                 .filter(inv -> inv.getAccount().getTenant().getId().equals(tenant.getId()))
@@ -103,7 +112,7 @@ public class InvoiceService {
     // Retorna DTO com total e contagem — tudo dentro da transação para evitar LazyInitializationException
     @Transactional(readOnly = true)
     public InvoiceResponseDTO getDTO(UUID id, Tenant tenant) {
-        return buildDTO(findByIdAndTenant(id, tenant));
+        return buildDTO(loadByIdAndTenant(id, tenant));
     }
 
     @Transactional(readOnly = true)
@@ -124,7 +133,7 @@ public class InvoiceService {
 
     @Transactional
     public InvoiceResponseDTO close(UUID id, Tenant tenant) {
-        Invoice invoice = findByIdAndTenant(id, tenant);
+        Invoice invoice = loadByIdAndTenant(id, tenant);
         if (invoice.getStatus() != InvoiceStatus.OPEN) {
             throw new IllegalStateException(
                     "Só é possível fechar faturas com status OPEN. Status atual: " + invoice.getStatus());
@@ -137,7 +146,7 @@ public class InvoiceService {
 
     @Transactional
     public InvoiceResponseDTO pay(UUID id, Tenant tenant, User user, UUID sourceAccountId) {
-        Invoice invoice = findByIdAndTenant(id, tenant);
+        Invoice invoice = loadByIdAndTenant(id, tenant);
         if (invoice.getStatus() != InvoiceStatus.CLOSED) {
             throw new IllegalStateException(
                     "Só é possível pagar faturas com status CLOSED. Status atual: " + invoice.getStatus());
