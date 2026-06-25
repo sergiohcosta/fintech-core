@@ -53,7 +53,7 @@ public class RecurringBudgetItemService {
 
     @Transactional
     public RecurringBudgetItem update(UUID id, RecurringBudgetItemRequest req, Tenant tenant) {
-        RecurringBudgetItem item = findByIdAndTenant(id, tenant);
+        RecurringBudgetItem item = loadByIdAndTenant(id, tenant);
 
         if (!item.isActive()) {
             throw new IllegalStateException("O item deve ser reativado antes de ser editado.");
@@ -73,20 +73,26 @@ public class RecurringBudgetItemService {
 
     @Transactional
     public RecurringBudgetItem reactivate(UUID id, Tenant tenant) {
-        RecurringBudgetItem item = findByIdAndTenant(id, tenant);
+        RecurringBudgetItem item = loadByIdAndTenant(id, tenant);
         item.setActive(true);
         return repository.save(item);
     }
 
     @Transactional
     public void deactivate(UUID id, Tenant tenant) {
-        RecurringBudgetItem item = findByIdAndTenant(id, tenant);
+        RecurringBudgetItem item = loadByIdAndTenant(id, tenant);
         item.setActive(false);
         repository.save(item);
     }
 
-    @Transactional(readOnly = true)
-    public RecurringBudgetItem findByIdAndTenant(UUID id, Tenant tenant) {
+    /**
+     * Lookup interno SEM @Transactional. Usado apenas por update/reactivate/deactivate
+     * (já @Transactional read-write) — o find participa da transação do chamador. Antes era
+     * um método @Transactional público chamado via 'this', o que passava por fora do proxy
+     * do Spring e tornava a anotação inócua (regra S6809). Como não há chamador externo
+     * (controller usa update/reactivate/deactivate diretamente), virou privado.
+     */
+    private RecurringBudgetItem loadByIdAndTenant(UUID id, Tenant tenant) {
         return repository.findByIdAndTenant(id, tenant)
             .orElseThrow(() -> new AccessDeniedException("Acesso negado."));
     }
