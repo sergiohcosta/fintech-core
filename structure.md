@@ -25,8 +25,8 @@ fintech-core/
 │   │   ├── repository/          # Spring Data JPA repositories
 │   │   └── service/             # Business logic (one per domain)
 │   └── src/main/resources/
-│       ├── db/migration/        # Flyway schema (V1–V12)
-│       ├── db/seed/             # V13__seed_dev.sql (perfil dev)
+│       ├── db/migration/        # Flyway schema (versões/descrições em database-schema.md)
+│       ├── db/seed/             # seeds perfil dev: V13 (geral) + V16 (planejamento)
 │       └── application.properties
 ├── frontend/                    # Angular 21 Zoneless
 │   ├── package.json

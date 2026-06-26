@@ -43,3 +43,14 @@ docker compose up -d          # Container fintech-postgres precisa estar de pé
 ```
 
 O script valida a conexão e baixa o dump antes de tocar no banco local (falha de conexão não destrói os dados locais). Reinicie o backend após a sync para refletir as mudanças.
+
+### Sincronização de um tenant (Local ↔ Railway)
+
+Sincroniza **apenas o tenant-alvo** entre local e Railway, num sentido por execução. Reaproveita o `.env` (precisa de `DATABASE_URL_RAILWAY` = URL pública do Railway).
+
+```bash
+./scripts/sync-tenant.sh pull   # Railway → local  (Railway é a origem)
+./scripts/sync-tenant.sh push   # local   → Railway (local é a origem)
+```
+
+Cada run **substitui** os dados do tenant no destino pelos da origem (apaga + recarrega numa transação, sem merge); os demais tenants do destino não são tocados. Pede confirmação mostrando o sentido. Premissa: schema idêntico (mesmas migrations) nos dois lados.

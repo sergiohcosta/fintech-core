@@ -29,6 +29,18 @@
   &.realized strong { color: var(--mat-sys-primary); }
 }
 
+// Header do card com o ícone de "olho" alinhado ao topo-direita do título.
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+
+  &__eye {
+    margin: -8px -8px 0 0;
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
 .empty-state-card {
   text-align: center;
   padding: 40px;

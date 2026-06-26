@@ -39,7 +39,13 @@
 
     <div class="summary-grid">
       <mat-card>
-        <mat-card-header><mat-card-title>Receitas</mat-card-title></mat-card-header>
+        <mat-card-header class="card-head">
+          <mat-card-title>Receitas</mat-card-title>
+          <button mat-icon-button class="card-head__eye" (click)="openBreakdown('income')"
+                  matTooltip="Ver composição" aria-label="Ver composição de Receitas">
+            <mat-icon>visibility</mat-icon>
+          </button>
+        </mat-card-header>
         <mat-card-content>
           <div class="summary-line">
             <span>Previsto</span>
@@ -53,7 +59,13 @@
       </mat-card>
 
       <mat-card>
-        <mat-card-header><mat-card-title>Despesas</mat-card-title></mat-card-header>
+        <mat-card-header class="card-head">
+          <mat-card-title>Despesas</mat-card-title>
+          <button mat-icon-button class="card-head__eye" (click)="openBreakdown('expense')"
+                  matTooltip="Ver composição" aria-label="Ver composição de Despesas">
+            <mat-icon>visibility</mat-icon>
+          </button>
+        </mat-card-header>
         <mat-card-content>
           <div class="summary-line">
             <span>Previsto</span>
@@ -67,7 +79,13 @@
       </mat-card>
 
       <mat-card>
-        <mat-card-header><mat-card-title>Saldo</mat-card-title></mat-card-header>
+        <mat-card-header class="card-head">
+          <mat-card-title>Saldo</mat-card-title>
+          <button mat-icon-button class="card-head__eye" (click)="openBreakdown('balance')"
+                  matTooltip="Ver composição" aria-label="Ver composição de Saldo">
+            <mat-icon>visibility</mat-icon>
+          </button>
+        </mat-card-header>
         <mat-card-content>
           <div class="summary-line">
             <span>Abertura</span>
@@ -86,7 +104,13 @@
 
       @if (cycle()!.status === 'OPEN') {
         <mat-card>
-          <mat-card-header><mat-card-title>Disponível</mat-card-title></mat-card-header>
+          <mat-card-header class="card-head">
+            <mat-card-title>Disponível</mat-card-title>
+            <button mat-icon-button class="card-head__eye" (click)="openBreakdown('available')"
+                    matTooltip="Ver composição" aria-label="Ver composição de Disponível">
+              <mat-icon>visibility</mat-icon>
+            </button>
+          </mat-card-header>
           <mat-card-content>
             <div class="summary-line" [class.negative]="summary().availableToSpend < 0">
               <span>Para gastar</span>
@@ -150,6 +174,10 @@
                   <mat-icon>link_off</mat-icon>
                 </button>
               }
+              <button mat-icon-button matTooltip="Tornar recorrente"
+                      (click)="makeRecurring(item)">
+                <mat-icon>event_repeat</mat-icon>
+              </button>
               @if (item.source !== 'INSTALLMENT' && cycle()!.status === 'OPEN') {
                 @if (confirmingDeleteId() === item.id) {
                   <span style="font-size:0.75rem;color:var(--mat-sys-error)">Remover?</span>
@@ -214,6 +242,10 @@
                   <mat-icon>link_off</mat-icon>
                 </button>
               }
+              <button mat-icon-button matTooltip="Tornar recorrente"
+                      (click)="makeRecurring(item)">
+                <mat-icon>event_repeat</mat-icon>
+              </button>
               @if (cycle()!.status === 'OPEN') {
                 @if (confirmingDeleteId() === item.id) {
                   <span style="font-size:0.75rem;color:var(--mat-sys-error)">Remover?</span>
@@ -305,9 +337,23 @@
               </mat-cell>
             </ng-container>
 
+            <ng-container matColumnDef="status">
+              <mat-header-cell *matHeaderCellDef>Status</mat-header-cell>
+              <mat-cell *matCellDef="let tx">
+                <mat-chip [highlighted]="tx.status === 'PAID'">
+                  {{ tx.status === 'PAID' ? 'Pago' : 'Pendente' }}
+                </mat-chip>
+              </mat-cell>
+            </ng-container>
+
             <ng-container matColumnDef="actions">
               <mat-header-cell *matHeaderCellDef></mat-header-cell>
               <mat-cell *matCellDef="let tx">
+                <button mat-icon-button
+                        matTooltip="Criar item planejado"
+                        (click)="createPlannedFromUnplanned(tx)">
+                  <mat-icon>add_task</mat-icon>
+                </button>
                 <button mat-icon-button
                         matTooltip="Vincular a item planejado"
                         (click)="linkFromUnplanned(tx)">
@@ -316,8 +362,8 @@
               </mat-cell>
             </ng-container>
 
-            <mat-header-row *matHeaderRowDef="['date','description','account','amount','actions']"></mat-header-row>
-            <mat-row *matRowDef="let row; columns: ['date','description','account','amount','actions']"></mat-row>
+            <mat-header-row *matHeaderRowDef="['date','description','account','amount','status','actions']"></mat-header-row>
+            <mat-row *matRowDef="let row; columns: ['date','description','account','amount','status','actions']"></mat-row>
           </mat-table>
 
           @if (summary().unplannedExpense > 0 || summary().unplannedIncome > 0) {
