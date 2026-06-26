@@ -87,6 +87,14 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             @Param("tenant") Tenant tenant,
             @Param("invoice") Invoice invoice);
 
+    // Ocorrências já materializadas das regras informadas, na janela. Usado pela projeção
+    // para subtrair da expansão RRULE o que já virou transação real (batched, sem N+1).
+    List<Transaction> findByRecurrenceRuleIdInAndRecurrenceOccurrenceBetween(
+            Collection<UUID> ruleIds, LocalDate from, LocalDate to);
+
+    // Guard de idempotência: impede confirmar a mesma ocorrência duas vezes.
+    boolean existsByRecurrenceRuleIdAndRecurrenceOccurrence(UUID ruleId, LocalDate occurrence);
+
     // Todas as parcelas do grupo, ordenadas por número da parcela
     List<Transaction> findByInstallmentGroupOrderByInstallmentNumberAsc(InstallmentGroup group);
 
