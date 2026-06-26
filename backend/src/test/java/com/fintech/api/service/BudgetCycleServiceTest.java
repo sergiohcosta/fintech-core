@@ -130,8 +130,10 @@ class BudgetCycleServiceTest {
             .thenReturn(Optional.empty());
         when(cycleRepository.existsOverlap(any(), any(), any()))
             .thenReturn(false);
+        // startDay=1 → ciclo de 2026-06; openingBalance soma só PAID com date < 2026-06-01.
         when(accountRepository.sumLiquidBalanceByTenant(
-                eq(tenant.getId()), eq(TransactionType.INCOME), eq(TransactionStatus.PAID)))
+                eq(tenant.getId()), eq(TransactionType.INCOME), eq(TransactionStatus.PAID),
+                eq(LocalDate.of(2026, 6, 1))))
             .thenReturn(new BigDecimal("3200.00"));
         when(recurringRepository.findAllByTenantAndActiveTrueOrderByDayOfMonthAscDescriptionAsc(tenant))
             .thenReturn(List.of());

@@ -17,6 +17,8 @@ class LoginRateLimiterTest {
     void setUp() {
         limiter = new LoginRateLimiter();
         ReflectionTestUtils.setField(limiter, "maxAttempts", 3);
+        // @PostConstruct não é invocado fora de contexto Spring; inicializa window manualmente.
+        ReflectionTestUtils.setField(limiter, "window", Duration.ofMinutes(1));
     }
 
     @Test
@@ -73,5 +75,35 @@ class LoginRateLimiterTest {
         Thread.sleep(80);
 
         assertThat(limiter.isBlocked("user@test.com")).isFalse();
+    }
+
+    @Test
+    @DisplayName("secondsUntilUnblock retorna 0 quando a chave não existe")
+    void secondsUntilUnblock_unknownKey_returnsZero() {
+        assertThat(limiter.secondsUntilUnblock("ninguem@test.com")).isEqualTo(0);
+    }
+
+    @Test
+    @DisplayName("secondsUntilUnblock retorna valor positivo enquanto o bloqueio está ativo")
+    void secondsUntilUnblock_whileBlocked_returnsPositive() {
+        limiter.registerFailure("user@test.com");
+        limiter.registerFailure("user@test.com");
+        limiter.registerFailure("user@test.com");
+        assertThat(limiter.isBlocked("user@test.com")).isTrue();
+
+        assertThat(limiter.secondsUntilUnblock("user@test.com")).isGreaterThan(0);
+    }
+
+    @Test
+    @DisplayName("secondsUntilUnblock retorna 0 após a janela expirar")
+    void secondsUntilUnblock_afterWindowExpires_returnsZero() throws InterruptedException {
+        ReflectionTestUtils.setField(limiter, "window", Duration.ofMillis(50));
+        limiter.registerFailure("user@test.com");
+        limiter.registerFailure("user@test.com");
+        limiter.registerFailure("user@test.com");
+
+        Thread.sleep(80);
+
+        assertThat(limiter.secondsUntilUnblock("user@test.com")).isEqualTo(0);
     }
 }
