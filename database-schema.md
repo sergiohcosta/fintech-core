@@ -21,6 +21,8 @@ Schema em `db/migration/`. Seed em `db/seed/` (perfil `dev`): `V13` (dados gerai
 | V16 | seed `dev` — planejamento mensal (budget cycles/items) Família Costa |
 | V17 | correção de `reference_year`/`reference_month` de faturas legadas (bug `resolveInvoiceMonth`) |
 | V18 | seed `dev` — corrige `opening_balance` do ciclo seed jun/2026 (1200 → 18123.10) para refletir o cálculo date-bounded |
+| V19 | `recurrence_rules`, `recurrence_exceptions` (EXDATE) + colunas `recurrence_rule_id`/`recurrence_occurrence` em `transactions` (motor de recorrência — núcleo) |
+| V20 | seed `dev` — recorrência Família Costa (regra Netflix mensal + 1 EXDATE de exemplo) |
 
 > V10 não existe (seed renomeado para V13 para ficar acima do schema base).
 
@@ -31,5 +33,8 @@ Schema em `db/migration/`. Seed em `db/seed/` (perfil `dev`): `V13` (dados gerai
 - `budget_cycles`: `status IN (OPEN, ENDED, CLOSED)` — `ENDED` = período encerrado, ajustes ainda permitidos.
 - `recurring_budget_items`: `day_of_month BETWEEN 1 AND 28`.
 - `budget_items`: `source IN (MANUAL, RECURRING, INSTALLMENT)`, `status IN (PENDING, REALIZED, SKIPPED)`.
+- `recurrence_rules`: `type IN (INCOME, EXPENSE)`, `status IN (ACTIVE, CANCELLED)`; índice `(tenant_id, status)`.
+- `recurrence_exceptions`: `UNIQUE(rule_id, occurrence_date)` — idempotência do "Pular" (EXDATE).
+- `transactions`: índice único parcial `(recurrence_rule_id, recurrence_occurrence) WHERE recurrence_rule_id IS NOT NULL` — impede confirmar a mesma ocorrência duas vezes.
 
 **Invariante:** migrations aplicadas são imutáveis. Correção sempre via nova versão.
