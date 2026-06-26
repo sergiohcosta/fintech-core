@@ -195,6 +195,19 @@
           }
         }
 
+        @if (!isEditMode() && !isInstallment()) {
+          <div class="repeat-toggle">
+            <mat-slide-toggle [checked]="repeat()" (change)="repeat.set($event.checked)">
+              Repetir (recorrência)
+            </mat-slide-toggle>
+          </div>
+          @if (repeat()) {
+            <div class="repeat-section">
+              <app-rrule-editor (rruleChange)="rrule.set($event)" />
+            </div>
+          }
+        }
+
         @if (isEditMode() && isPartOfInstallment()) {
           <div class="propagate-section">
             <p class="propagate-label">
