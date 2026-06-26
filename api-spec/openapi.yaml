@@ -38,6 +38,10 @@ components:
       type: string
       enum: [VISA, MASTERCARD, ELO, AMEX, HIPERCARD, OTHER]
 
+    RecurrenceStatus:
+      type: string
+      enum: [ACTIVE, CANCELLED]
+
     # --- Auth ---
 
     LoginDTO:
@@ -891,6 +895,78 @@ components:
           type: integer
         number:
           type: integer
+
+    # --- Recorrência ---
+
+    RecurrenceRuleCreateDTO:
+      type: object
+      required: [description, baseAmount, type, accountId, rrule, startDate]
+      properties:
+        description:
+          type: string
+          maxLength: 255
+        baseAmount:
+          type: number
+          format: double
+        type:
+          $ref: '#/components/schemas/TransactionType'
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
+        accountId:
+          type: string
+          format: uuid
+        rrule:
+          type: string
+          example: 'FREQ=MONTHLY;BYMONTHDAY=15'
+        startDate:
+          type: string
+          format: date
+
+    RecurrenceRulePatchDTO:
+      type: object
+      properties:
+        description:
+          type: string
+          maxLength: 255
+        baseAmount:
+          type: number
+          format: double
+
+    RecurrenceRuleResponseDTO:
+      type: object
+      required: [id, description, baseAmount, type, accountId, accountName, rrule, startDate, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        description:
+          type: string
+        baseAmount:
+          type: number
+          format: double
+        type:
+          $ref: '#/components/schemas/TransactionType'
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
+        categoryName:
+          type: string
+          nullable: true
+        accountId:
+          type: string
+          format: uuid
+        accountName:
+          type: string
+        rrule:
+          type: string
+        startDate:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/RecurrenceStatus'
 
 paths:
 
@@ -1879,3 +1955,91 @@ paths:
       responses:
         '204':
           description: Template desativado
+
+  # --- Recorrência (Motor de Recorrência — núcleo) ---
+
+  /api/recurrence-rules:
+    get:
+      tags: [recurrence-rules]
+      operationId: listRecurrenceRules
+      summary: Lista as regras de recorrência ativas do tenant
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RecurrenceRuleResponseDTO'
+    post:
+      tags: [recurrence-rules]
+      operationId: createRecurrenceRule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecurrenceRuleCreateDTO'
+      responses:
+        '201':
+          description: Criada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecurrenceRuleResponseDTO'
+
+  /api/recurrence-rules/{id}:
+    get:
+      tags: [recurrence-rules]
+      operationId: getRecurrenceRule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecurrenceRuleResponseDTO'
+    patch:
+      tags: [recurrence-rules]
+      operationId: patchRecurrenceRule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecurrenceRulePatchDTO'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecurrenceRuleResponseDTO'
+    delete:
+      tags: [recurrence-rules]
+      operationId: cancelRecurrenceRule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Cancelada

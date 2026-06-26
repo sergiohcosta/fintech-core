@@ -225,6 +225,10 @@
 								<importMapping>BudgetItemStatus=com.fintech.api.domain.enums.BudgetItemStatus</importMapping>
 								<importMapping>BudgetCyclePageResponse=com.fintech.api.dto.budget.BudgetCyclePageResponse</importMapping>
 								<importMapping>BudgetCyclePreviewDTO=com.fintech.api.dto.budget.BudgetCyclePreviewDTO</importMapping>
+								<importMapping>RecurrenceStatus=com.fintech.api.domain.enums.RecurrenceStatus</importMapping>
+								<importMapping>RecurrenceRuleCreateDTO=com.fintech.api.dto.recurrence.RecurrenceRuleCreateDTO</importMapping>
+								<importMapping>RecurrenceRulePatchDTO=com.fintech.api.dto.recurrence.RecurrenceRulePatchDTO</importMapping>
+								<importMapping>RecurrenceRuleResponseDTO=com.fintech.api.dto.recurrence.RecurrenceRuleResponseDTO</importMapping>
 							</importMappings>
 							<configOptions>
 								<interfaceOnly>true</interfaceOnly>
