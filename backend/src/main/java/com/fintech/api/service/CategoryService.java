@@ -8,6 +8,7 @@ import com.fintech.api.dto.category.CategoryCreateDTO;
 import com.fintech.api.dto.category.CategoryResponseDTO;
 import com.fintech.api.exception.CategoryHasTransactionsException;
 import com.fintech.api.exception.EntityNotFoundException;
+import com.fintech.api.exception.BusinessException;
 import com.fintech.api.repository.CategoryRepository;
 import com.fintech.api.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
@@ -50,7 +51,7 @@ public class CategoryService {
         Tenant tenant = user.getTenant();
 
         if (repository.existsByNameAndTenantIdAndParentIdAndDeletedAtIsNull(dto.name(), tenant.getId(), dto.parentId())) {
-            throw new IllegalArgumentException("Categoria já existe neste nível.");
+            throw new BusinessException("Categoria já existe neste nível.");
         }
 
         // taxonomyCode não é definido na criação manual — apenas via mapeamento de taxonomia (PUT) ou seed automático
@@ -139,7 +140,7 @@ public class CategoryService {
 
         if (targetCategoryId != null) {
             if (subtreeIds.contains(targetCategoryId)) {
-                throw new IllegalArgumentException(
+                throw new BusinessException(
                         "Não é possível mover transações para uma subcategoria da categoria sendo arquivada.");
             }
             repository.findByIdAndTenantIdAndDeletedAtIsNull(targetCategoryId, tenantId)

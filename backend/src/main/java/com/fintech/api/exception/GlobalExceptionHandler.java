@@ -39,11 +39,18 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.BAD_REQUEST, "Erro de Validação", errors);
     }
 
-    // 2. SEU CÓDIGO ORIGINAL (Adaptado)
-    // Trata erros de Regra de Negócio genéricos
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<Map<String, Object>> handleBusinessException(IllegalArgumentException ex) {
+    // 2. Novo contrato explícito para regras de negócio intencionais -> 400
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<Map<String, Object>> handleBusinessException(BusinessException ex) {
         return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), null);
+    }
+
+    // 2c. Mantém IllegalArgumentException como 500, pois pode vir de bibliotecas/JDK
+    //     e não deve ser exposto como erro de negócio evitável pelo cliente.
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalArgumentAsServerError(IllegalArgumentException ex) {
+        log.error("Erro inesperado (IllegalArgumentException): {}", ex.getMessage(), ex);
+        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Ocorreu um erro interno no servidor.", null);
     }
 
     // 2b. Trata violações de estado de negócio (ex: pagar fatura não fechada) — 422
