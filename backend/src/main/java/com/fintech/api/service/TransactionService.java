@@ -8,6 +8,7 @@ import com.fintech.api.domain.enums.TransactionStatus;
 import com.fintech.api.domain.enums.TransactionType;
 import com.fintech.api.domain.installment.InstallmentGroup;
 import com.fintech.api.domain.invoice.Invoice;
+import com.fintech.api.domain.recurrence.RecurrenceRule;
 import com.fintech.api.domain.transaction.Transaction;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.installment.DeleteInstallmentResultDTO;
@@ -156,6 +157,49 @@ public class TransactionService {
                     .build()));
         }
         return created.stream().map(TransactionResponseDTO::fromEntity).toList();
+    }
+
+    // Materializa UMA ocorrência de regra como transação real. Reusa a resolução de fatura
+    // de cartão (resolveInvoiceMonth/getOrCreate) — se a conta da regra for CREDIT_CARD, a
+    // transação nasce amarrada à fatura correta, sem caminho novo.
+    @Transactional
+    public TransactionResponseDTO materializeFromRule(
+            RecurrenceRule rule, LocalDate occurrence, BigDecimal amountOverride, LocalDate dateOverride, User user) {
+        Account account = rule.getAccount();
+        BigDecimal amount = amountOverride != null ? amountOverride : rule.getBaseAmount();
+        LocalDate date = dateOverride != null ? dateOverride : occurrence;
+
+        Invoice invoice = null;
+        if (AccountType.CREDIT_CARD.equals(account.getType())) {
+            int closingDay = creditCardDetailsRepository.findByAccount(account)
+                    .orElseThrow(() -> new EntityNotFoundException(
+                            "Detalhes do cartão não encontrados para a conta."))
+                    .getClosingDay();
+            YearMonth invoiceMonth = resolveInvoiceMonth(date, closingDay);
+            invoice = invoiceService.getOrCreate(account, invoiceMonth.getYear(), invoiceMonth.getMonthValue());
+        }
+
+        Transaction t = repository.save(Transaction.builder()
+                .description(rule.getDescription())
+                .amount(amount)
+                .date(date)
+                .type(rule.getType())
+                .status(TransactionStatus.PENDING)
+                .category(rule.getCategory())
+                .account(account)
+                .invoice(invoice)
+                .recurrenceRule(rule)
+                .recurrenceOccurrence(occurrence)
+                .tenant(user.getTenant())
+                .user(user)
+                .build());
+        return TransactionResponseDTO.fromEntity(t);
+    }
+
+    // Guard de idempotência da confirmação (a unique parcial no banco é a rede final).
+    @Transactional(readOnly = true)
+    public boolean existsMaterializedOccurrence(UUID ruleId, LocalDate occurrence) {
+        return repository.existsByRecurrenceRuleIdAndRecurrenceOccurrence(ruleId, occurrence);
     }
 
     @Transactional
