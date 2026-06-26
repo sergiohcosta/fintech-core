@@ -5,6 +5,7 @@ import com.fintech.api.domain.enums.InvoiceStatus;
 import com.fintech.api.domain.enums.TransactionStatus;
 import com.fintech.api.domain.enums.TransactionType;
 import com.fintech.api.domain.transaction.Transaction;
+import com.fintech.api.service.recurrence.ProjectedOccurrence;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -33,7 +34,12 @@ public record TransactionResponseDTO(
         String installmentGroupDescription,
         UUID invoiceId,
         LocalDate invoiceDueDate,
-        InvoiceStatus invoiceStatus
+        InvoiceStatus invoiceStatus,
+        // --- RECORRÊNCIA ---
+        // projected=true marca uma "linha fantasma" (não existe no banco; id nulo).
+        boolean projected,
+        UUID recurrenceRuleId,
+        LocalDate occurrenceDate
 ) {
     public static TransactionResponseDTO fromEntity(Transaction t) {
         String installLabel = null;
@@ -65,8 +71,23 @@ public record TransactionResponseDTO(
                 group != null ? group.getDescription() : null,
                 invoice != null ? invoice.getId() : null,
                 invoice != null ? invoice.getDueDate() : null,
-                invoice != null ? invoice.getStatus() : null
+                invoice != null ? invoice.getStatus() : null,
+                false,
+                t.getRecurrenceRule() != null ? t.getRecurrenceRule().getId() : null,
+                t.getRecurrenceOccurrence()
         );
+    }
+
+    /** Fantasma projetada (nunca persistida): id nulo, status PENDING, projected=true. */
+    public static TransactionResponseDTO fromProjection(ProjectedOccurrence o) {
+        return new TransactionResponseDTO(
+                null, o.description(), o.amount(), o.occurrenceDate(),
+                o.type(), TransactionStatus.PENDING,
+                null, null, null,
+                o.categoryName(), o.categoryId(), false, o.categoryName(), o.categoryIcon(),
+                o.accountName(), o.accountId(),
+                null, null, null, null, null, null,
+                true, o.ruleId(), o.occurrenceDate());
     }
 
     // Percorre a cadeia pai→filho e monta "Avô → Pai → Filho".

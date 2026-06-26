@@ -291,6 +291,17 @@ components:
         invoiceStatus:
           $ref: '#/components/schemas/InvoiceStatus'
           nullable: true
+        projected:
+          type: boolean
+          description: true = "linha fantasma" projetada de uma regra (não existe no banco)
+        recurrenceRuleId:
+          type: string
+          format: uuid
+          nullable: true
+        occurrenceDate:
+          type: string
+          format: date
+          nullable: true
 
     # --- Invoices ---
 
@@ -1194,6 +1205,13 @@ paths:
           schema:
             type: string
             format: date
+        - name: includeProjected
+          in: query
+          required: false
+          description: Mescla as "linhas fantasma" das regras de recorrência (default false)
+          schema:
+            type: boolean
+            default: false
       responses:
         '200':
           description: Lista de transações do tenant
