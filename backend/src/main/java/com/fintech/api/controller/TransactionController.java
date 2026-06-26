@@ -39,9 +39,10 @@ public class TransactionController implements TransactionsApi {
             @RequestParam(value = "status",      required = false) TransactionStatus status,
             @RequestParam(value = "type",        required = false) TransactionType type,
             @RequestParam(value = "startDate",   required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam(value = "endDate",     required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        return ResponseEntity.ok(
-                service.findAll(getAuthenticatedUser(), invoiceId, accountIds, status, type, startDate, endDate));
+            @RequestParam(value = "endDate",     required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(value = "includeProjected", required = false, defaultValue = "false") Boolean includeProjected) {
+        return ResponseEntity.ok(service.findAll(getAuthenticatedUser(), invoiceId, accountIds, status, type,
+                startDate, endDate, Boolean.TRUE.equals(includeProjected)));
     }
 
     @GetMapping("/{id}")

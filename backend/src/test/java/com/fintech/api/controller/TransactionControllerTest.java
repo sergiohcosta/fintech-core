@@ -88,7 +88,8 @@ class TransactionControllerTest {
                 return new TransactionResponseDTO(
                                 UUID.randomUUID(), description, new BigDecimal("100.00"), LocalDate.now(),
                                 null, null, null, null, null, null, null, false,
-                                null, null, null, null, null, null, null, null, null, null);
+                                null, null, null, null, null, null, null, null, null, null,
+                                false, null, null);
         }
 
         @Test
@@ -96,7 +97,7 @@ class TransactionControllerTest {
         void shouldListAllTransactions() throws Exception {
                 // Arrange
                 when(transactionService.findAll(
-                                any(User.class), isNull(), isNull(), isNull(), isNull(), isNull(), isNull()))
+                                any(User.class), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(false)))
                                 .thenReturn(List.of(buildSampleDto("Test")));
 
                 // Act & Assert
@@ -112,7 +113,7 @@ class TransactionControllerTest {
         void shouldPassAccountIdFilter() throws Exception {
                 UUID accountId = UUID.randomUUID();
                 when(transactionService.findAll(
-                                any(User.class), isNull(), eq(List.of(accountId)), isNull(), isNull(), isNull(), isNull()))
+                                any(User.class), isNull(), eq(List.of(accountId)), isNull(), isNull(), isNull(), isNull(), eq(false)))
                                 .thenReturn(List.of(buildSampleDto("Nubank")));
 
                 mockMvc.perform(get("/api/transactions")
@@ -126,7 +127,7 @@ class TransactionControllerTest {
         @DisplayName("Deve repassar status ao service quando informado")
         void shouldPassStatusFilter() throws Exception {
                 when(transactionService.findAll(
-                                any(User.class), isNull(), isNull(), eq(TransactionStatus.PENDING), isNull(), isNull(), isNull()))
+                                any(User.class), isNull(), isNull(), eq(TransactionStatus.PENDING), isNull(), isNull(), isNull(), eq(false)))
                                 .thenReturn(List.of(buildSampleDto("Pendente")));
 
                 mockMvc.perform(get("/api/transactions")
@@ -142,7 +143,7 @@ class TransactionControllerTest {
                 LocalDate start = LocalDate.of(2026, 6, 1);
                 LocalDate end   = LocalDate.of(2026, 6, 30);
                 when(transactionService.findAll(
-                                any(User.class), isNull(), isNull(), isNull(), isNull(), eq(start), eq(end)))
+                                any(User.class), isNull(), isNull(), isNull(), isNull(), eq(start), eq(end), eq(false)))
                                 .thenReturn(List.of(buildSampleDto("Junho")));
 
                 mockMvc.perform(get("/api/transactions")
@@ -163,7 +164,8 @@ class TransactionControllerTest {
 
                 TransactionResponseDTO responseDTO = new TransactionResponseDTO(
                                 UUID.randomUUID(), "New Transaction", new BigDecimal("50.00"), LocalDate.now(), null,
-                                null, null, null, null, null, null, false, null, null, null, null, null, null, null, null, null, null);
+                                null, null, null, null, null, null, false, null, null, null, null, null, null, null, null, null, null,
+                                false, null, null);
 
                 when(transactionService.create(any(TransactionRequestDTO.class), any(User.class)))
                                 .thenReturn(List.of(responseDTO));

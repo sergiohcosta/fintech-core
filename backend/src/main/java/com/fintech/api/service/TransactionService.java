@@ -10,6 +10,7 @@ import com.fintech.api.domain.installment.InstallmentGroup;
 import com.fintech.api.domain.invoice.Invoice;
 import com.fintech.api.domain.recurrence.RecurrenceRule;
 import com.fintech.api.domain.transaction.Transaction;
+import com.fintech.api.service.recurrence.RecurrenceProjectionService;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.installment.DeleteInstallmentResultDTO;
 import com.fintech.api.dto.transaction.TransactionRequestDTO;
@@ -35,6 +36,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -46,17 +48,25 @@ public class TransactionService {
     private final InstallmentGroupRepository installmentGroupRepository;
     private final CreditCardDetailsRepository creditCardDetailsRepository;
     private final InvoiceService invoiceService;
+    private final RecurrenceProjectionService projectionService;
 
     @Transactional(readOnly = true)
     public List<TransactionResponseDTO> findAll(User user, UUID invoiceId, List<UUID> accountIds,
             TransactionStatus status, TransactionType type, LocalDate startDate, LocalDate endDate) {
+        return findAll(user, invoiceId, accountIds, status, type, startDate, endDate, false);
+    }
+
+    @Transactional(readOnly = true)
+    public List<TransactionResponseDTO> findAll(User user, UUID invoiceId, List<UUID> accountIds,
+            TransactionStatus status, TransactionType type, LocalDate startDate, LocalDate endDate,
+            boolean includeProjected) {
         if ((startDate == null) != (endDate == null)) {
             throw new IllegalArgumentException("startDate e endDate devem ser informados juntos ou omitidos juntos");
         }
         if (invoiceId != null) {
             Invoice invoice = invoiceService.findByIdAndTenant(invoiceId, user.getTenant());
             return repository.findAllByTenantAndInvoiceWithDetails(user.getTenant(), invoice)
-                    .stream().map(TransactionResponseDTO::fromEntity).toList();
+                    .stream().map(TransactionResponseDTO::fromEntity).toList(); // fatura não projeta
         }
         // Sentinelas substituem null para evitar IS NULL no JPQL com LocalDate.
         // PostgreSQL não consegue inferir o tipo de "? IS NULL" sem contexto de coluna.
@@ -68,23 +78,43 @@ public class TransactionService {
         List<UUID> effectiveAccountIds = (accountIds == null || accountIds.isEmpty()) ? List.of() : accountIds;
         int accountIdCount = effectiveAccountIds.size();
 
-        return repository.findAllByTenantWithFilters(
+        List<TransactionResponseDTO> reais = repository.findAllByTenantWithFilters(
                         user.getTenant(), effectiveAccountIds, accountIdCount, status, type, effectiveStart, effectiveEnd)
                 .stream()
-                .sorted(Comparator.comparing(this::effectiveSortDate, Comparator.reverseOrder()))
                 .map(TransactionResponseDTO::fromEntity)
+                .toList();
+
+        // Projeção só faz sentido com janela explícita (a expansão RRULE sempre precisa de limites).
+        if (!includeProjected || startDate == null || endDate == null) {
+            return reais.stream()
+                    .sorted(Comparator.comparing(this::effectiveSortDateDto, Comparator.reverseOrder()))
+                    .toList();
+        }
+
+        // Mesmos filtros de conta/tipo aplicados em memória; fantasma é sempre PENDING.
+        List<TransactionResponseDTO> fantasmas = projectionService
+                .project(user.getTenant(), startDate, endDate).stream()
+                .filter(o -> effectiveAccountIds.isEmpty() || effectiveAccountIds.contains(o.accountId()))
+                .filter(o -> type == null || type == o.type())
+                .filter(o -> status == null || status == TransactionStatus.PENDING)
+                .map(TransactionResponseDTO::fromProjection)
+                .toList();
+
+        return Stream.concat(reais.stream(), fantasmas.stream())
+                .sorted(Comparator.comparing(this::effectiveSortDateDto, Comparator.reverseOrder()))
                 .toList();
     }
 
-    // Para parcelas de cartão de crédito (installmentGroup presente), a posição na linha
-    // do tempo é o dueDate da fatura — alinhado com a regra JPQL de filtro de período.
-    // Transações avulsas de cartão (sem installmentGroup) usam t.date: a data de compra
-    // é única e é a informação relevante, assim como qualquer conta regular.
-    private LocalDate effectiveSortDate(Transaction t) {
-        if (t.getInstallmentGroup() != null && t.getInvoice() != null) {
-            return t.getInvoice().getDueDate();
+    // Para parcelas de cartão de crédito (installmentGroup presente), a posição na linha do
+    // tempo é o dueDate da fatura — alinhado com a regra JPQL de filtro de período. Transações
+    // avulsas de cartão (sem installmentGroup) usam t.date: a data de compra é única e é a
+    // informação relevante. A regra opera sobre o DTO (reais já mapeados + fantasmas); fantasma
+    // não tem installmentGroup, então cai no occurrenceDate (=date).
+    private LocalDate effectiveSortDateDto(TransactionResponseDTO d) {
+        if (d.installmentGroupId() != null && d.invoiceDueDate() != null) {
+            return d.invoiceDueDate();
         }
-        return t.getDate();
+        return d.date();
     }
 
     @Transactional(readOnly = true)
