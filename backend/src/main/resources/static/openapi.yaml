@@ -934,6 +934,18 @@ components:
           type: number
           format: double
 
+    ConfirmOccurrenceDTO:
+      type: object
+      properties:
+        amount:
+          type: number
+          format: double
+          nullable: true
+        date:
+          type: string
+          format: date
+          nullable: true
+
     RecurrenceRuleResponseDTO:
       type: object
       required: [id, description, baseAmount, type, accountId, accountName, rrule, startDate, status]
@@ -2043,3 +2055,57 @@ paths:
       responses:
         '204':
           description: Cancelada
+
+  /api/recurrence-rules/{id}/occurrences/{date}/confirm:
+    post:
+      tags: [recurrence-rules]
+      operationId: confirmOccurrence
+      summary: Materializa uma ocorrência da regra como transação real
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: date
+          in: path
+          required: true
+          schema:
+            type: string
+            format: date
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmOccurrenceDTO'
+      responses:
+        '201':
+          description: Ocorrência materializada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionResponseDTO'
+
+  /api/recurrence-rules/{id}/occurrences/{date}/skip:
+    post:
+      tags: [recurrence-rules]
+      operationId: skipOccurrence
+      summary: Pula uma ocorrência (grava EXDATE)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: date
+          in: path
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '204':
+          description: Ocorrência pulada (EXDATE gravada)

@@ -229,6 +229,7 @@
 								<importMapping>RecurrenceRuleCreateDTO=com.fintech.api.dto.recurrence.RecurrenceRuleCreateDTO</importMapping>
 								<importMapping>RecurrenceRulePatchDTO=com.fintech.api.dto.recurrence.RecurrenceRulePatchDTO</importMapping>
 								<importMapping>RecurrenceRuleResponseDTO=com.fintech.api.dto.recurrence.RecurrenceRuleResponseDTO</importMapping>
+								<importMapping>ConfirmOccurrenceDTO=com.fintech.api.dto.recurrence.ConfirmOccurrenceDTO</importMapping>
 							</importMappings>
 							<configOptions>
 								<interfaceOnly>true</interfaceOnly>

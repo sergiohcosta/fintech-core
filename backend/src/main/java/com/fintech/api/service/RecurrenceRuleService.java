@@ -5,17 +5,24 @@ import com.fintech.api.domain.category.Category;
 import com.fintech.api.domain.enums.RecurrenceStatus;
 import com.fintech.api.domain.recurrence.RecurrenceRule;
 import com.fintech.api.domain.user.User;
+import com.fintech.api.domain.recurrence.RecurrenceException;
+import com.fintech.api.dto.recurrence.ConfirmOccurrenceDTO;
 import com.fintech.api.dto.recurrence.RecurrenceRuleCreateDTO;
 import com.fintech.api.dto.recurrence.RecurrenceRulePatchDTO;
 import com.fintech.api.dto.recurrence.RecurrenceRuleResponseDTO;
+import com.fintech.api.dto.transaction.TransactionResponseDTO;
+import com.fintech.api.exception.BusinessConflictException;
 import com.fintech.api.exception.EntityNotFoundException;
 import com.fintech.api.repository.AccountRepository;
 import com.fintech.api.repository.CategoryRepository;
+import com.fintech.api.repository.RecurrenceExceptionRepository;
 import com.fintech.api.repository.RecurrenceRuleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -31,6 +38,8 @@ public class RecurrenceRuleService {
     private final RecurrenceRuleRepository repository;
     private final AccountRepository accountRepository;
     private final CategoryRepository categoryRepository;
+    private final RecurrenceExceptionRepository exceptionRepository;
+    private final TransactionService transactionService;
 
     @Transactional
     public RecurrenceRuleResponseDTO create(RecurrenceRuleCreateDTO dto, User user) {
@@ -73,6 +82,35 @@ public class RecurrenceRuleService {
     @Transactional
     public void cancel(UUID id, User user) {
         findOwned(id, user).setStatus(RecurrenceStatus.CANCELLED);
+    }
+
+    /**
+     * Confirma (materializa) uma ocorrência fantasma como transação real. O override de
+     * valor/data permite ajustar a conta que veio diferente neste mês (FR-02 parcial) — a
+     * regra segue projetando o valor base nos meses seguintes (lê a regra, não um flag).
+     */
+    @Transactional
+    public TransactionResponseDTO confirmOccurrence(
+            UUID ruleId, LocalDate occurrence, ConfirmOccurrenceDTO body, User user) {
+        RecurrenceRule rule = findOwned(ruleId, user);
+        // Guard explícito para mensagem amigável; a unique parcial (rule, occurrence) no banco
+        // é a rede de segurança final contra corrida.
+        if (transactionService.existsMaterializedOccurrence(ruleId, occurrence)) {
+            throw new BusinessConflictException("Esta ocorrência já foi confirmada.");
+        }
+        BigDecimal amount = body != null ? body.amount() : null;
+        LocalDate date = body != null ? body.date() : null;
+        return transactionService.materializeFromRule(rule, occurrence, amount, date, user);
+    }
+
+    /** Pula uma ocorrência: grava EXDATE. Idempotente — pular duas vezes não duplica linha. */
+    @Transactional
+    public void skipOccurrence(UUID ruleId, LocalDate occurrence, User user) {
+        RecurrenceRule rule = findOwned(ruleId, user);
+        if (!exceptionRepository.existsByRuleIdAndOccurrenceDate(ruleId, occurrence)) {
+            exceptionRepository.save(RecurrenceException.builder()
+                    .rule(rule).occurrenceDate(occurrence).build());
+        }
     }
 
     // Helper de propriedade: 404 se a regra não existe OU é de outro tenant (sem vazamento).
