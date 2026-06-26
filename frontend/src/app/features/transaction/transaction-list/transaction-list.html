@@ -235,6 +235,15 @@
                 <mat-icon>open_in_new</mat-icon>
               </button>
             </div>
+          } @else if (isGhost($any(row).data)) {
+            <div class="actions-group">
+              <button mat-icon-button color="primary" (click)="onConfirmGhost($any(row).data)" matTooltip="Confirmar">
+                <mat-icon>check_circle</mat-icon>
+              </button>
+              <button mat-icon-button (click)="onSkipGhost($any(row).data)" matTooltip="Pular">
+                <mat-icon>skip_next</mat-icon>
+              </button>
+            </div>
           } @else {
             <div class="actions-group">
               @if (row.kind === 'installment') {
@@ -305,6 +314,7 @@
       <tr mat-row *matRowDef="let row; columns: displayedColumns; when: isDataRow" class="element-row"
           [class.installment-row]="row.kind === 'installment'"
           [class.invoice-summary-row]="row.kind === 'invoice-summary'"
+          [class.ghost-row]="row.kind === 'single' && isGhost($any(row).data)"
           [class.expanded-row]="$any(row).isExpanded">
       </tr>
       <tr mat-row *matRowDef="let row; columns: ['expandedDetail']; when: isDetailRow" class="detail-row"></tr>

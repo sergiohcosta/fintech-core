@@ -39,6 +39,9 @@ export type DisplayRow =
   | { kind: 'period-header';      key: string; label: string; totalIncome: number; totalExpense: number; balance: number }
   | InvoiceSummaryRow;
 
+// "Linha fantasma": projeção de uma regra de recorrência, ainda não materializada.
+export const isGhost = (r: { projected?: boolean }): boolean => r.projected === true;
+
 function sortTransferPairsTogether(transactions: TransactionResponseDTO[]): TransactionResponseDTO[] {
   const result: TransactionResponseDTO[] = [];
   const placed = new Set<string>();

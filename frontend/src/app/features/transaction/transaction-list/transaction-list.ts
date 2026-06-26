@@ -21,7 +21,8 @@ import { ConfirmationDialogComponent } from '../../../components/confirmation-di
 import { DeleteInstallmentDialogComponent, DeleteInstallmentDialogResult } from './delete-installment-dialog/delete-installment-dialog';
 import { TransactionFiltersComponent } from './transaction-filters/transaction-filters';
 import { TransactionFilters, DEFAULT_FILTERS, currentMonthFilters, TransactionType, TransactionStatus } from './transaction-filters/transaction-filters.types';
-import { buildDisplayRows, InstallmentGroupInfo, DisplayRow, InvoiceSummaryRow, resolveMonthKey, formatMonthLabel, SortCol, SortCriterion, applySort, getSortInfo } from './transaction-list.utils';
+import { buildDisplayRows, InstallmentGroupInfo, DisplayRow, InvoiceSummaryRow, resolveMonthKey, formatMonthLabel, SortCol, SortCriterion, applySort, getSortInfo, isGhost } from './transaction-list.utils';
+import { RecurrenceService } from '../../../core/services/recurrence.service';
 export { buildDisplayRows } from './transaction-list.utils';
 export type { InstallmentGroupInfo, DisplayRow, InvoiceSummaryRow, SortCriterion } from './transaction-list.utils';
 
@@ -52,6 +53,7 @@ export class TransactionList implements OnInit {
   private groupService    = inject(InstallmentGroupsService);
   private transferService = inject(TransfersService);
   private invoiceService  = inject(InvoicesService);
+  private recurrenceService = inject(RecurrenceService);
   private router   = inject(Router);
   private route    = inject(ActivatedRoute);
   private dialog   = inject(MatDialog);
@@ -258,9 +260,39 @@ export class TransactionList implements OnInit {
       type:      f.types.find((t): t is 'INCOME' | 'EXPENSE' => t === 'INCOME' || t === 'EXPENSE'),
       startDate: f.startDate  ?? undefined,
       endDate:   f.endDate    ?? undefined,
+      // O backend só projeta quando há janela (startDate+endDate); sem período, retorna só reais.
+      includeProjected: true,
     }).subscribe({
-      next:  (data) => this.transactions.set(data),
+      next:  (data) => this.transactions.set(data.map(t => this.withGhostKey(t))),
       error: () => this.snackBar.open('Erro ao carregar transações.', 'Fechar', { duration: 5000 }),
+    });
+  }
+
+  // Fantasmas vêm com id null. Atribui uma chave sintética estável para que dedup/track/expand
+  // (todos keyed por id) funcionem. Confirmar/Pular usam recurrenceRuleId+occurrenceDate, não o id.
+  private withGhostKey(t: TransactionResponseDTO): TransactionResponseDTO {
+    return isGhost(t) && !t.id
+      ? { ...t, id: `ghost:${t.recurrenceRuleId}:${t.occurrenceDate}` }
+      : t;
+  }
+
+  isGhost = isGhost;
+
+  onConfirmGhost(t: TransactionResponseDTO | undefined): void {
+    if (!t?.recurrenceRuleId || !t.occurrenceDate) return;
+    // MVP: confirma com o valor base/data da ocorrência. Ajuste de valor antes de confirmar
+    // (dialog) fica para um refinamento — o usuário pode editar a transação materializada.
+    this.recurrenceService.confirm(t.recurrenceRuleId, t.occurrenceDate, {}).subscribe({
+      next: () => { this.snackBar.open('Ocorrência confirmada.', 'OK', { duration: 3000 }); this.loadTransactions(); },
+      error: () => this.snackBar.open('Erro ao confirmar ocorrência.', 'Fechar', { duration: 5000 }),
+    });
+  }
+
+  onSkipGhost(t: TransactionResponseDTO | undefined): void {
+    if (!t?.recurrenceRuleId || !t.occurrenceDate) return;
+    this.recurrenceService.skip(t.recurrenceRuleId, t.occurrenceDate).subscribe({
+      next: () => { this.snackBar.open('Ocorrência pulada.', 'OK', { duration: 3000 }); this.loadTransactions(); },
+      error: () => this.snackBar.open('Erro ao pular ocorrência.', 'Fechar', { duration: 5000 }),
     });
   }
 

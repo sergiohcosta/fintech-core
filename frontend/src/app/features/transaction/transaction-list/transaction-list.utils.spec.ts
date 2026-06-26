@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sortTransactions, applySort, getSortInfo } from './transaction-list.utils';
+import { sortTransactions, applySort, getSortInfo, isGhost } from './transaction-list.utils';
 import type { TransactionResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
 
 function tx(overrides: Partial<TransactionResponseDTO> = {}): TransactionResponseDTO {
@@ -132,5 +132,13 @@ describe('getSortInfo', () => {
     const criteria = [{ col: 'date', dir: 'desc' }, { col: 'amount', dir: 'asc' }];
     expect(getSortInfo(criteria as any, 'amount'))
       .toEqual({ priority: 2, dir: 'asc' });
+  });
+});
+
+describe('isGhost', () => {
+  it('true só quando projected === true', () => {
+    expect(isGhost(tx({ projected: true }))).toBe(true);
+    expect(isGhost(tx({ projected: false }))).toBe(false);
+    expect(isGhost(tx())).toBe(false); // sem o campo = transação real
   });
 });
