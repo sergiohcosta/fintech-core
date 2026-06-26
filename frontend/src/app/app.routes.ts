@@ -98,6 +98,11 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./features/planning/planning.routes').then(m => m.planningRoutes),
       },
+      {
+        path: 'recurrences',
+        loadComponent: () =>
+          import('./features/recurrence/recurrence-list/recurrence-list').then(m => m.RecurrenceList)
+      },
     ]
   }
 ];

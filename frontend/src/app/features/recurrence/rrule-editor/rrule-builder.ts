@@ -23,6 +23,18 @@ export function buildRrule(form: RruleForm): string {
   return parts.join(';');
 }
 
+/** Descrição legível em PT-BR de um RRULE do subconjunto (ex.: "Mensal, dia 15 · 12x"). */
+export function describeRrule(rrule: string): string {
+  const f = parseRrule(rrule);
+  const freq = f.frequency === 'MONTHLY' ? 'Mensal' : 'Anual';
+  const every = f.interval > 1 ? ` (a cada ${f.interval})` : '';
+  const day = f.dayOfMonth === 'LAST' ? 'último dia' : `dia ${f.dayOfMonth}`;
+  let end = '';
+  if (f.end.kind === 'COUNT') end = ` · ${f.end.count}x`;
+  if (f.end.kind === 'UNTIL') end = ` · até ${f.end.date}`;
+  return `${freq}${every}, ${day}${end}`;
+}
+
 export function parseRrule(rrule: string): RruleForm {
   const map = new Map(
     rrule.split(';').map((p) => {
