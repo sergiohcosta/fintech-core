@@ -244,6 +244,39 @@ export class RecurrenceRulesService {
       }
     );
   }
+ reactivateRecurrenceRule<TData = RecurrenceRuleResponseDTO>(id: string, options?: HttpClientBodyOptions): Observable<TData>;
+ reactivateRecurrenceRule<TData = RecurrenceRuleResponseDTO>(id: string, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ reactivateRecurrenceRule<TData = RecurrenceRuleResponseDTO>(id: string, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  reactivateRecurrenceRule<TData = RecurrenceRuleResponseDTO>(
+    id: string, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    if (options?.observe === 'events') {
+      return this.http.patch<TData>(
+      `/api/recurrence-rules/${id}/reactivate`,
+      undefined,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'events',
+      }
+    );
+    }
+
+    if (options?.observe === 'response') {
+      return this.http.patch<TData>(
+      `/api/recurrence-rules/${id}/reactivate`,
+      undefined,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'response',
+      }
+    );
+    }
+
+    return this.http.patch<TData>(
+      `/api/recurrence-rules/${id}/reactivate`,
+      undefined,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'body',
+      }
+    );
+  }
 /**
  * @summary Materializa uma ocorrência da regra como transação real
  */
