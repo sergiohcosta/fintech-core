@@ -403,3 +403,11 @@ table {
   color: var(--mat-sys-primary, #1976d2);
   vertical-align: middle;
 }
+
+// Linha fantasma (projeção de recorrência, ainda não materializada): visualmente distinta.
+.ghost-row {
+  td {
+    font-style: italic;
+    opacity: 0.6;
+  }
+}

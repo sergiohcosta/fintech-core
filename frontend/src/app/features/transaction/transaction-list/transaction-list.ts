@@ -1,6 +1,6 @@
 import { Component, inject, OnInit, signal, computed, effect, untracked } from '@angular/core';
 import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -20,8 +20,9 @@ import { TransactionResponseDTO, AccountResponse, InvoiceResponseDTO, InvoiceSta
 import { ConfirmationDialogComponent } from '../../../components/confirmation-dialog/confirmation-dialog';
 import { DeleteInstallmentDialogComponent, DeleteInstallmentDialogResult } from './delete-installment-dialog/delete-installment-dialog';
 import { TransactionFiltersComponent } from './transaction-filters/transaction-filters';
-import { TransactionFilters, DEFAULT_FILTERS, currentMonthFilters } from './transaction-filters/transaction-filters.types';
-import { buildDisplayRows, InstallmentGroupInfo, DisplayRow, InvoiceSummaryRow, resolveMonthKey, formatMonthLabel, SortCol, SortCriterion, applySort, getSortInfo } from './transaction-list.utils';
+import { TransactionFilters, DEFAULT_FILTERS, currentMonthFilters, TransactionType, TransactionStatus } from './transaction-filters/transaction-filters.types';
+import { buildDisplayRows, InstallmentGroupInfo, DisplayRow, InvoiceSummaryRow, resolveMonthKey, formatMonthLabel, SortCol, SortCriterion, applySort, getSortInfo, isGhost } from './transaction-list.utils';
+import { RecurrenceService } from '../../../core/services/recurrence.service';
 export { buildDisplayRows } from './transaction-list.utils';
 export type { InstallmentGroupInfo, DisplayRow, InvoiceSummaryRow, SortCriterion } from './transaction-list.utils';
 
@@ -52,7 +53,9 @@ export class TransactionList implements OnInit {
   private groupService    = inject(InstallmentGroupsService);
   private transferService = inject(TransfersService);
   private invoiceService  = inject(InvoicesService);
+  private recurrenceService = inject(RecurrenceService);
   private router   = inject(Router);
+  private route    = inject(ActivatedRoute);
   private dialog   = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
 
@@ -180,17 +183,37 @@ export class TransactionList implements OnInit {
     return map[status] ?? status;
   }
 
+  // Mescla queryParams (vindos da timeline via "Ver lista") sobre uma base de filtros.
+  // queryParams têm prioridade: o usuário pediu explicitamente esses filtros pela URL.
+  // Estática e pura → testável no Vitest sem TestBed.
+  static mergeFiltersFromQueryParams(
+    base: TransactionFilters,
+    qp: Record<string, string | undefined>,
+  ): TransactionFilters {
+    const next = { ...base };
+    if (qp['accountIds']) next.accountIds = qp['accountIds'].split(',').filter(Boolean);
+    if (qp['status'])     next.statuses   = [qp['status'] as TransactionStatus];
+    if (qp['type'])       next.types      = [qp['type'] as TransactionType];
+    if (qp['startDate'])  next.startDate  = qp['startDate'];
+    if (qp['endDate'])    next.endDate    = qp['endDate'];
+    if (qp['description']) next.description = qp['description'];
+    return next;
+  }
+
   ngOnInit(): void {
     const saved = this.loadFromStorage();
-    this.filters.set(saved);
+    // Snapshot (leitura única na entrada): se a timeline mandou filtros pela URL, eles vencem.
+    const qp = this.route.snapshot.queryParams as Record<string, string | undefined>;
+    const initial = TransactionList.mergeFiltersFromQueryParams(saved, qp);
+    this.filters.set(initial);
     forkJoin({
       accounts:     this.accountService.listAccounts(),
       transactions: this.service.listTransactions({
-        accountIds: saved.accountIds.length > 0 ? saved.accountIds : undefined,
-        status:    saved.statuses[0],
-        type:      saved.types.find((t): t is 'INCOME' | 'EXPENSE' => t === 'INCOME' || t === 'EXPENSE'),
-        startDate: saved.startDate ?? undefined,
-        endDate:   saved.endDate   ?? undefined,
+        accountIds: initial.accountIds.length > 0 ? initial.accountIds : undefined,
+        status:    initial.statuses[0],
+        type:      initial.types.find((t): t is 'INCOME' | 'EXPENSE' => t === 'INCOME' || t === 'EXPENSE'),
+        startDate: initial.startDate ?? undefined,
+        endDate:   initial.endDate   ?? undefined,
       }),
     }).subscribe({
       next: ({ accounts, transactions }) => {
@@ -237,9 +260,39 @@ export class TransactionList implements OnInit {
       type:      f.types.find((t): t is 'INCOME' | 'EXPENSE' => t === 'INCOME' || t === 'EXPENSE'),
       startDate: f.startDate  ?? undefined,
       endDate:   f.endDate    ?? undefined,
+      // O backend só projeta quando há janela (startDate+endDate); sem período, retorna só reais.
+      includeProjected: true,
     }).subscribe({
-      next:  (data) => this.transactions.set(data),
+      next:  (data) => this.transactions.set(data.map(t => this.withGhostKey(t))),
       error: () => this.snackBar.open('Erro ao carregar transações.', 'Fechar', { duration: 5000 }),
+    });
+  }
+
+  // Fantasmas vêm com id null. Atribui uma chave sintética estável para que dedup/track/expand
+  // (todos keyed por id) funcionem. Confirmar/Pular usam recurrenceRuleId+occurrenceDate, não o id.
+  private withGhostKey(t: TransactionResponseDTO): TransactionResponseDTO {
+    return isGhost(t) && !t.id
+      ? { ...t, id: `ghost:${t.recurrenceRuleId}:${t.occurrenceDate}` }
+      : t;
+  }
+
+  isGhost = isGhost;
+
+  onConfirmGhost(t: TransactionResponseDTO | undefined): void {
+    if (!t?.recurrenceRuleId || !t.occurrenceDate) return;
+    // MVP: confirma com o valor base/data da ocorrência. Ajuste de valor antes de confirmar
+    // (dialog) fica para um refinamento — o usuário pode editar a transação materializada.
+    this.recurrenceService.confirm(t.recurrenceRuleId, t.occurrenceDate, {}).subscribe({
+      next: () => { this.snackBar.open('Ocorrência confirmada.', 'OK', { duration: 3000 }); this.loadTransactions(); },
+      error: () => this.snackBar.open('Erro ao confirmar ocorrência.', 'Fechar', { duration: 5000 }),
+    });
+  }
+
+  onSkipGhost(t: TransactionResponseDTO | undefined): void {
+    if (!t?.recurrenceRuleId || !t.occurrenceDate) return;
+    this.recurrenceService.skip(t.recurrenceRuleId, t.occurrenceDate).subscribe({
+      next: () => { this.snackBar.open('Ocorrência pulada.', 'OK', { duration: 3000 }); this.loadTransactions(); },
+      error: () => this.snackBar.open('Erro ao pular ocorrência.', 'Fechar', { duration: 5000 }),
     });
   }
 

@@ -1,0 +1,26 @@
+#!/bin/bash
+# fintech-core — (opcional) análise do SonarQube após merges na develop.
+# Ativar o hook: git config core.hooksPath .githooks
+#
+# Só age na develop — a única branch que o Sonar Community analisa.
+# Default: só LEMBRA (mvn verify + scanner pesa para rodar a cada merge).
+# Auto-scan em background: defina SONAR_AUTO_SCAN=1 (ou true) no .env.
+
+branch=$(git rev-parse --abbrev-ref HEAD)
+[ "$branch" != "develop" ] && exit 0
+
+repo_root=$(git rev-parse --show-toplevel)
+
+# Lê só a flag de .env e .env.local (sem exportar o arquivo inteiro), na mesma
+# ordem do sonar-scan.sh: o último vence, então .env.local sobrepõe .env.
+auto=$(grep -hE '^SONAR_AUTO_SCAN=' "$repo_root/.env" "$repo_root/.env.local" 2>/dev/null | tail -1 | cut -d= -f2)
+
+if [ "$auto" = "1" ] || [ "$auto" = "true" ]; then
+  log="$repo_root/.sonar-scan.log"
+  echo "🔍 Merge na develop — análise do Sonar em background (log: .sonar-scan.log)"
+  # ponytail: mvn verify roda a suíte toda (Testcontainers) — pesado; o background mitiga.
+  nohup "$repo_root/scripts/sonar-scan.sh" all > "$log" 2>&1 &
+else
+  echo "💡 Merge na develop. Rode a análise quando quiser: ./scripts/sonar-scan.sh"
+  echo "   (auto-scan no merge: defina SONAR_AUTO_SCAN=1 no .env)"
+fi

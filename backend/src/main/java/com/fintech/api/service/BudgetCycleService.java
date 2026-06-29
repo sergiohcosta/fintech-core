@@ -188,7 +188,7 @@ public class BudgetCycleService {
      */
     @Transactional
     public BudgetCycle close(UUID cycleId, Tenant tenant, boolean force) {
-        BudgetCycle cycle = findByIdAndTenant(cycleId, tenant);
+        BudgetCycle cycle = loadByIdAndTenant(cycleId, tenant);
         if (cycle.getStatus() == BudgetCycleStatus.CLOSED) {
             throw new IllegalStateException("O ciclo já está fechado.");
         }
@@ -202,7 +202,7 @@ public class BudgetCycleService {
 
     @Transactional
     public void delete(UUID cycleId, Tenant tenant) {
-        BudgetCycle cycle = findByIdAndTenant(cycleId, tenant);
+        BudgetCycle cycle = loadByIdAndTenant(cycleId, tenant);
         if (cycle.getStatus() != BudgetCycleStatus.CLOSED) {
             throw new IllegalStateException("Apenas ciclos fechados podem ser excluídos.");
         }
@@ -218,7 +218,7 @@ public class BudgetCycleService {
      */
     @Transactional
     public BudgetCycle syncInstallments(UUID cycleId, Tenant tenant, User user) {
-        BudgetCycle cycle = findByIdAndTenant(cycleId, tenant);
+        BudgetCycle cycle = loadByIdAndTenant(cycleId, tenant);
         List<BudgetItem> existing = itemRepository.findAllByCycleWithDetails(cycle);
         List<BudgetItem> toRemove = existing.stream()
             .filter(i -> i.getSource() == BudgetItemSource.INSTALLMENT)
@@ -235,6 +235,18 @@ public class BudgetCycleService {
 
     @Transactional(readOnly = true)
     public BudgetCycle findByIdAndTenant(UUID id, Tenant tenant) {
+        return loadByIdAndTenant(id, tenant);
+    }
+
+    /**
+     * Lookup interno SEM @Transactional. Chamado pelos métodos read-write deste service
+     * (close/delete/syncInstallments), que já abrem transação própria — aqui o find apenas
+     * participa dela. Evita o self-invocation de um método @Transactional via 'this', que
+     * passaria por fora do proxy do Spring e ignoraria a anotação (regra S6809). O finder
+     * público acima mantém o @Transactional(readOnly=true) para quando é ponto de entrada
+     * (chamado pelo controller via proxy).
+     */
+    private BudgetCycle loadByIdAndTenant(UUID id, Tenant tenant) {
         return cycleRepository.findById(id)
             .filter(c -> c.getTenant().getId().equals(tenant.getId()))
             .orElseThrow(() -> new EntityNotFoundException("Ciclo de planejamento não encontrado."));
