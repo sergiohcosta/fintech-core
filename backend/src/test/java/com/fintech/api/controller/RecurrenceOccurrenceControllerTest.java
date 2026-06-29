@@ -79,7 +79,8 @@ class RecurrenceOccurrenceControllerTest {
                 UUID.randomUUID(), "Netflix", new BigDecimal("55.90"), LocalDate.of(2026, 8, 10),
                 TransactionType.EXPENSE, TransactionStatus.PENDING,
                 null, null, null, null, null, false, null, null,
-                "Conta", UUID.randomUUID(), null, null, null, null, null, null);
+                "Conta", UUID.randomUUID(), null, null, null, null, null, null,
+                false, null, null);
     }
 
     @Test
