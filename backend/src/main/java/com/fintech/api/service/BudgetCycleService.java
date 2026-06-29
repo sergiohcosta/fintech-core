@@ -66,7 +66,7 @@ public class BudgetCycleService {
      * - O período calculado não pode sobrepor ciclos já existentes
      *
      * Após criar o ciclo, popula automaticamente:
-     * - Itens recorrentes (RecurringBudgetItem ativos do tenant)
+     * - Itens recorrentes (projeções de RecurrenceRule via RecurrenceProjectionService)
      * - Parcelas de cartão cujo vencimento cai no período do ciclo
      */
     @Transactional
