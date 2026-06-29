@@ -3,17 +3,22 @@ package com.fintech.api.service;
 import com.fintech.api.domain.budget.BudgetCycle;
 import com.fintech.api.domain.budget.BudgetItem;
 import com.fintech.api.domain.enums.BudgetCycleStatus;
+import com.fintech.api.domain.enums.BudgetItemSource;
 import com.fintech.api.domain.enums.TransactionStatus;
 import com.fintech.api.domain.enums.TransactionType;
+import com.fintech.api.domain.recurrence.RecurrenceRule;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.budget.BudgetCycleSummaryDTO;
 import com.fintech.api.repository.AccountRepository;
 import com.fintech.api.repository.BudgetCycleRepository;
 import com.fintech.api.repository.BudgetItemRepository;
-import com.fintech.api.repository.RecurringBudgetItemRepository;
+import com.fintech.api.repository.CategoryRepository;
+import com.fintech.api.repository.RecurrenceRuleRepository;
 import com.fintech.api.repository.TenantRepository;
 import com.fintech.api.repository.TransactionRepository;
+import com.fintech.api.service.recurrence.ProjectedOccurrence;
+import com.fintech.api.service.recurrence.RecurrenceProjectionService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,8 +43,10 @@ class BudgetCycleServiceTest {
 
     @Mock BudgetCycleRepository cycleRepository;
     @Mock BudgetItemRepository itemRepository;
-    @Mock RecurringBudgetItemRepository recurringRepository;
+    @Mock RecurrenceProjectionService recurrenceProjectionService;
+    @Mock RecurrenceRuleRepository ruleRepository;
     @Mock AccountRepository accountRepository;
+    @Mock CategoryRepository categoryRepository;
     @Mock TransactionRepository transactionRepository;
     @Mock TenantRepository tenantRepository;
     @Mock BudgetSummaryService summaryService;
@@ -135,7 +142,7 @@ class BudgetCycleServiceTest {
                 eq(tenant.getId()), eq(TransactionType.INCOME), eq(TransactionStatus.PAID),
                 eq(LocalDate.of(2026, 6, 1))))
             .thenReturn(new BigDecimal("3200.00"));
-        when(recurringRepository.findAllByTenantAndActiveTrueOrderByDayOfMonthAscDescriptionAsc(tenant))
+        when(recurrenceProjectionService.project(eq(tenant), any(LocalDate.class), any(LocalDate.class)))
             .thenReturn(List.of());
         when(transactionRepository.findInstallmentsByTenantAndInvoiceMonth(any(), anyInt(), anyInt(), any()))
             .thenReturn(List.of());
@@ -148,22 +155,48 @@ class BudgetCycleServiceTest {
         assertThat(captor.getValue().getOpeningBalance()).isEqualByComparingTo("3200.00");
     }
 
-    // ---- calculateExpectedDate ----
-
     @Test
-    @DisplayName("dayOfMonth >= startDay → 1º mês do ciclo")
-    void calculateExpectedDate_dayGeStartDay() {
-        LocalDate startDate = LocalDate.of(2026, 5, 11);
-        LocalDate result = service.calculateExpectedDate(startDate, 11, 15);
-        assertThat(result).isEqualTo(LocalDate.of(2026, 5, 15));
-    }
+    @DisplayName("open() com regra projetada → cria BudgetItem com recurrenceRule e occurrenceDate preenchidos")
+    void open_comRegra_criaBudgetItemComRecurrenceRuleId() {
+        Tenant tenant = tenantWith(1);
+        User user = new User();
+        UUID ruleId = UUID.randomUUID();
 
-    @Test
-    @DisplayName("dayOfMonth < startDay → 2º mês do ciclo")
-    void calculateExpectedDate_dayLtStartDay() {
-        LocalDate startDate = LocalDate.of(2026, 5, 11);
-        LocalDate result = service.calculateExpectedDate(startDate, 11, 5);
-        assertThat(result).isEqualTo(LocalDate.of(2026, 6, 5));
+        when(cycleRepository.findByTenantAndStatus(tenant, BudgetCycleStatus.OPEN))
+            .thenReturn(Optional.empty());
+        when(cycleRepository.existsOverlap(any(), any(), any())).thenReturn(false);
+        when(accountRepository.sumLiquidBalanceByTenant(any(), any(), any(), any()))
+            .thenReturn(BigDecimal.ZERO);
+        when(cycleRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        // Regra projeta 1 ocorrência no dia 10/06/2026
+        var occurrence = new ProjectedOccurrence(
+            ruleId, LocalDate.of(2026, 6, 10),
+            "Salário", new BigDecimal("5000.00"),
+            com.fintech.api.domain.enums.TransactionType.INCOME,
+            null, null, null,
+            UUID.randomUUID(), "Conta Corrente"
+        );
+        when(recurrenceProjectionService.project(eq(tenant), any(), any()))
+            .thenReturn(List.of(occurrence));
+
+        var ruleProxy = RecurrenceRule.builder().id(ruleId).build();
+        when(ruleRepository.getReferenceById(ruleId)).thenReturn(ruleProxy);
+        when(transactionRepository.findInstallmentsByTenantAndInvoiceMonth(any(), anyInt(), anyInt(), any()))
+            .thenReturn(List.of());
+
+        var itemCaptor = ArgumentCaptor.forClass(java.util.Collection.class);
+        when(itemRepository.saveAll(itemCaptor.capture())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.open(tenant, user, "2026-06");
+
+        @SuppressWarnings("unchecked")
+        var saved = (java.util.List<BudgetItem>) itemCaptor.getValue();
+        assertThat(saved).hasSize(1);
+        BudgetItem item = saved.get(0);
+        assertThat(item.getRecurrenceRule().getId()).isEqualTo(ruleId);
+        assertThat(item.getRecurrenceOccurrenceDate()).isEqualTo(LocalDate.of(2026, 6, 10));
+        assertThat(item.getSource()).isEqualTo(BudgetItemSource.RECURRING);
     }
 
     // ---- close() — snapshot e validações ----

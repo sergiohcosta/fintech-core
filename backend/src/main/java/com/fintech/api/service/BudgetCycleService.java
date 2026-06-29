@@ -2,8 +2,8 @@ package com.fintech.api.service;
 
 import com.fintech.api.domain.budget.BudgetCycle;
 import com.fintech.api.domain.budget.BudgetItem;
-import com.fintech.api.domain.budget.RecurringBudgetItem;
 import com.fintech.api.domain.enums.*;
+import com.fintech.api.domain.recurrence.RecurrenceRule;
 import com.fintech.api.dto.budget.BudgetCycleResponseDTO;
 import com.fintech.api.dto.budget.BudgetCycleSummaryDTO;
 import com.fintech.api.domain.installment.InstallmentGroup;
@@ -12,6 +12,8 @@ import com.fintech.api.domain.transaction.Transaction;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.exception.EntityNotFoundException;
 import com.fintech.api.repository.*;
+import com.fintech.api.service.recurrence.ProjectedOccurrence;
+import com.fintech.api.service.recurrence.RecurrenceProjectionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -32,8 +34,10 @@ public class BudgetCycleService {
 
     private final BudgetCycleRepository cycleRepository;
     private final BudgetItemRepository itemRepository;
-    private final RecurringBudgetItemRepository recurringRepository;
+    private final RecurrenceProjectionService recurrenceProjectionService;
+    private final RecurrenceRuleRepository ruleRepository;
     private final AccountRepository accountRepository;
+    private final CategoryRepository categoryRepository;
     private final TransactionRepository transactionRepository;
     private final BudgetSummaryService summaryService;
 
@@ -52,23 +56,6 @@ public class BudgetCycleService {
     LocalDate[] calculateCycleDates(YearMonth referenceMonth, int startDay) {
         LocalDate start = referenceMonth.atDay(startDay);
         return new LocalDate[]{ start, start.plusMonths(1).minusDays(1) };
-    }
-
-    /**
-     * Determina a data esperada de um item recorrente dentro do ciclo.
-     *
-     * Se dayOfMonth >= startDay, a despesa/receita cai no primeiro mês do ciclo.
-     * Caso contrário, cai no segundo mês (após a virada do ciclo).
-     *
-     * Exemplo: ciclo 11/jun–10/jul, startDay=11
-     *   - dayOfMonth=15 → 15/jun (mesmo mês do início)
-     *   - dayOfMonth=5  → 5/jul  (mês seguinte)
-     */
-    LocalDate calculateExpectedDate(LocalDate cycleStartDate, int startDay, int dayOfMonth) {
-        if (dayOfMonth >= startDay) {
-            return cycleStartDate.withDayOfMonth(dayOfMonth);
-        }
-        return cycleStartDate.plusMonths(1).withDayOfMonth(dayOfMonth);
     }
 
     /**
@@ -111,7 +98,7 @@ public class BudgetCycleService {
             .createdBy(user)
             .build());
 
-        populateRecurringItems(cycle, tenant, user, startDate, startDay);
+        populateRecurringItems(cycle, tenant, user, startDate, endDate);
         populateInstallmentItems(cycle, tenant, startDate, endDate);
 
         log.info("Ciclo de planejamento aberto [cycleId={} tenantId={} periodo={}/{}]",
@@ -120,22 +107,26 @@ public class BudgetCycleService {
     }
 
     private void populateRecurringItems(BudgetCycle cycle, Tenant tenant, User user,
-                                        LocalDate startDate, int startDay) {
-        List<RecurringBudgetItem> templates =
-            recurringRepository.findAllByTenantAndActiveTrueOrderByDayOfMonthAscDescriptionAsc(tenant);
+                                        LocalDate startDate, LocalDate endDate) {
+        List<ProjectedOccurrence> projected =
+            recurrenceProjectionService.project(tenant, startDate, endDate);
+        if (projected.isEmpty()) return;
 
-        List<BudgetItem> items = templates.stream()
-            .map(t -> BudgetItem.builder()
+        List<BudgetItem> items = projected.stream()
+            .map(p -> BudgetItem.builder()
                 .cycle(cycle)
                 .tenant(tenant)
-                .description(t.getDescription())
-                .amount(t.getAmount())
-                .type(t.getType())
-                .category(t.getCategory())
-                .account(t.getAccount())
-                .expectedDate(calculateExpectedDate(startDate, startDay, t.getDayOfMonth()))
+                .description(p.description())
+                .amount(p.amount())
+                .type(p.type())
+                .category(p.categoryId() != null
+                    ? categoryRepository.getReferenceById(p.categoryId())
+                    : null)
+                .account(accountRepository.getReferenceById(p.accountId()))
+                .expectedDate(p.occurrenceDate())
                 .source(BudgetItemSource.RECURRING)
-                .recurringItem(t)
+                .recurrenceRule(ruleRepository.getReferenceById(p.ruleId()))
+                .recurrenceOccurrenceDate(p.occurrenceDate())
                 .createdBy(user)
                 .build())
             .toList();
@@ -178,6 +169,7 @@ public class BudgetCycleService {
             })
             .toList();
 
+        if (items.isEmpty()) return;
         itemRepository.saveAll(items);
     }
 

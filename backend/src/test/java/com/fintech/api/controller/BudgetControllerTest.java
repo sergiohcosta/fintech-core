@@ -8,12 +8,10 @@ import com.fintech.api.config.TokenService;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.budget.BudgetItemRealizeRequest;
-import com.fintech.api.dto.budget.RecurringBudgetItemRequest;
 import com.fintech.api.repository.UserRepository;
 import com.fintech.api.service.BudgetCycleService;
 import com.fintech.api.service.BudgetItemService;
 import com.fintech.api.service.BudgetSummaryService;
-import com.fintech.api.service.RecurringBudgetItemService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -47,7 +45,6 @@ class BudgetControllerTest {
     @Autowired WebApplicationContext context;
     @MockitoBean BudgetCycleService cycleService;
     @MockitoBean BudgetItemService itemService;
-    @MockitoBean RecurringBudgetItemService recurringService;
     @MockitoBean BudgetSummaryService summaryService;
     @MockitoBean UserRepository userRepository;
     @MockitoBean TokenService tokenService;
@@ -168,27 +165,6 @@ class BudgetControllerTest {
 
         mockMvc.perform(delete("/api/budget-items/" + itemId)
                         .header("Authorization", token))
-                .andExpect(status().isUnprocessableEntity());
-    }
-
-    // --- PUT /api/recurring-budget-items/{id} ---
-
-    @Test
-    @DisplayName("PUT /api/recurring-budget-items/{id} com item inativo retorna 422")
-    void updateInactiveRecurringItemReturns422() throws Exception {
-        UUID itemId = UUID.randomUUID();
-
-        when(recurringService.update(any(UUID.class), any(RecurringBudgetItemRequest.class), any()))
-            .thenThrow(new IllegalStateException("O item deve ser reativado antes de ser editado."));
-
-        RecurringBudgetItemRequest req = new RecurringBudgetItemRequest(
-            "Aluguel", new java.math.BigDecimal("1500.00"),
-            com.fintech.api.domain.enums.TransactionType.EXPENSE, 10, null, null);
-
-        mockMvc.perform(put("/api/recurring-budget-items/" + itemId)
-                        .header("Authorization", token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(mapper.writeValueAsString(req)))
                 .andExpect(status().isUnprocessableEntity());
     }
 

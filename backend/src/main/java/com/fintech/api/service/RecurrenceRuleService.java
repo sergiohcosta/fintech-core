@@ -84,6 +84,16 @@ public class RecurrenceRuleService {
         findOwned(id, user).setStatus(RecurrenceStatus.CANCELLED);
     }
 
+    @Transactional
+    public RecurrenceRuleResponseDTO reactivate(UUID id, User user) {
+        RecurrenceRule rule = findOwned(id, user);
+        if (rule.getStatus() == RecurrenceStatus.ACTIVE) {
+            throw new IllegalStateException("Regra já está ativa.");
+        }
+        rule.setStatus(RecurrenceStatus.ACTIVE);
+        return RecurrenceRuleResponseDTO.fromEntity(rule);
+    }
+
     /**
      * Confirma (materializa) uma ocorrência fantasma como transação real. O override de
      * valor/data permite ajustar a conta que veio diferente neste mês (FR-02 parcial) — a
