@@ -23,7 +23,8 @@ SELECT
     created_by,
     created_at,
     updated_at
-FROM recurring_budget_items;
+FROM recurring_budget_items
+WHERE account_id IS NOT NULL;
 
 -- 2. Adiciona colunas novas em budget_items.
 ALTER TABLE budget_items

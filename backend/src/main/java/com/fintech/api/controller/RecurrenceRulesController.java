@@ -61,6 +61,12 @@ public class RecurrenceRulesController implements RecurrenceRulesApi {
     }
 
     @Override
+    @PatchMapping("/{id}/reactivate")
+    public ResponseEntity<RecurrenceRuleResponseDTO> reactivateRecurrenceRule(@PathVariable UUID id) {
+        return ResponseEntity.ok(service.reactivate(id, getAuthenticatedUser()));
+    }
+
+    @Override
     @PostMapping("/{id}/occurrences/{date}/confirm")
     public ResponseEntity<TransactionResponseDTO> confirmOccurrence(
             @PathVariable UUID id,
