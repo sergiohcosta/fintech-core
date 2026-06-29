@@ -65,6 +65,15 @@ export const routes: Routes = [
         loadComponent: () => import('./features/transaction/transaction-list/transaction-list').then(m => m.TransactionList)
       },
       {
+        // CRÍTICO: precisa vir antes de 'transactions/:id', senão o param :id captura
+        // a string "timeline" e tenta abrir o form de edição.
+        path: 'transactions/timeline',
+        loadComponent: () =>
+          import('./features/transaction/transaction-timeline/transaction-timeline').then(
+            m => m.TransactionTimelineComponent
+          )
+      },
+      {
         path: 'transactions/new',
         loadComponent: () => import('./features/transaction/transaction-form/transaction-form').then(m => m.TransactionForm)
       },
@@ -88,6 +97,11 @@ export const routes: Routes = [
         path: 'planning',
         loadChildren: () =>
           import('./features/planning/planning.routes').then(m => m.planningRoutes),
+      },
+      {
+        path: 'recurrences',
+        loadComponent: () =>
+          import('./features/recurrence/recurrence-list/recurrence-list').then(m => m.RecurrenceList)
       },
     ]
   }

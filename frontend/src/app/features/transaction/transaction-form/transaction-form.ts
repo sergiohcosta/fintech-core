@@ -1,6 +1,6 @@
 import { Component, ElementRef, inject, OnInit, signal, computed, effect, ViewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { Observable, finalize } from 'rxjs';
+import { Observable, finalize, switchMap } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
@@ -27,6 +27,8 @@ import { AccountsService } from '../../../core/api/accounts/accounts.service';
 import { CategoryResponseDTO, AccountResponse } from '../../../core/api/fintechSaaSAPI.schemas';
 import { buildInstallmentPreview, CreditCardPreviewConfig } from './installment-preview';
 import { evaluateMathExpression } from './amount-math';
+import { RruleEditor } from '../../recurrence/rrule-editor/rrule-editor';
+import { RecurrenceService } from '../../../core/services/recurrence.service';
 export { buildInstallmentPreview } from './installment-preview';
 export type { InstallmentPreviewRow, CreditCardPreviewConfig } from './installment-preview';
 
@@ -59,6 +61,7 @@ interface TransactionCategoryOption {
     MatCheckboxModule,
     MatDividerModule,
     MatProgressSpinnerModule,
+    RruleEditor,
   ],
   templateUrl: './transaction-form.html',
   styleUrl: './transaction-form.scss'
@@ -71,6 +74,7 @@ export class TransactionForm implements OnInit {
   private transferService = inject(TransfersService);
   private categoryService = inject(CategoriesService);
   private accountService = inject(AccountsService);
+  private recurrenceService = inject(RecurrenceService);
   private snackBar = inject(MatSnackBar);
 
   @ViewChild('picker') private picker?: MatDatepicker<Date>;
@@ -88,6 +92,9 @@ export class TransactionForm implements OnInit {
   isInstallment = signal(false);
   valueMode = signal<'total' | 'per-installment'>('total');
   propagateFields = signal<Set<string>>(new Set());
+  // Recorrência: quando ligado, o submit cria uma regra e materializa a 1ª ocorrência.
+  repeat = signal(false);
+  rrule = signal('');
 
   form = this.fb.group({
     description: ['', [Validators.required, Validators.minLength(2)]],
@@ -379,6 +386,22 @@ export class TransactionForm implements OnInit {
         date: this.toDateString(raw.date as Date),
         description: raw.description || undefined
       });
+    }
+
+    // Recorrência: cria a Regra e materializa a 1ª ocorrência (a própria transação que o
+    // usuário está lançando). Exclusiva de parcelamento — ambos representam "múltiplas vezes".
+    if (this.repeat() && !this.isInstallment() && this.rrule()) {
+      const startDate = this.toDateString(raw.date as Date);
+      const amount = raw.amount!;
+      return this.recurrenceService.create({
+        description: raw.description!,
+        baseAmount: amount,
+        type: raw.type as 'INCOME' | 'EXPENSE',
+        categoryId: raw.categoryId ?? undefined,
+        accountId: raw.accountId!,
+        rrule: this.rrule(),
+        startDate,
+      }).pipe(switchMap((rule) => this.recurrenceService.confirm(rule.id!, startDate, { amount })));
     }
 
     const rawAmount = raw.amount!;
