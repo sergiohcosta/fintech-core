@@ -6,6 +6,7 @@ import com.fintech.api.domain.enums.TransactionStatus;
 import com.fintech.api.domain.enums.TransactionType;
 import com.fintech.api.domain.installment.InstallmentGroup;
 import com.fintech.api.domain.invoice.Invoice;
+import com.fintech.api.domain.recurrence.RecurrenceRule;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.user.User;
 import jakarta.persistence.*;
@@ -91,6 +92,17 @@ public class Transaction {
     @JoinColumn(name = "invoice_id")
     @ToString.Exclude
     private Invoice invoice;
+
+    // --- RECORRÊNCIA ---
+    // Preenchido quando a transação foi materializada a partir de uma regra.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "recurrence_rule_id")
+    @ToString.Exclude
+    private RecurrenceRule recurrenceRule;
+
+    // O "slot" canônico da regra (data da ocorrência), distinto de `date` (data efetiva).
+    @Column(name = "recurrence_occurrence")
+    private LocalDate recurrenceOccurrence;
 
     @NotNull(message = "O status é obrigatório")
     @Enumerated(EnumType.STRING)

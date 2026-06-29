@@ -1,0 +1,49 @@
+<div class="calendar">
+  <header class="calendar-nav">
+    <button mat-icon-button (click)="prevMonth()" aria-label="Mês anterior">
+      <mat-icon>chevron_left</mat-icon>
+    </button>
+    <h3>{{ monthLabel() }}</h3>
+    <button mat-icon-button (click)="nextMonth()" aria-label="Próximo mês">
+      <mat-icon>chevron_right</mat-icon>
+    </button>
+  </header>
+
+  <div class="calendar-grid" role="grid">
+    @for (wd of weekdayLabels; track wd) {
+      <div class="weekday" role="columnheader">{{ wd }}</div>
+    }
+    @for (cell of grid(); track $index) {
+      <div
+        class="day-cell"
+        role="gridcell"
+        [class.empty]="!cell.date"
+        [class.has-tx]="cell.transactions.length > 0"
+        [class.expanded]="cell.date === expandedDay()"
+        [attr.aria-label]="cell.date || null"
+        (click)="toggleDay(cell)">
+        @if (cell.date) {
+          <span class="day-number">{{ cell.dayOfMonth }}</span>
+          @if (cell.transactions.length > 0) {
+            <span class="day-net" [class.positive]="cell.totals.net >= 0" [class.negative]="cell.totals.net < 0">
+              {{ cell.totals.net | currency: 'BRL' }}
+            </span>
+          }
+        }
+      </div>
+    }
+  </div>
+
+  @if (expandedDay(); as day) {
+    <div class="day-detail">
+      <h4>{{ day }}</h4>
+      @for (t of expandedTransactions(); track t.id) {
+        <div class="detail-row" [class.income]="t.type === 'INCOME'" [class.expense]="t.type === 'EXPENSE'">
+          @if (t.categoryIcon) { <mat-icon>{{ t.categoryIcon }}</mat-icon> }
+          <span class="desc">{{ t.description }}</span>
+          <span class="amount">{{ t.amount | currency: 'BRL' }}</span>
+        </div>
+      }
+    </div>
+  }
+</div>
