@@ -74,6 +74,34 @@ para i=0..N-1:
 
 **PUT `propagate: string[]`:** aplica campos às parcelas futuras `PENDING` (`installmentNumber >` atual). PAID nunca revertido.
 
+## Linha do Tempo (`/transactions/timeline`) — só frontend
+
+Visualização alternativa das mesmas transações (consome `GET /api/transactions` — **nenhum endpoint novo**). Três views em tabs: **Calendário** (heatmap mensal), **Lista agrupada** (períodos relativos: Hoje/Ontem/Esta semana/Semana passada/Este mês/Mais antigos) e **Linha horizontal** (marcadores por dia-efetivo, colisão agrupada por data).
+
+- **Filtros independentes** da lista principal, persistidos em `localStorage` (`fintech.timeline.filters`); `description` é filtro client-side e **nunca** é persistida.
+- Reusa a regra `effectiveSortDate` do backend (parcela de cartão → `invoiceDueDate`; demais → `date`) — replicada em `timeline-shared.ts`.
+- **"Ver lista"** navega para `/transactions` passando os filtros via `queryParams` (`accountIds,status,type,startDate,endDate,description`); a lista os aplica em `TransactionList.mergeFiltersFromQueryParams` (queryParams **vencem** o `localStorage`).
+- Rota registrada **antes** de `transactions/:id` (senão `:id` capturaria a string `"timeline"`).
+- Lógica pura testável sem `TestBed` (`*-utils.ts`); o shell é coberto por spec com `overrideComponent()`. Specs de componente exigem `ng test` (não `npx vitest` cru). Spec/design: `docs/superpowers/specs/2026-06-23-transaction-timeline-design.md`.
+
+## Recorrência (`/api/recurrence-rules`) — Motor de Recorrência (núcleo)
+
+GET (lista ativas) · POST (valida RRULE) · GET/{id} · PATCH/{id} (`description`+`baseAmount`) · DELETE/{id} (cancela: `status=CANCELLED`) · POST/{id}/occurrences/{date}/confirm · POST/{id}/occurrences/{date}/skip.
+
+**Regra vs. Transação.** A `RecurrenceRule` é a definição atemporal (string RRULE / RFC 5545, expandida pela lib `org.dmfs:lib-recur`). A `Transaction` é o fato imutável, gravado **só** após confirmação. Nada é materializado antecipadamente.
+
+**Projeção on-the-fly (`RecurrenceProjectionService`):** `fantasma(janela) = expand(rrule) − {ocorrências já materializadas} − {EXDATE}`, keyed pela data da ocorrência. Sempre recebe janela (`[from,to]`) — nunca expande "infinito".
+
+**`GET /api/transactions?includeProjected=true`:** mescla reais + fantasmas no período (default `false`, retrocompatível). Fantasma: `projected=true`, `id=null`, status `PENDING`, `recurrenceRuleId`+`occurrenceDate` preenchidos. Ordenação compartilha a regra `effectiveSortDate`. Filtro por `invoiceId` **não** projeta.
+
+**Confirmar:** materializa a ocorrência reusando o caminho de criação de transação (`materializeFromRule` → se cartão, fatura resolvida por `resolveInvoiceMonth`/`getOrCreate`). Body opcional `{amount?, date?}` (override — ajuste pontual; a regra segue projetando o `baseAmount`). Índice único parcial `(recurrence_rule_id, recurrence_occurrence)` + guard → **409** ao confirmar a mesma ocorrência 2x.
+
+**Pular:** grava EXDATE em `recurrence_exceptions` (idempotente). A fantasma some no mês pulado e volta no seguinte.
+
+**RRULE — subconjunto suportado:** `FREQ=MONTHLY|YEARLY`, `INTERVAL`, `BYMONTHDAY` (1..31 e `-1`=último dia), `UNTIL`, `COUNT`. `@ValidRrule` rejeita o resto (`BYDAY`/`BYSETPOS`/`BYWEEKNO`/`BYYEARDAY`/`BYHOUR`/`BYMINUTE`, e `FREQ` diário/semanal) → **400**. "Fim do mês" = `BYMONTHDAY=-1` (resolve 28/29 fev, 30 abr nativamente). Validação varre as chaves do rrule (o parser lax do lib-recur descarta partes inválidas no contexto).
+
+**Fora do núcleo (sub-projetos futuros):** migração do Planejamento p/ consumir a projeção (#2); pausa/retomada, edição "desta em diante", capping não-padrão 31→28, detach formal (#3); fantasma na timeline + simulador "E se...?" (#4). Parcelamento de cartão **permanece** em `InstallmentGroup`+`Invoice`. Spec: `docs/superpowers/specs/2026-06-25-motor-de-recorrencia-nucleo-design.md`.
+
 ## Transferências (`/api/transfers`)
 
 POST (cria par EXPENSE origem + INCOME destino) · DELETE/{transferId} (remove ambos).

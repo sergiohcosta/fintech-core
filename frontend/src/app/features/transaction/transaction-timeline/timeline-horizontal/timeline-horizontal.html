@@ -1,0 +1,34 @@
+<div class="horizontal">
+  <div class="legend">
+    <span class="dot income"></span> Receita
+    <span class="dot expense"></span> Despesa
+    <span class="dot cancelled"></span> Cancelada
+  </div>
+
+  <div class="track-scroll">
+    <div class="track" [style.width.px]="trackWidth + 40">
+      <div class="axis"></div>
+      @for (m of markers(); track m.date) {
+        <button class="marker" [style.left.px]="m.x + 20"
+                [class.selected]="m.date === selectedMarker()"
+                (click)="select(m)"
+                [attr.aria-label]="m.date + ': ' + m.transactions.length + ' transações'">
+          <span class="count">{{ m.transactions.length }}</span>
+        </button>
+      }
+    </div>
+  </div>
+
+  @if (selected(); as sel) {
+    <div class="marker-detail">
+      <h4>{{ sel.date }}</h4>
+      @for (t of sel.transactions; track t.id) {
+        <div class="detail-row" [class.income]="t.type === 'INCOME'" [class.expense]="t.type === 'EXPENSE'">
+          @if (t.categoryIcon) { <mat-icon>{{ t.categoryIcon }}</mat-icon> }
+          <span class="desc">{{ t.description }}</span>
+          <span class="amount">{{ t.amount | currency: 'BRL' }}</span>
+        </div>
+      }
+    </div>
+  }
+</div>

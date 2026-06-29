@@ -8,7 +8,7 @@ import com.fintech.api.openapi.InstallmentGroupsApi;
 import com.fintech.api.service.InstallmentGroupService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
+import com.fintech.api.config.SecurityUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -48,6 +48,6 @@ public class InstallmentGroupController implements InstallmentGroupsApi {
     }
 
     private User getAuthenticatedUser() {
-        return (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        return SecurityUtils.currentUser();
     }
 }
