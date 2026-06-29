@@ -140,4 +140,23 @@ class RecurrenceRulesControllerTest {
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    @DisplayName("PATCH /api/recurrence-rules/{id}/reactivate → 200 com regra reativada")
+    void reactivate_regraCancelada_retorna200() throws Exception {
+        RecurrenceRuleResponseDTO dto = new RecurrenceRuleResponseDTO(
+                UUID.randomUUID(), "Netflix", new BigDecimal("50.00"),
+                TransactionType.EXPENSE,
+                null, null, UUID.randomUUID(), "Conta Corrente",
+                "FREQ=MONTHLY;BYMONTHDAY=15",
+                LocalDate.of(2026, 1, 1),
+                RecurrenceStatus.ACTIVE
+        );
+        when(service.reactivate(any(UUID.class), any())).thenReturn(dto);
+
+        mockMvc.perform(patch("/api/recurrence-rules/{id}/reactivate", UUID.randomUUID())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ACTIVE"));
+    }
 }

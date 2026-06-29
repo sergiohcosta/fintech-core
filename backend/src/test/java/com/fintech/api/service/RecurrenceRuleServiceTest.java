@@ -1,5 +1,7 @@
 package com.fintech.api.service;
 
+import com.fintech.api.domain.account.Account;
+import com.fintech.api.domain.enums.RecurrenceStatus;
 import com.fintech.api.domain.enums.TransactionType;
 import com.fintech.api.domain.recurrence.RecurrenceException;
 import com.fintech.api.domain.recurrence.RecurrenceRule;
@@ -53,10 +55,11 @@ class RecurrenceRuleServiceTest {
     }
 
     private RecurrenceRule rule() {
+        Account account = Account.builder().id(UUID.randomUUID()).name("Conta Corrente").build();
         return RecurrenceRule.builder().id(ruleId).tenant(user.getTenant())
                 .description("Netflix").baseAmount(new BigDecimal("100.00"))
                 .type(TransactionType.EXPENSE).rrule("FREQ=MONTHLY;BYMONTHDAY=10")
-                .startDate(LocalDate.of(2026, 1, 10)).build();
+                .startDate(LocalDate.of(2026, 1, 10)).account(account).build();
     }
 
     @Test
@@ -109,6 +112,45 @@ class RecurrenceRuleServiceTest {
         when(repository.findByIdAndTenant(ruleId, user.getTenant())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.skipOccurrence(ruleId, occ, user))
+                .isInstanceOf(EntityNotFoundException.class);
+    }
+
+    @Test
+    @org.junit.jupiter.api.DisplayName("reactivate() em regra CANCELLED → retorna DTO com status ACTIVE")
+    void reactivate_regraActiva_retornaActive() {
+        RecurrenceRule cancelledRule = rule();
+        cancelledRule.setStatus(RecurrenceStatus.CANCELLED);
+
+        when(repository.findByIdAndTenant(ruleId, user.getTenant()))
+                .thenReturn(Optional.of(cancelledRule));
+        when(repository.save(cancelledRule)).thenReturn(cancelledRule);
+
+        com.fintech.api.dto.recurrence.RecurrenceRuleResponseDTO result = service.reactivate(ruleId, user);
+
+        assertThat(result.status()).isEqualTo(RecurrenceStatus.ACTIVE);
+        verify(repository).save(cancelledRule);
+    }
+
+    @Test
+    @org.junit.jupiter.api.DisplayName("reactivate() em regra ACTIVE → lança IllegalStateException")
+    void reactivate_regraJaActive_lancaException() {
+        RecurrenceRule activeRule = rule(); // status ACTIVE por padrão (@Builder.Default)
+
+        when(repository.findByIdAndTenant(ruleId, user.getTenant()))
+                .thenReturn(Optional.of(activeRule));
+
+        assertThatThrownBy(() -> service.reactivate(ruleId, user))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("A regra já está ativa.");
+    }
+
+    @Test
+    @org.junit.jupiter.api.DisplayName("reactivate() com ID inexistente → EntityNotFoundException")
+    void reactivate_regraInexistente_lancaNotFound() {
+        when(repository.findByIdAndTenant(ruleId, user.getTenant()))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.reactivate(ruleId, user))
                 .isInstanceOf(EntityNotFoundException.class);
     }
 }

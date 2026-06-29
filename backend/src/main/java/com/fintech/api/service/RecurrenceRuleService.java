@@ -88,10 +88,10 @@ public class RecurrenceRuleService {
     public RecurrenceRuleResponseDTO reactivate(UUID id, User user) {
         RecurrenceRule rule = findOwned(id, user);
         if (rule.getStatus() == RecurrenceStatus.ACTIVE) {
-            throw new IllegalStateException("Regra já está ativa.");
+            throw new IllegalStateException("A regra já está ativa.");
         }
         rule.setStatus(RecurrenceStatus.ACTIVE);
-        return RecurrenceRuleResponseDTO.fromEntity(rule);
+        return RecurrenceRuleResponseDTO.fromEntity(repository.save(rule));
     }
 
     /**
