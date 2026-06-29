@@ -22,10 +22,10 @@ public record BudgetItemResponseDTO(
     UUID accountId,
     String accountName,
     UUID transactionId,
-    // Status da transação vinculada (PAID/PENDING). Permite ao frontend distinguir
-    // item realizado-em-caixa (PAID) de realizado-pendente, sem assumir REALIZED = pago.
     TransactionStatus transactionStatus,
-    UUID installmentGroupId
+    UUID installmentGroupId,
+    UUID recurrenceRuleId,
+    LocalDate recurrenceOccurrenceDate
 ) {
     public static BudgetItemResponseDTO fromEntity(BudgetItem item) {
         return new BudgetItemResponseDTO(
@@ -42,7 +42,9 @@ public record BudgetItemResponseDTO(
             item.getAccount() != null ? item.getAccount().getName() : null,
             item.getTransaction() != null ? item.getTransaction().getId() : null,
             item.getTransaction() != null ? item.getTransaction().getStatus() : null,
-            item.getInstallmentGroup() != null ? item.getInstallmentGroup().getId() : null
+            item.getInstallmentGroup() != null ? item.getInstallmentGroup().getId() : null,
+            item.getRecurrenceRule() != null ? item.getRecurrenceRule().getId() : null,
+            item.getRecurrenceOccurrenceDate()
         );
     }
 }
