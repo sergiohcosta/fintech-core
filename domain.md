@@ -22,8 +22,8 @@ Tenant (UUID, budgetCycleStartDay)
   │    └── RecurrenceException (occurrenceDate — EXDATE: ocorrência "pulada")
   ├── BudgetCycle (startDate, endDate, openingBalance, status: OPEN | CLOSED)
   │    └── BudgetItem (description, amount, type, expectedDate, source, status,
-  │                    category?, account?, recurringItem?, transaction?, installmentGroup?)
-  ├── RecurringBudgetItem (description, amount, type, dayOfMonth, category?, account?, active)
+  │                    category?, account?, recurrenceRule?, recurrenceOccurrenceDate?,
+  │                    transaction?, installmentGroup?)
   └── Invitation (email, token, expiresAt)
 ```
 
