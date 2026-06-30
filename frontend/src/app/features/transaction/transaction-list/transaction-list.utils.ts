@@ -331,7 +331,7 @@ export function sortTransactions(
       const cmp = compareBy(col, a, b);
       if (cmp !== 0) return dir === 'asc' ? cmp : -cmp;
     }
-    return 0;
+    return (b.createdAt ?? '').localeCompare(a.createdAt ?? '');
   });
 }
 

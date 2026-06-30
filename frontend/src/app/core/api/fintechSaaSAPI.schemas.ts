@@ -190,6 +190,8 @@ export interface TransactionResponseDTO {
   recurrenceRuleId?: string | null;
   /** @nullable */
   occurrenceDate?: string | null;
+  /** @nullable */
+  createdAt?: string | null;
 }
 
 export interface InvoiceResponseDTO {

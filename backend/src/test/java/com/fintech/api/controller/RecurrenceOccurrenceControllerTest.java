@@ -80,7 +80,7 @@ class RecurrenceOccurrenceControllerTest {
                 TransactionType.EXPENSE, TransactionStatus.PENDING,
                 null, null, null, null, null, false, null, null,
                 "Conta", UUID.randomUUID(), null, null, null, null, null, null,
-                false, null, null);
+                false, null, null, null);
     }
 
     @Test

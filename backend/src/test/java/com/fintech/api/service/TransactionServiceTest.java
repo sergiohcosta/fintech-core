@@ -121,7 +121,7 @@ class TransactionServiceTest {
     }
 
     @Test
-    @DisplayName("createTransfer lança IllegalArgumentException quando contas são iguais")
+    @DisplayName("createTransfer lança BusinessException quando contas são iguais")
     void createTransferRejectsEqualAccounts() {
         User user = buildUser();
         UUID sameId = UUID.randomUUID();
@@ -129,7 +129,7 @@ class TransactionServiceTest {
                 sameId, sameId, new BigDecimal("100.00"), LocalDate.now(), null);
 
         assertThatThrownBy(() -> service.createTransfer(dto, user))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("diferentes");
     }
 
