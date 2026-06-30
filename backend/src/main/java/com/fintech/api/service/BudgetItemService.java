@@ -3,6 +3,7 @@ package com.fintech.api.service;
 import com.fintech.api.domain.account.Account;
 import com.fintech.api.domain.budget.BudgetCycle;
 import com.fintech.api.domain.budget.BudgetItem;
+import com.fintech.api.exception.BusinessException;
 import com.fintech.api.domain.category.Category;
 import com.fintech.api.domain.enums.BudgetCycleStatus;
 import com.fintech.api.domain.enums.BudgetItemSource;
@@ -40,19 +41,19 @@ public class BudgetItemService {
             throw new IllegalStateException("O ciclo está fechado para alterações.");
         }
         if (req.expectedDate().isBefore(cycle.getStartDate()) || req.expectedDate().isAfter(cycle.getEndDate())) {
-            throw new IllegalArgumentException("Data deve estar dentro do período do ciclo.");
+            throw new BusinessException("Data deve estar dentro do período do ciclo.");
         }
 
         Category category = null;
         if (req.categoryId() != null) {
             category = categoryRepository.findByIdAndTenantIdAndDeletedAtIsNull(req.categoryId(), tenant.getId())
-                .orElseThrow(() -> new IllegalArgumentException("Categoria não encontrada ou não pertence ao tenant."));
+                .orElseThrow(() -> new BusinessException("Categoria não encontrada ou não pertence ao tenant."));
         }
 
         Account account = null;
         if (req.accountId() != null) {
             account = accountRepository.findByIdAndTenant(req.accountId(), tenant)
-                .orElseThrow(() -> new IllegalArgumentException("Conta não encontrada ou não pertence ao tenant."));
+                .orElseThrow(() -> new BusinessException("Conta não encontrada ou não pertence ao tenant."));
         }
 
         return repository.save(BudgetItem.builder()

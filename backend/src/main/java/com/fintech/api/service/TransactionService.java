@@ -18,6 +18,7 @@ import com.fintech.api.dto.transaction.TransactionResponseDTO;
 import com.fintech.api.dto.transaction.TransactionUpdateDTO;
 import com.fintech.api.dto.transfer.TransferRequestDTO;
 import com.fintech.api.dto.transfer.TransferResponseDTO;
+import com.fintech.api.exception.BusinessException;
 import com.fintech.api.exception.EntityNotFoundException;
 import com.fintech.api.repository.AccountRepository;
 import com.fintech.api.repository.CategoryRepository;
@@ -61,7 +62,7 @@ public class TransactionService {
             TransactionStatus status, TransactionType type, LocalDate startDate, LocalDate endDate,
             boolean includeProjected) {
         if ((startDate == null) != (endDate == null)) {
-            throw new IllegalArgumentException("startDate e endDate devem ser informados juntos ou omitidos juntos");
+            throw new BusinessException("startDate e endDate devem ser informados juntos ou omitidos juntos");
         }
         if (invoiceId != null) {
             Invoice invoice = invoiceService.findByIdAndTenant(invoiceId, user.getTenant());
@@ -235,7 +236,7 @@ public class TransactionService {
     @Transactional
     public TransferResponseDTO createTransfer(TransferRequestDTO dto, User user) {
         if (dto.fromAccountId().equals(dto.toAccountId())) {
-            throw new IllegalArgumentException("As contas de origem e destino devem ser diferentes.");
+            throw new BusinessException("As contas de origem e destino devem ser diferentes.");
         }
         Account from = resolveAccount(dto.fromAccountId(), user);
         Account to   = resolveAccount(dto.toAccountId(), user);
