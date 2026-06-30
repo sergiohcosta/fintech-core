@@ -9,6 +9,7 @@ import com.fintech.api.service.recurrence.ProjectedOccurrence;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayDeque;
 import java.util.UUID;
 
@@ -39,7 +40,8 @@ public record TransactionResponseDTO(
         // projected=true marca uma "linha fantasma" (não existe no banco; id nulo).
         boolean projected,
         UUID recurrenceRuleId,
-        LocalDate occurrenceDate
+        LocalDate occurrenceDate,
+        LocalDateTime createdAt
 ) {
     public static TransactionResponseDTO fromEntity(Transaction t) {
         String installLabel = null;
@@ -74,7 +76,8 @@ public record TransactionResponseDTO(
                 invoice != null ? invoice.getStatus() : null,
                 false,
                 t.getRecurrenceRule() != null ? t.getRecurrenceRule().getId() : null,
-                t.getRecurrenceOccurrence()
+                t.getRecurrenceOccurrence(),
+                t.getCreatedAt()
         );
     }
 
@@ -87,7 +90,7 @@ public record TransactionResponseDTO(
                 o.categoryName(), o.categoryId(), false, o.categoryName(), o.categoryIcon(),
                 o.accountName(), o.accountId(),
                 null, null, null, null, null, null,
-                true, o.ruleId(), o.occurrenceDate());
+                true, o.ruleId(), o.occurrenceDate(), null);
     }
 
     // Percorre a cadeia pai→filho e monta "Avô → Pai → Filho".

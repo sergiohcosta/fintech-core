@@ -61,7 +61,7 @@ export class RruleEditor {
     try {
       const opts = RRule.parseString(this.rrule());
       opts.dtstart = new Date();
-      return new RRule(opts).all((_, i) => i < 3);
+      return new RRule(opts).all((_: Date, i: number) => i < 3);
     } catch {
       return [];
     }

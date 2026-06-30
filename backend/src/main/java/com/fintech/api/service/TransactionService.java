@@ -88,7 +88,8 @@ public class TransactionService {
         // Projeção só faz sentido com janela explícita (a expansão RRULE sempre precisa de limites).
         if (!includeProjected || startDate == null || endDate == null) {
             return reais.stream()
-                    .sorted(Comparator.comparing(this::effectiveSortDateDto, Comparator.reverseOrder()))
+                    .sorted(Comparator.comparing(this::effectiveSortDateDto, Comparator.reverseOrder())
+                            .thenComparing(d -> d.createdAt(), Comparator.nullsLast(Comparator.reverseOrder())))
                     .toList();
         }
 
@@ -102,7 +103,8 @@ public class TransactionService {
                 .toList();
 
         return Stream.concat(reais.stream(), fantasmas.stream())
-                .sorted(Comparator.comparing(this::effectiveSortDateDto, Comparator.reverseOrder()))
+                .sorted(Comparator.comparing(this::effectiveSortDateDto, Comparator.reverseOrder())
+                            .thenComparing(d -> d.createdAt(), Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
     }
 

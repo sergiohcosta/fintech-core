@@ -9,6 +9,7 @@ import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.transfer.TransferRequestDTO;
 import com.fintech.api.dto.transfer.TransferResponseDTO;
+import com.fintech.api.exception.BusinessException;
 import com.fintech.api.exception.EntityNotFoundException;
 import com.fintech.api.repository.UserRepository;
 import com.fintech.api.service.TransactionService;
@@ -113,7 +114,7 @@ class TransferControllerTest {
                 sameId, sameId, new BigDecimal("100.00"), LocalDate.now(), null);
 
         when(transactionService.createTransfer(any(TransferRequestDTO.class), any(User.class)))
-                .thenThrow(new IllegalArgumentException("As contas de origem e destino devem ser diferentes."));
+                .thenThrow(new BusinessException("As contas de origem e destino devem ser diferentes."));
 
         mockMvc.perform(post("/api/transfers")
                         .header("Authorization", "Bearer " + token)

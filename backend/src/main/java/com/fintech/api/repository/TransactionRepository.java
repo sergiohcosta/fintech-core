@@ -37,7 +37,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             LEFT JOIN FETCH t.account
             LEFT JOIN FETCH t.invoice
             WHERE t.tenant = :tenant
-            ORDER BY t.date DESC
+            ORDER BY t.date DESC, t.createdAt DESC
             """)
     List<Transaction> findAllByTenantWithDetails(@Param("tenant") Tenant tenant);
 
@@ -63,7 +63,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
                 (t.installmentGroup IS NOT NULL AND inv IS NOT NULL AND inv.dueDate >= :startDate AND inv.dueDate <= :endDate)
                 OR ((t.installmentGroup IS NULL OR inv IS NULL) AND t.date >= :startDate AND t.date <= :endDate)
               )
-            ORDER BY t.date DESC
+            ORDER BY t.date DESC, t.createdAt DESC
             """)
     List<Transaction> findAllByTenantWithFilters(
             @Param("tenant")         Tenant tenant,
@@ -81,7 +81,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             LEFT JOIN FETCH t.category
             LEFT JOIN FETCH t.account
             WHERE t.tenant = :tenant AND t.invoice = :invoice
-            ORDER BY t.date DESC
+            ORDER BY t.date DESC, t.createdAt DESC
             """)
     List<Transaction> findAllByTenantAndInvoiceWithDetails(
             @Param("tenant") Tenant tenant,
@@ -281,7 +281,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             SELECT 1 FROM BudgetItem bi
             WHERE bi.transaction = t AND bi.cycle = :cycle
           )
-        ORDER BY t.date DESC
+        ORDER BY t.date DESC, t.createdAt DESC
         """)
     List<Transaction> findUnplannedByCycle(
         @Param("tenant")          Tenant tenant,
