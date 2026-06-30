@@ -12,3 +12,4 @@ target/
 frontend/coverage/
 .scannerwork/
 .sonar-scan.log
+.aider*
