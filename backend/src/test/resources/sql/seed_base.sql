@@ -15,6 +15,7 @@ DECLARE
   c_child2 UUID := 'dddddddd-0000-0000-0000-000000000012';
   -- BCrypt de "admin123"
   v_pw     TEXT := '$2b$10$Tpwp7BwL3CREMmQBBEo3BumZ9g3ubrcMobnFjLChHPOFmjSPnKNR.';
+  v_rule   UUID := 'eeeeeeee-0000-0000-0000-000000000001';
 BEGIN
   INSERT INTO tenants (id, name) VALUES (v_tenant, 'Tenant Test');
 
@@ -37,4 +38,9 @@ BEGIN
   INSERT INTO categories (id, tenant_id, created_by, name, icon, color, parent_id) VALUES
     (c_child1, v_tenant, v_admin, 'Alimentação', 'restaurant', '#EF5350', c_root1),
     (c_child2, v_tenant, v_admin, 'Salário',     'payments',   '#66BB6A', c_root2);
+
+  INSERT INTO recurrence_rules (id, tenant_id, description, base_amount, type,
+      account_id, rrule, start_date, status, created_at, updated_at)
+  VALUES (v_rule, v_tenant, 'Salário Fixo', 5000.00, 'INCOME',
+      v_chk, 'FREQ=MONTHLY;BYMONTHDAY=5', '2026-01-05', 'ACTIVE', now(), now());
 END $$;

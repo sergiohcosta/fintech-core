@@ -1,8 +1,8 @@
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { HttpClient } from '@angular/common/http';
 import { BudgetService } from '../../core/api/budget/budget.service';
 import { TenantService } from '../../core/api/tenant/tenant.service';
+import { RecurrenceRulesService } from '../../core/api/recurrence-rules/recurrence-rules.service';
 import {
   BudgetCycleOpenRequest,
   BudgetCyclePageResponse,
@@ -11,8 +11,9 @@ import {
   BudgetItemLinkRequest,
   BudgetItemResponse,
   BudgetItemUpdateRequest,
-  RecurringBudgetItemRequest,
-  RecurringBudgetItemResponse,
+  RecurrenceRuleCreateDTO,
+  RecurrenceRulePatchDTO,
+  RecurrenceRuleResponseDTO,
   TenantSettingsPatchRequest,
 } from '../../core/api/fintechSaaSAPI.schemas';
 
@@ -20,7 +21,7 @@ import {
 export class PlanningService {
   private readonly budget = inject(BudgetService);
   private readonly tenant = inject(TenantService);
-  private readonly http   = inject(HttpClient);
+  private readonly recurrenceRules = inject(RecurrenceRulesService);
 
   getCurrentCycle(): Observable<BudgetCycleResponse> {
     return this.budget.getCurrentBudgetCycle();
@@ -70,24 +71,24 @@ export class PlanningService {
     return this.budget.unlinkBudgetItem(id);
   }
 
-  listRecurring(): Observable<RecurringBudgetItemResponse[]> {
-    return this.budget.listRecurringBudgetItems();
+  listRecurring(): Observable<RecurrenceRuleResponseDTO[]> {
+    return this.recurrenceRules.listRecurrenceRules();
   }
 
-  createRecurring(req: RecurringBudgetItemRequest): Observable<RecurringBudgetItemResponse> {
-    return this.budget.createRecurringBudgetItem(req);
+  createRecurring(req: RecurrenceRuleCreateDTO): Observable<RecurrenceRuleResponseDTO> {
+    return this.recurrenceRules.createRecurrenceRule(req);
   }
 
-  updateRecurring(id: string, req: RecurringBudgetItemRequest): Observable<RecurringBudgetItemResponse> {
-    return this.budget.updateRecurringBudgetItem(id, req);
+  updateRecurring(id: string, req: RecurrenceRulePatchDTO): Observable<RecurrenceRuleResponseDTO> {
+    return this.recurrenceRules.patchRecurrenceRule(id, req);
   }
 
   deleteRecurring(id: string): Observable<void> {
-    return this.budget.deleteRecurringBudgetItem(id);
+    return this.recurrenceRules.cancelRecurrenceRule(id);
   }
 
-  reactivateRecurring(id: string): Observable<RecurringBudgetItemResponse> {
-    return this.http.patch<RecurringBudgetItemResponse>(`/api/recurring-budget-items/${id}/reactivate`, {});
+  reactivateRecurring(id: string): Observable<RecurrenceRuleResponseDTO> {
+    return this.recurrenceRules.reactivateRecurrenceRule(id);
   }
 
   getSettings(): Observable<TenantSettingsPatchRequest> {
