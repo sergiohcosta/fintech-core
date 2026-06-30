@@ -34,9 +34,7 @@ import type {
   BudgetItemResponse,
   BudgetItemUpdateRequest,
   CloseBudgetCycleParams,
-  ListBudgetCyclesParams,
-  RecurringBudgetItemRequest,
-  RecurringBudgetItemResponse
+  ListBudgetCyclesParams
 } from '../fintechSaaSAPI.schemas';
 
 
@@ -572,136 +570,6 @@ export class BudgetService {
 
     return this.http.delete<TData>(
       `/api/budget-items/${id}/link`,{
-        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
-        observe: 'body',
-      }
-    );
-  }
- listRecurringBudgetItems<TData = RecurringBudgetItemResponse[]>( options?: HttpClientBodyOptions): Observable<TData>;
- listRecurringBudgetItems<TData = RecurringBudgetItemResponse[]>( options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
- listRecurringBudgetItems<TData = RecurringBudgetItemResponse[]>( options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
-  listRecurringBudgetItems<TData = RecurringBudgetItemResponse[]>(
-     options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
-    if (options?.observe === 'events') {
-      return this.http.get<TData>(
-      `/api/recurring-budget-items`,{
-        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
-        observe: 'events',
-      }
-    );
-    }
-
-    if (options?.observe === 'response') {
-      return this.http.get<TData>(
-      `/api/recurring-budget-items`,{
-        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
-        observe: 'response',
-      }
-    );
-    }
-
-    return this.http.get<TData>(
-      `/api/recurring-budget-items`,{
-        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
-        observe: 'body',
-      }
-    );
-  }
- createRecurringBudgetItem<TData = RecurringBudgetItemResponse>(recurringBudgetItemRequest: RecurringBudgetItemRequest, options?: HttpClientBodyOptions): Observable<TData>;
- createRecurringBudgetItem<TData = RecurringBudgetItemResponse>(recurringBudgetItemRequest: RecurringBudgetItemRequest, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
- createRecurringBudgetItem<TData = RecurringBudgetItemResponse>(recurringBudgetItemRequest: RecurringBudgetItemRequest, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
-  createRecurringBudgetItem<TData = RecurringBudgetItemResponse>(
-    recurringBudgetItemRequest: RecurringBudgetItemRequest, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
-    if (options?.observe === 'events') {
-      return this.http.post<TData>(
-      `/api/recurring-budget-items`,
-      recurringBudgetItemRequest,{
-        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
-        observe: 'events',
-      }
-    );
-    }
-
-    if (options?.observe === 'response') {
-      return this.http.post<TData>(
-      `/api/recurring-budget-items`,
-      recurringBudgetItemRequest,{
-        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
-        observe: 'response',
-      }
-    );
-    }
-
-    return this.http.post<TData>(
-      `/api/recurring-budget-items`,
-      recurringBudgetItemRequest,{
-        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
-        observe: 'body',
-      }
-    );
-  }
- updateRecurringBudgetItem<TData = RecurringBudgetItemResponse>(id: string,
-    recurringBudgetItemRequest: RecurringBudgetItemRequest, options?: HttpClientBodyOptions): Observable<TData>;
- updateRecurringBudgetItem<TData = RecurringBudgetItemResponse>(id: string,
-    recurringBudgetItemRequest: RecurringBudgetItemRequest, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
- updateRecurringBudgetItem<TData = RecurringBudgetItemResponse>(id: string,
-    recurringBudgetItemRequest: RecurringBudgetItemRequest, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
-  updateRecurringBudgetItem<TData = RecurringBudgetItemResponse>(
-    id: string,
-    recurringBudgetItemRequest: RecurringBudgetItemRequest, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
-    if (options?.observe === 'events') {
-      return this.http.put<TData>(
-      `/api/recurring-budget-items/${id}`,
-      recurringBudgetItemRequest,{
-        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
-        observe: 'events',
-      }
-    );
-    }
-
-    if (options?.observe === 'response') {
-      return this.http.put<TData>(
-      `/api/recurring-budget-items/${id}`,
-      recurringBudgetItemRequest,{
-        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
-        observe: 'response',
-      }
-    );
-    }
-
-    return this.http.put<TData>(
-      `/api/recurring-budget-items/${id}`,
-      recurringBudgetItemRequest,{
-        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
-        observe: 'body',
-      }
-    );
-  }
- deleteRecurringBudgetItem<TData = void>(id: string, options?: HttpClientBodyOptions): Observable<TData>;
- deleteRecurringBudgetItem<TData = void>(id: string, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
- deleteRecurringBudgetItem<TData = void>(id: string, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
-  deleteRecurringBudgetItem<TData = void>(
-    id: string, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
-    if (options?.observe === 'events') {
-      return this.http.delete<TData>(
-      `/api/recurring-budget-items/${id}`,{
-        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
-        observe: 'events',
-      }
-    );
-    }
-
-    if (options?.observe === 'response') {
-      return this.http.delete<TData>(
-      `/api/recurring-budget-items/${id}`,{
-        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
-        observe: 'response',
-      }
-    );
-    }
-
-    return this.http.delete<TData>(
-      `/api/recurring-budget-items/${id}`,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'body',
       }

@@ -86,7 +86,7 @@ Visualização alternativa das mesmas transações (consome `GET /api/transactio
 
 ## Recorrência (`/api/recurrence-rules`) — Motor de Recorrência (núcleo)
 
-GET (lista ativas) · POST (valida RRULE) · GET/{id} · PATCH/{id} (`description`+`baseAmount`) · DELETE/{id} (cancela: `status=CANCELLED`) · POST/{id}/occurrences/{date}/confirm · POST/{id}/occurrences/{date}/skip.
+GET (lista ativas) · POST (valida RRULE) · GET/{id} · PATCH/{id} (`description`+`baseAmount`) · DELETE/{id} (cancela: `status=CANCELLED`) · PATCH/{id}/reactivate (reativa: `CANCELLED→ACTIVE`) · POST/{id}/occurrences/{date}/confirm · POST/{id}/occurrences/{date}/skip.
 
 **Regra vs. Transação.** A `RecurrenceRule` é a definição atemporal (string RRULE / RFC 5545, expandida pela lib `org.dmfs:lib-recur`). A `Transaction` é o fato imutável, gravado **só** após confirmação. Nada é materializado antecipadamente.
 
@@ -100,7 +100,7 @@ GET (lista ativas) · POST (valida RRULE) · GET/{id} · PATCH/{id} (`descriptio
 
 **RRULE — subconjunto suportado:** `FREQ=MONTHLY|YEARLY`, `INTERVAL`, `BYMONTHDAY` (1..31 e `-1`=último dia), `UNTIL`, `COUNT`. `@ValidRrule` rejeita o resto (`BYDAY`/`BYSETPOS`/`BYWEEKNO`/`BYYEARDAY`/`BYHOUR`/`BYMINUTE`, e `FREQ` diário/semanal) → **400**. "Fim do mês" = `BYMONTHDAY=-1` (resolve 28/29 fev, 30 abr nativamente). Validação varre as chaves do rrule (o parser lax do lib-recur descarta partes inválidas no contexto).
 
-**Fora do núcleo (sub-projetos futuros):** migração do Planejamento p/ consumir a projeção (#2); pausa/retomada, edição "desta em diante", capping não-padrão 31→28, detach formal (#3); fantasma na timeline + simulador "E se...?" (#4). Parcelamento de cartão **permanece** em `InstallmentGroup`+`Invoice`. Spec: `docs/superpowers/specs/2026-06-25-motor-de-recorrencia-nucleo-design.md`.
+**Fora do núcleo (sub-projetos futuros):** pausa/retomada, edição "desta em diante", capping não-padrão 31→28, detach formal (#3); fantasma na timeline + simulador "E se...?" (#4). Parcelamento de cartão **permanece** em `InstallmentGroup`+`Invoice`. Spec: `docs/superpowers/specs/2026-06-25-motor-de-recorrencia-nucleo-design.md`.
 
 ## Transferências (`/api/transfers`)
 
@@ -137,11 +137,10 @@ AND t.status <> CANCELLED
 
 `totalAccountBalance`: `SUM(±amount) WHERE status=PAID AND account.countInLiquidBalance=true` (sem filtro de período).
 
-## Planejamento Mensal (`/api/{budget-cycles,budget-items,recurring-budget-items}` + `PATCH /api/tenant/settings`)
+## Planejamento Mensal (`/api/{budget-cycles,budget-items}` + `PATCH /api/tenant/settings`)
 
-- `BudgetCycle`: datas calculadas por `startDay` (1 → mês calendário; N → dia N do mês anterior até N-1 do atual). Sincroniza parcelas de cartão ao abrir.
-- `BudgetItem`: criação, update, link/unlink a transações (guard anti-duplicação).
-- `RecurringBudgetItem`: templates; `deactivate` = soft-delete (`active=false`).
+- `BudgetCycle`: datas calculadas por `startDay` (1 → mês calendário; N → dia N do mês anterior até N-1 do atual). Ao abrir, popula itens recorrentes via `RecurrenceProjectionService` (projeção on-the-fly das `RecurrenceRule` ativas) e parcelas de cartão do período.
+- `BudgetItem`: criação, update, link/unlink a transações (guard anti-duplicação). Itens `source=RECURRING` carregam `recurrenceRuleId` + `recurrenceOccurrenceDate` para rastreabilidade.
 
 **`openingBalance` (ao abrir):** `sumLiquidBalanceByTenant` = caixa líquido PAID **anterior** ao ciclo (`t.date < startDate`, contas `countInLiquidBalance=true`). O corte de data evita dupla contagem: transações dentro do período só entram via realizados/avulsas, nunca no opening.
 
@@ -151,12 +150,13 @@ AND t.status <> CANCELLED
 - `dailyAllowance` = `availableToSpend / dias restantes` (FLOOR 2 casas; 0 se ≤0 ou sem dias; null fora de OPEN).
 - `unplannedIncome/Expense` no DTO = **total** das avulsas (PAID+PENDING), para exibição; a lista de avulsas inclui PENDING com badge.
 - `BudgetItemResponse.transactionStatus`: status (PAID/PENDING) da transação vinculada — permite ao frontend distinguir realizado-em-caixa de realizado-pendente sem assumir `REALIZED = pago`.
+- `BudgetItemResponse.recurrenceRuleId` + `recurrenceOccurrenceDate`: presentes quando `source=RECURRING`; permitem ao frontend navegar para a regra ou exibir o slot canônico.
 
 **Frontend do Planejamento (ciclo atual):**
 - Cada card (Receitas, Despesas, Saldo, Disponível) tem ícone de "olho" → modal de composição (fórmula + itens contribuintes), montado de `BudgetSummaryService` no frontend a partir dos dados já carregados.
 - Cards atualizam em tempo real após mutações (refresh silencioso do ciclo, sem flash de loading).
 - Lista de não planejados: coluna de status (Pago/Pendente), ação "vincular a item planejado" e "criar item planejado" (cria + vincula à transação de origem).
-- Item de receita/despesa pode ser transformado em recorrente (template), com guard de deduplicação (avisa se já existe recorrente ativo de mesma descrição/tipo).
+- Aba "Recorrentes" gerencia `RecurrenceRule` diretamente (CRUD completo, incluindo reativação de regras canceladas) — a tabela `recurring_budget_items` foi removida (V21).
 
 ## Logging Estruturado (MDC)
 

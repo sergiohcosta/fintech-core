@@ -455,6 +455,10 @@ export interface BudgetItemResponse {
   transactionStatus?: TransactionStatus | null;
   /** @nullable */
   installmentGroupId?: string | null;
+  /** @nullable */
+  recurrenceRuleId?: string | null;
+  /** @nullable */
+  recurrenceOccurrenceDate?: string | null;
 }
 
 export interface BudgetCycleResponse {
@@ -491,38 +495,6 @@ export interface BudgetItemUpdateRequest {
 
 export interface BudgetItemLinkRequest {
   transactionId: string;
-}
-
-export interface RecurringBudgetItemRequest {
-  description: string;
-  amount: number;
-  type: TransactionType;
-  /**
-     * @minimum 1
-     * @maximum 28
-     */
-  dayOfMonth: number;
-  /** @nullable */
-  categoryId?: string | null;
-  /** @nullable */
-  accountId?: string | null;
-}
-
-export interface RecurringBudgetItemResponse {
-  id?: string;
-  description?: string;
-  amount?: number;
-  type?: TransactionType;
-  dayOfMonth?: number;
-  /** @nullable */
-  categoryId?: string | null;
-  /** @nullable */
-  categoryName?: string | null;
-  /** @nullable */
-  accountId?: string | null;
-  /** @nullable */
-  accountName?: string | null;
-  active?: boolean;
 }
 
 export interface TenantSettingsPatchRequest {

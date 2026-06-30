@@ -1116,3 +1116,9 @@ Authorization: Bearer {{token_carlos}}
 ### 10.6 Cancelar a regra (status → CANCELLED)
 DELETE http://localhost:8080/api/recurrence-rules/{{rule_spotify}}
 Authorization: Bearer {{token_carlos}}
+
+###
+
+### 10.7 Reativar recorrência cancelada
+PATCH http://localhost:8080/api/recurrence-rules/{{rule_spotify}}/reactivate
+Authorization: Bearer {{token_carlos}}

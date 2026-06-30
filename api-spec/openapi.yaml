@@ -747,6 +747,14 @@ components:
           type: string
           format: uuid
           nullable: true
+        recurrenceRuleId:
+          type: string
+          format: uuid
+          nullable: true
+        recurrenceOccurrenceDate:
+          type: string
+          format: date
+          nullable: true
 
     BudgetCycleResponse:
       type: object
@@ -827,62 +835,6 @@ components:
         transactionId:
           type: string
           format: uuid
-
-    RecurringBudgetItemRequest:
-      type: object
-      required: [description, amount, type, dayOfMonth]
-      properties:
-        description:
-          type: string
-        amount:
-          type: number
-          format: double
-        type:
-          $ref: '#/components/schemas/TransactionType'
-        dayOfMonth:
-          type: integer
-          minimum: 1
-          maximum: 28
-        categoryId:
-          type: string
-          format: uuid
-          nullable: true
-        accountId:
-          type: string
-          format: uuid
-          nullable: true
-
-    RecurringBudgetItemResponse:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        description:
-          type: string
-        amount:
-          type: number
-          format: double
-        type:
-          $ref: '#/components/schemas/TransactionType'
-        dayOfMonth:
-          type: integer
-        categoryId:
-          type: string
-          format: uuid
-          nullable: true
-        categoryName:
-          type: string
-          nullable: true
-        accountId:
-          type: string
-          format: uuid
-          nullable: true
-        accountName:
-          type: string
-          nullable: true
-        active:
-          type: boolean
 
     TenantSettingsPatchRequest:
       type: object
@@ -1916,76 +1868,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/BudgetItemResponse'
 
-  # --- Recurring Budget Items ---
-
-  /api/recurring-budget-items:
-    get:
-      tags: [budget]
-      operationId: listRecurringBudgetItems
-      responses:
-        '200':
-          description: Templates recorrentes ativos
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/RecurringBudgetItemResponse'
-    post:
-      tags: [budget]
-      operationId: createRecurringBudgetItem
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RecurringBudgetItemRequest'
-      responses:
-        '201':
-          description: Template criado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RecurringBudgetItemResponse'
-
-  /api/recurring-budget-items/{id}:
-    put:
-      tags: [budget]
-      operationId: updateRecurringBudgetItem
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RecurringBudgetItemRequest'
-      responses:
-        '200':
-          description: Template atualizado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RecurringBudgetItemResponse'
-    delete:
-      tags: [budget]
-      operationId: deleteRecurringBudgetItem
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '204':
-          description: Template desativado
-
   # --- Recorrência (Motor de Recorrência — núcleo) ---
 
   /api/recurrence-rules:
@@ -2073,6 +1955,27 @@ paths:
       responses:
         '204':
           description: Cancelada
+
+  /api/recurrence-rules/{id}/reactivate:
+    patch:
+      tags: [recurrence-rules]
+      operationId: reactivateRecurrenceRule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Regra reativada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecurrenceRuleResponseDTO'
+        '422':
+          description: Regra já está ativa
 
   /api/recurrence-rules/{id}/occurrences/{date}/confirm:
     post:

@@ -12,7 +12,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { finalize } from 'rxjs/operators';
 
 import { PlanningService } from '../planning.service';
-import { BudgetCycleResponse, BudgetCycleSummary, BudgetItemResponse, RecurringBudgetItemRequest, TransactionResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
+import { BudgetCycleResponse, BudgetCycleSummary, BudgetItemResponse, RecurrenceRuleCreateDTO, TransactionResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
 import { RecurringItemFormComponent } from '../recurring-item-form/recurring-item-form';
 import { DEFAULT_SUMMARY, findDuplicateRecurring } from './budget-cycle.utils';
 import { BudgetItemFormComponent, BudgetItemFormResult } from '../budget-item-form/budget-item-form';
@@ -166,18 +166,16 @@ export class BudgetCycleCurrentComponent implements OnInit {
     });
   }
 
-  // Cria um template recorrente a partir de um item do ciclo. Abre o form prefilled;
-  // dayOfMonth vem do dia do expectedDate, limitado a 28 (constraint do recorrente).
-  // Não altera o ciclo atual — o template só afeta ciclos futuros — então sem refresh.
+  // Cria uma regra de recorrência a partir de um item do ciclo.
+  // Abre o form de criação (sem prefill — o formulário novo exige campos como accountId e rrule
+  // que não estão disponíveis em BudgetItemResponse). O usuário preenche os campos obrigatórios.
+  // Não altera o ciclo atual — a regra só afeta ciclos futuros — então sem refresh.
   makeRecurring(item: BudgetItemResponse): void {
-    const day = item.expectedDate
-      ? Math.min(new Date(item.expectedDate + 'T00:00:00').getDate(), 28)
-      : 1;
     const ref = this.dialog.open(RecurringItemFormComponent, {
-      width: '460px',
-      data: { description: item.description, amount: item.amount, type: item.type, dayOfMonth: day },
+      width: '500px',
+      data: null,
     });
-    ref.afterClosed().subscribe((result?: RecurringBudgetItemRequest) => {
+    ref.afterClosed().subscribe((result?: RecurrenceRuleCreateDTO) => {
       if (!result) return;
       // Guard de deduplicação: avisa se já existe recorrente ativo com mesma descrição/tipo.
       this.planningService.listRecurring().subscribe(existing => {
@@ -199,12 +197,14 @@ export class BudgetCycleCurrentComponent implements OnInit {
         });
       });
     });
+    // Suprime aviso de variável não usada; item é mantido na assinatura para compatibilidade de template.
+    void item;
   }
 
-  private persistRecurring(result: RecurringBudgetItemRequest): void {
+  private persistRecurring(result: RecurrenceRuleCreateDTO): void {
     this.planningService.createRecurring(result).subscribe({
-      next: () => this.snackBar.open('Item recorrente criado.', 'OK', { duration: 2000 }),
-      error: () => this.snackBar.open('Erro ao criar recorrente.', 'OK', { duration: 3000 }),
+      next: () => this.snackBar.open('Regra de recorrência criada.', 'OK', { duration: 2000 }),
+      error: () => this.snackBar.open('Erro ao criar recorrência.', 'OK', { duration: 3000 }),
     });
   }
 
