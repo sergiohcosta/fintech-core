@@ -1,5 +1,5 @@
 -- V21: Migra recurring_budget_items → recurrence_rules (big bang).
--- Executa APÓS V16 (seed dev), que popula recurring_budget_items com dados da Família Costa.
+-- Executa APÓS V20 (seed dev), que popula recurring_budget_items com dados da Família Costa.
 -- Após esta migration, a tabela recurring_budget_items não existe mais.
 
 -- 1. Cria RecurrenceRule equivalente para cada RecurringBudgetItem.
