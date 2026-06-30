@@ -16,6 +16,9 @@
         <mat-icon>timeline</mat-icon>
         Linha do tempo
       </a>
+      <button mat-icon-button (click)="exportCsv()" matTooltip="Exportar CSV">
+        <mat-icon>download</mat-icon>
+      </button>
       <button mat-flat-button color="primary" routerLink="/transactions/new">
         <mat-icon>add</mat-icon>
         Nova Transação
