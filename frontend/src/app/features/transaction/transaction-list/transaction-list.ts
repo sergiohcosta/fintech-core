@@ -23,6 +23,7 @@ import { TransactionFiltersComponent } from './transaction-filters/transaction-f
 import { TransactionFilters, DEFAULT_FILTERS, currentMonthFilters, TransactionType, TransactionStatus } from './transaction-filters/transaction-filters.types';
 import { buildDisplayRows, InstallmentGroupInfo, DisplayRow, InvoiceSummaryRow, resolveMonthKey, formatMonthLabel, SortCol, SortCriterion, applySort, getSortInfo, isGhost, exportToCsv } from './transaction-list.utils';
 import { RecurrenceService } from '../../../core/services/recurrence.service';
+import { triggerCsvDownload } from '../../../core/csv.utils';
 export { buildDisplayRows } from './transaction-list.utils';
 export type { InstallmentGroupInfo, DisplayRow, InvoiceSummaryRow, SortCriterion } from './transaction-list.utils';
 
@@ -411,14 +412,7 @@ export class TransactionList implements OnInit {
   exportCsv(): void {
     const reais = this.filteredTransactions().filter(t => !isGhost(t));
     const csv   = exportToCsv(reais);
-    const blob  = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
-    const url   = URL.createObjectURL(blob);
-    const a     = Object.assign(document.createElement('a'), {
-      href: url,
-      download: `transacoes-${new Date().toISOString().slice(0, 10)}.csv`,
-    });
-    a.click();
-    URL.revokeObjectURL(url);
+    triggerCsvDownload(csv, `transacoes-${new Date().toISOString().slice(0, 10)}.csv`);
   }
 
   invoiceChipClass(status: string | undefined): string {

@@ -1,4 +1,5 @@
 import { TransactionResponseDTO, InvoiceResponseDTO, InvoiceStatus } from '../../../core/api/fintechSaaSAPI.schemas';
+import { csvField } from '../../../core/csv.utils';
 
 export type InstallmentGroupInfo = {
   groupId: string;
@@ -363,15 +364,6 @@ export function getSortInfo(
 // --- CSV Export ---
 
 const MONTH_ABBR_PT = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-
-// Escapa campo CSV segundo RFC 4180: se contém `;`, `"` ou `\n`, envolve em aspas duplas e duplica aspas internas.
-function csvField(value: string | null | undefined): string {
-  const v = value ?? '';
-  if (v.includes(';') || v.includes('"') || v.includes('\n')) {
-    return '"' + v.replace(/"/g, '""') + '"';
-  }
-  return v;
-}
 
 export function exportToCsv(transactions: TransactionResponseDTO[]): string {
   const TYPE_LABEL: Record<string, string> = { INCOME: 'Receita', EXPENSE: 'Despesa' };
