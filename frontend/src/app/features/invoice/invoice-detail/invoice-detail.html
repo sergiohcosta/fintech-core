@@ -14,6 +14,9 @@
       </div>
       <div class="header-actions">
         <span [class]="statusChipClass(inv.status)">{{ statusLabel(inv.status) }}</span>
+        <button mat-icon-button (click)="exportCsv()" matTooltip="Exportar CSV">
+          <mat-icon>download</mat-icon>
+        </button>
         @if (inv.status === InvoiceStatus.OPEN) {
           <button mat-flat-button color="accent" (click)="onClose()">
             <mat-icon>lock</mat-icon>
