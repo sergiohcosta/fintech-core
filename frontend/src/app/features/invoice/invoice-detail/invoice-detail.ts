@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { InvoicesService } from '../../../core/api/invoices/invoices.service';
 import { TransactionsService } from '../../../core/api/transactions/transactions.service';
@@ -16,7 +17,8 @@ import {
 } from '../../../core/api/fintechSaaSAPI.schemas';
 import { ConfirmationDialogComponent } from '../../../components/confirmation-dialog/confirmation-dialog';
 import { InvoicePayDialogComponent, InvoicePayDialogResult } from '../invoice-pay-dialog/invoice-pay-dialog';
-import { computeBreakdown, CategoryBreakdownRow } from './invoice-detail.utils';
+import { computeBreakdown, CategoryBreakdownRow, exportInvoiceToCsv } from './invoice-detail.utils';
+import { triggerCsvDownload } from '../../../core/csv.utils';
 
 @Component({
   selector: 'app-invoice-detail',
@@ -24,7 +26,7 @@ import { computeBreakdown, CategoryBreakdownRow } from './invoice-detail.utils';
   imports: [
     CommonModule, CurrencyPipe, DatePipe,
     MatTableModule, MatButtonModule, MatIconModule,
-    MatCardModule, MatSnackBarModule, MatDialogModule
+    MatCardModule, MatSnackBarModule, MatDialogModule, MatTooltipModule
   ],
   templateUrl: './invoice-detail.html',
   styleUrl: './invoice-detail.scss'
@@ -129,6 +131,14 @@ export class InvoiceDetail implements OnInit {
         error: () => this.snackBar.open('Erro ao pagar fatura.', 'Fechar', { duration: 5000 })
       });
     });
+  }
+
+  exportCsv(): void {
+    const inv = this.invoice();
+    if (!inv) return;
+    const csv = exportInvoiceToCsv([...this.installmentTxs(), ...this.regularTxs()]);
+    const mes = String(inv.referenceMonth).padStart(2, '0');
+    triggerCsvDownload(csv, `fatura-${inv.accountName.replace(/\s+/g, '-')}-${inv.referenceYear}-${mes}.csv`);
   }
 
   statusChipClass(status: string): string {
