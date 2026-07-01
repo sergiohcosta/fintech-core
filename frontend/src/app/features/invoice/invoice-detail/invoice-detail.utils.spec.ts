@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeBreakdown } from './invoice-detail.utils';
+import { computeBreakdown, exportInvoiceToCsv } from './invoice-detail.utils';
 import { TransactionResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
 
 const makeTransaction = (overrides: Partial<TransactionResponseDTO>): TransactionResponseDTO => ({
@@ -90,5 +90,78 @@ describe('computeBreakdown', () => {
     expect(result).toHaveLength(2);
     expect(result.find(r => r.categoryPath === 'Pets → Ração')?.count).toBe(2);
     expect(result.find(r => r.categoryPath === 'Pets → Veterinário')?.count).toBe(1);
+  });
+});
+
+describe('exportInvoiceToCsv', () => {
+  it('gera cabeçalho e linha com campos corretos', () => {
+    const csv = exportInvoiceToCsv([
+      makeTransaction({
+        id: 't1', description: 'Netflix', amount: 45.9, date: '2026-06-15',
+        type: 'EXPENSE', status: 'PAID', categoryPath: 'Lazer → Streaming', installmentLabel: null
+      })
+    ]);
+    const [header, row] = csv.split('\n');
+    expect(header).toBe('Data;Descrição;Valor;Tipo;Status;Categoria;Parcela');
+    expect(row).toBe('15/06/2026;Netflix;45,90;Despesa;Pago;Lazer → Streaming;');
+  });
+
+  it('usa categoryName quando categoryPath é null', () => {
+    const csv = exportInvoiceToCsv([
+      makeTransaction({ id: 't2', categoryPath: null, categoryName: 'Alimentação' })
+    ]);
+    const cols = csv.split('\n')[1].split(';');
+    expect(cols[5]).toBe('Alimentação');
+  });
+
+  it('deixa Categoria vazia quando categoryPath e categoryName são null', () => {
+    const csv = exportInvoiceToCsv([
+      makeTransaction({ id: 't3', categoryPath: null, categoryName: null })
+    ]);
+    const cols = csv.split('\n')[1].split(';');
+    expect(cols[5]).toBe('');
+  });
+
+  it('usa installmentLabel na coluna Parcela quando presente', () => {
+    const csv = exportInvoiceToCsv([
+      makeTransaction({ id: 't4', installmentLabel: '2/6' })
+    ]);
+    const cols = csv.split('\n')[1].split(';');
+    expect(cols[6]).toBe('2/6');
+  });
+
+  it('deixa Parcela vazia quando installmentLabel é null', () => {
+    const csv = exportInvoiceToCsv([
+      makeTransaction({ id: 't5', installmentLabel: null })
+    ]);
+    const cols = csv.split('\n')[1].split(';');
+    expect(cols[6]).toBe('');
+  });
+
+  it('escapa Descrição com ponto-e-vírgula em aspas duplas (RFC 4180)', () => {
+    const csv = exportInvoiceToCsv([
+      makeTransaction({ id: 't6', description: 'A; B' })
+    ]);
+    const row = csv.split('\n')[1];
+    expect(row).toContain('"A; B"');
+  });
+
+  it('inclui transação CANCELLED com Status=Cancelado', () => {
+    const csv = exportInvoiceToCsv([
+      makeTransaction({ id: 't7', status: 'CANCELLED' })
+    ]);
+    const cols = csv.split('\n')[1].split(';');
+    expect(cols[4]).toBe('Cancelado');
+  });
+
+  it('gera uma linha por transação, preservando a ordem', () => {
+    const csv = exportInvoiceToCsv([
+      makeTransaction({ id: 't8', description: 'Primeira' }),
+      makeTransaction({ id: 't9', description: 'Segunda' })
+    ]);
+    const lines = csv.split('\n');
+    expect(lines).toHaveLength(3);
+    expect(lines[1]).toContain('Primeira');
+    expect(lines[2]).toContain('Segunda');
   });
 });
