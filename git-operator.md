@@ -8,7 +8,10 @@
 - PRs devem ser o mais cumulativos possível: agrupar issues relacionadas da mesma sessão em uma única PR em vez de abrir uma por issue
 - PRs sempre apontam para `main` e partem de `develop` (o fluxo é `feature → develop → PR → main`)
 - Nunca fazer merge de `develop` → `main` diretamente; sempre via PR com revisão
-- Deletar branches e worktrees locais após o merge em `develop` para manter o repositório limpo
+- Deletar branches e worktrees locais após o merge em `develop` para manter o repositório limpo (`./scripts/clean-worktrees.sh` automatiza; sempre rodar a partir da raiz estável — nunca com cwd dentro da worktree que será removida)
+- **Spec e plano SDD são commitados na `develop` ANTES de criar a worktree** (ou escritos já dentro dela). Worktree criada antes do commit do plano não enxerga o arquivo e trava a execução.
+- Worktrees criadas pela ferramenta nativa do Claude Code vivem em `.claude/worktrees/` — local aceito, equivalente a `.worktrees/`. Ambos são ignorados pelo git.
+- Em worktrees, comandos git sempre com path absoluto ou `git -C <raiz-da-worktree>` — o cwd do shell reseta entre comandos e paths relativos duplicados (`backend/backend/...`) são o erro mais repetido nas sessões.
 
 **Fluxo padrão:**
 # 1. Vá para a pasta base estável

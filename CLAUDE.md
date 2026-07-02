@@ -108,6 +108,18 @@ Ocultar no frontend **não substitui** proteção no backend. O frontend é cont
 
 **Exemplo concreto (issue #24):** `GET /api/members` e `GET /invites` são exclusivos de ADMIN — protegidos em `SecurityConfigurations.java` com `hasRole("ADMIN")` **e** ocultos no frontend via `isAdmin()` no sidenav e no `forkJoin` do `TeamComponent`.
 
+### Gotchas Operacionais de Agente
+
+Regras extraídas de auditoria de sessões — cada uma causou loops reais de tentativa-erro:
+
+- **Testes de componente frontend:** rodar via `npm test` / `ng test --watch=false`, **nunca** `npx vitest` cru (specs de componente quebram fora do builder Angular). Preferir `./scripts/test-summary.sh frontend`.
+- **Suíte backend demora >7 min:** rodar `./mvnw test` em background ou usar `./scripts/test-summary.sh backend`; para feedback rápido, `-Dtest=ClasseEspecifica`. Nunca bloquear a sessão esperando a suíte no foreground.
+- **cwd não persiste entre comandos Bash:** usar sempre paths absolutos, `git -C /caminho/da/worktree ...` e `./mvnw -f backend/pom.xml`. Nunca prefixar paths já relativos ao cwd (gera `backend/backend/...`).
+- **Codegen OpenAPI:** após editar `api-spec/openapi.yaml`, rodar `./scripts/api-sync.sh` (faz cópia + generate-sources + orval + remove `auth.service.ts` regenerado). Não executar os passos manualmente.
+- **Baseline verde:** antes de iniciar um plano SDD, rodar a suíte; falha pré-existente → abrir issue imediatamente, não tolerar "idêntico ao baseline" por 7 tasks.
+- **Retomada de sessão** ("continue", "retome"): antes de agir, ler `git worktree list`, o ledger de progresso do plano (`docs/superpowers/plans/` / `.superpowers/`) e `git log develop..HEAD` da worktree ativa.
+- **SonarQube:** o MCP só lê issues; quality gate e medidas sempre via `curl` com `SONAR_TOKEN` do `.env` (token `sqa_`). Não re-tentar tools do MCP que retornam `Insufficient privileges`.
+
 ### Dataset de Testes - @dataset.md
 
 ---
