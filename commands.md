@@ -23,6 +23,14 @@ npm test                      # Run Vitest
 npm run api:generate          # Regenerate API client from OpenAPI spec
 ```
 
+### Scripts de Agente (atalhos anti-fricção)
+```bash
+./scripts/api-sync.sh              # Pipeline completo do contrato: spec → static → generate-sources → orval → limpa auth.service.ts
+./scripts/test-summary.sh          # Roda backend + frontend e imprime só o resumo agregado (logs em /tmp)
+./scripts/test-summary.sh backend  # Só Maven/surefire (a suíte completa demora >7 min)
+./scripts/clean-worktrees.sh       # Lista/remove worktrees órfãs com confirmação (rodar da raiz estável)
+```
+
 ### Análise de Código (SonarQube)
 
 Instância local do SonarQube Community. Pré-requisito: `SONAR_TOKEN` no `.env`
