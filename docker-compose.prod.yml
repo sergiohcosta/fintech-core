@@ -1,0 +1,53 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: fintech-postgres-prod
+    environment:
+      - POSTGRES_DB=fintech
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./.docker/postgres-prod-data:/var/lib/postgresql/data
+    networks:
+      - fintech-prod-net
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: fintech-backend-prod
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev # Ativa perfil dev nos containers locais para rodar os seeds automaticamente
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/fintech
+      - SPRING_DATASOURCE_USERNAME=admin
+      - SPRING_DATASOURCE_PASSWORD=secret
+      - JWT_SECRET=dev-secret-key-not-for-production
+      - CORS_ALLOWED_ORIGINS=http://localhost,http://localhost:80
+      - PORT=8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    networks:
+      - fintech-prod-net
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: fintech-frontend-prod
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - fintech-prod-net
+    restart: unless-stopped
+
+networks:
+  fintech-prod-net:
+    driver: bridge
