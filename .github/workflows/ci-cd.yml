@@ -84,26 +84,24 @@ jobs:
       # encontra a imagem normalmente.
       REGISTRY_INTERNAL: registry.infra.svc.cluster.local:5000
       SHA_TAG: sha-${{ github.sha }}
-      # vfs em vez do overlay padrão: a raiz do pod do runner já é overlayfs
-      # (containerd) e buildah não empilha overlay-sobre-overlay sem
-      # fuse-overlayfs (que exigiria /dev/fuse + capability extra no pod,
-      # contradizendo o motivo de evitar privilégio). vfs não precisa de
-      # nenhum device especial — só copia camadas em vez de usar overlay,
-      # mais lento e mais disco. Aceitável no volume de builds do projeto;
-      # trocar por fuse-overlayfs só se isso virar gargalo real.
-      STORAGE_DRIVER: vfs
     steps:
       - uses: actions/checkout@v4
-      - name: Instala buildah
-        run: sudo apt-get update -y && sudo apt-get install -y buildah
-      - name: Build backend
-        run: buildah bud -f backend/Dockerfile -t fintech-core-backend:$SHA_TAG .
-      - name: Build frontend
-        run: buildah bud -f frontend/Dockerfile -t fintech-core-frontend:$SHA_TAG .
-      - name: Push backend
-        run: buildah push --tls-verify=false fintech-core-backend:$SHA_TAG docker://$REGISTRY_INTERNAL/fintech-core-backend:$SHA_TAG
-      - name: Push frontend
-        run: buildah push --tls-verify=false fintech-core-frontend:$SHA_TAG docker://$REGISTRY_INTERNAL/fintech-core-frontend:$SHA_TAG
+      # buildah/podman precisam de CAP_SYS_ADMIN (remount de propagação de
+      # mount pro overlay/vfs) — indisponível no pod do runner de propósito
+      # (é o motivo de termos self-hosted com RBAC restrito em vez de
+      # kubeconfig solto). Kaniko builda em userspace puro (unpack de layer
+      # via tar, nunca chama mount()) — zero capability extra. Sem daemon
+      # Docker no runner, então buscamos só o binário `executor` de dentro
+      # da imagem oficial via `crane export` (achata a imagem num tar,
+      # também userspace) em vez de baixar/rodar a imagem inteira.
+      - name: Instala crane
+        run: curl -sL https://github.com/google/go-containerregistry/releases/download/v0.21.7/go-containerregistry_Linux_x86_64.tar.gz | tar -xz -C /usr/local/bin crane
+      - name: Instala kaniko executor
+        run: crane export gcr.io/kaniko-project/executor:v1.24.0 - | tar -x -C /tmp kaniko/executor && sudo mv /tmp/kaniko/executor /usr/local/bin/kaniko-executor && sudo chmod +x /usr/local/bin/kaniko-executor
+      - name: Build & push backend
+        run: kaniko-executor --dockerfile=backend/Dockerfile --context=dir://${{ github.workspace }} --destination=$REGISTRY_INTERNAL/fintech-core-backend:$SHA_TAG --insecure
+      - name: Build & push frontend
+        run: kaniko-executor --dockerfile=frontend/Dockerfile --context=dir://${{ github.workspace }} --destination=$REGISTRY_INTERNAL/fintech-core-frontend:$SHA_TAG --insecure
 
   # Deploy via kubectl no próprio runner (client-go cai pra InClusterConfig
   # automaticamente — sem kubeconfig nenhum, só o token da ServiceAccount
