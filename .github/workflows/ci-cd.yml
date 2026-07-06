@@ -59,6 +59,148 @@ jobs:
       - name: Build de produção
         run: npm run build -- --configuration=production
 
-  # Deploy: Railway e Netlify fazem auto-deploy via GitHub ao detectar push em main.
-  # O portão de qualidade é o branch protection no GitHub — merge em main só é
-  # permitido quando os jobs test-backend e test-frontend estiverem verdes.
+  # Build das imagens (backend + frontend) e push pro registry do homelab
+  # (infra/registry, exposto via tailscale ingress). Roda no runner
+  # self-hosted (dentro do k3s) — nunca em runner hospedado, pra não expor
+  # kubeconfig em nenhum segredo do GitHub.
+  build-and-push:
+    name: Build & Push das imagens
+    needs: [test-backend, test-frontend]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
+    runs-on: [self-hosted, k3s]
+    env:
+      # REGISTRY: hostname usado pelos manifests/kubelet pra *pull* (via
+      # tailscale ingress, TLS válido) — precisa bater com o que o
+      # deployment.yaml e o `kustomize edit set image` (job de deploy)
+      # esperam.
+      REGISTRY: registry.atlas-haddock.ts.net
+      # REGISTRY_INTERNAL: usado só pelo *push* — verificado que o pod do
+      # runner não resolve o hostname MagicDNS do tailscale (CoreDNS não
+      # encaminha pro resolver dele), então o push usa o Service
+      # cluster-local direto, em HTTP (--tls-verify=false; tráfego nunca
+      # sai da rede do cluster). O nome do repo:tag armazenado é o mesmo
+      # nos dois casos — o registry indexa por repo:tag, não pelo
+      # hostname usado pra alcançá-lo — então o pull via REGISTRY externo
+      # encontra a imagem normalmente.
+      REGISTRY_INTERNAL: registry.infra.svc.cluster.local:5000
+      SHA_TAG: sha-${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instala buildah
+        run: sudo apt-get update -y && sudo apt-get install -y buildah
+      - name: Build backend
+        run: buildah bud -f backend/Dockerfile -t fintech-core-backend:$SHA_TAG .
+      - name: Build frontend
+        run: buildah bud -f frontend/Dockerfile -t fintech-core-frontend:$SHA_TAG .
+      - name: Push backend
+        run: buildah push --tls-verify=false fintech-core-backend:$SHA_TAG docker://$REGISTRY_INTERNAL/fintech-core-backend:$SHA_TAG
+      - name: Push frontend
+        run: buildah push --tls-verify=false fintech-core-frontend:$SHA_TAG docker://$REGISTRY_INTERNAL/fintech-core-frontend:$SHA_TAG
+
+  # Deploy via kubectl no próprio runner (client-go cai pra InClusterConfig
+  # automaticamente — sem kubeconfig nenhum, só o token da ServiceAccount
+  # montado no pod). RBAC de gha-runner (homelab-k8s/infra/gha-runner/rbac.yaml)
+  # restringe o alcance só ao namespace do ambiente.
+  deploy-dev:
+    name: Deploy (dev)
+    needs: build-and-push
+    if: github.ref == 'refs/heads/develop'
+    runs-on: [self-hosted, k3s]
+    env:
+      REGISTRY: registry.atlas-haddock.ts.net
+      SHA_TAG: sha-${{ github.sha }}
+    steps:
+      - name: Gera token do GitHub App pra checkout do homelab-k8s
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          repositories: homelab-k8s
+      - uses: actions/checkout@v4
+        with:
+          repository: sergiohcosta/homelab-k8s
+          token: ${{ steps.app-token.outputs.token }}
+      - uses: azure/setup-kubectl@v4
+      - name: Instala kustomize
+        run: curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash /dev/stdin /usr/local/bin
+      - name: Aponta as imagens da run e aplica o overlay
+        working-directory: projects/fintech-core/overlays/dev
+        run: |
+          kustomize edit set image \
+            $REGISTRY/fintech-core-backend=$REGISTRY/fintech-core-backend:$SHA_TAG \
+            $REGISTRY/fintech-core-frontend=$REGISTRY/fintech-core-frontend:$SHA_TAG
+          kubectl apply -k .
+      - name: Reinicia os deployments
+        run: |
+          kubectl rollout restart deployment/fintech-core-backend deployment/fintech-core-frontend -n dev
+
+  deploy-hmg:
+    name: Deploy (hmg)
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, k3s]
+    env:
+      REGISTRY: registry.atlas-haddock.ts.net
+      SHA_TAG: sha-${{ github.sha }}
+    steps:
+      - name: Gera token do GitHub App pra checkout do homelab-k8s
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          repositories: homelab-k8s
+      - uses: actions/checkout@v4
+        with:
+          repository: sergiohcosta/homelab-k8s
+          token: ${{ steps.app-token.outputs.token }}
+      - uses: azure/setup-kubectl@v4
+      - name: Instala kustomize
+        run: curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash /dev/stdin /usr/local/bin
+      - name: Aponta as imagens da run e aplica o overlay
+        working-directory: projects/fintech-core/overlays/hmg
+        run: |
+          kustomize edit set image \
+            $REGISTRY/fintech-core-backend=$REGISTRY/fintech-core-backend:$SHA_TAG \
+            $REGISTRY/fintech-core-frontend=$REGISTRY/fintech-core-frontend:$SHA_TAG
+          kubectl apply -k .
+      - name: Reinicia os deployments
+        run: |
+          kubectl rollout restart deployment/fintech-core-backend deployment/fintech-core-frontend -n hmg
+
+  # Sem gate manual: main já é protegida por PR review, esse é o portão real.
+  # Roda em sequência (needs: deploy-hmg) na mesma run, não em paralelo.
+  deploy-prod:
+    name: Deploy (prod)
+    needs: deploy-hmg
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, k3s]
+    env:
+      REGISTRY: registry.atlas-haddock.ts.net
+      SHA_TAG: sha-${{ github.sha }}
+    steps:
+      - name: Gera token do GitHub App pra checkout do homelab-k8s
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          repositories: homelab-k8s
+      - uses: actions/checkout@v4
+        with:
+          repository: sergiohcosta/homelab-k8s
+          token: ${{ steps.app-token.outputs.token }}
+      - uses: azure/setup-kubectl@v4
+      - name: Instala kustomize
+        run: curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash /dev/stdin /usr/local/bin
+      - name: Aponta as imagens da run e aplica o overlay
+        working-directory: projects/fintech-core/overlays/prod
+        run: |
+          kustomize edit set image \
+            $REGISTRY/fintech-core-backend=$REGISTRY/fintech-core-backend:$SHA_TAG \
+            $REGISTRY/fintech-core-frontend=$REGISTRY/fintech-core-frontend:$SHA_TAG
+          kubectl apply -k .
+      - name: Reinicia os deployments
+        run: |
+          kubectl rollout restart deployment/fintech-core-backend deployment/fintech-core-frontend -n prod
