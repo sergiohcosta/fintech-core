@@ -1,0 +1,9 @@
+node_modules/
+.angular/
+dist/
+coverage/
+.scannerwork/
+.git/
+.gitignore
+.editorconfig
+.vscode/
