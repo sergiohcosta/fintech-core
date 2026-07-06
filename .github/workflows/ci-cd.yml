@@ -84,6 +84,14 @@ jobs:
       # encontra a imagem normalmente.
       REGISTRY_INTERNAL: registry.infra.svc.cluster.local:5000
       SHA_TAG: sha-${{ github.sha }}
+      # vfs em vez do overlay padrão: a raiz do pod do runner já é overlayfs
+      # (containerd) e buildah não empilha overlay-sobre-overlay sem
+      # fuse-overlayfs (que exigiria /dev/fuse + capability extra no pod,
+      # contradizendo o motivo de evitar privilégio). vfs não precisa de
+      # nenhum device especial — só copia camadas em vez de usar overlay,
+      # mais lento e mais disco. Aceitável no volume de builds do projeto;
+      # trocar por fuse-overlayfs só se isso virar gargalo real.
+      STORAGE_DRIVER: vfs
     steps:
       - uses: actions/checkout@v4
       - name: Instala buildah
