@@ -99,9 +99,9 @@ jobs:
       - name: Instala kaniko executor
         run: crane export gcr.io/kaniko-project/executor:v1.24.0 - | tar -x -C /tmp kaniko/executor && sudo mv /tmp/kaniko/executor /usr/local/bin/kaniko-executor && sudo chmod +x /usr/local/bin/kaniko-executor
       - name: Build & push backend
-        run: kaniko-executor --dockerfile=backend/Dockerfile --context=dir://${{ github.workspace }} --destination=$REGISTRY_INTERNAL/fintech-core-backend:$SHA_TAG --insecure
+        run: kaniko-executor --dockerfile=backend/Dockerfile --context=dir://${{ github.workspace }} --destination=$REGISTRY_INTERNAL/fintech-core-backend:$SHA_TAG --insecure --snapshot-mode=redo --compressed-caching=false
       - name: Build & push frontend
-        run: kaniko-executor --dockerfile=frontend/Dockerfile --context=dir://${{ github.workspace }} --destination=$REGISTRY_INTERNAL/fintech-core-frontend:$SHA_TAG --insecure
+        run: kaniko-executor --dockerfile=frontend/Dockerfile --context=dir://${{ github.workspace }} --destination=$REGISTRY_INTERNAL/fintech-core-frontend:$SHA_TAG --insecure --snapshot-mode=redo --compressed-caching=false
 
   # Deploy via kubectl no próprio runner (client-go cai pra InClusterConfig
   # automaticamente — sem kubeconfig nenhum, só o token da ServiceAccount
