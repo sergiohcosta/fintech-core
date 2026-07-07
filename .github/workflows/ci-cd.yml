@@ -86,6 +86,21 @@ jobs:
       SHA_TAG: sha-${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
+      # Backend via Jib (plugin Maven): builda direto do bytecode compilado,
+      # sem Dockerfile/daemon/mount() — kaniko deixou de ser necessário aqui
+      # (era só pra contornar a falta de daemon Docker; Jib resolve isso
+      # nativamente). backend/Dockerfile continua existindo só pro
+      # Render/docker-compose.prod, não é mais usado neste pipeline.
+      - name: Configura JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+      - name: Build & push backend (Jib)
+        working-directory: ./backend
+        run: ./mvnw -B compile jib:build -Dimage=$REGISTRY_INTERNAL/fintech-core-backend:$SHA_TAG
       # buildah/podman precisam de CAP_SYS_ADMIN (remount de propagação de
       # mount pro overlay/vfs) — indisponível no pod do runner de propósito
       # (é o motivo de termos self-hosted com RBAC restrito em vez de
@@ -93,19 +108,15 @@ jobs:
       # via tar, nunca chama mount()) — zero capability extra. Sem daemon
       # Docker no runner, então buscamos só o binário `executor` de dentro
       # da imagem oficial via `crane export` (achata a imagem num tar,
-      # também userspace) em vez de baixar/rodar a imagem inteira.
+      # também userspace) em vez de baixar/rodar a imagem inteira. Frontend
+      # continua no kaniko (Jib só builda Java) — BuildKit rootless foi
+      # testado e descartado: bate na mesma parede de CAP_SYS_ADMIN do
+      # buildah nesse kernel/containerd (RootlessKit não consegue privatizar
+      # o mount de "/", que pertence ao userns do host, não ao novo).
       - name: Instala crane
         run: curl -sL https://github.com/google/go-containerregistry/releases/download/v0.21.7/go-containerregistry_Linux_x86_64.tar.gz | tar -xz -C /usr/local/bin crane
       - name: Instala kaniko executor
         run: crane export gcr.io/kaniko-project/executor:v1.24.0 - | tar -x -C /tmp kaniko/executor && sudo mv /tmp/kaniko/executor /usr/local/bin/kaniko-executor && sudo chmod +x /usr/local/bin/kaniko-executor
-      - name: Build & push backend
-        # ulimit -n: soft limit do pod vem em 1024 (hard = 524288); kaniko
-        # abre muitos fds simultâneos no snapshot/unpack de layer e estoura
-        # isso ("too many open files") bem antes de chegar no teto de
-        # memória. Não precisa de privilégio pra subir até o hard limit.
-        run: |
-          ulimit -n 65536
-          kaniko-executor --dockerfile=backend/Dockerfile --context=dir://${{ github.workspace }} --destination=$REGISTRY_INTERNAL/fintech-core-backend:$SHA_TAG --insecure --snapshot-mode=redo --compressed-caching=false
       - name: Build & push frontend
         run: |
           ulimit -n 65536
