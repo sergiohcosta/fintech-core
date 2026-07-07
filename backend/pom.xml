@@ -272,6 +272,31 @@
 				<artifactId>sonar-maven-plugin</artifactId>
 				<version>5.1.0.4751</version>
 			</plugin>
+
+			<!-- Jib: builda e publica a imagem OCI direto do bytecode compilado,
+			     sem Dockerfile, sem daemon Docker e sem mount() nenhum (diferença
+			     central pro kaniko: nem precisa simular filesystem em userspace).
+			     Usado só pelo pipeline k3s (`-Dimage=` via CLI); backend/Dockerfile
+			     continua existindo pro Render/docker-compose.prod. -->
+			<plugin>
+				<groupId>com.google.cloud.tools</groupId>
+				<artifactId>jib-maven-plugin</artifactId>
+				<version>3.4.4</version>
+				<configuration>
+					<from>
+						<image>eclipse-temurin:21-jre-alpine</image>
+					</from>
+					<to>
+						<image>fintech-core-backend</image>
+					</to>
+					<container>
+						<ports>
+							<port>8080</port>
+						</ports>
+					</container>
+					<allowInsecureRegistries>true</allowInsecureRegistries>
+				</configuration>
+			</plugin>
 		</plugins>
 	</build>
 
