@@ -19,10 +19,14 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
 
     // Retorna (Invoice, totalAmount, transactionCount) em uma única query com GROUP BY,
     // eliminando o N+1 que ocorre ao chamar sumAmountByInvoice + countByInvoice por fatura.
+    // totalAmount é líquido: EXPENSE soma, INCOME (estorno/reembolso) abate — mesma regra de sumAmountByInvoice.
     @Query("""
             SELECT i,
-                   COALESCE(SUM(CASE WHEN t.status <> com.fintech.api.domain.enums.TransactionStatus.CANCELLED
-                                     THEN t.amount ELSE 0 END), 0),
+                   COALESCE(SUM(
+                       CASE WHEN t.status = com.fintech.api.domain.enums.TransactionStatus.CANCELLED THEN 0
+                            WHEN t.type = com.fintech.api.domain.enums.TransactionType.INCOME THEN -t.amount
+                            ELSE t.amount END
+                   ), 0),
                    COUNT(t.id)
             FROM Invoice i
             LEFT JOIN Transaction t ON t.invoice = i
