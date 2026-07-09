@@ -49,6 +49,35 @@ Opcional: o hook `.githooks/post-merge` lembra (ou roda) a análise a cada merge
 `develop`. Ativar uma vez: `git config core.hooksPath .githooks`. Por padrão só lembra;
 para auto-scan em background, defina `SONAR_AUTO_SCAN=1` no `.env` (pesa — `mvn verify`).
 
+### Deploy manual (prod)
+
+`deploy-hmg` dispara automático em todo merge de PR em `main`. `deploy-prod` roda na
+mesma run (`needs: deploy-hmg`, mesmo `SHA_TAG` já validado em hmg) mas **pausa**
+aguardando aprovação — gate via GitHub Environment `prod` (Settings → Environments →
+`prod` → Required reviewers, restrito a branches protegidas). Sem aprovação, o job
+fica `Waiting` indefinidamente.
+
+**Aprovar pela UI:** aba *Actions* do repo → run em andamento → clique em
+*Review deployments* → marca `prod` → *Approve and deploy*.
+
+**Aprovar via `gh` (CLI):**
+```bash
+# 1. Descobre o run_id da run pendente (branch main, evento push, status aguardando)
+gh run list --branch main --limit 5
+
+# 2. Descobre o environment_id do "prod" (id fixo do repo, não muda por run)
+gh api repos/sergiohcosta/fintech-core/environments/prod -q .id
+
+# 3. Aprova (state: approved) ou rejeita (state: rejected)
+gh api --method POST repos/sergiohcosta/fintech-core/actions/runs/<run_id>/pending_deployments \
+  -F 'environment_ids[]=<environment_id>' \
+  -F 'state=approved' \
+  -F 'comment=deploy manual aprovado'
+```
+
+**Rejeitar:** mesmo comando com `state=rejected` — a run marca `deploy-prod` como
+`failure` e encerra sem tocar o cluster.
+
 ### Health Check
 ```bash
 curl http://localhost:8080/actuator/health
