@@ -111,6 +111,8 @@ POST (cria par EXPENSE origem + INCOME destino) · DELETE/{transferId} (remove a
 
 GET `?accountId=` · GET/{id} · POST/{id}/close · POST/{id}/pay `{ sourceAccountId }`
 
+**`totalAmount` (lista e detalhe) — líquido, não bruto:** `SUM(CASE WHEN type=EXPENSE THEN amount ELSE -amount END) WHERE status<>CANCELLED` (`sumAmountByInvoice`/`findByAccountWithTotals`). INCOME (estorno/reembolso) abate o total em vez de somar — mesma convenção de sinal do dashboard/saldo de conta. É o valor usado como base do pagamento em `pay()`.
+
 **Ciclo:** `OPEN → [close] CLOSED → [pay] PAID`
 - **close:** só muda status. Novas transações ainda aceitas (cobranças atrasadas).
 - **pay** (`@Transactional` única): PENDING→PAID via `@Modifying` batch; se total>0 cria EXPENSE na origem (`date=now()`, `description="Pagamento fatura {acc} {MM}/{yyyy}"`); fatura→PAID. Fecha o ciclo de caixa do cartão (`countInLiquidBalance=false`).

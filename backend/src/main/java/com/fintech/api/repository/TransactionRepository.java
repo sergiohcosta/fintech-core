@@ -132,8 +132,12 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             @Param("tenantId") UUID tenantId
     );
 
+    // Total líquido da fatura: EXPENSE soma, INCOME (estorno/reembolso) abate.
     @Query("""
-            SELECT COALESCE(SUM(t.amount), 0)
+            SELECT COALESCE(SUM(
+                CASE WHEN t.type = com.fintech.api.domain.enums.TransactionType.INCOME
+                     THEN -t.amount ELSE t.amount END
+            ), 0)
             FROM Transaction t
             WHERE t.invoice = :invoice AND t.status <> :excluded
             """)
