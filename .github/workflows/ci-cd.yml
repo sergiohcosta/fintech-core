@@ -194,12 +194,16 @@ jobs:
         run: |
           kubectl rollout restart deployment/fintech-core-backend deployment/fintech-core-frontend -n hmg
 
-  # Sem gate manual: main já é protegida por PR review, esse é o portão real.
-  # Roda em sequência (needs: deploy-hmg) na mesma run, não em paralelo.
+  # Gate manual: job PAUSA aqui aguardando aprovação de reviewer do Environment
+  # "prod" (Settings → Environments → prod → Required reviewers). Roda em
+  # sequência (needs: deploy-hmg) na mesma run — mesmo SHA_TAG que já passou
+  # em hmg, sem risco de aprovar a versão errada. Ver commands.md
+  # ("Deploy manual (prod)") pra aprovar/rejeitar pela UI ou via gh api.
   deploy-prod:
     name: Deploy (prod)
     needs: deploy-hmg
     if: github.ref == 'refs/heads/main'
+    environment: prod
     runs-on: [self-hosted, k3s]
     env:
       REGISTRY: registry.atlas-haddock.ts.net
