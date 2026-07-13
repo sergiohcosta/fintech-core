@@ -291,6 +291,14 @@ public class TransactionService {
         Transaction t = repository.findByIdAndTenant(id, user.getTenant())
                 .orElseThrow(() -> new EntityNotFoundException("Transação não encontrada."));
 
+        // #138: double-entry é invariante — as duas pernas nascem juntas (createTransfer) e
+        // morrem juntas (deleteTransfer). Editar uma perna isolada cria/some dinheiro do tenant.
+        if (t.getTransferId() != null) {
+            throw new BusinessException(
+                "Transação de transferência não pode ser editada individualmente. "
+                + "Exclua a transferência (DELETE /api/transfers/{transferId}) e recrie.");
+        }
+
         if (dto.description() != null) t.setDescription(dto.description());
         if (dto.amount() != null)      t.setAmount(dto.amount());
         if (dto.date() != null)        t.setDate(dto.date());
@@ -324,6 +332,13 @@ public class TransactionService {
     public DeleteInstallmentResultDTO delete(UUID id, DeleteInstallmentScope scope, User user) {
         Transaction t = repository.findByIdAndTenant(id, user.getTenant())
                 .orElseThrow(() -> new EntityNotFoundException("Transação não encontrada."));
+
+        // #138: excluir uma perna isolada deixa a irmã órfã e desbalanceia o double-entry.
+        if (t.getTransferId() != null) {
+            throw new BusinessException(
+                "Perna de transferência não pode ser excluída individualmente. "
+                + "Use DELETE /api/transfers/{transferId} para remover o par.");
+        }
 
         if (scope == DeleteInstallmentScope.SINGLE || t.getInstallmentGroup() == null) {
             repository.delete(t);
