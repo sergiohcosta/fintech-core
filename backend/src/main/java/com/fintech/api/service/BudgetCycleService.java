@@ -99,7 +99,7 @@ public class BudgetCycleService {
             .build());
 
         populateRecurringItems(cycle, tenant, user, startDate, endDate);
-        populateInstallmentItems(cycle, tenant, startDate, endDate);
+        populateInstallmentItems(cycle, tenant, startDate, endDate, java.util.Set.of());
 
         log.info("Ciclo de planejamento aberto [cycleId={} tenantId={} periodo={}/{}]",
             cycle.getId(), tenant.getId(), startDate, endDate);
@@ -135,7 +135,8 @@ public class BudgetCycleService {
     }
 
     private void populateInstallmentItems(BudgetCycle cycle, Tenant tenant,
-                                          LocalDate startDate, LocalDate endDate) {
+                                          LocalDate startDate, LocalDate endDate,
+                                          Set<UUID> skipGroupIds) {
         YearMonth invoiceMonth = YearMonth.from(startDate);
         List<Transaction> installments = transactionRepository.findInstallmentsByTenantAndInvoiceMonth(
             tenant.getId(), invoiceMonth.getYear(), invoiceMonth.getMonthValue(),
@@ -146,6 +147,8 @@ public class BudgetCycleService {
             .collect(Collectors.groupingBy(Transaction::getInstallmentGroup));
 
         List<BudgetItem> items = byGroup.entrySet().stream()
+            // #152: pula grupos já cobertos por um item preservado (evita duplicata no sync aditivo)
+            .filter(entry -> !skipGroupIds.contains(entry.getKey().getId()))
             .map(entry -> {
                 InstallmentGroup group = entry.getKey();
                 List<Transaction> txs = entry.getValue();
@@ -212,11 +215,27 @@ public class BudgetCycleService {
     public BudgetCycle syncInstallments(UUID cycleId, Tenant tenant, User user) {
         BudgetCycle cycle = loadByIdAndTenant(cycleId, tenant);
         List<BudgetItem> existing = itemRepository.findAllByCycleWithDetails(cycle);
-        List<BudgetItem> toRemove = existing.stream()
+
+        // #152: sync é reconciliação de PREVISTOS. REALIZED (fato consumado) e itens vinculados a
+        // transação NUNCA são apagados — só removemos projeções PENDING sem vínculo, regeneradas
+        // abaixo. Apagar um realizado numa reconciliação corromperia o histórico do ciclo.
+        List<BudgetItem> installmentItems = existing.stream()
             .filter(i -> i.getSource() == BudgetItemSource.INSTALLMENT)
             .toList();
-        itemRepository.deleteAll(toRemove);
-        populateInstallmentItems(cycle, tenant, cycle.getStartDate(), cycle.getEndDate());
+        List<BudgetItem> disposable = installmentItems.stream()
+            .filter(i -> i.getStatus() == BudgetItemStatus.PENDING && i.getTransaction() == null)
+            .toList();
+        itemRepository.deleteAll(disposable);
+
+        // Grupos já cobertos por um item preservado não recebem duplicata na regeneração.
+        Set<UUID> keptGroupIds = installmentItems.stream()
+            .filter(i -> !(i.getStatus() == BudgetItemStatus.PENDING && i.getTransaction() == null))
+            .map(BudgetItem::getInstallmentGroup)
+            .filter(g -> g != null)
+            .map(InstallmentGroup::getId)
+            .collect(Collectors.toSet());
+
+        populateInstallmentItems(cycle, tenant, cycle.getStartDate(), cycle.getEndDate(), keptGroupIds);
         return cycle;
     }
 

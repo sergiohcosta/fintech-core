@@ -415,6 +415,58 @@ class BudgetCycleServiceTest {
         );
     }
 
+    // ---- syncInstallments (#152) ----
+
+    // #152 — sync é reconciliação de PREVISTOS; não pode apagar itens REALIZED (fato consumado,
+    // vinculado a transação). Hoje deleteAll recebe TODOS os INSTALLMENT, inclusive o realizado.
+    @Test
+    @DisplayName("syncInstallments preserva itens INSTALLMENT REALIZED/vinculados (só remove PENDING sem vínculo)")
+    void syncInstallments_preservaRealizados() {
+        Tenant tenant = new Tenant();
+        tenant.setId(UUID.randomUUID());
+        User user = new User();
+        BudgetCycle cycle = BudgetCycle.builder()
+            .id(UUID.randomUUID()).tenant(tenant)
+            .startDate(LocalDate.of(2026, 6, 1)).endDate(LocalDate.of(2026, 6, 30))
+            .status(BudgetCycleStatus.OPEN).build();
+
+        com.fintech.api.domain.installment.InstallmentGroup group =
+            com.fintech.api.domain.installment.InstallmentGroup.builder().id(UUID.randomUUID()).build();
+        com.fintech.api.domain.transaction.Transaction linkedTx =
+            com.fintech.api.domain.transaction.Transaction.builder().id(UUID.randomUUID())
+                .status(TransactionStatus.PAID).build();
+
+        BudgetItem realized = BudgetItem.builder()
+            .id(UUID.randomUUID()).cycle(cycle).tenant(tenant)
+            .source(BudgetItemSource.INSTALLMENT)
+            .status(com.fintech.api.domain.enums.BudgetItemStatus.REALIZED)
+            .transaction(linkedTx).installmentGroup(group).build();
+        BudgetItem stalePending = BudgetItem.builder()
+            .id(UUID.randomUUID()).cycle(cycle).tenant(tenant)
+            .source(BudgetItemSource.INSTALLMENT)
+            .status(com.fintech.api.domain.enums.BudgetItemStatus.PENDING)
+            .transaction(null)
+            .installmentGroup(com.fintech.api.domain.installment.InstallmentGroup.builder()
+                .id(UUID.randomUUID()).build())
+            .build();
+
+        when(cycleRepository.findById(cycle.getId())).thenReturn(Optional.of(cycle));
+        when(itemRepository.findAllByCycleWithDetails(cycle))
+            .thenReturn(List.of(realized, stalePending));
+        when(transactionRepository.findInstallmentsByTenantAndInvoiceMonth(
+            any(), anyInt(), anyInt(), any())).thenReturn(List.of());
+
+        service.syncInstallments(cycle.getId(), tenant, user);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<BudgetItem>> captor = ArgumentCaptor.forClass(List.class);
+        verify(itemRepository).deleteAll(captor.capture());
+        assertThat(captor.getValue())
+            .as("realizado preservado, projeção PENDING removida")
+            .contains(stalePending)
+            .doesNotContain(realized);
+    }
+
     // ---- helpers ----
 
     private Tenant tenantWith(int startDay) {
