@@ -134,8 +134,13 @@ public class TransactionService {
 
         int installments = (dto.totalInstallments() != null && dto.totalInstallments() > 1)
                 ? dto.totalInstallments() : 1;
+        // #136: dividir com DOWN e deixar a ÚLTIMA parcela absorver o resíduo garante
+        // soma(parcelas) == total exatamente. HALF_EVEN uniforme perdia/ganhava centavos
+        // (100/3 → 33,33×3 = 99,99). Invariante contábil: as parcelas derivam do total.
         BigDecimal installmentAmount = dto.amount()
-                .divide(BigDecimal.valueOf(installments), 2, RoundingMode.HALF_EVEN);
+                .divide(BigDecimal.valueOf(installments), 2, RoundingMode.DOWN);
+        BigDecimal lastInstallmentAmount = dto.amount()
+                .subtract(installmentAmount.multiply(BigDecimal.valueOf(installments - 1L)));
 
         boolean isCreditCard = AccountType.CREDIT_CARD.equals(account.getType());
         int closingDay = 0;
@@ -175,7 +180,7 @@ public class TransactionService {
 
             created.add(repository.save(Transaction.builder()
                     .description(dto.description())
-                    .amount(installmentAmount)
+                    .amount(i == installments - 1 ? lastInstallmentAmount : installmentAmount)
                     .date(transactionDate)
                     .type(dto.type())
                     .status(dto.status() != null ? dto.status() : TransactionStatus.PENDING)

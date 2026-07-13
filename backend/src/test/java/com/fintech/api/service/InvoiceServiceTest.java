@@ -142,6 +142,30 @@ class InvoiceServiceTest {
         assertThat(captor.getValue().getDueDate()).isEqualTo(LocalDate.of(2026, 7, 10));
     }
 
+    // #137 — dia de fechamento/vencimento maior que os dias do mês de destino não pode
+    // estourar DateTimeException (que na API vira 500 e derruba a criação da transação).
+    // A fatura de jan/2026 fecha em fev/2026 (28 dias); closingDay=31 → deve virar 28/fev,
+    // não "Invalid date FEBRUARY 31". Sem capping, service.getOrCreate lança aqui.
+    @Test
+    @DisplayName("getOrCreate: closingDay=31 fechando em fevereiro → capa no último dia do mês")
+    void capsClosingDayToLastDayOfMonth() {
+        Account account = buildAccount();
+        CreditCardDetails details = buildDetails(account, 31, 31); // fecha e vence dia 31
+
+        when(repository.findByAccountAndReferenceYearAndReferenceMonth(account, 2026, 1))
+                .thenReturn(Optional.empty());
+        when(creditCardDetailsRepository.findByAccount(account)).thenReturn(Optional.of(details));
+        when(repository.save(any(Invoice.class))).thenAnswer(i -> i.getArgument(0));
+
+        service.getOrCreate(account, 2026, 1);
+
+        ArgumentCaptor<Invoice> captor = ArgumentCaptor.forClass(Invoice.class);
+        verify(repository).save(captor.capture());
+        // fatura jan/2026 fecha em fev/2026 (28 dias); dueDay>=closingDay → vence no mesmo mês
+        assertThat(captor.getValue().getClosingDate()).isEqualTo(LocalDate.of(2026, 2, 28));
+        assertThat(captor.getValue().getDueDate()).isEqualTo(LocalDate.of(2026, 2, 28));
+    }
+
     @Test
     @DisplayName("getOrCreate: race condition → retry retorna a fatura salva pela thread vencedora")
     void getOrCreateRetriesOnRaceCondition() {
@@ -240,6 +264,7 @@ class InvoiceServiceTest {
                 .thenReturn(Optional.of(source));
         when(transactionRepository.sumAmountByInvoice(any(), any())).thenReturn(BigDecimal.ZERO);
         when(transactionRepository.countByInvoice(any())).thenReturn(0L);
+        when(repository.markAsPaidIfClosed(any(), any(), any())).thenReturn(1);
         when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         service.pay(invoice.getId(), invoice.getTenant(), user, source.getId());
@@ -275,6 +300,7 @@ class InvoiceServiceTest {
         when(transactionRepository.sumAmountByInvoice(eq(invoice), eq(TransactionStatus.CANCELLED)))
                 .thenReturn(total);
         when(transactionRepository.countByInvoice(any())).thenReturn(3L);
+        when(repository.markAsPaidIfClosed(any(), any(), any())).thenReturn(1);
         when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         service.pay(invoice.getId(), invoice.getTenant(), user, source.getId());
@@ -306,6 +332,7 @@ class InvoiceServiceTest {
                 .thenReturn(Optional.of(source));
         when(transactionRepository.sumAmountByInvoice(any(), any())).thenReturn(BigDecimal.ZERO);
         when(transactionRepository.countByInvoice(any())).thenReturn(0L);
+        when(repository.markAsPaidIfClosed(any(), any(), any())).thenReturn(1);
         when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         service.pay(invoice.getId(), invoice.getTenant(), user, source.getId());
@@ -326,6 +353,7 @@ class InvoiceServiceTest {
                 .thenReturn(Optional.of(source));
         when(transactionRepository.sumAmountByInvoice(any(), any())).thenReturn(BigDecimal.ZERO);
         when(transactionRepository.countByInvoice(any())).thenReturn(0L);
+        when(repository.markAsPaidIfClosed(any(), any(), any())).thenReturn(1);
         when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         service.pay(invoice.getId(), invoice.getTenant(), user, source.getId());
@@ -364,6 +392,30 @@ class InvoiceServiceTest {
 
         assertThatThrownBy(() -> service.pay(invoice.getId(), invoice.getTenant(), user, unknownId))
                 .isInstanceOf(EntityNotFoundException.class);
+    }
+
+    // #139 — regressão determinística do claim atômico: quando markAsPaidIfClosed afeta 0 linhas
+    // (outro pay() concorrente já venceu), pay() aborta ANTES de criar o EXPENSE de pagamento.
+    // Não depende de timing — prova a fiação do guard que o teste de concorrência exercita no banco.
+    @Test
+    @DisplayName("pay: claim atômico perdido (0 linhas) → lança e não cria pagamento")
+    void payAbortsWhenClaimLost() {
+        Invoice invoice = buildInvoice(InvoiceStatus.CLOSED);
+        Account source = buildNonCreditCardAccount(invoice.getTenant());
+        User user = buildUser();
+
+        when(repository.findById(invoice.getId())).thenReturn(Optional.of(invoice));
+        when(accountRepository.findByIdAndTenant(source.getId(), invoice.getTenant()))
+                .thenReturn(Optional.of(source));
+        when(repository.markAsPaidIfClosed(any(), any(), any())).thenReturn(0);
+
+        assertThatThrownBy(() -> service.pay(invoice.getId(), invoice.getTenant(), user, source.getId()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("concorrente");
+
+        verify(transactionRepository, never()).save(any(Transaction.class));
+        verify(transactionRepository, never())
+                .updateStatusByInvoiceAndStatus(any(), any(), any());
     }
 
     // ---- helpers ----

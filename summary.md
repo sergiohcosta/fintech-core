@@ -66,9 +66,10 @@ GET (filtros) · GET/{id} · POST (1..N, parcelamento gera N) · PUT/{id} (com `
 ```
 para i=0..N-1:
   invoiceMonth = resolveInvoiceMonth(date, closingDay).plusMonths(i)
-  Transaction { date=dataCompra, installmentNumber=i+1, amount=total/N, invoice=faturaDoMês(i) }
+  Transaction { date=dataCompra, installmentNumber=i+1, amount=parcela(i), invoice=faturaDoMês(i) }
 ```
 `resolveInvoiceMonth`: `day <= closingDay` → mês corrente; senão → mês seguinte.
+`parcela(i)`: `total/N` truncado (DOWN, 2 casas) nas N−1 primeiras; a **última absorve o resíduo** (`total − (N−1)·parcela`) para que `soma(parcelas) == total` exatamente (#136).
 
 **DELETE `?scope=`:** SINGLE · THIS_AND_NEXT (próximas PENDING) · ALL (todas PENDING do grupo). Protege PAID. Retorna `{ deleted, skippedPaid }`.
 
@@ -115,10 +116,10 @@ GET `?accountId=` · GET/{id} · POST/{id}/close · POST/{id}/pay `{ sourceAccou
 
 **Ciclo:** `OPEN → [close] CLOSED → [pay] PAID`
 - **close:** só muda status. Novas transações ainda aceitas (cobranças atrasadas).
-- **pay** (`@Transactional` única): PENDING→PAID via `@Modifying` batch; se total>0 cria EXPENSE na origem (`date=now()`, `description="Pagamento fatura {acc} {MM}/{yyyy}"`); fatura→PAID. Fecha o ciclo de caixa do cartão (`countInLiquidBalance=false`).
-- **Validações pay:** origem do tenant (404), origem ≠ CREDIT_CARD (422), fatura CLOSED (422).
+- **pay** (`@Transactional` única): **claim atômico** `UPDATE ... SET status=PAID WHERE id=:id AND status=CLOSED` (`markAsPaidIfClosed`) ANTES de qualquer efeito — 0 linhas afetadas → `IllegalStateException` (pagamento concorrente já venceu, #139). Só o vencedor: PENDING→PAID via `@Modifying` batch; se total>0 cria EXPENSE na origem (`date=now()`, `description="Pagamento fatura {acc} {MM}/{yyyy}"`). Fecha o ciclo de caixa do cartão (`countInLiquidBalance=false`).
+- **Validações pay:** origem do tenant (404), origem ≠ CREDIT_CARD (422), fatura CLOSED (422). Ordem: validações → claim atômico → efeitos.
 - **Lazy create** (`getOrCreate`): automático na 1ª transação do período. `UNIQUE(account, year, month)`. Race condition resolvida com `@Transactional(REQUIRES_NEW)` + retry (ADR-001 #83).
-- **dueDate:** `dueDay >= closingDay` → mesmo mês; senão → mês seguinte.
+- **dueDate:** `dueDay >= closingDay` → mesmo mês; senão → mês seguinte. Dia capado ao último do mês (`min(dia, lengthOfMonth)`) — closingDay/dueDay=31 em fevereiro não estoura `DateTimeException` (#137).
 
 ## Grupos de Parcelamento (`/api/installment-groups`)
 
