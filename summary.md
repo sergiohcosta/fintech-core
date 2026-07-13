@@ -12,7 +12,9 @@ Demais:    authenticated (JWT obrigatório)
 ```
 **Invariante:** toda query de negócio filtra pelo `tenant` autenticado. Senha só via BCrypt, nunca em DTO. JWT assina `sub = email`. `SecurityFilter` valida em toda requisição.
 
-**Login (`/auth/login`):** resposta genérica (401) tanto para email inexistente quanto para senha incorreta ou usuário inativo (sem enumeração de usuários). Rate limit em memória: 5 tentativas falhas por email a cada 1 minuto → `429 Too Many Requests` (`LoginRateLimiter`). `User.isEnabled()` reflete o campo `active` — checado no login e em toda requisição autenticada (`SecurityFilter`).
+**Login (`/auth/login`):** resposta genérica (401) tanto para email inexistente quanto para senha incorreta ou usuário inativo (sem enumeração de usuários). Rate limit em memória: 5 tentativas falhas por email a cada 1 minuto → `429 Too Many Requests` (`LoginRateLimiter`). **Chave = email apenas** (#144) — não deriva de `X-Forwarded-For` (controlável pelo cliente sem trusted proxy, permitia bypass rotacionando o header). Mapa com teto (`security.rate-limit.max-keys`, default 100k) + sweep periódico (`@Scheduled`, `@EnableScheduling`) evitam DoS de memória por flood de emails. `User.isEnabled()` reflete o campo `active` — checado no login e em toda requisição autenticada (`SecurityFilter`).
+
+**Export CSV (frontend):** `csvField` (`core/csv.utils.ts`) neutraliza CSV formula injection (#143) — prefixa `'` quando o valor começa com `= + - @` TAB/CR, além do quoting RFC 4180 (aspas para `; " \n \r`). Defesas distintas: quoting protege a estrutura do CSV, o apóstrofo impede a planilha de executar a fórmula.
 
 **Política de senha (registro e aceite de convite):** mínimo 8 e máximo 72 caracteres, com letra maiúscula, minúscula e número (`TenantRegistrationDTO`, `AcceptInviteDTO`).
 
