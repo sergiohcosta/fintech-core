@@ -146,6 +146,7 @@ AND t.status <> CANCELLED
 
 - `BudgetCycle`: datas calculadas por `startDay` (1 → mês calendário; N → dia N do mês anterior até N-1 do atual). Ao abrir, popula itens recorrentes via `RecurrenceProjectionService` (projeção on-the-fly das `RecurrenceRule` ativas) e parcelas de cartão do período.
 - `BudgetItem`: criação, update, link/unlink a transações (guard anti-duplicação). Itens `source=RECURRING` carregam `recurrenceRuleId` + `recurrenceOccurrenceDate` para rastreabilidade.
+- **`syncInstallments` (aditivo, #152):** reconcilia só os PREVISTOS — remove apenas itens INSTALLMENT `status=PENDING` sem transação vinculada e regenera; itens REALIZED/vinculados são preservados (fato consumado não é apagado numa reconciliação), sem duplicar grupos já cobertos.
 
 **`openingBalance` (ao abrir):** `sumLiquidBalanceByTenant` = caixa líquido PAID **anterior** ao ciclo (`t.date < startDate`, contas `countInLiquidBalance=true`). O corte de data evita dupla contagem: transações dentro do período só entram via realizados/avulsas, nunca no opening.
 
@@ -186,7 +187,7 @@ Nunca logar dados sensíveis (senha, JWT, CPF). `tenantId`/`userId` já estão n
 - **Estado:** `signal/computed/effect`. Bridge com FormControl: `toSignal(control.valueChanges, { initialValue })` — `computed()` não reage a `FormControl.value` direto.
 - **Reatividade segura:** `untracked()` ao chamar loaders dentro de handlers que leem signals (evita loop).
 - **Tabelas agrupadas:** `mat-table` única com múltiplos `*matRowDef` + `when` predicates (`period-header`/`invoice-header`); primeiro `true` vence; `[attr.colspan]` para linha full-width.
-- **Testes:** lógica pura em arquivos sem imports Angular (ex: `transaction-list.utils.ts`, `amount-math.ts`, `installment-preview.ts`) — testável no Vitest sem `TestBed`.
+- **Testes:** lógica pura em arquivos sem imports Angular (ex: `transaction-list.utils.ts`, `amount-math.ts`, `installment-preview.ts`, `transaction-form.utils.ts`) — testável no Vitest sem `TestBed`. Parsing de valor (ponto-decimal e pt-BR) e formatação de data local (sem UTC) vivem em `transaction-form.utils.ts` (#148).
 
 ## Armadilhas Conhecidas (Codegen)
 
