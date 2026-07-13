@@ -75,6 +75,8 @@ para i=0..N-1:
 
 **DELETE `?scope=`:** SINGLE · THIS_AND_NEXT (próximas PENDING) · ALL (todas PENDING do grupo). Protege PAID. Retorna `{ deleted, skippedPaid }`.
 
+**Perna de transferência é imutável isoladamente (#138):** `PUT`/`DELETE` numa transação com `transferId != null` → **400** (`BusinessException`). Double-entry é invariante: as pernas nascem juntas (`createTransfer`) e morrem juntas (`DELETE /api/transfers/{transferId}`). Frontend desabilita editar/excluir individual nessas linhas.
+
 **PUT `propagate: string[]`:** aplica campos às parcelas futuras `PENDING` (`installmentNumber >` atual). PAID nunca revertido.
 
 ## Linha do Tempo (`/transactions/timeline`) — só frontend
@@ -140,7 +142,9 @@ AND t.status <> CANCELLED
 ```
 `t.invoice.dueDate` direto no WHERE gera INNER JOIN implícito no Hibernate e exclui transações sem fatura.
 
-`totalAccountBalance`: `SUM(±amount) WHERE status=PAID AND account.countInLiquidBalance=true` (sem filtro de período).
+`income`/`expense`/`transactionCount` **excluem** transferências (`transferId IS NULL`) e pagamentos de fatura (`paidInvoice IS NULL`) — senão a transferência infla os dois lados e o pagamento de cartão conta a despesa 2× (compra no mês do `dueDate` + pagamento no mês do débito) (#145).
+
+`totalAccountBalance`: `SUM(±amount) WHERE status=PAID AND account.countInLiquidBalance=true AND account.active=true` (sem filtro de período). Exclui contas arquivadas (#151) — consistente com o `openingBalance` do ciclo. **Não** exclui o pagamento de fatura: é saída real de caixa e deve rebaixar o saldo.
 
 ## Planejamento Mensal (`/api/{budget-cycles,budget-items}` + `PATCH /api/tenant/settings`)
 
