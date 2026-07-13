@@ -27,6 +27,7 @@ import { AccountsService } from '../../../core/api/accounts/accounts.service';
 import { CategoryResponseDTO, AccountResponse } from '../../../core/api/fintechSaaSAPI.schemas';
 import { buildInstallmentPreview, CreditCardPreviewConfig } from './installment-preview';
 import { evaluateMathExpression } from './amount-math';
+import { parseAmountInput, formatLocalDate } from './transaction-form.utils';
 import { RruleEditor } from '../../recurrence/rrule-editor/rrule-editor';
 import { RecurrenceService } from '../../../core/services/recurrence.service';
 export { buildInstallmentPreview } from './installment-preview';
@@ -241,9 +242,8 @@ export class TransactionForm implements OnInit {
       this.form.controls.amount.markAsTouched();
       return;
     }
-    const cleaned = raw.replace(/[^\d,]/g, '');
-    const asFloat = parseFloat(cleaned.replace(',', '.'));
-    this.form.controls.amount.setValue(isNaN(asFloat) ? null : asFloat);
+    // #148: parseAmountInput aceita ponto-decimal (1234.56) além do pt-BR (1.234,56).
+    this.form.controls.amount.setValue(parseAmountInput(raw));
     this.form.controls.amount.markAsTouched();
   }
 
@@ -350,7 +350,8 @@ export class TransactionForm implements OnInit {
   }
 
   private toDateString(date: Date): string {
-    return date.toISOString().split('T')[0];
+    // #148: formata pelos componentes locais — toISOString() poderia gerar D-1 em fuso positivo.
+    return formatLocalDate(date);
   }
 
   private differentAccountsValidator(group: AbstractControl): ValidationErrors | null {
