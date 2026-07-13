@@ -93,6 +93,14 @@ public class Transaction {
     @ToString.Exclude
     private Invoice invoice;
 
+    // #145: quando preenchido, esta transação é o EXPENSE que QUITA a fatura apontada.
+    // Usado para excluí-la dos agregados do dashboard (evita dupla contagem com as compras
+    // do cartão) — distinto de `invoice`, que aponta a fatura à qual uma COMPRA pertence.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "paid_invoice_id")
+    @ToString.Exclude
+    private Invoice paidInvoice;
+
     // --- RECORRÊNCIA ---
     // Preenchido quando a transação foi materializada a partir de uma regra.
     @ManyToOne(fetch = FetchType.LAZY)

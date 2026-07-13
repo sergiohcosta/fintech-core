@@ -15,6 +15,7 @@ import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.installment.DeleteInstallmentResultDTO;
 import com.fintech.api.dto.transaction.TransactionRequestDTO;
 import com.fintech.api.dto.transaction.TransactionResponseDTO;
+import com.fintech.api.dto.transaction.TransactionUpdateDTO;
 import com.fintech.api.dto.transfer.TransferRequestDTO;
 import com.fintech.api.exception.BusinessException;
 import com.fintech.api.exception.EntityNotFoundException;
@@ -203,6 +204,42 @@ class TransactionServiceTest {
         service.deleteTransfer(transferId, user);
 
         verify(repository).deleteAll(List.of(leg1, leg2));
+    }
+
+    // #138 — perna de transferência não pode ser mutada/excluída isoladamente (quebra double-entry).
+    @Test
+    @DisplayName("#138 update de perna de transferência é rejeitado")
+    void updateRejectsTransferLeg() {
+        User user = buildUser();
+        UUID id = UUID.randomUUID();
+        Transaction leg = Transaction.builder().id(id)
+                .type(TransactionType.EXPENSE).account(buildAccount(user))
+                .transferId(UUID.randomUUID()).tenant(user.getTenant()).build();
+        when(repository.findByIdAndTenant(id, user.getTenant())).thenReturn(Optional.of(leg));
+
+        TransactionUpdateDTO dto = new TransactionUpdateDTO(
+                "novo", new BigDecimal("10.00"), null, null, null, null, null, null);
+
+        assertThatThrownBy(() -> service.update(id, dto, user))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("transferência");
+    }
+
+    @Test
+    @DisplayName("#138 delete de perna de transferência é rejeitado (não deixa a irmã órfã)")
+    void deleteRejectsTransferLeg() {
+        User user = buildUser();
+        UUID id = UUID.randomUUID();
+        Transaction leg = Transaction.builder().id(id)
+                .type(TransactionType.EXPENSE).account(buildAccount(user))
+                .transferId(UUID.randomUUID()).tenant(user.getTenant()).build();
+        when(repository.findByIdAndTenant(id, user.getTenant())).thenReturn(Optional.of(leg));
+
+        assertThatThrownBy(() -> service.delete(id, DeleteInstallmentScope.SINGLE, user))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("transferência");
+        verify(repository, never()).delete(any());
+        verify(repository, never()).deleteAll(any());
     }
 
     @Test
