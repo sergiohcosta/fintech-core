@@ -58,8 +58,11 @@ function resolveInvoiceMonth(purchaseDate: Date, closingDay: number): Date {
 }
 
 function calcDueDate(invoiceMonth: Date, closingDay: number, dueDay: number): Date {
-  if (dueDay >= closingDay) {
-    return new Date(invoiceMonth.getFullYear(), invoiceMonth.getMonth(), dueDay);
-  }
-  return new Date(invoiceMonth.getFullYear(), invoiceMonth.getMonth() + 1, dueDay);
+  // #137: capar dueDay ao último dia do mês de destino. Sem isso, o Date do JS rola
+  // silenciosamente (ex: 31/fev vira 03/mar) e o label de vencimento fica errado —
+  // mesma semântica do capping do backend (InvoiceService.atDayCapped).
+  const y = invoiceMonth.getFullYear();
+  const targetMonth = dueDay >= closingDay ? invoiceMonth.getMonth() : invoiceMonth.getMonth() + 1;
+  const lastDay = new Date(y, targetMonth + 1, 0).getDate();
+  return new Date(y, targetMonth, Math.min(dueDay, lastDay));
 }

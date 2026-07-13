@@ -74,12 +74,14 @@ public class InvoiceService {
         int dueDay = details.getDueDay();
 
         // A fatura de referenceMonth fecha no mês seguinte (ex: fatura de junho fecha em 02/julho).
-        LocalDate closingDate = LocalDate.of(referenceYear, referenceMonth, 1)
-                .plusMonths(1)
-                .withDayOfMonth(closingDay);
+        // #137: capar o dia ao tamanho do mês evita DateTimeException (ex: closingDay=31 em
+        // fevereiro). A comparação dueDay >= closingDay abaixo permanece sobre os dias
+        // CONFIGURADOS, não os capados — capar antes mudaria o mês da fatura em fevereiro.
+        LocalDate closingDate = atDayCapped(
+                LocalDate.of(referenceYear, referenceMonth, 1).plusMonths(1), closingDay);
         LocalDate dueDate = dueDay >= closingDay
-                ? closingDate.withDayOfMonth(dueDay)
-                : closingDate.plusMonths(1).withDayOfMonth(dueDay);
+                ? atDayCapped(closingDate, dueDay)
+                : atDayCapped(closingDate.plusMonths(1), dueDay);
 
         return repository.save(Invoice.builder()
                 .account(account)
@@ -90,6 +92,12 @@ public class InvoiceService {
                 .dueDate(dueDate)
                 .status(InvoiceStatus.OPEN)
                 .build());
+    }
+
+    // #137: "dia N ou o último dia do mês, o que vier primeiro" — mesma semântica do
+    // BYMONTHDAY=-1 do motor de recorrência. Evita withDayOfMonth(31) estourar em meses curtos.
+    private static LocalDate atDayCapped(LocalDate base, int day) {
+        return base.withDayOfMonth(Math.min(day, base.lengthOfMonth()));
     }
 
     @Transactional(readOnly = true)
@@ -158,6 +166,15 @@ public class InvoiceService {
         if (sourceAccount.getType() == AccountType.CREDIT_CARD) {
             throw new IllegalStateException(
                     "Não é possível pagar uma fatura com outra conta de cartão de crédito.");
+        }
+
+        // #139: claim atômico ANTES de qualquer efeito colateral. Sob concorrência os dois pay()
+        // passam pelo fast-fail acima (ambos leem CLOSED), mas só um consegue mudar CLOSED→PAID.
+        // O perdedor recebe 0 linhas afetadas e aborta aqui, sem criar o EXPENSE de pagamento.
+        int claimed = repository.markAsPaidIfClosed(id, InvoiceStatus.CLOSED, InvoiceStatus.PAID);
+        if (claimed == 0) {
+            throw new IllegalStateException(
+                    "Fatura não está mais no status CLOSED (pagamento concorrente já processado).");
         }
 
         BigDecimal total = transactionRepository.sumAmountByInvoice(invoice, TransactionStatus.CANCELLED);
