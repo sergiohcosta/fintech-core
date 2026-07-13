@@ -12,7 +12,6 @@ import com.fintech.api.openapi.AuthApi;
 import com.fintech.api.repository.UserRepository;
 import com.fintech.api.service.InvitationService;
 import com.fintech.api.service.TenantRegistrationService;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,10 +19,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
-
-import java.util.Optional;
 
 @Slf4j
 @RestController
@@ -49,13 +44,11 @@ public class AuthController implements AuthApi {
     @Override
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDTO> login(@RequestBody @Valid LoginDTO data) {
-        // Chave composta ip:email — dificulta ataques que rotacionam emails do mesmo IP.
-        // X-Forwarded-For é preferido quando há proxy/load balancer (pega primeiro segmento).
-        HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
-        String ip = Optional.ofNullable(request.getHeader("X-Forwarded-For"))
-                .map(h -> h.split(",")[0].trim())
-                .orElse(request.getRemoteAddr());
-        String rateLimitKey = ip + ":" + data.email();
+        // #144: a chave é o email APENAS. Incluir o IP a partir de X-Forwarded-For (controlável
+        // pelo cliente sem trusted proxy) permitia contornar o teto rotacionando o header. O
+        // contrato é "5 falhas por email/minuto" — proteção por IP legítima exigiria
+        // forward-headers-strategy configurado atrás de proxy confiável.
+        String rateLimitKey = data.email();
 
         if (loginRateLimiter.isBlocked(rateLimitKey)) {
             log.warn("Login bloqueado por rate limit: {}", data.email());

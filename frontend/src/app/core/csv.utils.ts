@@ -1,7 +1,14 @@
-// Escapa campo CSV segundo RFC 4180: se contém `;`, `"` ou `\n`, envolve em aspas duplas e duplica aspas internas.
+// Escapa campo CSV segundo RFC 4180 + neutraliza CSV formula injection (#143).
 export function csvField(value: string | null | undefined): string {
-  const v = value ?? '';
-  if (v.includes(';') || v.includes('"') || v.includes('\n')) {
+  let v = value ?? '';
+  // #143: se o valor começa com um caractere que a planilha interpreta como fórmula
+  // (`= + - @` ou TAB/CR), prefixa apóstrofo para forçar tratamento como texto. O quoting
+  // abaixo protege a ESTRUTURA do CSV, mas NÃO impede a execução da fórmula — defesas distintas.
+  // Neutraliza na borda (prefixo), sem remover caracteres do dado (ex: "-R$ 50" é legítimo).
+  if (/^[=+\-@\t\r]/.test(v)) {
+    v = "'" + v;
+  }
+  if (v.includes(';') || v.includes('"') || v.includes('\n') || v.includes('\r')) {
     return '"' + v.replace(/"/g, '""') + '"';
   }
   return v;
