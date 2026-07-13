@@ -263,7 +263,10 @@
                       [matTooltip]="$any(row).data?.transferId ? 'Transferências não podem ser editadas' : 'Editar'">
                 <mat-icon>edit</mat-icon>
               </button>
-              <button mat-icon-button color="warn" (click)="onDelete($any(row).data)" matTooltip="Excluir">
+              <button mat-icon-button color="warn"
+                      (click)="onDelete($any(row).data)"
+                      [disabled]="!!$any(row).data?.transferId"
+                      [matTooltip]="$any(row).data?.transferId ? 'Transferências não podem ser excluídas individualmente' : 'Excluir'">
                 <mat-icon>delete</mat-icon>
               </button>
             </div>

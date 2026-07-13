@@ -192,6 +192,9 @@ public class InvoiceService {
                     .account(sourceAccount)
                     .tenant(invoice.getTenant())
                     .user(user)
+                    // #145: marca a transação como o pagamento desta fatura → dashboard a exclui
+                    // dos agregados (a despesa já foi contada nas compras via invoice.dueDate).
+                    .paidInvoice(invoice)
                     .build();
             transactionRepository.save(payment);
         }

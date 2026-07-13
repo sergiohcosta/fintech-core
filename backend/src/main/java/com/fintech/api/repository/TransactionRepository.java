@@ -191,6 +191,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             WHERE t.tenant = :tenant
               AND t.type = :type
               AND t.status <> :excluded
+              AND t.transferId IS NULL
+              AND t.paidInvoice IS NULL
               AND (
                 (inv IS NOT NULL AND inv.dueDate BETWEEN :start AND :end)
                 OR
@@ -211,6 +213,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             LEFT JOIN t.invoice inv
             WHERE t.tenant = :tenant
               AND t.status <> :excluded
+              AND t.transferId IS NULL
+              AND t.paidInvoice IS NULL
               AND (
                 (inv IS NOT NULL AND inv.dueDate BETWEEN :start AND :end)
                 OR
@@ -234,6 +238,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             WHERE t.tenant = :tenant
               AND t.status = :paidStatus
               AND t.account.countInLiquidBalance = true
+              AND t.account.active = true
             """)
     BigDecimal sumNetLiquidBalanceByTenant(
             @Param("tenant") Tenant tenant,
