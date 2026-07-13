@@ -40,6 +40,8 @@ public class RecurrenceRuleService {
     private final CategoryRepository categoryRepository;
     private final RecurrenceExceptionRepository exceptionRepository;
     private final TransactionService transactionService;
+    private final BudgetItemService budgetItemService;
+    private final com.fintech.api.service.recurrence.RecurrenceProjectionService projectionService;
 
     @Transactional
     public RecurrenceRuleResponseDTO create(RecurrenceRuleCreateDTO dto, User user) {
@@ -103,6 +105,13 @@ public class RecurrenceRuleService {
     public TransactionResponseDTO confirmOccurrence(
             UUID ruleId, LocalDate occurrence, ConfirmOccurrenceDTO body, User user) {
         RecurrenceRule rule = findOwned(ruleId, user);
+        // #146: só é confirmável um slot REAL da regra ATIVA e não pulado. Sem isto, confirmar uma
+        // data fora da expansão (ex: 14/07 numa regra BYMONTHDAY=15) convivia com o fantasma real
+        // de 15/07 → pagamento 2× (a unique parcial não protege: datas diferentes).
+        requireProjectableOccurrence(rule, occurrence);
+        if (exceptionRepository.existsByRuleIdAndOccurrenceDate(ruleId, occurrence)) {
+            throw new IllegalStateException("Esta ocorrência foi pulada (EXDATE) e não pode ser confirmada.");
+        }
         // Guard explícito para mensagem amigável; a unique parcial (rule, occurrence) no banco
         // é a rede de segurança final contra corrida.
         if (transactionService.existsMaterializedOccurrence(ruleId, occurrence)) {
@@ -110,16 +119,32 @@ public class RecurrenceRuleService {
         }
         BigDecimal amount = body != null ? body.amount() : null;
         LocalDate date = body != null ? body.date() : null;
-        return transactionService.materializeFromRule(rule, occurrence, amount, date, user);
+        TransactionResponseDTO dto = transactionService.materializeFromRule(rule, occurrence, amount, date, user);
+        // #140: vincula ao item RECURRING do ciclo aberto (best-effort) — evita dupla contagem.
+        budgetItemService.linkRecurringOccurrence(user.getTenant(), rule, occurrence, dto.id());
+        return dto;
     }
 
     /** Pula uma ocorrência: grava EXDATE. Idempotente — pular duas vezes não duplica linha. */
     @Transactional
     public void skipOccurrence(UUID ruleId, LocalDate occurrence, User user) {
         RecurrenceRule rule = findOwned(ruleId, user);
+        // #146: pular só faz sentido para um slot real da regra ativa (pular um não-slot é ruído).
+        requireProjectableOccurrence(rule, occurrence);
         if (!exceptionRepository.existsByRuleIdAndOccurrenceDate(ruleId, occurrence)) {
             exceptionRepository.save(RecurrenceException.builder()
                     .rule(rule).occurrenceDate(occurrence).build());
+        }
+    }
+
+    // #146: regra precisa estar ATIVA e a data precisa ser um slot real da RRULE. IllegalStateException
+    // é mapeado a 422 pelo GlobalExceptionHandler.
+    private void requireProjectableOccurrence(RecurrenceRule rule, LocalDate occurrence) {
+        if (rule.getStatus() != RecurrenceStatus.ACTIVE) {
+            throw new IllegalStateException("A regra de recorrência está cancelada.");
+        }
+        if (!projectionService.occursOn(rule, occurrence)) {
+            throw new IllegalStateException("A data informada não é uma ocorrência desta regra.");
         }
     }
 
