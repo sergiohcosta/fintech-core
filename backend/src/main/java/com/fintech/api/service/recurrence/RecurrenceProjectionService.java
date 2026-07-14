@@ -62,6 +62,15 @@ public class RecurrenceProjectionService {
         return ghosts;
     }
 
+    // #146: uma data só é confirmável/pulável se pertence à expansão da RRULE. Janela = o mês da
+    // data (a expansão sempre recebe janela; nunca "infinito"). Antes de startDate a regra não ocorre.
+    public boolean occursOn(RecurrenceRule rule, LocalDate date) {
+        if (date.isBefore(rule.getStartDate())) return false;
+        LocalDate monthStart = date.withDayOfMonth(1);
+        LocalDate monthEnd = date.withDayOfMonth(date.lengthOfMonth());
+        return expander.expand(rule.getRrule(), rule.getStartDate(), monthStart, monthEnd).contains(date);
+    }
+
     private ProjectedOccurrence toOccurrence(RecurrenceRule rule, LocalDate date) {
         Category cat = rule.getCategory();
         return new ProjectedOccurrence(

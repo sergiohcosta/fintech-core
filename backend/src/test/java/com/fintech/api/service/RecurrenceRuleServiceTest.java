@@ -40,6 +40,8 @@ class RecurrenceRuleServiceTest {
     @Mock CategoryRepository categoryRepository;
     @Mock RecurrenceExceptionRepository exceptionRepository;
     @Mock TransactionService transactionService;
+    @Mock BudgetItemService budgetItemService;
+    @Mock com.fintech.api.service.recurrence.RecurrenceProjectionService projectionService;
     @InjectMocks RecurrenceRuleService service;
 
     private User user;
@@ -67,6 +69,7 @@ class RecurrenceRuleServiceTest {
         RecurrenceRule rule = rule();
         TransactionResponseDTO dto = mock(TransactionResponseDTO.class);
         when(repository.findByIdAndTenant(ruleId, user.getTenant())).thenReturn(Optional.of(rule));
+        when(projectionService.occursOn(any(), any())).thenReturn(true);
         when(transactionService.existsMaterializedOccurrence(ruleId, occ)).thenReturn(false);
         when(transactionService.materializeFromRule(rule, occ, new BigDecimal("150.00"), null, user))
                 .thenReturn(dto);
@@ -80,6 +83,7 @@ class RecurrenceRuleServiceTest {
     @Test
     void confirmRejeitaOcorrenciaJaMaterializada() {
         when(repository.findByIdAndTenant(ruleId, user.getTenant())).thenReturn(Optional.of(rule()));
+        when(projectionService.occursOn(any(), any())).thenReturn(true);
         when(transactionService.existsMaterializedOccurrence(ruleId, occ)).thenReturn(true);
 
         assertThatThrownBy(() -> service.confirmOccurrence(ruleId, occ, null, user))
@@ -90,6 +94,7 @@ class RecurrenceRuleServiceTest {
     @Test
     void skipGravaExdateQuandoInexistente() {
         when(repository.findByIdAndTenant(ruleId, user.getTenant())).thenReturn(Optional.of(rule()));
+        when(projectionService.occursOn(any(), any())).thenReturn(true);
         when(exceptionRepository.existsByRuleIdAndOccurrenceDate(ruleId, occ)).thenReturn(false);
 
         service.skipOccurrence(ruleId, occ, user);
@@ -100,11 +105,65 @@ class RecurrenceRuleServiceTest {
     @Test
     void skipEhIdempotente() {
         when(repository.findByIdAndTenant(ruleId, user.getTenant())).thenReturn(Optional.of(rule()));
+        when(projectionService.occursOn(any(), any())).thenReturn(true);
         when(exceptionRepository.existsByRuleIdAndOccurrenceDate(ruleId, occ)).thenReturn(true);
 
         service.skipOccurrence(ruleId, occ, user);
 
         verify(exceptionRepository, never()).save(any());
+    }
+
+    // #140 — confirmar vincula a transação materializada ao item RECURRING do ciclo aberto.
+    @Test
+    void confirmVinculaAoItemRecorrenteDoCiclo() {
+        RecurrenceRule rule = rule();
+        UUID txId = UUID.randomUUID();
+        TransactionResponseDTO dto = mock(TransactionResponseDTO.class);
+        when(dto.id()).thenReturn(txId);
+        when(repository.findByIdAndTenant(ruleId, user.getTenant())).thenReturn(Optional.of(rule));
+        when(projectionService.occursOn(any(), any())).thenReturn(true);
+        when(transactionService.existsMaterializedOccurrence(ruleId, occ)).thenReturn(false);
+        when(transactionService.materializeFromRule(rule, occ, null, null, user)).thenReturn(dto);
+
+        service.confirmOccurrence(ruleId, occ, null, user);
+
+        verify(budgetItemService).linkRecurringOccurrence(user.getTenant(), rule, occ, txId);
+    }
+
+    // #146 — confirm/skip validam slot da RRULE, EXDATE e status ACTIVE.
+    @Test
+    void confirmRejeitaDataForaDaExpansao() {
+        when(repository.findByIdAndTenant(ruleId, user.getTenant())).thenReturn(Optional.of(rule()));
+        when(projectionService.occursOn(any(), any())).thenReturn(false);
+
+        assertThatThrownBy(() -> service.confirmOccurrence(ruleId, occ, null, user))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("ocorrência");
+        verify(transactionService, never()).materializeFromRule(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void confirmRejeitaOcorrenciaEmExdate() {
+        when(repository.findByIdAndTenant(ruleId, user.getTenant())).thenReturn(Optional.of(rule()));
+        when(projectionService.occursOn(any(), any())).thenReturn(true);
+        when(exceptionRepository.existsByRuleIdAndOccurrenceDate(ruleId, occ)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.confirmOccurrence(ruleId, occ, null, user))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("EXDATE");
+        verify(transactionService, never()).materializeFromRule(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void confirmRejeitaRegraCancelada() {
+        RecurrenceRule cancelled = rule();
+        cancelled.setStatus(RecurrenceStatus.CANCELLED);
+        when(repository.findByIdAndTenant(ruleId, user.getTenant())).thenReturn(Optional.of(cancelled));
+
+        assertThatThrownBy(() -> service.confirmOccurrence(ruleId, occ, null, user))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("cancelada");
+        verify(transactionService, never()).materializeFromRule(any(), any(), any(), any(), any());
     }
 
     @Test

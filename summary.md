@@ -100,8 +100,10 @@ GET (lista ativas) · POST (valida RRULE) · GET/{id} · PATCH/{id} (`descriptio
 **`GET /api/transactions?includeProjected=true`:** mescla reais + fantasmas no período (default `false`, retrocompatível). Fantasma: `projected=true`, `id=null`, status `PENDING`, `recurrenceRuleId`+`occurrenceDate` preenchidos. Ordenação compartilha a regra `effectiveSortDate`. Filtro por `invoiceId` **não** projeta.
 
 **Confirmar:** materializa a ocorrência reusando o caminho de criação de transação (`materializeFromRule` → se cartão, fatura resolvida por `resolveInvoiceMonth`/`getOrCreate`). Body opcional `{amount?, date?}` (override — ajuste pontual; a regra segue projetando o `baseAmount`). Índice único parcial `(recurrence_rule_id, recurrence_occurrence)` + guard → **409** ao confirmar a mesma ocorrência 2x.
+- **Validação de slot (#146):** só confirma/pula regra `ACTIVE` (senão **422**), com `occurrence` ∈ expansão da RRULE no mês (`RecurrenceProjectionService.occursOn`); confirmar exige `occurrence` ∉ EXDATE. Sem isso, confirmar um não-slot convivia com o fantasma real → pagamento 2×.
+- **Vínculo automático ao planejamento (#140):** após materializar, `RecurrenceRuleService.confirmOccurrence` chama `BudgetItemService.linkRecurringOccurrence` — vincula a transação ao item RECURRING PENDENTE do ciclo aberto (se houver), pelo caminho unificado do #141. Sem isso, a transação apareceria como avulsa e o resumo contaria item planejado + avulsa (dupla contagem). Orquestrado no planejamento — `TransactionService` não conhece o domínio de budget.
 
-**Pular:** grava EXDATE em `recurrence_exceptions` (idempotente). A fantasma some no mês pulado e volta no seguinte.
+**Pular:** grava EXDATE em `recurrence_exceptions` (idempotente). A fantasma some no mês pulado e volta no seguinte. Valida slot/status como o confirmar (#146).
 
 **RRULE — subconjunto suportado:** `FREQ=MONTHLY|YEARLY`, `INTERVAL`, `BYMONTHDAY` (1..31 e `-1`=último dia), `UNTIL`, `COUNT`. `@ValidRrule` rejeita o resto (`BYDAY`/`BYSETPOS`/`BYWEEKNO`/`BYYEARDAY`/`BYHOUR`/`BYMINUTE`, e `FREQ` diário/semanal) → **400**. "Fim do mês" = `BYMONTHDAY=-1` (resolve 28/29 fev, 30 abr nativamente). Validação varre as chaves do rrule (o parser lax do lib-recur descarta partes inválidas no contexto).
 
@@ -149,7 +151,7 @@ AND t.status <> CANCELLED
 ## Planejamento Mensal (`/api/{budget-cycles,budget-items}` + `PATCH /api/tenant/settings`)
 
 - `BudgetCycle`: datas calculadas por `startDay` (1 → mês calendário; N → dia N do mês anterior até N-1 do atual). Ao abrir, popula itens recorrentes via `RecurrenceProjectionService` (projeção on-the-fly das `RecurrenceRule` ativas) e parcelas de cartão do período.
-- `BudgetItem`: criação, update, link/unlink a transações (guard anti-duplicação). Itens `source=RECURRING` carregam `recurrenceRuleId` + `recurrenceOccurrenceDate` para rastreabilidade.
+- `BudgetItem`: criação, update, link/unlink a transações. **`link` e `realize` compartilham os mesmos guards (#141):** ciclo OPEN, item PENDING, transação em no máximo um item (qualquer ciclo), compatibilidade de tipo e sync de `amount` com a transação. Itens `source=RECURRING` carregam `recurrenceRuleId` + `recurrenceOccurrenceDate` para rastreabilidade.
 - **`syncInstallments` (aditivo, #152):** reconcilia só os PREVISTOS — remove apenas itens INSTALLMENT `status=PENDING` sem transação vinculada e regenera; itens REALIZED/vinculados são preservados (fato consumado não é apagado numa reconciliação), sem duplicar grupos já cobertos.
 
 **`openingBalance` (ao abrir):** `sumLiquidBalanceByTenant` = caixa líquido PAID **anterior** ao ciclo (`t.date < startDate`, contas `countInLiquidBalance=true`). O corte de data evita dupla contagem: transações dentro do período só entram via realizados/avulsas, nunca no opening.
