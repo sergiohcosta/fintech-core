@@ -27,6 +27,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
 
 import java.math.BigDecimal;
+import com.fintech.api.domain.recurrence.RecurrenceRule;
 import java.time.LocalDate;
 import java.util.Optional;
 import java.util.UUID;
@@ -253,6 +254,116 @@ class BudgetItemServiceTest {
                 .hasMessageContaining("fechado");
 
             verify(transactionRepository, never()).findByIdAndTenant(any(), any());
+        }
+    }
+
+    // ---- link (#141: mesmos guards de realize) ----
+
+    @Nested
+    @DisplayName("link() — #141 guards unificados")
+    class Link {
+
+        @Test
+        @DisplayName("transação já vinculada a outro item do MESMO ciclo: lança (era aceito)")
+        void link_transactionAlreadyLinkedSameCycle_throws() {
+            BudgetCycle cycle = openCycle();
+            BudgetItem item = pendingItem(cycle);
+            Transaction tx = expenseTransaction();
+            BudgetItem otherItem = pendingItem(cycle); // mesmo ciclo — o findByTransactionAndCycleNot antigo ignorava
+
+            when(transactionRepository.findByIdAndTenant(tx.getId(), tenant)).thenReturn(Optional.of(tx));
+            when(repository.findByTransaction(tx)).thenReturn(Optional.of(otherItem));
+
+            assertThatThrownBy(() -> service.link(item, tx.getId()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("vinculada");
+            verify(repository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("tipo da transação incompatível com o item: lança")
+        void link_typeMismatch_throws() {
+            BudgetCycle cycle = openCycle();
+            BudgetItem item = pendingItem(cycle); // EXPENSE
+            Transaction tx = expenseTransaction();
+            tx.setType(TransactionType.INCOME);
+
+            when(transactionRepository.findByIdAndTenant(tx.getId(), tenant)).thenReturn(Optional.of(tx));
+            when(repository.findByTransaction(tx)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.link(item, tx.getId()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("tipo");
+            verify(repository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("ciclo CLOSED: lança (era aceito)")
+        void link_cycleClosed_throws() {
+            BudgetCycle cycle = closedCycle();
+            BudgetItem item = pendingItem(cycle);
+
+            assertThatThrownBy(() -> service.link(item, UUID.randomUUID()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("fechado");
+            verify(transactionRepository, never()).findByIdAndTenant(any(), any());
+        }
+
+        @Test
+        @DisplayName("sincroniza o amount do item com o da transação (era ignorado)")
+        void link_syncsAmount() {
+            BudgetCycle cycle = openCycle();
+            BudgetItem item = pendingItem(cycle);   // amount 100
+            Transaction tx = expenseTransaction();  // amount 150
+
+            when(transactionRepository.findByIdAndTenant(tx.getId(), tenant)).thenReturn(Optional.of(tx));
+            when(repository.findByTransaction(tx)).thenReturn(Optional.empty());
+            when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            BudgetItem result = service.link(item, tx.getId());
+
+            assertThat(result.getStatus()).isEqualTo(BudgetItemStatus.REALIZED);
+            assertThat(result.getAmount()).isEqualByComparingTo(tx.getAmount());
+        }
+    }
+
+    // ---- linkRecurringOccurrence (#140) ----
+
+    @Nested
+    @DisplayName("linkRecurringOccurrence() — #140")
+    class LinkRecurringOccurrence {
+
+        @Test
+        @DisplayName("com item RECURRING PENDENTE no ciclo aberto: vincula a transação")
+        void links_whenMatchingItemExists() {
+            BudgetCycle cycle = openCycle();
+            BudgetItem item = pendingItem(cycle); // EXPENSE
+            RecurrenceRule rule = RecurrenceRule.builder().id(UUID.randomUUID()).build();
+            Transaction tx = expenseTransaction();
+            LocalDate occ = LocalDate.of(2026, 6, 10);
+
+            when(repository.findRecurringOccurrenceInOpenCycle(tenant, rule, occ)).thenReturn(Optional.of(item));
+            when(transactionRepository.findByIdAndTenant(tx.getId(), tenant)).thenReturn(Optional.of(tx));
+            when(repository.findByTransaction(tx)).thenReturn(Optional.empty());
+            when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            service.linkRecurringOccurrence(tenant, rule, occ, tx.getId());
+
+            assertThat(item.getStatus()).isEqualTo(BudgetItemStatus.REALIZED);
+            assertThat(item.getTransaction()).isEqualTo(tx);
+        }
+
+        @Test
+        @DisplayName("sem item correspondente (sem ciclo/projeção): não faz nada")
+        void noop_whenNoMatch() {
+            RecurrenceRule rule = RecurrenceRule.builder().id(UUID.randomUUID()).build();
+            LocalDate occ = LocalDate.of(2026, 6, 10);
+            when(repository.findRecurringOccurrenceInOpenCycle(tenant, rule, occ)).thenReturn(Optional.empty());
+
+            service.linkRecurringOccurrence(tenant, rule, occ, UUID.randomUUID());
+
+            verify(transactionRepository, never()).findByIdAndTenant(any(), any());
+            verify(repository, never()).save(any());
         }
     }
 
