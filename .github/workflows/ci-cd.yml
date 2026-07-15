@@ -104,7 +104,10 @@ jobs:
           cache-dependency-path: backend/pom.xml
       - name: Build & push backend (Jib)
         working-directory: ./backend
-        run: ./mvnw -B compile jib:build -Dimage=$REGISTRY/fintech-core-backend:$SHA_TAG
+        # jib.httpTimeout: o default do Jib é 20s de read timeout, que estourava
+        # (SocketTimeoutException: Read timed out) no push das layers pro GHCR.
+        # 180s dá folga sem risco de travar indefinidamente (o job tem teto).
+        run: ./mvnw -B compile jib:build -Dimage=$REGISTRY/fintech-core-backend:$SHA_TAG -Djib.httpTimeout=180000
       # Frontend via buildx: o runner GitHub-hosted tem daemon Docker, então
       # não precisa mais do kaniko (que existia só pra buildar em userspace
       # puro na ausência de daemon no pod self-hosted). Some crane, kaniko e
