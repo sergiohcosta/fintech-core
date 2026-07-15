@@ -1,0 +1,47 @@
+name: Release
+
+# Dispara só quando uma tag SemVer (vX.Y.Z) é empurrada. Não roda em push de
+# branch nem em PR — release é ato deliberado, separado do fluxo de integração.
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  release:
+    name: Carimba versão + GitHub Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # criar o GitHub Release
+      packages: write   # colar a tag de versão nas imagens do GHCR
+    env:
+      # Mesma base usada pelo build-and-push do ci-cd.yml — o nome da imagem
+      # precisa casar entre quem buildou (push) e quem re-tagga (aqui).
+      REGISTRY: ghcr.io/sergiohcosta
+      # No evento de tag, github.sha = o commit que a tag aponta. Como a imagem
+      # foi buildada como sha-<sha> no push desse mesmo commit, este nome
+      # reconstrói exatamente a imagem existente — sem guardar o SHA em canto nenhum.
+      SHA_TAG: sha-${{ github.sha }}
+      # ref_name numa tag = o nome da tag, ex "v0.1.0". Vira o nome da versão.
+      VERSION: ${{ github.ref_name }}
+    steps:
+      - name: Login no GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Re-tag registry-side: imagetools create aponta uma tag nova pro MESMO
+      # manifest/digest da imagem sha-<sha>. Não puxa nem re-builda layer nenhuma
+      # — só grava no GHCR "esse digest também responde por vX.Y.Z".
+      - name: Carimba a versão nas imagens (sem rebuild)
+        run: |
+          docker buildx imagetools create --tag "$REGISTRY/fintech-core-backend:$VERSION"  "$REGISTRY/fintech-core-backend:$SHA_TAG"
+          docker buildx imagetools create --tag "$REGISTRY/fintech-core-frontend:$VERSION" "$REGISTRY/fintech-core-frontend:$SHA_TAG"
+
+      # --generate-notes: o GitHub diffa da tag anterior até esta e monta as
+      # notas a partir dos commits/PRs no intervalo. O git log PT-BR vira o changelog.
+      - name: Cria o GitHub Release com notas automáticas
+        run: gh release create "$VERSION" --generate-notes --title "$VERSION"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
