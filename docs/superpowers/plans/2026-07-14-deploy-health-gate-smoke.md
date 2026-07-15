@@ -48,33 +48,33 @@ Smoke usa Services já existentes: `fintech-core-backend:8080/actuator/health` (
 ## Tarefas
 
 ### T1 — Spec + plano na `develop`
-- [ ] Commit da spec e deste plano na `develop` (`docs(spec)`/`docs(plan)`) antes da worktree.
+- [x] Commit da spec e deste plano na `develop` (`docs(spec)`/`docs(plan)`) antes da worktree.
 
 ### T2 — Reusable workflow `deploy-env.yml`
-- [ ] Criar `.github/workflows/deploy-env.yml` com `on: workflow_call` (inputs `namespace` obrigatório, `environment` opcional; `secrets: inherit` p/ `GH_APP_ID`/`GH_APP_PRIVATE_KEY`).
-- [ ] Job `deploy`: `runs-on: [self-hosted, k3s]`, `environment: ${{ inputs.environment }}`, envs `REGISTRY`/`SHA_TAG`.
-- [ ] Steps: app-token → checkout homelab-k8s → setup-kubectl → instala kustomize (idempotente, `command -v`).
-- [ ] Step de deploy: `kustomize edit set image` + `kubectl apply -k` + `rollout restart` (como hoje).
-- [ ] **Gate 1:** `kubectl rollout status` dos 2 deployments com `--timeout=240s`; falha → `rollout undo` + `exit 1`.
-- [ ] **Gate 2 (smoke):** pod efêmero `curl -fsS` em `fintech-core-backend:8080/actuator/health` e `fintech-core-frontend/`; falha → `rollout undo` + `exit 1`.
-- [ ] Função `rollback` com `|| true` (no-op no 1º deploy sem revisão anterior).
+- [x] Criar `.github/workflows/deploy-env.yml` com `on: workflow_call` (inputs `namespace` obrigatório, `environment` opcional; `secrets: inherit` p/ `GH_APP_ID`/`GH_APP_PRIVATE_KEY`).
+- [x] Job `deploy`: `runs-on: [self-hosted, k3s]`, `environment: ${{ inputs.environment }}`, envs `REGISTRY`/`SHA_TAG`.
+- [x] Steps: app-token → checkout homelab-k8s → setup-kubectl → instala kustomize (idempotente, `command -v`).
+- [x] Step de deploy: `kustomize edit set image` + `kubectl apply -k` + `rollout restart` (como hoje).
+- [x] **Gate 1:** `kubectl rollout status` dos 2 deployments com `--timeout=240s`; falha → `rollout undo` + `exit 1`.
+- [x] **Gate 2 (smoke):** pod efêmero `curl -fsS` em `fintech-core-backend:8080/actuator/health` e `fintech-core-frontend/`; falha → `rollout undo` + `exit 1`.
+- [x] Função `rollback` com `|| true` (no-op no 1º deploy sem revisão anterior).
 
 ### T3 — `ci-cd.yml`: deploys viram chamadores
-- [ ] `deploy-dev`: `needs: build-and-push`, `if: ref==develop`, `uses: ./.github/workflows/deploy-env.yml`, `with: {namespace: dev}`, `secrets: inherit`.
-- [ ] `deploy-hmg`: idem, `with: {namespace: hmg}`, `if: ref==main`.
-- [ ] `deploy-prod`: `needs: deploy-hmg`, `with: {namespace: prod, environment: prod}`, `if: ref==main`.
-- [ ] Remover o corpo inline duplicado dos 3 jobs (incluindo o `Instala kustomize` repetido).
-- [ ] Validar YAML + `actionlint` se disponível.
+- [x] `deploy-dev`: `needs: build-and-push`, `if: ref==develop`, `uses: ./.github/workflows/deploy-env.yml`, `with: {namespace: dev}`, `secrets: inherit`.
+- [x] `deploy-hmg`: idem, `with: {namespace: hmg}`, `if: ref==main`.
+- [x] `deploy-prod`: `needs: deploy-hmg`, `with: {namespace: prod, environment: prod}`, `if: ref==main`.
+- [x] Remover o corpo inline duplicado dos 3 jobs (incluindo o `Instala kustomize` repetido).
+- [x] Validar YAML + `actionlint` se disponível.
 
 ### T4 — Validação
-- [ ] **Feliz:** push em `develop` → `deploy-dev` roda o fluxo novo → rollout `Ready` + smoke 200 → `success`; `dev` no SHA novo.
-- [ ] **Negativo (dev):** forçar deploy quebrado (tag inexistente ou health falhando) → `rollout status` estoura → **`rollout undo`** → `dev` volta ao SHA anterior → job `failure`. Restaurar `dev` em seguida.
-- [ ] **Gate do prod intacto:** confirmar que `deploy-prod` ainda pausa no Environment `prod` após a refatoração (não deve deployar sem aprovação).
+- [x] **Feliz:** push em `develop` → `deploy-dev` roda o fluxo novo → rollout `Ready` + smoke 200 → `success`; `dev` no SHA novo.
+- [x] **Negativo (dev):** forçar deploy quebrado (tag inexistente ou health falhando) → `rollout status` estoura → **`rollout undo`** → `dev` volta ao SHA anterior → job `failure`. Restaurar `dev` em seguida.
+- [x] **Gate do prod intacto:** confirmar que `deploy-prod` ainda pausa no Environment `prod` após a refatoração (não deve deployar sem aprovação).
 
 ### T5 — Docs, memória
-- [ ] Marcar a spec como `aprovado`.
-- [ ] Atualizar `commands.md` (seção CI/CD): deploy agora é verificado (gate de rollout + smoke + rollback automático).
-- [ ] Atualizar a memória `project_cicd_pipeline_design.md` (deploy verificado; reusable workflow; fecha gaps 1+2).
+- [x] Marcar a spec como `aprovado`.
+- [x] Atualizar `commands.md` (seção CI/CD): deploy agora é verificado (gate de rollout + smoke + rollback automático).
+- [x] Atualizar a memória `project_cicd_pipeline_design.md` (deploy verificado; reusable workflow; fecha gaps 1+2).
 
 ## Ordem de merge
 
