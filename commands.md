@@ -71,6 +71,7 @@ Consequências práticas:
 - **PR nunca faz build nem deploy** — só roda testes (evento `pull_request`). Build/deploy exigem push no branch real.
 - **1 push na `develop` gera 2 runs:** uma de `push` (build + deploy-dev) e, se houver PR `develop→main` aberto, uma de `pull_request` (só testes). Não é bug.
 - Deploy usa `kustomize edit set image` para apontar a tag `sha-<sha>` da run; o kubelet puxa do GHCR (packages públicos → sem `imagePullSecret`). Manifests em `homelab-k8s/projects/fintech-core/`.
+- **Deploy é verificado** (reusable workflow `.github/workflows/deploy-env.yml`): após aplicar, espera o `rollout status` ficar `Ready` (timeout 240s) e roda um **smoke test** (curl no `/actuator/health` do backend e no frontend, via Service). Se o rollout ou o smoke falham, faz **rollback automático** (`kubectl rollout undo`) e o job fica **vermelho** — em `main`, o gate do `prod` nem é alcançado. Os 3 deploys chamam o mesmo reusable workflow (`namespace` + `environment` por input).
 
 Fluxo end-to-end:
 ```
