@@ -49,6 +49,35 @@ Opcional: o hook `.githooks/post-merge` lembra (ou roda) a análise a cada merge
 `develop`. Ativar uma vez: `git config core.hooksPath .githooks`. Por padrão só lembra;
 para auto-scan em background, defina `SONAR_AUTO_SCAN=1` no `.env` (pesa — `mvn verify`).
 
+### CI/CD — o que dispara o quê (local vs remote)
+
+Pipeline em `.github/workflows/ci-cd.yml`. **Git local não dispara nada** — commit ou merge
+na `develop`/`main` local só move ponteiro no disco. A pipeline vive no GitHub e só acorda
+quando o **remote recebe push** (e um merge de PR pelo GitHub é um push no branch de destino).
+
+`on: push` e `on: pull_request` para `main`/`develop`. Condições dos jobs:
+
+| Job | Dispara quando | Runner | Efeito |
+|-----|----------------|--------|--------|
+| Testes (back+front) | qualquer **push ou PR** em develop/main | GitHub-hosted | — |
+| Build & Push (imagens → GHCR) | só **push** em develop/main (não em PR) | GitHub-hosted (`ubuntu-latest`) | pusha `ghcr.io/sergiohcosta/fintech-core-*:sha-<sha>` |
+| Deploy (dev) | **push em `develop`** | self-hosted (k3s) | atualiza namespace `dev` |
+| Deploy (hmg) | **push em `main`** | self-hosted (k3s) | atualiza namespace `hmg` |
+| Deploy (prod) | **push em `main`**, mas **pausa no gate manual** | self-hosted (k3s) | atualiza `prod` só após aprovação |
+
+Consequências práticas:
+- **`git push origin develop`** (ou merge local + push) → testes → build GHCR → **deploy-dev**. `dev` atualiza sozinho.
+- **Merge de PR para `main`** (ou push em main) → testes → build GHCR → **deploy-hmg** → **deploy-prod (Waiting)**. `hmg` atualiza sozinho; `prod` fica aguardando aprovação (ver abaixo).
+- **PR nunca faz build nem deploy** — só roda testes (evento `pull_request`). Build/deploy exigem push no branch real.
+- **1 push na `develop` gera 2 runs:** uma de `push` (build + deploy-dev) e, se houver PR `develop→main` aberto, uma de `pull_request` (só testes). Não é bug.
+- Deploy usa `kustomize edit set image` para apontar a tag `sha-<sha>` da run; o kubelet puxa do GHCR (packages públicos → sem `imagePullSecret`). Manifests em `homelab-k8s/projects/fintech-core/`.
+
+Fluxo end-to-end:
+```
+worktree/branch → push → PR p/ develop → merge → (push develop) → dev
+develop → PR p/ main → merge → (push main) → hmg → [aprovar gate] → prod
+```
+
 ### Deploy manual (prod)
 
 `deploy-hmg` dispara automático em todo merge de PR em `main`. `deploy-prod` roda na
