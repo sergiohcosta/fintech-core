@@ -59,6 +59,178 @@ jobs:
       - name: Build de produção
         run: npm run build -- --configuration=production
 
-  # Deploy: Railway e Netlify fazem auto-deploy via GitHub ao detectar push em main.
-  # O portão de qualidade é o branch protection no GitHub — merge em main só é
-  # permitido quando os jobs test-backend e test-frontend estiverem verdes.
+  # Build das imagens (backend + frontend) e push pro GHCR (ghcr.io).
+  # Roda em runner GitHub-hosted (rede estável pro GitHub) — antes era
+  # self-hosted no k3s, mas o runner do homelab perdia a conexão de controle
+  # com o GitHub em builds longos (SSL drop, #153). GitHub-hosted fala com o
+  # GitHub pela rede do próprio GitHub, então esse modo de falha some. O push
+  # vai pro GHCR (autenticado pelo GITHUB_TOKEN embutido, zero segredo novo);
+  # como o repo é público, os packages são públicos e o kubelet do homelab
+  # puxa sem imagePullSecret. Só os jobs deploy-* seguem self-hosted (precisam
+  # de acesso ao cluster; são curtos e imunes ao #153).
+  build-and-push:
+    name: Build & Push das imagens
+    needs: [test-backend, test-frontend]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    # packages: write é o que autoriza o push pro GHCR com o GITHUB_TOKEN.
+    permissions:
+      contents: read
+      packages: write
+    env:
+      # REGISTRY = base do repo no GHCR (dono em minúsculo, exigência do GHCR).
+      # Mesmo valor usado pelos jobs de deploy no `kustomize edit set image`,
+      # pra o nome da imagem casar entre build e deploy.
+      REGISTRY: ghcr.io/sergiohcosta
+      SHA_TAG: sha-${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      # Login no GHCR: o login-action escreve ~/.docker/config.json, que o Jib
+      # e o buildx leem pra autenticar o push — nenhuma credencial extra.
+      - name: Login no GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # Backend via Jib (plugin Maven): builda direto do bytecode compilado,
+      # sem Dockerfile/daemon. Só o destino do -Dimage mudou pro GHCR.
+      - name: Configura JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+      - name: Build & push backend (Jib)
+        working-directory: ./backend
+        # jib.httpTimeout: o default do Jib é 20s de read timeout, que estourava
+        # (SocketTimeoutException: Read timed out) no push das layers pro GHCR.
+        # 180s dá folga sem risco de travar indefinidamente (o job tem teto).
+        run: ./mvnw -B compile jib:build -Dimage=$REGISTRY/fintech-core-backend:$SHA_TAG -Djib.httpTimeout=180000
+      # Frontend via buildx: o runner GitHub-hosted tem daemon Docker, então
+      # não precisa mais do kaniko (que existia só pra buildar em userspace
+      # puro na ausência de daemon no pod self-hosted). Some crane, kaniko e
+      # os contornos de ulimit/snapshot. O contexto é a raiz do repo — o
+      # frontend/Dockerfile faz COPY de frontend/... a partir dela.
+      - name: Configura buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build & push frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: frontend/Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/fintech-core-frontend:${{ env.SHA_TAG }}
+
+  # Deploy via kubectl no próprio runner (client-go cai pra InClusterConfig
+  # automaticamente — sem kubeconfig nenhum, só o token da ServiceAccount
+  # montado no pod). RBAC de gha-runner (homelab-k8s/infra/gha-runner/rbac.yaml)
+  # restringe o alcance só ao namespace do ambiente.
+  deploy-dev:
+    name: Deploy (dev)
+    needs: build-and-push
+    if: github.ref == 'refs/heads/develop'
+    runs-on: [self-hosted, k3s]
+    env:
+      REGISTRY: ghcr.io/sergiohcosta
+      SHA_TAG: sha-${{ github.sha }}
+    steps:
+      - name: Gera token do GitHub App pra checkout do homelab-k8s
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          repositories: homelab-k8s
+      - uses: actions/checkout@v4
+        with:
+          repository: sergiohcosta/homelab-k8s
+          token: ${{ steps.app-token.outputs.token }}
+      - uses: azure/setup-kubectl@v4
+      - name: Instala kustomize
+        run: curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash /dev/stdin /usr/local/bin
+      - name: Aponta as imagens da run e aplica o overlay
+        working-directory: projects/fintech-core/overlays/dev
+        run: |
+          kustomize edit set image \
+            $REGISTRY/fintech-core-backend=$REGISTRY/fintech-core-backend:$SHA_TAG \
+            $REGISTRY/fintech-core-frontend=$REGISTRY/fintech-core-frontend:$SHA_TAG
+          kubectl apply -k .
+      - name: Reinicia os deployments
+        run: |
+          kubectl rollout restart deployment/fintech-core-backend deployment/fintech-core-frontend -n dev
+
+  deploy-hmg:
+    name: Deploy (hmg)
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, k3s]
+    env:
+      REGISTRY: ghcr.io/sergiohcosta
+      SHA_TAG: sha-${{ github.sha }}
+    steps:
+      - name: Gera token do GitHub App pra checkout do homelab-k8s
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          repositories: homelab-k8s
+      - uses: actions/checkout@v4
+        with:
+          repository: sergiohcosta/homelab-k8s
+          token: ${{ steps.app-token.outputs.token }}
+      - uses: azure/setup-kubectl@v4
+      - name: Instala kustomize
+        run: curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash /dev/stdin /usr/local/bin
+      - name: Aponta as imagens da run e aplica o overlay
+        working-directory: projects/fintech-core/overlays/hmg
+        run: |
+          kustomize edit set image \
+            $REGISTRY/fintech-core-backend=$REGISTRY/fintech-core-backend:$SHA_TAG \
+            $REGISTRY/fintech-core-frontend=$REGISTRY/fintech-core-frontend:$SHA_TAG
+          kubectl apply -k .
+      - name: Reinicia os deployments
+        run: |
+          kubectl rollout restart deployment/fintech-core-backend deployment/fintech-core-frontend -n hmg
+
+  # Gate manual: job PAUSA aqui aguardando aprovação de reviewer do Environment
+  # "prod" (Settings → Environments → prod → Required reviewers). Roda em
+  # sequência (needs: deploy-hmg) na mesma run — mesmo SHA_TAG que já passou
+  # em hmg, sem risco de aprovar a versão errada. Ver commands.md
+  # ("Deploy manual (prod)") pra aprovar/rejeitar pela UI ou via gh api.
+  deploy-prod:
+    name: Deploy (prod)
+    needs: deploy-hmg
+    if: github.ref == 'refs/heads/main'
+    environment: prod
+    runs-on: [self-hosted, k3s]
+    env:
+      REGISTRY: ghcr.io/sergiohcosta
+      SHA_TAG: sha-${{ github.sha }}
+    steps:
+      - name: Gera token do GitHub App pra checkout do homelab-k8s
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          repositories: homelab-k8s
+      - uses: actions/checkout@v4
+        with:
+          repository: sergiohcosta/homelab-k8s
+          token: ${{ steps.app-token.outputs.token }}
+      - uses: azure/setup-kubectl@v4
+      - name: Instala kustomize
+        run: curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash /dev/stdin /usr/local/bin
+      - name: Aponta as imagens da run e aplica o overlay
+        working-directory: projects/fintech-core/overlays/prod
+        run: |
+          kustomize edit set image \
+            $REGISTRY/fintech-core-backend=$REGISTRY/fintech-core-backend:$SHA_TAG \
+            $REGISTRY/fintech-core-frontend=$REGISTRY/fintech-core-frontend:$SHA_TAG
+          kubectl apply -k .
+      - name: Reinicia os deployments
+        run: |
+          kubectl rollout restart deployment/fintech-core-backend deployment/fintech-core-frontend -n prod

@@ -7,3 +7,15 @@ target/
 .env
 .env.local
 .worktrees/
+.claude/worktrees/
+.claude/settings.local.json
+# skills genéricas são symlinks locais (claude-code-java); só as do projeto são versionadas
+.claude/skills/*
+!.claude/skills/_index.md
+!.claude/skills/fintech-*
+
+# SonarQube / coverage
+frontend/coverage/
+.scannerwork/
+.sonar-scan.log
+.aider*

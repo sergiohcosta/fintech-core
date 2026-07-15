@@ -4,6 +4,7 @@ import com.fintech.api.domain.enums.UserRole;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.TenantRegistrationDTO;
+import com.fintech.api.exception.BusinessException;
 import com.fintech.api.repository.TenantRepository;
 import com.fintech.api.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +25,7 @@ public class TenantRegistrationService {
     public Tenant register(TenantRegistrationDTO dto) {
         // 1. Validação de Regra de Negócio
         if (userRepository.existsByEmail(dto.adminEmail())) {
-            throw new IllegalArgumentException("Este email já está cadastrado.");
+            throw new BusinessException("Este email já está cadastrado.");
         }
 
         // 2. Criar e Salvar o Tenant (A "Empresa/Família")

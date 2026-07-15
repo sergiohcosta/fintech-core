@@ -38,6 +38,10 @@ components:
       type: string
       enum: [VISA, MASTERCARD, ELO, AMEX, HIPERCARD, OTHER]
 
+    RecurrenceStatus:
+      type: string
+      enum: [ACTIVE, CANCELLED]
+
     # --- Auth ---
 
     LoginDTO:
@@ -286,6 +290,21 @@ components:
           nullable: true
         invoiceStatus:
           $ref: '#/components/schemas/InvoiceStatus'
+          nullable: true
+        projected:
+          type: boolean
+          description: true = "linha fantasma" projetada de uma regra (não existe no banco)
+        recurrenceRuleId:
+          type: string
+          format: uuid
+          nullable: true
+        occurrenceDate:
+          type: string
+          format: date
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
           nullable: true
 
     # --- Invoices ---
@@ -732,6 +751,14 @@ components:
           type: string
           format: uuid
           nullable: true
+        recurrenceRuleId:
+          type: string
+          format: uuid
+          nullable: true
+        recurrenceOccurrenceDate:
+          type: string
+          format: date
+          nullable: true
 
     BudgetCycleResponse:
       type: object
@@ -813,62 +840,6 @@ components:
           type: string
           format: uuid
 
-    RecurringBudgetItemRequest:
-      type: object
-      required: [description, amount, type, dayOfMonth]
-      properties:
-        description:
-          type: string
-        amount:
-          type: number
-          format: double
-        type:
-          $ref: '#/components/schemas/TransactionType'
-        dayOfMonth:
-          type: integer
-          minimum: 1
-          maximum: 28
-        categoryId:
-          type: string
-          format: uuid
-          nullable: true
-        accountId:
-          type: string
-          format: uuid
-          nullable: true
-
-    RecurringBudgetItemResponse:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        description:
-          type: string
-        amount:
-          type: number
-          format: double
-        type:
-          $ref: '#/components/schemas/TransactionType'
-        dayOfMonth:
-          type: integer
-        categoryId:
-          type: string
-          format: uuid
-          nullable: true
-        categoryName:
-          type: string
-          nullable: true
-        accountId:
-          type: string
-          format: uuid
-          nullable: true
-        accountName:
-          type: string
-          nullable: true
-        active:
-          type: boolean
-
     TenantSettingsPatchRequest:
       type: object
       required: [budgetCycleStartDay]
@@ -891,6 +862,90 @@ components:
           type: integer
         number:
           type: integer
+
+    # --- Recorrência ---
+
+    RecurrenceRuleCreateDTO:
+      type: object
+      required: [description, baseAmount, type, accountId, rrule, startDate]
+      properties:
+        description:
+          type: string
+          maxLength: 255
+        baseAmount:
+          type: number
+          format: double
+        type:
+          $ref: '#/components/schemas/TransactionType'
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
+        accountId:
+          type: string
+          format: uuid
+        rrule:
+          type: string
+          example: 'FREQ=MONTHLY;BYMONTHDAY=15'
+        startDate:
+          type: string
+          format: date
+
+    RecurrenceRulePatchDTO:
+      type: object
+      properties:
+        description:
+          type: string
+          maxLength: 255
+        baseAmount:
+          type: number
+          format: double
+
+    ConfirmOccurrenceDTO:
+      type: object
+      properties:
+        amount:
+          type: number
+          format: double
+          nullable: true
+        date:
+          type: string
+          format: date
+          nullable: true
+
+    RecurrenceRuleResponseDTO:
+      type: object
+      required: [id, description, baseAmount, type, accountId, accountName, rrule, startDate, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        description:
+          type: string
+        baseAmount:
+          type: number
+          format: double
+        type:
+          $ref: '#/components/schemas/TransactionType'
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
+        categoryName:
+          type: string
+          nullable: true
+        accountId:
+          type: string
+          format: uuid
+        accountName:
+          type: string
+        rrule:
+          type: string
+        startDate:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/RecurrenceStatus'
 
 paths:
 
@@ -1106,6 +1161,13 @@ paths:
           schema:
             type: string
             format: date
+        - name: includeProjected
+          in: query
+          required: false
+          description: Mescla as "linhas fantasma" das regras de recorrência (default false)
+          schema:
+            type: boolean
+            default: false
       responses:
         '200':
           description: Lista de transações do tenant
@@ -1810,42 +1872,60 @@ paths:
               schema:
                 $ref: '#/components/schemas/BudgetItemResponse'
 
-  # --- Recurring Budget Items ---
+  # --- Recorrência (Motor de Recorrência — núcleo) ---
 
-  /api/recurring-budget-items:
+  /api/recurrence-rules:
     get:
-      tags: [budget]
-      operationId: listRecurringBudgetItems
+      tags: [recurrence-rules]
+      operationId: listRecurrenceRules
+      summary: Lista as regras de recorrência ativas do tenant
       responses:
         '200':
-          description: Templates recorrentes ativos
+          description: OK
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/RecurringBudgetItemResponse'
+                  $ref: '#/components/schemas/RecurrenceRuleResponseDTO'
     post:
-      tags: [budget]
-      operationId: createRecurringBudgetItem
+      tags: [recurrence-rules]
+      operationId: createRecurrenceRule
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RecurringBudgetItemRequest'
+              $ref: '#/components/schemas/RecurrenceRuleCreateDTO'
       responses:
         '201':
-          description: Template criado
+          description: Criada
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RecurringBudgetItemResponse'
+                $ref: '#/components/schemas/RecurrenceRuleResponseDTO'
 
-  /api/recurring-budget-items/{id}:
-    put:
-      tags: [budget]
-      operationId: updateRecurringBudgetItem
+  /api/recurrence-rules/{id}:
+    get:
+      tags: [recurrence-rules]
+      operationId: getRecurrenceRule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecurrenceRuleResponseDTO'
+    patch:
+      tags: [recurrence-rules]
+      operationId: patchRecurrenceRule
       parameters:
         - name: id
           in: path
@@ -1858,17 +1938,17 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RecurringBudgetItemRequest'
+              $ref: '#/components/schemas/RecurrenceRulePatchDTO'
       responses:
         '200':
-          description: Template atualizado
+          description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RecurringBudgetItemResponse'
+                $ref: '#/components/schemas/RecurrenceRuleResponseDTO'
     delete:
-      tags: [budget]
-      operationId: deleteRecurringBudgetItem
+      tags: [recurrence-rules]
+      operationId: cancelRecurrenceRule
       parameters:
         - name: id
           in: path
@@ -1878,4 +1958,79 @@ paths:
             format: uuid
       responses:
         '204':
-          description: Template desativado
+          description: Cancelada
+
+  /api/recurrence-rules/{id}/reactivate:
+    patch:
+      tags: [recurrence-rules]
+      operationId: reactivateRecurrenceRule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Regra reativada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecurrenceRuleResponseDTO'
+        '422':
+          description: Regra já está ativa
+
+  /api/recurrence-rules/{id}/occurrences/{date}/confirm:
+    post:
+      tags: [recurrence-rules]
+      operationId: confirmOccurrence
+      summary: Materializa uma ocorrência da regra como transação real
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: date
+          in: path
+          required: true
+          schema:
+            type: string
+            format: date
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmOccurrenceDTO'
+      responses:
+        '201':
+          description: Ocorrência materializada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionResponseDTO'
+
+  /api/recurrence-rules/{id}/occurrences/{date}/skip:
+    post:
+      tags: [recurrence-rules]
+      operationId: skipOccurrence
+      summary: Pula uma ocorrência (grava EXDATE)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: date
+          in: path
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '204':
+          description: Ocorrência pulada (EXDATE gravada)

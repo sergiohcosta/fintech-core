@@ -15,7 +15,9 @@ import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.installment.DeleteInstallmentResultDTO;
 import com.fintech.api.dto.transaction.TransactionRequestDTO;
 import com.fintech.api.dto.transaction.TransactionResponseDTO;
+import com.fintech.api.dto.transaction.TransactionUpdateDTO;
 import com.fintech.api.dto.transfer.TransferRequestDTO;
+import com.fintech.api.exception.BusinessException;
 import com.fintech.api.exception.EntityNotFoundException;
 import com.fintech.api.repository.AccountRepository;
 import com.fintech.api.repository.CategoryRepository;
@@ -89,6 +91,33 @@ class TransactionServiceTest {
         verify(repository, times(3)).save(any());
     }
 
+    // #136 — a soma das parcelas deve fechar EXATAMENTE com o total da compra. Com HALF_EVEN
+    // uniforme em todas as parcelas a soma divergia: 100/3 → 33,33×3 = 99,99 (falta 1 centavo);
+    // 1000/7 → 142,86×7 = 1000,02 (sobram 2). @ParameterizedTest dá mocks frescos por caso.
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({ "100.00, 3", "1000.00, 7", "10.00, 3", "0.10, 3" })
+    @DisplayName("Parcelamento: soma das parcelas fecha exatamente com o total")
+    void installmentSumMatchesTotal(BigDecimal total, int installments) {
+        User user = buildUser();
+        Account account = buildAccount(user);
+        TransactionRequestDTO dto = new TransactionRequestDTO(
+                "Compra parcelada", total, LocalDate.now(),
+                TransactionType.EXPENSE, null, installments, null, account.getId());
+
+        when(accountRepository.findByIdAndTenant(account.getId(), user.getTenant()))
+                .thenReturn(Optional.of(account));
+        when(repository.save(any(Transaction.class))).thenAnswer(i -> i.getArgument(0));
+
+        service.create(dto, user);
+
+        ArgumentCaptor<Transaction> captor = ArgumentCaptor.forClass(Transaction.class);
+        verify(repository, times(installments)).save(captor.capture());
+        BigDecimal sum = captor.getAllValues().stream()
+                .map(Transaction::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        assertThat(sum).isEqualByComparingTo(total);
+    }
+
     @Test
     @DisplayName("createTransfer cria duas transações espelhadas com mesmo transferId")
     void createTransferMirrorsTransactions() {
@@ -120,7 +149,7 @@ class TransactionServiceTest {
     }
 
     @Test
-    @DisplayName("createTransfer lança IllegalArgumentException quando contas são iguais")
+    @DisplayName("createTransfer lança BusinessException quando contas são iguais")
     void createTransferRejectsEqualAccounts() {
         User user = buildUser();
         UUID sameId = UUID.randomUUID();
@@ -128,7 +157,7 @@ class TransactionServiceTest {
                 sameId, sameId, new BigDecimal("100.00"), LocalDate.now(), null);
 
         assertThatThrownBy(() -> service.createTransfer(dto, user))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("diferentes");
     }
 
@@ -175,6 +204,42 @@ class TransactionServiceTest {
         service.deleteTransfer(transferId, user);
 
         verify(repository).deleteAll(List.of(leg1, leg2));
+    }
+
+    // #138 — perna de transferência não pode ser mutada/excluída isoladamente (quebra double-entry).
+    @Test
+    @DisplayName("#138 update de perna de transferência é rejeitado")
+    void updateRejectsTransferLeg() {
+        User user = buildUser();
+        UUID id = UUID.randomUUID();
+        Transaction leg = Transaction.builder().id(id)
+                .type(TransactionType.EXPENSE).account(buildAccount(user))
+                .transferId(UUID.randomUUID()).tenant(user.getTenant()).build();
+        when(repository.findByIdAndTenant(id, user.getTenant())).thenReturn(Optional.of(leg));
+
+        TransactionUpdateDTO dto = new TransactionUpdateDTO(
+                "novo", new BigDecimal("10.00"), null, null, null, null, null, null);
+
+        assertThatThrownBy(() -> service.update(id, dto, user))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("transferência");
+    }
+
+    @Test
+    @DisplayName("#138 delete de perna de transferência é rejeitado (não deixa a irmã órfã)")
+    void deleteRejectsTransferLeg() {
+        User user = buildUser();
+        UUID id = UUID.randomUUID();
+        Transaction leg = Transaction.builder().id(id)
+                .type(TransactionType.EXPENSE).account(buildAccount(user))
+                .transferId(UUID.randomUUID()).tenant(user.getTenant()).build();
+        when(repository.findByIdAndTenant(id, user.getTenant())).thenReturn(Optional.of(leg));
+
+        assertThatThrownBy(() -> service.delete(id, DeleteInstallmentScope.SINGLE, user))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("transferência");
+        verify(repository, never()).delete(any());
+        verify(repository, never()).deleteAll(any());
     }
 
     @Test

@@ -6,6 +6,7 @@ import com.fintech.api.domain.enums.BudgetItemSource;
 import com.fintech.api.domain.enums.BudgetItemStatus;
 import com.fintech.api.domain.enums.TransactionType;
 import com.fintech.api.domain.installment.InstallmentGroup;
+import com.fintech.api.domain.recurrence.RecurrenceRule;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.transaction.Transaction;
 import com.fintech.api.domain.user.User;
@@ -76,9 +77,12 @@ public class BudgetItem {
     private BudgetItemStatus status = BudgetItemStatus.PENDING;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "recurring_item_id")
+    @JoinColumn(name = "recurrence_rule_id")
     @ToString.Exclude
-    private RecurringBudgetItem recurringItem;
+    private RecurrenceRule recurrenceRule;
+
+    @Column(name = "recurrence_occurrence_date")
+    private LocalDate recurrenceOccurrenceDate;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "transaction_id")

@@ -1,0 +1,36 @@
+<div class="grouped-list">
+  @for (g of groups(); track g.bucket) {
+    <section class="group">
+      <header class="group-header" (click)="toggle(g.bucket)"
+              [attr.aria-expanded]="!isCollapsed(g.bucket)"
+              role="button"
+              tabindex="0"
+              (keydown.enter)="toggle(g.bucket)"
+              (keydown.space)="toggle(g.bucket)">
+        <mat-icon>{{ isCollapsed(g.bucket) ? 'chevron_right' : 'expand_more' }}</mat-icon>
+        <span class="group-label">{{ g.label }}</span>
+        <span class="group-summary">
+          <span class="income">+{{ g.income | currency: 'BRL' }}</span>
+          <span class="expense">-{{ g.expense | currency: 'BRL' }}</span>
+          <span class="net" [class.positive]="g.net >= 0">{{ g.net | currency: 'BRL' }}</span>
+        </span>
+      </header>
+      @if (!isCollapsed(g.bucket)) {
+        <div class="group-items">
+          @for (t of g.transactions; track t.id) {
+            <div class="tx-card" [class.income]="t.type === 'INCOME'" [class.expense]="t.type === 'EXPENSE'">
+              @if (t.categoryIcon) { <mat-icon>{{ t.categoryIcon }}</mat-icon> }
+              <span class="desc">{{ t.description }}</span>
+              @if (t.installmentLabel) { <span class="badge">{{ t.installmentLabel }}</span> }
+              <span class="status">{{ t.status }}</span>
+              <span class="amount">{{ t.amount | currency: 'BRL' }}</span>
+            </div>
+          }
+        </div>
+      }
+    </section>
+  }
+  @if (groups().length === 0) {
+    <p class="empty">Nenhuma transação no período.</p>
+  }
+</div>

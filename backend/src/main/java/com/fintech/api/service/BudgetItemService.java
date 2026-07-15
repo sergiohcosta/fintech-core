@@ -3,11 +3,13 @@ package com.fintech.api.service;
 import com.fintech.api.domain.account.Account;
 import com.fintech.api.domain.budget.BudgetCycle;
 import com.fintech.api.domain.budget.BudgetItem;
+import com.fintech.api.exception.BusinessException;
 import com.fintech.api.domain.category.Category;
 import com.fintech.api.domain.enums.BudgetCycleStatus;
 import com.fintech.api.domain.enums.BudgetItemSource;
 import com.fintech.api.domain.enums.BudgetItemStatus;
 import com.fintech.api.domain.enums.TransactionStatus;
+import com.fintech.api.domain.recurrence.RecurrenceRule;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.transaction.Transaction;
 import com.fintech.api.domain.user.User;
@@ -23,6 +25,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -40,19 +44,19 @@ public class BudgetItemService {
             throw new IllegalStateException("O ciclo está fechado para alterações.");
         }
         if (req.expectedDate().isBefore(cycle.getStartDate()) || req.expectedDate().isAfter(cycle.getEndDate())) {
-            throw new IllegalArgumentException("Data deve estar dentro do período do ciclo.");
+            throw new BusinessException("Data deve estar dentro do período do ciclo.");
         }
 
         Category category = null;
         if (req.categoryId() != null) {
             category = categoryRepository.findByIdAndTenantIdAndDeletedAtIsNull(req.categoryId(), tenant.getId())
-                .orElseThrow(() -> new IllegalArgumentException("Categoria não encontrada ou não pertence ao tenant."));
+                .orElseThrow(() -> new BusinessException("Categoria não encontrada ou não pertence ao tenant."));
         }
 
         Account account = null;
         if (req.accountId() != null) {
             account = accountRepository.findByIdAndTenant(req.accountId(), tenant)
-                .orElseThrow(() -> new IllegalArgumentException("Conta não encontrada ou não pertence ao tenant."));
+                .orElseThrow(() -> new BusinessException("Conta não encontrada ou não pertence ao tenant."));
         }
 
         return repository.save(BudgetItem.builder()
@@ -91,17 +95,14 @@ public class BudgetItemService {
 
     @Transactional
     public BudgetItem link(BudgetItem item, UUID transactionId) {
-        // Escopado pelo tenant do item (já validado em findByIdAndTenant no controller) — sem isso,
-        // qualquer UUID de transação de OUTRO tenant seria aceito (vazamento cross-tenant).
+        // #141: link agora passa pelos MESMOS guards de realize (antes pulava ciclo OPEN,
+        // compatibilidade de tipo e sync de amount, e só bloqueava dupla-vinculação em OUTRO ciclo).
+        requireOpenAndPending(item);
+        // Escopado pelo tenant do item — sem isso, qualquer UUID de transação de OUTRO tenant
+        // seria aceito (vazamento cross-tenant).
         Transaction tx = transactionRepository.findByIdAndTenant(transactionId, item.getTenant())
             .orElseThrow(() -> new EntityNotFoundException("Transação não encontrada."));
-
-        if (repository.findByTransactionAndCycleNot(tx, item.getCycle()).isPresent()) {
-            throw new IllegalStateException("Esta transação já está vinculada a outro item do plano.");
-        }
-
-        item.setTransaction(tx);
-        item.setStatus(BudgetItemStatus.REALIZED);
+        attachExistingTransaction(item, tx);
         return repository.save(item);
     }
 
@@ -114,12 +115,7 @@ public class BudgetItemService {
 
     @Transactional
     public BudgetItem realize(BudgetItem item, UUID transactionId, Tenant tenant, User user) {
-        if (item.getCycle().getStatus() != BudgetCycleStatus.OPEN) {
-            throw new IllegalStateException("O ciclo está fechado para alterações.");
-        }
-        if (item.getStatus() != BudgetItemStatus.PENDING) {
-            throw new IllegalStateException("Apenas itens pendentes podem ser realizados.");
-        }
+        requireOpenAndPending(item);
         if (item.getSource() == BudgetItemSource.INSTALLMENT && transactionId == null) {
             throw new IllegalStateException("Parcelas de cartão devem ser realizadas vinculando a transação existente.");
         }
@@ -128,18 +124,9 @@ public class BudgetItemService {
         if (transactionId != null) {
             tx = transactionRepository.findByIdAndTenant(transactionId, tenant)
                 .orElseThrow(() -> new AccessDeniedException("Acesso negado."));
-
-            repository.findByTransaction(tx)
-                .filter(existing -> !existing.getId().equals(item.getId()))
-                .ifPresent(existing -> {
-                    throw new IllegalStateException("Esta transação já está vinculada a outro item.");
-                });
-
-            if (tx.getType() != item.getType()) {
-                throw new IllegalStateException("O tipo da transação não é compatível com o tipo do item.");
-            }
         } else {
-            tx = Transaction.builder()
+            // Sem transação informada: cria uma PAID a partir do item (realização "manual").
+            tx = transactionRepository.save(Transaction.builder()
                 .description(item.getDescription())
                 .amount(item.getAmount())
                 .date(item.getExpectedDate())
@@ -149,14 +136,54 @@ public class BudgetItemService {
                 .category(item.getCategory())
                 .account(item.getAccount())
                 .status(TransactionStatus.PAID)
-                .build();
-            tx = transactionRepository.save(tx);
+                .build());
         }
 
+        attachExistingTransaction(item, tx);
+        return repository.save(item);
+    }
+
+    // #140: ao confirmar uma ocorrência de recorrência, vincula a transação materializada ao item
+    // RECURRING PENDENTE do ciclo aberto (se houver). Sem isso a transação apareceria como avulsa e
+    // o resumo do ciclo contaria o item planejado E a avulsa (dupla contagem). Orquestrado a partir
+    // de RecurrenceRuleService.confirmOccurrence — TransactionService não conhece planejamento.
+    // Best-effort: sem ciclo aberto ou sem item projetado correspondente, não faz nada.
+    @Transactional
+    public void linkRecurringOccurrence(Tenant tenant, RecurrenceRule rule, LocalDate occurrence, UUID transactionId) {
+        Optional<BudgetItem> match = repository.findRecurringOccurrenceInOpenCycle(tenant, rule, occurrence);
+        if (match.isEmpty()) return;
+        Transaction tx = transactionRepository.findByIdAndTenant(transactionId, tenant)
+            .orElseThrow(() -> new EntityNotFoundException("Transação não encontrada."));
+        BudgetItem item = match.get();
+        attachExistingTransaction(item, tx);
+        repository.save(item);
+    }
+
+    // #141: guards compartilhados por link e realize. Antes só realize os aplicava; link os pulava,
+    // permitindo dupla-vinculação no mesmo ciclo, tipo incompatível e amount dessincronizado —
+    // dois caminhos de escrita para o mesmo estado com validações diferentes.
+    private void requireOpenAndPending(BudgetItem item) {
+        if (item.getCycle().getStatus() != BudgetCycleStatus.OPEN) {
+            throw new IllegalStateException("O ciclo está fechado para alterações.");
+        }
+        if (item.getStatus() != BudgetItemStatus.PENDING) {
+            throw new IllegalStateException("Apenas itens pendentes podem ser realizados.");
+        }
+    }
+
+    private void attachExistingTransaction(BudgetItem item, Transaction tx) {
+        // Uma transação pertence a no máximo UM item (qualquer ciclo) — impede dupla contagem.
+        repository.findByTransaction(tx)
+            .filter(existing -> !existing.getId().equals(item.getId()))
+            .ifPresent(existing -> {
+                throw new IllegalStateException("Esta transação já está vinculada a outro item.");
+            });
+        if (tx.getType() != item.getType()) {
+            throw new IllegalStateException("O tipo da transação não é compatível com o tipo do item.");
+        }
         item.setTransaction(tx);
         item.setAmount(tx.getAmount());
         item.setStatus(BudgetItemStatus.REALIZED);
-        return repository.save(item);
     }
 
     @Transactional

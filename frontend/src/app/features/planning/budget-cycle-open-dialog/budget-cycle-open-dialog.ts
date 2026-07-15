@@ -94,12 +94,12 @@ export class BudgetCycleOpenDialogComponent implements OnInit {
           endDate:                fmt(end),
           referenceMonth:         refMonth,
           suggestedOpeningBalance: 0,
-          projectedIncome:  recurring.filter(r => r.type === 'INCOME').reduce((s, r) => s + (r.amount ?? 0), 0),
-          projectedExpense: recurring.filter(r => r.type === 'EXPENSE').reduce((s, r) => s + (r.amount ?? 0), 0),
+          projectedIncome:  recurring.filter(r => r.type === 'INCOME').reduce((s, r) => s + (r.baseAmount ?? 0), 0),
+          projectedExpense: recurring.filter(r => r.type === 'EXPENSE').reduce((s, r) => s + (r.baseAmount ?? 0), 0),
           recurringItems: recurring.map(r => ({
             description: r.description,
-            expectedDate: fmt(new Date(start.getFullYear(), start.getMonth(), r.dayOfMonth ?? 1)),
-            amount: r.amount,
+            expectedDate: fmt(new Date(start.getFullYear(), start.getMonth(), this.dayFromRrule(r.rrule))),
+            amount: r.baseAmount,
             type: r.type,
           })),
           installmentItems: [],
@@ -154,5 +154,14 @@ export class BudgetCycleOpenDialogComponent implements OnInit {
 
   cancel(): void {
     this.dialogRef.close(false);
+  }
+
+  /** Extrai o dia do mês numérico da string RRULE. Ex: "FREQ=MONTHLY;BYMONTHDAY=15" → 15. */
+  private dayFromRrule(rrule?: string | null): number {
+    if (!rrule) return 1;
+    const match = rrule.match(/BYMONTHDAY=(-?\d+)/);
+    if (!match) return 1;
+    const day = parseInt(match[1], 10);
+    return day === -1 ? 28 : day; // -1 significa último dia; usa 28 como aproximação segura
   }
 }

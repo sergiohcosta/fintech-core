@@ -6,6 +6,7 @@ import com.fintech.api.domain.enums.TransactionStatus;
 import com.fintech.api.domain.enums.TransactionType;
 import com.fintech.api.domain.installment.InstallmentGroup;
 import com.fintech.api.domain.invoice.Invoice;
+import com.fintech.api.domain.recurrence.RecurrenceRule;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.user.User;
 import jakarta.persistence.*;
@@ -91,6 +92,25 @@ public class Transaction {
     @JoinColumn(name = "invoice_id")
     @ToString.Exclude
     private Invoice invoice;
+
+    // #145: quando preenchido, esta transação é o EXPENSE que QUITA a fatura apontada.
+    // Usado para excluí-la dos agregados do dashboard (evita dupla contagem com as compras
+    // do cartão) — distinto de `invoice`, que aponta a fatura à qual uma COMPRA pertence.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "paid_invoice_id")
+    @ToString.Exclude
+    private Invoice paidInvoice;
+
+    // --- RECORRÊNCIA ---
+    // Preenchido quando a transação foi materializada a partir de uma regra.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "recurrence_rule_id")
+    @ToString.Exclude
+    private RecurrenceRule recurrenceRule;
+
+    // O "slot" canônico da regra (data da ocorrência), distinto de `date` (data efetiva).
+    @Column(name = "recurrence_occurrence")
+    private LocalDate recurrenceOccurrence;
 
     @NotNull(message = "O status é obrigatório")
     @Enumerated(EnumType.STRING)

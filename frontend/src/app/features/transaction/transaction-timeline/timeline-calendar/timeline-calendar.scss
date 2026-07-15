@@ -1,0 +1,19 @@
+.calendar { display: flex; flex-direction: column; gap: 12px; }
+.calendar-nav { display: flex; align-items: center; justify-content: center; gap: 16px; h3 { margin: 0; min-width: 180px; text-align: center; } }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.weekday { text-align: center; font-size: 0.75rem; font-weight: 600; color: var(--mat-sys-on-surface-variant); padding: 4px 0; }
+.day-cell {
+  min-height: 64px; border-radius: 8px; padding: 4px; display: flex; flex-direction: column;
+  border: 1px solid var(--mat-sys-outline-variant); cursor: default;
+  &.empty { border: none; background: transparent; }
+  &.has-tx { cursor: pointer; background: var(--mat-sys-surface-container); }
+  &.expanded { outline: 2px solid var(--mat-sys-primary); }
+}
+.day-number { font-size: 0.8rem; font-weight: 500; }
+.day-net { margin-top: auto; font-size: 0.7rem; font-weight: 600;
+  &.positive { color: var(--mat-sys-primary); } &.negative { color: var(--mat-sys-error); } }
+.day-detail { border-top: 1px solid var(--mat-sys-outline-variant); padding-top: 8px;
+  h4 { margin: 0 0 8px; } }
+.detail-row { display: flex; align-items: center; gap: 8px; padding: 4px 0;
+  .desc { flex: 1; } .amount { font-weight: 600; }
+  &.income .amount { color: var(--mat-sys-primary); } &.expense .amount { color: var(--mat-sys-error); } }

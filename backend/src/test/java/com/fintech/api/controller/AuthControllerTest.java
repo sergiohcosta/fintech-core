@@ -188,8 +188,7 @@ class AuthControllerTest {
     @DisplayName("Should return 429 with Retry-After header when rate limit exceeded")
     void shouldReturn429WhenRateLimited() throws Exception {
         LoginDTO loginDTO = new LoginDTO("test@email.com", "password");
-        // A chave agora é ip:email; MockMvc usa remoteAddr 127.0.0.1 por padrão.
-        // any(String.class) evita acoplamento ao formato exato da chave composta.
+        // A chave é o email (#144). any(String.class) evita acoplamento ao formato exato da chave.
         when(loginRateLimiter.isBlocked(any(String.class))).thenReturn(true);
         when(loginRateLimiter.secondsUntilUnblock(any(String.class))).thenReturn(42L);
 
