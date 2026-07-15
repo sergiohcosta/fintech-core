@@ -123,126 +123,38 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/fintech-core-frontend:${{ env.SHA_TAG }}
 
-  # Deploy via kubectl no próprio runner (client-go cai pra InClusterConfig
-  # automaticamente — sem kubeconfig nenhum, só o token da ServiceAccount
-  # montado no pod). RBAC de gha-runner (homelab-k8s/infra/gha-runner/rbac.yaml)
-  # restringe o alcance só ao namespace do ambiente.
+  # Deploy verificado via reusable workflow (.github/workflows/deploy-env.yml):
+  # cada ambiente faz apply + gate de rollout + smoke test + rollback automático.
+  # Roda no runner self-hosted (InClusterConfig + RBAC do gha-runner por namespace).
+  # `secrets: inherit` repassa GH_APP_ID/GH_APP_PRIVATE_KEY pro checkout do homelab-k8s.
   deploy-dev:
     name: Deploy (dev)
     needs: build-and-push
     if: github.ref == 'refs/heads/develop'
-    runs-on: [self-hosted, k3s]
-    env:
-      REGISTRY: ghcr.io/sergiohcosta
-      SHA_TAG: sha-${{ github.sha }}
-    steps:
-      - name: Gera token do GitHub App pra checkout do homelab-k8s
-        id: app-token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.GH_APP_ID }}
-          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
-          repositories: homelab-k8s
-      - uses: actions/checkout@v4
-        with:
-          repository: sergiohcosta/homelab-k8s
-          token: ${{ steps.app-token.outputs.token }}
-      - uses: azure/setup-kubectl@v4
-      - name: Instala kustomize
-        # O runner self-hosted reusa o pod entre jobs, então o binário pode já
-        # existir de um deploy anterior — o install_kustomize.sh sai com erro
-        # ("kustomize exists. Remove it first.") nesse caso. Guarda com
-        # command -v pra ser idempotente.
-        run: command -v kustomize >/dev/null 2>&1 || curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash /dev/stdin /usr/local/bin
-      - name: Aponta as imagens da run e aplica o overlay
-        working-directory: projects/fintech-core/overlays/dev
-        run: |
-          kustomize edit set image \
-            $REGISTRY/fintech-core-backend=$REGISTRY/fintech-core-backend:$SHA_TAG \
-            $REGISTRY/fintech-core-frontend=$REGISTRY/fintech-core-frontend:$SHA_TAG
-          kubectl apply -k .
-      - name: Reinicia os deployments
-        run: |
-          kubectl rollout restart deployment/fintech-core-backend deployment/fintech-core-frontend -n dev
+    uses: ./.github/workflows/deploy-env.yml
+    with:
+      namespace: dev
+    secrets: inherit
 
   deploy-hmg:
     name: Deploy (hmg)
     needs: build-and-push
     if: github.ref == 'refs/heads/main'
-    runs-on: [self-hosted, k3s]
-    env:
-      REGISTRY: ghcr.io/sergiohcosta
-      SHA_TAG: sha-${{ github.sha }}
-    steps:
-      - name: Gera token do GitHub App pra checkout do homelab-k8s
-        id: app-token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.GH_APP_ID }}
-          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
-          repositories: homelab-k8s
-      - uses: actions/checkout@v4
-        with:
-          repository: sergiohcosta/homelab-k8s
-          token: ${{ steps.app-token.outputs.token }}
-      - uses: azure/setup-kubectl@v4
-      - name: Instala kustomize
-        # O runner self-hosted reusa o pod entre jobs, então o binário pode já
-        # existir de um deploy anterior — o install_kustomize.sh sai com erro
-        # ("kustomize exists. Remove it first.") nesse caso. Guarda com
-        # command -v pra ser idempotente.
-        run: command -v kustomize >/dev/null 2>&1 || curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash /dev/stdin /usr/local/bin
-      - name: Aponta as imagens da run e aplica o overlay
-        working-directory: projects/fintech-core/overlays/hmg
-        run: |
-          kustomize edit set image \
-            $REGISTRY/fintech-core-backend=$REGISTRY/fintech-core-backend:$SHA_TAG \
-            $REGISTRY/fintech-core-frontend=$REGISTRY/fintech-core-frontend:$SHA_TAG
-          kubectl apply -k .
-      - name: Reinicia os deployments
-        run: |
-          kubectl rollout restart deployment/fintech-core-backend deployment/fintech-core-frontend -n hmg
+    uses: ./.github/workflows/deploy-env.yml
+    with:
+      namespace: hmg
+    secrets: inherit
 
-  # Gate manual: job PAUSA aqui aguardando aprovação de reviewer do Environment
-  # "prod" (Settings → Environments → prod → Required reviewers). Roda em
-  # sequência (needs: deploy-hmg) na mesma run — mesmo SHA_TAG que já passou
-  # em hmg, sem risco de aprovar a versão errada. Ver commands.md
-  # ("Deploy manual (prod)") pra aprovar/rejeitar pela UI ou via gh api.
+  # Gate manual do prod: passar `environment: prod` faz o job do reusable workflow
+  # PAUSAR aguardando aprovação de reviewer (Settings → Environments → prod). Roda
+  # em sequência (needs: deploy-hmg) na mesma run — mesmo SHA_TAG já validado em hmg.
+  # Ver commands.md ("Deploy manual (prod)") pra aprovar/rejeitar.
   deploy-prod:
     name: Deploy (prod)
     needs: deploy-hmg
     if: github.ref == 'refs/heads/main'
-    environment: prod
-    runs-on: [self-hosted, k3s]
-    env:
-      REGISTRY: ghcr.io/sergiohcosta
-      SHA_TAG: sha-${{ github.sha }}
-    steps:
-      - name: Gera token do GitHub App pra checkout do homelab-k8s
-        id: app-token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.GH_APP_ID }}
-          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
-          repositories: homelab-k8s
-      - uses: actions/checkout@v4
-        with:
-          repository: sergiohcosta/homelab-k8s
-          token: ${{ steps.app-token.outputs.token }}
-      - uses: azure/setup-kubectl@v4
-      - name: Instala kustomize
-        # O runner self-hosted reusa o pod entre jobs, então o binário pode já
-        # existir de um deploy anterior — o install_kustomize.sh sai com erro
-        # ("kustomize exists. Remove it first.") nesse caso. Guarda com
-        # command -v pra ser idempotente.
-        run: command -v kustomize >/dev/null 2>&1 || curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash /dev/stdin /usr/local/bin
-      - name: Aponta as imagens da run e aplica o overlay
-        working-directory: projects/fintech-core/overlays/prod
-        run: |
-          kustomize edit set image \
-            $REGISTRY/fintech-core-backend=$REGISTRY/fintech-core-backend:$SHA_TAG \
-            $REGISTRY/fintech-core-frontend=$REGISTRY/fintech-core-frontend:$SHA_TAG
-          kubectl apply -k .
-      - name: Reinicia os deployments
-        run: |
-          kubectl rollout restart deployment/fintech-core-backend deployment/fintech-core-frontend -n prod
+    uses: ./.github/workflows/deploy-env.yml
+    with:
+      namespace: prod
+      environment: prod
+    secrets: inherit

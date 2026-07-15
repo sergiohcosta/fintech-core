@@ -1,0 +1,96 @@
+name: Deploy a um ambiente
+
+# Reusable workflow (workflow_call): encapsula deploy + gate de saúde + smoke test
+# + rollback automático, chamado por deploy-dev/hmg/prod no ci-cd.yml. Extrair aqui
+# evita triplicar a lógica e garante que a verificação de saúde é idêntica nos 3
+# ambientes. Roda no runner self-hosted (precisa de acesso ao cluster via
+# InClusterConfig + RBAC do gha-runner). O gate manual do prod é ligado passando
+# `environment: prod` no chamador (vazio = sem gate).
+
+on:
+  workflow_call:
+    inputs:
+      namespace:
+        description: Namespace k8s do ambiente (dev/hmg/prod)
+        required: true
+        type: string
+      environment:
+        description: GitHub Environment pra gate manual (vazio = sem gate)
+        required: false
+        type: string
+        default: ''
+
+jobs:
+  deploy:
+    name: Deploy (${{ inputs.namespace }})
+    runs-on: [self-hosted, k3s]
+    environment: ${{ inputs.environment }}
+    env:
+      REGISTRY: ghcr.io/sergiohcosta
+      SHA_TAG: sha-${{ github.sha }}
+      NS: ${{ inputs.namespace }}
+    steps:
+      - name: Gera token do GitHub App pra checkout do homelab-k8s
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          repositories: homelab-k8s
+      - uses: actions/checkout@v4
+        with:
+          repository: sergiohcosta/homelab-k8s
+          token: ${{ steps.app-token.outputs.token }}
+      - uses: azure/setup-kubectl@v4
+      - name: Instala kustomize
+        # Idempotente: o runner self-hosted reusa o pod entre jobs, então o binário
+        # pode já existir — o install_kustomize.sh sai com erro nesse caso.
+        run: command -v kustomize >/dev/null 2>&1 || curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash /dev/stdin /usr/local/bin
+      - name: Deploy verificado (rollout gated + smoke + rollback)
+        working-directory: projects/fintech-core/overlays/${{ inputs.namespace }}
+        run: |
+          set -euo pipefail
+
+          # 1) Aponta as imagens da run e aplica o overlay
+          kustomize edit set image \
+            $REGISTRY/fintech-core-backend=$REGISTRY/fintech-core-backend:$SHA_TAG \
+            $REGISTRY/fintech-core-frontend=$REGISTRY/fintech-core-frontend:$SHA_TAG
+          kubectl apply -k .
+          kubectl rollout restart deployment/fintech-core-backend deployment/fintech-core-frontend -n "$NS"
+
+          # rollback reverte ambos os deployments pra revisão anterior (imagem
+          # anterior). || true torna no-op no 1º deploy de um ambiente (sem revisão).
+          rollback() {
+            echo "::error::deploy em $NS falhou — revertendo pro estado anterior"
+            kubectl rollout undo deployment/fintech-core-backend -n "$NS" || true
+            kubectl rollout undo deployment/fintech-core-frontend -n "$NS" || true
+          }
+
+          # 2) Gate de saúde: espera o rollout ficar Ready (respeita startup/readiness
+          # probe). 240s cobre o boot ~76s do backend + pull/rolling com folga.
+          for d in fintech-core-backend fintech-core-frontend; do
+            if ! kubectl rollout status deployment/$d -n "$NS" --timeout=240s; then
+              rollback
+              exit 1
+            fi
+          done
+
+          # 3) Smoke test através dos Services (não só a probe kubelet→localhost):
+          # backend /actuator/health (prova app + DB + Flyway) e frontend / (nginx
+          # servindo o SPA). Feito com o `curl` do próprio runner (que já existe —
+          # o step do kustomize usa) via FQDN cross-namespace, em vez de `kubectl
+          # run`: a RBAC do gha-runner não permite criar pods nos namespaces (nem
+          # deve — princípio do menor privilégio). --retry cobre a propagação do
+          # Service logo após o rollout; --max-time evita travar.
+          smoke() {
+            curl -fsS --max-time 15 --retry 5 --retry-delay 3 --retry-connrefused \
+              "http://fintech-core-backend.$NS.svc.cluster.local:8080/actuator/health" >/dev/null \
+            && curl -fsS --max-time 15 --retry 5 --retry-delay 3 --retry-connrefused \
+              "http://fintech-core-frontend.$NS.svc.cluster.local/" >/dev/null
+          }
+          if ! smoke; then
+            rollback
+            exit 1
+          fi
+
+          echo "Deploy em $NS verificado: rollout Ready + smoke OK."
