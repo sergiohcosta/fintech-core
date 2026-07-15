@@ -1,7 +1,7 @@
 # Spec: Deploy com gate de saúde, rollback automático e smoke test
 
 **Data:** 2026-07-14
-**Status:** proposto
+**Status:** aprovado
 
 ## Contexto
 
@@ -40,16 +40,21 @@ rollback)** e **2 (smoke test)**.
   configmap/ingress aplicadas junto **não** são revertidas — aceitável, o caso comum é bump
   de imagem. No 1º deploy de um ambiente (sem revisão anterior) o `undo` é no-op inofensivo.
 
-- **Smoke test (gap 2):** depois do rollout `Ready`, um pod efêmero de `curl` (dentro do
-  namespace) exercita o app **através dos Services** (não só o localhost da probe):
-  - `GET http://fintech-core-backend:8080/actuator/health` → **200 UP** (prova app + DB +
-    Flyway, via roteamento de Service).
-  - `GET http://fintech-core-frontend/` → **200** (nginx servindo o SPA buildado).
-  - (opcional, aprofundamento) `GET .../openapi.yaml` → 200 (camada de controller/estáticos).
-  `curl -fsS` sai não-zero em resposta não-2xx → falha o job → dispara rollback.
+- **Smoke test (gap 2):** depois do rollout `Ready`, exercita o app **através dos Services**
+  (não só o localhost da probe), com o `curl` do **próprio runner** via FQDN cross-namespace:
+  - `GET http://fintech-core-backend.$NS.svc.cluster.local:8080/actuator/health` → **200 UP**
+    (prova app + DB + Flyway, via roteamento de Service).
+  - `GET http://fintech-core-frontend.$NS.svc.cluster.local/` → **200** (nginx servindo o SPA).
+  `curl -fsS` (+ `--retry`/`--max-time`) sai não-zero em resposta não-2xx → falha o job →
+  dispara rollback.
   *Por que não é redundante com a readiness probe:* a probe é kubelet→pod localhost; o smoke
   passa por DNS + Service + (frontend) nginx — pega falha de roteamento/serviço que a probe
   não vê.
+  *Por que curl do runner e não `kubectl run` (design original revisado na execução):* criar
+  um pod efêmero exige RBAC de `pods create` nos namespaces do app, o que quebra o menor
+  privilégio do gha-runner (ele já pode controlar deployments; poder rodar pods arbitrários
+  em prod é surface a mais). O runner já tem `curl` (o step do kustomize usa) e alcança os
+  Services por FQDN — zero RBAC de pods.
 
 - **DRY via reusable workflow (`workflow_call`):** a lógica deploy + gate + smoke + rollback
   é **idêntica** nos 3 ambientes. Em vez de triplicar ~35 linhas, extrair para
@@ -73,8 +78,11 @@ rollback)** e **2 (smoke test)**.
 | `.github/workflows/deploy-env.yml` (novo) | reusable workflow: inputs `namespace`/`environment`; app-token → checkout homelab-k8s → setup-kubectl → kustomize idempotente → **deploy + rollout-gate + smoke + rollback** |
 | `.github/workflows/ci-cd.yml` | `deploy-dev/hmg/prod` viram chamadores (`uses: ./.github/workflows/deploy-env.yml` + `with`/`secrets: inherit`); remove o corpo inline duplicado |
 
-Nenhuma mudança em `homelab-k8s` (o smoke usa nomes de Service já existentes:
-`fintech-core-backend:8080`, `fintech-core-frontend:80`).
+**Mudança em `homelab-k8s` (descoberta na execução):** o `rollout undo` do rollback lista
+as ReplicaSets pra achar a revisão anterior — a RBAC do `gha-runner` não permitia. Adicionar
+`apps/replicasets` get/list/watch (só leitura) nos 3 Roles `dev/hmg/prod`
+(`infra/gha-runner/rbac.yaml`, homelab-k8s#3). O smoke **não** precisa de RBAC de pods (curl
+do runner, ver Decisões).
 
 ## Contrato técnico (esboço do job de deploy)
 
@@ -92,10 +100,14 @@ for d in fintech-core-backend fintech-core-frontend; do
   kubectl rollout status deployment/$d -n $NS --timeout=240s || { echo "::error::rollout $d falhou"; rollback; exit 1; }
 done
 
-# Gate 2 — smoke test através dos Services
-kubectl run smoke-$RANDOM -n $NS --rm -i --restart=Never --image=curlimages/curl:8.10.1 --command -- \
-  sh -c 'curl -fsS http://fintech-core-backend:8080/actuator/health && curl -fsS -o /dev/null http://fintech-core-frontend/' \
-  || { echo "::error::smoke test falhou"; rollback; exit 1; }
+# Gate 2 — smoke test com o curl do runner (via FQDN cross-namespace)
+smoke() {
+  curl -fsS --max-time 15 --retry 5 --retry-delay 3 --retry-connrefused \
+    "http://fintech-core-backend.$NS.svc.cluster.local:8080/actuator/health" >/dev/null \
+  && curl -fsS --max-time 15 --retry 5 --retry-delay 3 --retry-connrefused \
+    "http://fintech-core-frontend.$NS.svc.cluster.local/" >/dev/null
+}
+if ! smoke; then echo "::error::smoke test falhou"; rollback; exit 1; fi
 ```
 
 `environment: ${{ inputs.environment }}` no job do reusable workflow — `prod` liga o gate;
