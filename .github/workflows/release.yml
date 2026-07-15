@@ -41,7 +41,10 @@ jobs:
 
       # --generate-notes: o GitHub diffa da tag anterior até esta e monta as
       # notas a partir dos commits/PRs no intervalo. O git log PT-BR vira o changelog.
+      # --repo evita o "fatal: not a git repository": sem checkout não há git
+      # local, então o gh precisa do repo explícito (GITHUB_REPOSITORY é setado
+      # pelo Actions). Assim o job segue sem clonar o repo só pra criar o Release.
       - name: Cria o GitHub Release com notas automáticas
-        run: gh release create "$VERSION" --generate-notes --title "$VERSION"
+        run: gh release create "$VERSION" --generate-notes --title "$VERSION" --repo "$GITHUB_REPOSITORY"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
