@@ -22,7 +22,7 @@ NÃO usá-la e qual irmã usar.
 
 ---
 
-## Lista final de skills (12)
+## Lista final de skills (13)
 
 ### 1. `fintech-core-change-control`
 Como mudanças são classificadas, gateadas e revisadas AQUI: ciclo SDD (spec → plano → aprovação →
@@ -96,6 +96,14 @@ absorvida aqui): hipótese prevê números antes de rodar; ciclo de vida experim
 adotada ou aposentadoria documentada. Lista curta e honesta: RLS (#116), effective_date (#85),
 sub-projetos de recorrência, JWT httpOnly (#91), Stripe (ADR-002), Fly.io (ADR-003).
 
+### 13. `fintech-core-release-and-versioning`
+Como o projeto é versionado e como cortar uma release: SemVer 2.0 com a fronteira de
+compatibilidade no `openapi.yaml`, regra de pré-1.0, as duas camadas (SHA sempre vs nome SemVer
+curado), versionamento por ambiente (dev só-SHA; hmg/prod carregam `vX.Y.Z`), e o runbook do
+`release.yml` (tag `v*` → re-tag de imagem no GHCR sem rebuild + GitHub Release com notas
+automáticas), incluindo a mecânica stateless do `sha-${github.sha}` e os gotchas reais. É o passo
+*depois* do merge em main; o fluxo de mudança em si é da change-control. Racional: ADR-005.
+
 ---
 
 ## Casa única por classe de fato (vinculante)
@@ -112,6 +120,7 @@ sub-projetos de recorrência, JWT httpOnly (#91), Stripe (ADR-002), Fly.io (ADR-
 | Perfis Spring, env vars, environments Angular | config-and-flags | run-and-operate referencia |
 | Versões de toolchain (JDK/Node/npm) + setup do zero | build-and-env | |
 | Comandos de rodar/deploy/sync-tenant/sync-db | run-and-operate | build-and-env cobre só o setup inicial |
+| SemVer, cortar release, tag `v*`, `release.yml`, changelog | release-and-versioning | git-operator.md é a convenção; ADR-005 o racional |
 | Convenções de teste + test-summary.sh + gates CI + Sonar | validation-and-qa | |
 | Mapa de documentos de registro + estilo PT-BR | docs-and-writing | |
 | Tabela sintoma→triagem + batalhas resolvidas | debugging-playbook | |

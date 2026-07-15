@@ -38,6 +38,43 @@ git worktree remove ~/fintech-core/.worktrees/nome-da-sua-branch
 - Mensagens em português, descritivas, no imperativo ("adiciona", "corrige", "implementa")
 - Nunca incluir co-autoria (`Co-Authored-By`) nas mensagens de commit
 
+### Versionamento e Releases
+
+Racional completo: `docs/adr/ADR-005-versionamento-semver-releases.md`. Runbook com comandos: `commands.md` ("Cortar uma release"). Skill: `fintech-core-release-and-versioning`.
+
+**Duas camadas — não confundir:**
+
+| Camada | O que é | Quem tem |
+|--------|---------|----------|
+| **Versão por SHA** | identidade exata do artefato (`sha-<commit>`) | **todo ambiente, sempre, automático** — dev, hmg, prod |
+| **Nome SemVer** | apelido humano curado (`v1.2.0`) | só o que você decide nomear (pontos de release) |
+
+Nada roda anônimo: qualquer ambiente rastreia o commit exato pelo `sha-<commit>`. SemVer é a camada de curadoria por cima.
+
+**SemVer 2.0 (`MAJOR.MINOR.PATCH`) — a fronteira de compatibilidade é o `api-spec/openapi.yaml`:**
+
+| Sobe | Quando | Exemplo |
+|------|--------|---------|
+| **PATCH** | corrige bug, sem mudar contrato | fix de cálculo |
+| **MINOR** | feature nova, retrocompatível no contrato | endpoint/campo novo opcional |
+| **MAJOR** | quebra quem consome o contrato | remove/renomeia campo que o frontend usa |
+
+**Pré-1.0 (`0.y.z`):** ainda instável — MINOR pra feature, PATCH pra fix, ignora MAJOR até declarar `1.0.0` (= promessa de estabilidade do contrato).
+
+**Versionamento por ambiente:**
+
+| Ambiente | Dispara | Versionamento |
+|----------|---------|---------------|
+| **dev** | push em `develop` | **só SHA** — contínuo, alta rotatividade; não recebe nome SemVer |
+| **hmg** | push em `main` | SHA sempre; **carrega** `vX.Y.Z` quando o SHA que roda == commit taggado |
+| **prod** | mesma run da hmg (gate) | idem hmg — mesmo `SHA_TAG` já validado |
+
+**Regra de corte:** release **sai da `main`** (o que está validado em hmg/prod). `git tag -a vX.Y.Z` no commit de `main` já buildado → `.github/workflows/release.yml` re-tagga a imagem no GHCR (sem rebuild) e cria o GitHub Release com notas automáticas. Versão é **label**, não gate: não muda o deploy (que segue por push).
+
+> **Exceção histórica:** `v0.1.0` foi cortada da `develop` como primeira release de aprendizado, antes do `release.yml` estar na `main`. Da `v0.2.0` em diante, cortar sempre da `main`.
+
+**Diferido (não construir sem dor real):** pre-releases `-rc.N` por ambiente (hmg sempre nomeado) — ver ADR-005 "Fora de escopo". Adotar só quando "que versão está em hmg?" incomodar, ou surgir um segundo dev.
+
 ### Templates
 - `.github/ISSUE_TEMPLATE/` — templates de issue (bug, feature, chore) + config.yml
 - `.github/pull_request_template.md` — template de PR com checklist das regras invioláveis
