@@ -300,6 +300,11 @@ regra em forma de formulário:
 "Critério de conclusão". Ao criar issue via agente: adicionar ao projeto, definir Iteration e
 Priority (Crítica/Alta/Média/Baixa) e designar para sergiohcosta.
 
+**Depois do merge em `main` — nomear a release:** cortar uma versão SemVer (`vX.Y.Z`) é o passo
+seguinte ao fluxo `develop → main`, e é opcional (nomeia-se marco, não todo push). Política,
+esquema SemVer e runbook em `fintech-core-release-and-versioning` (versão é label, corta-se da
+`main`, `release.yml` re-tagga a imagem + cria o GitHub Release). Racional: ADR-005.
+
 ---
 
 ## 8. Checklist mestre de uma mudança completa

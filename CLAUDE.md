@@ -140,6 +140,7 @@ Este projeto segue **Spec-Driven Development**: cada fato tem **uma fonte única
 | Schema / migrations | `database-schema.md` |
 | Racional de design por feature | `docs/superpowers/specs/` (e planos em `docs/superpowers/plans/`) |
 | Decisões arquiteturais | `docs/adr/` |
+| Versionamento e releases (SemVer, como cortar) | `git-operator.md` + `docs/adr/ADR-005` |
 | Histórico (o quê / quando mudou) | git |
 | Roadmap e tarefas | GitHub Issues / Project |
 
