@@ -37,7 +37,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             LEFT JOIN FETCH t.account
             LEFT JOIN FETCH t.invoice
             WHERE t.tenant = :tenant
-            ORDER BY t.date DESC
+            ORDER BY t.date DESC, t.createdAt DESC
             """)
     List<Transaction> findAllByTenantWithDetails(@Param("tenant") Tenant tenant);
 
@@ -63,7 +63,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
                 (t.installmentGroup IS NOT NULL AND inv IS NOT NULL AND inv.dueDate >= :startDate AND inv.dueDate <= :endDate)
                 OR ((t.installmentGroup IS NULL OR inv IS NULL) AND t.date >= :startDate AND t.date <= :endDate)
               )
-            ORDER BY t.date DESC
+            ORDER BY t.date DESC, t.createdAt DESC
             """)
     List<Transaction> findAllByTenantWithFilters(
             @Param("tenant")         Tenant tenant,
@@ -81,11 +81,19 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             LEFT JOIN FETCH t.category
             LEFT JOIN FETCH t.account
             WHERE t.tenant = :tenant AND t.invoice = :invoice
-            ORDER BY t.date DESC
+            ORDER BY t.date DESC, t.createdAt DESC
             """)
     List<Transaction> findAllByTenantAndInvoiceWithDetails(
             @Param("tenant") Tenant tenant,
             @Param("invoice") Invoice invoice);
+
+    // Ocorrências já materializadas das regras informadas, na janela. Usado pela projeção
+    // para subtrair da expansão RRULE o que já virou transação real (batched, sem N+1).
+    List<Transaction> findByRecurrenceRuleIdInAndRecurrenceOccurrenceBetween(
+            Collection<UUID> ruleIds, LocalDate from, LocalDate to);
+
+    // Guard de idempotência: impede confirmar a mesma ocorrência duas vezes.
+    boolean existsByRecurrenceRuleIdAndRecurrenceOccurrence(UUID ruleId, LocalDate occurrence);
 
     // Todas as parcelas do grupo, ordenadas por número da parcela
     List<Transaction> findByInstallmentGroupOrderByInstallmentNumberAsc(InstallmentGroup group);
@@ -124,8 +132,12 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             @Param("tenantId") UUID tenantId
     );
 
+    // Total líquido da fatura: EXPENSE soma, INCOME (estorno/reembolso) abate.
     @Query("""
-            SELECT COALESCE(SUM(t.amount), 0)
+            SELECT COALESCE(SUM(
+                CASE WHEN t.type = com.fintech.api.domain.enums.TransactionType.INCOME
+                     THEN -t.amount ELSE t.amount END
+            ), 0)
             FROM Transaction t
             WHERE t.invoice = :invoice AND t.status <> :excluded
             """)
@@ -179,6 +191,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             WHERE t.tenant = :tenant
               AND t.type = :type
               AND t.status <> :excluded
+              AND t.transferId IS NULL
+              AND t.paidInvoice IS NULL
               AND (
                 (inv IS NOT NULL AND inv.dueDate BETWEEN :start AND :end)
                 OR
@@ -199,6 +213,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             LEFT JOIN t.invoice inv
             WHERE t.tenant = :tenant
               AND t.status <> :excluded
+              AND t.transferId IS NULL
+              AND t.paidInvoice IS NULL
               AND (
                 (inv IS NOT NULL AND inv.dueDate BETWEEN :start AND :end)
                 OR
@@ -222,6 +238,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             WHERE t.tenant = :tenant
               AND t.status = :paidStatus
               AND t.account.countInLiquidBalance = true
+              AND t.account.active = true
             """)
     BigDecimal sumNetLiquidBalanceByTenant(
             @Param("tenant") Tenant tenant,
@@ -273,7 +290,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             SELECT 1 FROM BudgetItem bi
             WHERE bi.transaction = t AND bi.cycle = :cycle
           )
-        ORDER BY t.date DESC
+        ORDER BY t.date DESC, t.createdAt DESC
         """)
     List<Transaction> findUnplannedByCycle(
         @Param("tenant")          Tenant tenant,

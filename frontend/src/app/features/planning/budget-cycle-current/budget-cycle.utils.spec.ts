@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { DEFAULT_SUMMARY, findDuplicateRecurring } from './budget-cycle.utils';
-import { RecurringBudgetItemResponse } from '../../../core/api/fintechSaaSAPI.schemas';
+import { RecurrenceRuleResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
 
 describe('DEFAULT_SUMMARY', () => {
   it('tem todos os campos numéricos zerados', () => {
@@ -16,8 +16,9 @@ describe('DEFAULT_SUMMARY', () => {
 });
 
 describe('findDuplicateRecurring', () => {
-  const rec = (over: Partial<RecurringBudgetItemResponse>): RecurringBudgetItemResponse =>
-    ({ description: 'Aluguel', type: 'EXPENSE', active: true, ...over });
+  const rec = (over: Partial<RecurrenceRuleResponseDTO>): RecurrenceRuleResponseDTO =>
+    ({ id: '1', description: 'Aluguel', type: 'EXPENSE', status: 'ACTIVE',
+       baseAmount: 1000, accountId: 'acc-1', accountName: 'Conta', rrule: 'FREQ=MONTHLY;BYMONTHDAY=1', startDate: '2026-01-01', ...over });
 
   it('encontra match ignorando caixa e espaços nas bordas', () => {
     const existing = [rec({ description: '  aLuGuel ' })];
@@ -29,8 +30,8 @@ describe('findDuplicateRecurring', () => {
     expect(findDuplicateRecurring(existing, 'Aluguel', 'INCOME')).toBeUndefined();
   });
 
-  it('ignora recorrentes desativados (active === false)', () => {
-    const existing = [rec({ description: 'Aluguel', active: false })];
+  it('ignora recorrentes cancelados (status !== ACTIVE)', () => {
+    const existing = [rec({ description: 'Aluguel', status: 'CANCELLED' })];
     expect(findDuplicateRecurring(existing, 'Aluguel', 'EXPENSE')).toBeUndefined();
   });
 

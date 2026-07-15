@@ -7,6 +7,8 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
+    "test:cov": "ng test --watch=false --coverage --coverage-reporters lcovonly --coverage-reporters text --coverage-exclude \"src/app/core/api/**\" --coverage-exclude \"**/*.spec.ts\"",
+    "sonar": "sonar-scanner",
     "api:generate": "orval --config orval.config.ts"
   },
   "prettier": {
@@ -33,17 +35,21 @@
     "@angular/platform-browser": "^21.2.17",
     "@angular/router": "^21.2.17",
     "jwt-decode": "^4.0.0",
+    "rrule": "^2.8.1",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },
   "devDependencies": {
+    "@analogjs/vite-plugin-angular": "^2.6.2",
     "@angular/build": "^21.2.15",
     "@angular/cli": "^21.2.15",
     "@angular/compiler-cli": "^21.2.17",
     "@angular/material": "^21.2.14",
+    "@vitest/coverage-v8": "^4.1.9",
     "fast-check": "^4.8.0",
     "jsdom": "^27.1.0",
     "orval": "^8.13.0",
+    "sonarqube-scanner": "^4.3.8",
     "typescript": "~5.9.2",
     "vitest": "^4.0.8"
   }

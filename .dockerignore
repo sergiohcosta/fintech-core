@@ -1,7 +1,21 @@
-.docker/
+# Infraestrutura e Git
 .git/
 .github/
-frontend/
-docs/
+.docker/
+
+# Backend
 backend/target/
+backend/.mvn/
+backend/mvnw
+backend/mvnw.cmd
+
+# Frontend
+frontend/node_modules/
+frontend/.angular/
+frontend/dist/
+frontend/coverage/
+frontend/.scannerwork/
+
+# Documentação e Markdown
+docs/
 *.md

@@ -43,6 +43,14 @@ export const CardBrand = {
   OTHER: 'OTHER',
 } as const;
 
+export type RecurrenceStatus = typeof RecurrenceStatus[keyof typeof RecurrenceStatus];
+
+
+export const RecurrenceStatus = {
+  ACTIVE: 'ACTIVE',
+  CANCELLED: 'CANCELLED',
+} as const;
+
 export interface LoginDTO {
   email: string;
   password: string;
@@ -176,6 +184,14 @@ export interface TransactionResponseDTO {
   /** @nullable */
   invoiceDueDate?: string | null;
   invoiceStatus?: InvoiceStatus | null;
+  /** true = "linha fantasma" projetada de uma regra (não existe no banco) */
+  projected?: boolean;
+  /** @nullable */
+  recurrenceRuleId?: string | null;
+  /** @nullable */
+  occurrenceDate?: string | null;
+  /** @nullable */
+  createdAt?: string | null;
 }
 
 export interface InvoiceResponseDTO {
@@ -441,6 +457,10 @@ export interface BudgetItemResponse {
   transactionStatus?: TransactionStatus | null;
   /** @nullable */
   installmentGroupId?: string | null;
+  /** @nullable */
+  recurrenceRuleId?: string | null;
+  /** @nullable */
+  recurrenceOccurrenceDate?: string | null;
 }
 
 export interface BudgetCycleResponse {
@@ -479,38 +499,6 @@ export interface BudgetItemLinkRequest {
   transactionId: string;
 }
 
-export interface RecurringBudgetItemRequest {
-  description: string;
-  amount: number;
-  type: TransactionType;
-  /**
-     * @minimum 1
-     * @maximum 28
-     */
-  dayOfMonth: number;
-  /** @nullable */
-  categoryId?: string | null;
-  /** @nullable */
-  accountId?: string | null;
-}
-
-export interface RecurringBudgetItemResponse {
-  id?: string;
-  description?: string;
-  amount?: number;
-  type?: TransactionType;
-  dayOfMonth?: number;
-  /** @nullable */
-  categoryId?: string | null;
-  /** @nullable */
-  categoryName?: string | null;
-  /** @nullable */
-  accountId?: string | null;
-  /** @nullable */
-  accountName?: string | null;
-  active?: boolean;
-}
-
 export interface TenantSettingsPatchRequest {
   /**
      * @minimum 1
@@ -526,6 +514,47 @@ export interface BudgetCyclePageResponse {
   number?: number;
 }
 
+export interface RecurrenceRuleCreateDTO {
+  /** @maxLength 255 */
+  description: string;
+  baseAmount: number;
+  type: TransactionType;
+  /** @nullable */
+  categoryId?: string | null;
+  accountId: string;
+  rrule: string;
+  startDate: string;
+}
+
+export interface RecurrenceRulePatchDTO {
+  /** @maxLength 255 */
+  description?: string;
+  baseAmount?: number;
+}
+
+export interface ConfirmOccurrenceDTO {
+  /** @nullable */
+  amount?: number | null;
+  /** @nullable */
+  date?: string | null;
+}
+
+export interface RecurrenceRuleResponseDTO {
+  id: string;
+  description: string;
+  baseAmount: number;
+  type: TransactionType;
+  /** @nullable */
+  categoryId?: string | null;
+  /** @nullable */
+  categoryName?: string | null;
+  accountId: string;
+  accountName: string;
+  rrule: string;
+  startDate: string;
+  status: RecurrenceStatus;
+}
+
 export type ListCategoriesParams = {
 includeArchived?: boolean;
 };
@@ -537,6 +566,10 @@ status?: TransactionStatus;
 type?: TransactionType;
 startDate?: string;
 endDate?: string;
+/**
+ * Mescla as "linhas fantasma" das regras de recorrência (default false)
+ */
+includeProjected?: boolean;
 };
 
 export type DeleteTransactionParams = {

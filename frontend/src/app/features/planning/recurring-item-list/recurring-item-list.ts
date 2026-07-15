@@ -7,11 +7,10 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
-
 import { filter, finalize, switchMap } from 'rxjs';
 
 import { PlanningService } from '../planning.service';
-import { RecurringBudgetItemRequest, RecurringBudgetItemResponse } from '../../../core/api/fintechSaaSAPI.schemas';
+import { RecurrenceRuleCreateDTO, RecurrenceRulePatchDTO, RecurrenceRuleResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
 import { RecurringItemFormComponent } from '../recurring-item-form/recurring-item-form';
 
 @Component({
@@ -30,8 +29,8 @@ export class RecurringItemList implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
 
-  readonly items = signal<RecurringBudgetItemResponse[]>([]);
-  readonly inactiveItems = signal<RecurringBudgetItemResponse[]>([]);
+  readonly items = signal<RecurrenceRuleResponseDTO[]>([]);
+  readonly inactiveItems = signal<RecurrenceRuleResponseDTO[]>([]);
   readonly loading = signal(true);
   readonly showInactive = signal(false);
 
@@ -41,56 +40,63 @@ export class RecurringItemList implements OnInit {
     this.load();
   }
 
+  /** Extrai o dia do mês da string RRULE. Ex: "FREQ=MONTHLY;BYMONTHDAY=15" → "15". */
+  dayFromRrule(rrule: string | null | undefined): string {
+    if (!rrule) return '?';
+    const match = rrule.match(/BYMONTHDAY=(-?\d+)/);
+    return match ? (match[1] === '-1' ? 'último' : match[1]) : '?';
+  }
+
   private load(): void {
     this.planningService.listRecurring()
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
         next: all => {
-          this.items.set(all.filter(i => i.active !== false));
-          this.inactiveItems.set(all.filter(i => i.active === false));
+          this.items.set(all.filter(i => i.status === 'ACTIVE'));
+          this.inactiveItems.set(all.filter(i => i.status !== 'ACTIVE'));
         },
-        error: () => this.snackBar.open('Erro ao carregar templates.', 'OK', { duration: 3000 }),
+        error: () => this.snackBar.open('Erro ao carregar recorrências.', 'OK', { duration: 3000 }),
       });
   }
 
-  openForm(existing?: RecurringBudgetItemResponse): void {
+  openForm(existing?: RecurrenceRuleResponseDTO): void {
     const ref = this.dialog.open(RecurringItemFormComponent, {
-      width: '460px',
+      width: '500px',
       data: existing ?? null,
     });
     ref.afterClosed().pipe(
       filter(Boolean),
-      switchMap((result: RecurringBudgetItemRequest) => existing
-        ? this.planningService.updateRecurring(existing.id!, result)
-        : this.planningService.createRecurring(result)
+      switchMap((result: RecurrenceRuleCreateDTO | RecurrenceRulePatchDTO) => existing
+        ? this.planningService.updateRecurring(existing.id!, result as RecurrenceRulePatchDTO)
+        : this.planningService.createRecurring(result as RecurrenceRuleCreateDTO)
       )
     ).subscribe({
       next: () => {
         this.load();
-        this.snackBar.open(existing ? 'Template atualizado.' : 'Template criado.', 'OK', { duration: 2000 });
+        this.snackBar.open(existing ? 'Recorrência atualizada.' : 'Recorrência criada.', 'OK', { duration: 2000 });
       },
-      error: () => this.snackBar.open('Erro ao salvar template.', 'OK', { duration: 3000 }),
+      error: () => this.snackBar.open('Erro ao salvar recorrência.', 'OK', { duration: 3000 }),
     });
   }
 
-  deactivate(item: RecurringBudgetItemResponse): void {
+  deactivate(item: RecurrenceRuleResponseDTO): void {
     this.planningService.deleteRecurring(item.id!).subscribe({
       next: () => {
         this.items.update(list => list.filter(i => i.id !== item.id));
-        this.inactiveItems.update(list => [...list, { ...item, active: false }]);
-        this.snackBar.open('Template desativado.', 'OK', { duration: 2000 });
+        this.inactiveItems.update(list => [...list, { ...item, status: 'CANCELLED' as const }]);
+        this.snackBar.open('Recorrência cancelada.', 'OK', { duration: 2000 });
       },
     });
   }
 
-  reactivate(item: RecurringBudgetItemResponse): void {
+  reactivate(item: RecurrenceRuleResponseDTO): void {
     this.planningService.reactivateRecurring(item.id!).subscribe({
-      next: (reactivated: RecurringBudgetItemResponse) => {
+      next: (reactivated: RecurrenceRuleResponseDTO) => {
         this.inactiveItems.update(list => list.filter(i => i.id !== item.id));
         this.items.update(list => [...list, reactivated]);
-        this.snackBar.open('Template reativado.', 'OK', { duration: 2000 });
+        this.snackBar.open('Recorrência reativada.', 'OK', { duration: 2000 });
       },
-      error: () => this.snackBar.open('Erro ao reativar template.', 'OK', { duration: 3000 }),
+      error: () => this.snackBar.open('Erro ao reativar recorrência.', 'OK', { duration: 3000 }),
     });
   }
 }

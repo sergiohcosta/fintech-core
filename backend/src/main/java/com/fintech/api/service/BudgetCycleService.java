@@ -2,8 +2,8 @@ package com.fintech.api.service;
 
 import com.fintech.api.domain.budget.BudgetCycle;
 import com.fintech.api.domain.budget.BudgetItem;
-import com.fintech.api.domain.budget.RecurringBudgetItem;
 import com.fintech.api.domain.enums.*;
+import com.fintech.api.domain.recurrence.RecurrenceRule;
 import com.fintech.api.dto.budget.BudgetCycleResponseDTO;
 import com.fintech.api.dto.budget.BudgetCycleSummaryDTO;
 import com.fintech.api.domain.installment.InstallmentGroup;
@@ -12,6 +12,8 @@ import com.fintech.api.domain.transaction.Transaction;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.exception.EntityNotFoundException;
 import com.fintech.api.repository.*;
+import com.fintech.api.service.recurrence.ProjectedOccurrence;
+import com.fintech.api.service.recurrence.RecurrenceProjectionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -32,8 +34,10 @@ public class BudgetCycleService {
 
     private final BudgetCycleRepository cycleRepository;
     private final BudgetItemRepository itemRepository;
-    private final RecurringBudgetItemRepository recurringRepository;
+    private final RecurrenceProjectionService recurrenceProjectionService;
+    private final RecurrenceRuleRepository ruleRepository;
     private final AccountRepository accountRepository;
+    private final CategoryRepository categoryRepository;
     private final TransactionRepository transactionRepository;
     private final BudgetSummaryService summaryService;
 
@@ -55,23 +59,6 @@ public class BudgetCycleService {
     }
 
     /**
-     * Determina a data esperada de um item recorrente dentro do ciclo.
-     *
-     * Se dayOfMonth >= startDay, a despesa/receita cai no primeiro mês do ciclo.
-     * Caso contrário, cai no segundo mês (após a virada do ciclo).
-     *
-     * Exemplo: ciclo 11/jun–10/jul, startDay=11
-     *   - dayOfMonth=15 → 15/jun (mesmo mês do início)
-     *   - dayOfMonth=5  → 5/jul  (mês seguinte)
-     */
-    LocalDate calculateExpectedDate(LocalDate cycleStartDate, int startDay, int dayOfMonth) {
-        if (dayOfMonth >= startDay) {
-            return cycleStartDate.withDayOfMonth(dayOfMonth);
-        }
-        return cycleStartDate.plusMonths(1).withDayOfMonth(dayOfMonth);
-    }
-
-    /**
      * Abre um novo ciclo de planejamento para o tenant.
      *
      * Validações:
@@ -79,7 +66,7 @@ public class BudgetCycleService {
      * - O período calculado não pode sobrepor ciclos já existentes
      *
      * Após criar o ciclo, popula automaticamente:
-     * - Itens recorrentes (RecurringBudgetItem ativos do tenant)
+     * - Itens recorrentes (projeções de RecurrenceRule via RecurrenceProjectionService)
      * - Parcelas de cartão cujo vencimento cai no período do ciclo
      */
     @Transactional
@@ -111,8 +98,8 @@ public class BudgetCycleService {
             .createdBy(user)
             .build());
 
-        populateRecurringItems(cycle, tenant, user, startDate, startDay);
-        populateInstallmentItems(cycle, tenant, startDate, endDate);
+        populateRecurringItems(cycle, tenant, user, startDate, endDate);
+        populateInstallmentItems(cycle, tenant, startDate, endDate, java.util.Set.of());
 
         log.info("Ciclo de planejamento aberto [cycleId={} tenantId={} periodo={}/{}]",
             cycle.getId(), tenant.getId(), startDate, endDate);
@@ -120,22 +107,26 @@ public class BudgetCycleService {
     }
 
     private void populateRecurringItems(BudgetCycle cycle, Tenant tenant, User user,
-                                        LocalDate startDate, int startDay) {
-        List<RecurringBudgetItem> templates =
-            recurringRepository.findAllByTenantAndActiveTrueOrderByDayOfMonthAscDescriptionAsc(tenant);
+                                        LocalDate startDate, LocalDate endDate) {
+        List<ProjectedOccurrence> projected =
+            recurrenceProjectionService.project(tenant, startDate, endDate);
+        if (projected.isEmpty()) return;
 
-        List<BudgetItem> items = templates.stream()
-            .map(t -> BudgetItem.builder()
+        List<BudgetItem> items = projected.stream()
+            .map(p -> BudgetItem.builder()
                 .cycle(cycle)
                 .tenant(tenant)
-                .description(t.getDescription())
-                .amount(t.getAmount())
-                .type(t.getType())
-                .category(t.getCategory())
-                .account(t.getAccount())
-                .expectedDate(calculateExpectedDate(startDate, startDay, t.getDayOfMonth()))
+                .description(p.description())
+                .amount(p.amount())
+                .type(p.type())
+                .category(p.categoryId() != null
+                    ? categoryRepository.getReferenceById(p.categoryId())
+                    : null)
+                .account(accountRepository.getReferenceById(p.accountId()))
+                .expectedDate(p.occurrenceDate())
                 .source(BudgetItemSource.RECURRING)
-                .recurringItem(t)
+                .recurrenceRule(ruleRepository.getReferenceById(p.ruleId()))
+                .recurrenceOccurrenceDate(p.occurrenceDate())
                 .createdBy(user)
                 .build())
             .toList();
@@ -144,7 +135,8 @@ public class BudgetCycleService {
     }
 
     private void populateInstallmentItems(BudgetCycle cycle, Tenant tenant,
-                                          LocalDate startDate, LocalDate endDate) {
+                                          LocalDate startDate, LocalDate endDate,
+                                          Set<UUID> skipGroupIds) {
         YearMonth invoiceMonth = YearMonth.from(startDate);
         List<Transaction> installments = transactionRepository.findInstallmentsByTenantAndInvoiceMonth(
             tenant.getId(), invoiceMonth.getYear(), invoiceMonth.getMonthValue(),
@@ -155,6 +147,8 @@ public class BudgetCycleService {
             .collect(Collectors.groupingBy(Transaction::getInstallmentGroup));
 
         List<BudgetItem> items = byGroup.entrySet().stream()
+            // #152: pula grupos já cobertos por um item preservado (evita duplicata no sync aditivo)
+            .filter(entry -> !skipGroupIds.contains(entry.getKey().getId()))
             .map(entry -> {
                 InstallmentGroup group = entry.getKey();
                 List<Transaction> txs = entry.getValue();
@@ -178,6 +172,7 @@ public class BudgetCycleService {
             })
             .toList();
 
+        if (items.isEmpty()) return;
         itemRepository.saveAll(items);
     }
 
@@ -188,7 +183,7 @@ public class BudgetCycleService {
      */
     @Transactional
     public BudgetCycle close(UUID cycleId, Tenant tenant, boolean force) {
-        BudgetCycle cycle = findByIdAndTenant(cycleId, tenant);
+        BudgetCycle cycle = loadByIdAndTenant(cycleId, tenant);
         if (cycle.getStatus() == BudgetCycleStatus.CLOSED) {
             throw new IllegalStateException("O ciclo já está fechado.");
         }
@@ -202,7 +197,7 @@ public class BudgetCycleService {
 
     @Transactional
     public void delete(UUID cycleId, Tenant tenant) {
-        BudgetCycle cycle = findByIdAndTenant(cycleId, tenant);
+        BudgetCycle cycle = loadByIdAndTenant(cycleId, tenant);
         if (cycle.getStatus() != BudgetCycleStatus.CLOSED) {
             throw new IllegalStateException("Apenas ciclos fechados podem ser excluídos.");
         }
@@ -218,13 +213,29 @@ public class BudgetCycleService {
      */
     @Transactional
     public BudgetCycle syncInstallments(UUID cycleId, Tenant tenant, User user) {
-        BudgetCycle cycle = findByIdAndTenant(cycleId, tenant);
+        BudgetCycle cycle = loadByIdAndTenant(cycleId, tenant);
         List<BudgetItem> existing = itemRepository.findAllByCycleWithDetails(cycle);
-        List<BudgetItem> toRemove = existing.stream()
+
+        // #152: sync é reconciliação de PREVISTOS. REALIZED (fato consumado) e itens vinculados a
+        // transação NUNCA são apagados — só removemos projeções PENDING sem vínculo, regeneradas
+        // abaixo. Apagar um realizado numa reconciliação corromperia o histórico do ciclo.
+        List<BudgetItem> installmentItems = existing.stream()
             .filter(i -> i.getSource() == BudgetItemSource.INSTALLMENT)
             .toList();
-        itemRepository.deleteAll(toRemove);
-        populateInstallmentItems(cycle, tenant, cycle.getStartDate(), cycle.getEndDate());
+        List<BudgetItem> disposable = installmentItems.stream()
+            .filter(i -> i.getStatus() == BudgetItemStatus.PENDING && i.getTransaction() == null)
+            .toList();
+        itemRepository.deleteAll(disposable);
+
+        // Grupos já cobertos por um item preservado não recebem duplicata na regeneração.
+        Set<UUID> keptGroupIds = installmentItems.stream()
+            .filter(i -> !(i.getStatus() == BudgetItemStatus.PENDING && i.getTransaction() == null))
+            .map(BudgetItem::getInstallmentGroup)
+            .filter(g -> g != null)
+            .map(InstallmentGroup::getId)
+            .collect(Collectors.toSet());
+
+        populateInstallmentItems(cycle, tenant, cycle.getStartDate(), cycle.getEndDate(), keptGroupIds);
         return cycle;
     }
 
@@ -235,6 +246,18 @@ public class BudgetCycleService {
 
     @Transactional(readOnly = true)
     public BudgetCycle findByIdAndTenant(UUID id, Tenant tenant) {
+        return loadByIdAndTenant(id, tenant);
+    }
+
+    /**
+     * Lookup interno SEM @Transactional. Chamado pelos métodos read-write deste service
+     * (close/delete/syncInstallments), que já abrem transação própria — aqui o find apenas
+     * participa dela. Evita o self-invocation de um método @Transactional via 'this', que
+     * passaria por fora do proxy do Spring e ignoraria a anotação (regra S6809). O finder
+     * público acima mantém o @Transactional(readOnly=true) para quando é ponto de entrada
+     * (chamado pelo controller via proxy).
+     */
+    private BudgetCycle loadByIdAndTenant(UUID id, Tenant tenant) {
         return cycleRepository.findById(id)
             .filter(c -> c.getTenant().getId().equals(tenant.getId()))
             .orElseThrow(() -> new EntityNotFoundException("Ciclo de planejamento não encontrado."));

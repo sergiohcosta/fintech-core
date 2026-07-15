@@ -1,0 +1,5 @@
+// transaction-timeline.scss
+.timeline-page { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+.page-header { display: flex; align-items: center; justify-content: space-between;
+  h2 { margin: 0; } }
+mat-tab-group { ::ng-deep .mat-mdc-tab-body-content { padding: 16px 4px; } }

@@ -1067,3 +1067,58 @@ Authorization: Bearer {{token_carlos}}
 ### 9.6 Convites (deve mostrar João como PENDING)
 GET http://localhost:8080/invites
 Authorization: Bearer {{token_carlos}}
+
+### ── Bloco 10: Recorrência (Motor de Recorrência — núcleo) ─────────────────
+
+### 10.1 Listar transações de jun/2026 COM linhas fantasma
+GET http://localhost:8080/api/transactions?startDate=2026-06-01&endDate=2026-06-30&includeProjected=true
+Authorization: Bearer {{token_carlos}}
+
+###
+
+### 10.2 Criar regra de recorrência (Spotify mensal, dia 5) → captura id
+POST http://localhost:8080/api/recurrence-rules
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{
+  "description": "Spotify",
+  "baseAmount": 21.90,
+  "type": "EXPENSE",
+  "accountId": "30000000-0000-0000-0000-000000000001",
+  "rrule": "FREQ=MONTHLY;BYMONTHDAY=5",
+  "startDate": "2026-06-05"
+}
+
+> {%
+client.global.set("rule_spotify", response.body.id);
+%}
+
+### 10.3 Listar regras do tenant
+GET http://localhost:8080/api/recurrence-rules
+Authorization: Bearer {{token_carlos}}
+
+###
+
+### 10.4 Confirmar a ocorrência de 2026-06-05 com valor ajustado (materializa transação)
+POST http://localhost:8080/api/recurrence-rules/{{rule_spotify}}/occurrences/2026-06-05/confirm
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{ "amount": 25.90 }
+
+### 10.5 Pular a ocorrência de 2026-07-05 (grava EXDATE)
+POST http://localhost:8080/api/recurrence-rules/{{rule_spotify}}/occurrences/2026-07-05/skip
+Authorization: Bearer {{token_carlos}}
+
+###
+
+### 10.6 Cancelar a regra (status → CANCELLED)
+DELETE http://localhost:8080/api/recurrence-rules/{{rule_spotify}}
+Authorization: Bearer {{token_carlos}}
+
+###
+
+### 10.7 Reativar recorrência cancelada
+PATCH http://localhost:8080/api/recurrence-rules/{{rule_spotify}}/reactivate
+Authorization: Bearer {{token_carlos}}

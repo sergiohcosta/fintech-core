@@ -17,8 +17,14 @@ class LoginRateLimiterTest {
     void setUp() {
         limiter = new LoginRateLimiter();
         ReflectionTestUtils.setField(limiter, "maxAttempts", 3);
+        ReflectionTestUtils.setField(limiter, "maxKeys", 100_000);
         // @PostConstruct não é invocado fora de contexto Spring; inicializa window manualmente.
         ReflectionTestUtils.setField(limiter, "window", Duration.ofMinutes(1));
+    }
+
+    @SuppressWarnings("unchecked")
+    private int mapSize() {
+        return ((java.util.Map<String, ?>) ReflectionTestUtils.getField(limiter, "windows")).size();
     }
 
     @Test
@@ -105,5 +111,33 @@ class LoginRateLimiterTest {
         Thread.sleep(80);
 
         assertThat(limiter.secondsUntilUnblock("user@test.com")).isEqualTo(0);
+    }
+
+    // #144 — sweep periódico remove janelas expiradas do mapa (não espera releitura da chave).
+    @Test
+    @DisplayName("sweepExpired remove janelas expiradas do mapa")
+    void sweepExpired_removesExpiredWindows() throws InterruptedException {
+        ReflectionTestUtils.setField(limiter, "window", Duration.ofMillis(50));
+        limiter.registerFailure("a@test.com");
+        limiter.registerFailure("b@test.com");
+        assertThat(mapSize()).isEqualTo(2);
+
+        Thread.sleep(80);
+        ReflectionTestUtils.invokeMethod(limiter, "sweepExpired");
+
+        assertThat(mapSize()).isZero();
+    }
+
+    // #144 — teto de memória: com o mapa cheio, chaves novas não expiradas não crescem o mapa.
+    @Test
+    @DisplayName("registerFailure respeita o teto de chaves (mapa não cresce sem limite)")
+    void registerFailure_enforcesMaxKeys() {
+        ReflectionTestUtils.setField(limiter, "maxKeys", 3);
+
+        for (int i = 0; i < 50; i++) {
+            limiter.registerFailure("user-" + i + "@test.com");
+        }
+
+        assertThat(mapSize()).isLessThanOrEqualTo(3);
     }
 }

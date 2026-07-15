@@ -1,0 +1,16 @@
+.horizontal { display: flex; flex-direction: column; gap: 16px; }
+.legend { display: flex; align-items: center; gap: 12px; font-size: 0.8rem;
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 4px;
+    &.income { background: var(--mat-sys-primary); } &.expense { background: var(--mat-sys-error); }
+    &.cancelled { background: var(--mat-sys-outline); } } }
+.track-scroll { overflow-x: auto; padding: 32px 0; }
+.track { position: relative; height: 80px; }
+.axis { position: absolute; top: 50%; left: 0; right: 0; height: 2px; background: var(--mat-sys-outline-variant); }
+.marker { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 28px; height: 28px;
+  border-radius: 50%; border: 2px solid var(--mat-sys-primary); background: var(--mat-sys-surface);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  .count { font-size: 0.75rem; font-weight: 600; }
+  &.selected { background: var(--mat-sys-primary); color: var(--mat-sys-on-primary); } }
+.marker-detail { border-top: 1px solid var(--mat-sys-outline-variant); padding-top: 8px; h4 { margin: 0 0 8px; } }
+.detail-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; .desc { flex: 1; } .amount { font-weight: 600; }
+  &.income .amount { color: var(--mat-sys-primary); } &.expense .amount { color: var(--mat-sys-error); } }

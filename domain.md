@@ -14,12 +14,17 @@ Tenant (UUID, budgetCycleStartDay)
   │    ├── FK → Account
   │    ├── FK → Category (nullable)
   │    ├── FK → InstallmentGroup (nullable)
-  │    ├── FK → Invoice (nullable — só CREDIT_CARD)
+  │    ├── FK → Invoice (nullable — só CREDIT_CARD; fatura à qual a COMPRA pertence)
+  │    ├── FK → Invoice paidInvoice (nullable — este EXPENSE QUITA a fatura; #145)
+  │    ├── FK → RecurrenceRule (nullable — materializada de uma regra)
+  │    ├── recurrenceOccurrence: LocalDate (nullable — slot canônico da regra)
   │    └── transferId: UUID (nullable — par INCOME↔EXPENSE de transferências)
+  ├── RecurrenceRule (description, baseAmount, type, rrule, startDate, status, account, category?)
+  │    └── RecurrenceException (occurrenceDate — EXDATE: ocorrência "pulada")
   ├── BudgetCycle (startDate, endDate, openingBalance, status: OPEN | CLOSED)
   │    └── BudgetItem (description, amount, type, expectedDate, source, status,
-  │                    category?, account?, recurringItem?, transaction?, installmentGroup?)
-  ├── RecurringBudgetItem (description, amount, type, dayOfMonth, category?, account?, active)
+  │                    category?, account?, recurrenceRule?, recurrenceOccurrenceDate?,
+  │                    transaction?, installmentGroup?)
   └── Invitation (email, token, expiresAt)
 ```
 
@@ -36,4 +41,5 @@ UserRole           : ADMIN | MEMBER
 BudgetCycleStatus  : OPEN | CLOSED
 BudgetItemSource   : MANUAL | RECURRING | INSTALLMENT
 BudgetItemStatus   : PENDING | REALIZED | SKIPPED
+RecurrenceStatus   : ACTIVE | CANCELLED
 ```

@@ -1,0 +1,87 @@
+.grouped-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--mat-sys-surface-container);
+
+  .group-label {
+    font-weight: 600;
+  }
+
+  .group-summary {
+    margin-left: auto;
+    display: flex;
+    gap: 12px;
+    font-size: 0.85rem;
+
+    .income {
+      color: var(--mat-sys-primary);
+    }
+
+    .expense {
+      color: var(--mat-sys-error);
+    }
+
+    .net {
+      font-weight: 600;
+
+      &.positive {
+        color: var(--mat-sys-primary);
+      }
+    }
+  }
+}
+
+.group-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 0 0 32px;
+}
+
+.tx-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--mat-sys-outline-variant);
+
+  .desc {
+    flex: 1;
+  }
+
+  .badge {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--mat-sys-secondary-container);
+  }
+
+  .amount {
+    font-weight: 600;
+  }
+
+  &.income .amount {
+    color: var(--mat-sys-primary);
+  }
+
+  &.expense .amount {
+    color: var(--mat-sys-error);
+  }
+}
+
+.empty {
+  text-align: center;
+  color: var(--mat-sys-on-surface-variant);
+  padding: 32px;
+}

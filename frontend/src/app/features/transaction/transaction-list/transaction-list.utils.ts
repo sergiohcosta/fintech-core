@@ -1,4 +1,5 @@
 import { TransactionResponseDTO, InvoiceResponseDTO, InvoiceStatus } from '../../../core/api/fintechSaaSAPI.schemas';
+import { csvField } from '../../../core/csv.utils';
 
 export type InstallmentGroupInfo = {
   groupId: string;
@@ -38,6 +39,9 @@ export type DisplayRow =
   | { kind: 'installment-detail'; data: TransactionResponseDTO; group: InstallmentGroupInfo }
   | { kind: 'period-header';      key: string; label: string; totalIncome: number; totalExpense: number; balance: number }
   | InvoiceSummaryRow;
+
+// "Linha fantasma": projeção de uma regra de recorrência, ainda não materializada.
+export const isGhost = (r: { projected?: boolean }): boolean => r.projected === true;
 
 function sortTransferPairsTogether(transactions: TransactionResponseDTO[]): TransactionResponseDTO[] {
   const result: TransactionResponseDTO[] = [];
@@ -328,7 +332,7 @@ export function sortTransactions(
       const cmp = compareBy(col, a, b);
       if (cmp !== 0) return dir === 'asc' ? cmp : -cmp;
     }
-    return 0;
+    return (b.createdAt ?? '').localeCompare(a.createdAt ?? '');
   });
 }
 
@@ -355,4 +359,38 @@ export function getSortInfo(
   const idx = criteria.findIndex(c => c.col === col);
   if (idx < 0) return null;
   return { priority: idx + 1, dir: criteria[idx].dir };
+}
+
+// --- CSV Export ---
+
+const MONTH_ABBR_PT = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+
+export function exportToCsv(transactions: TransactionResponseDTO[]): string {
+  const TYPE_LABEL: Record<string, string> = { INCOME: 'Receita', EXPENSE: 'Despesa' };
+  const STATUS_LABEL: Record<string, string> = { PAID: 'Pago', PENDING: 'Pendente', CANCELLED: 'Cancelado' };
+
+  const header = 'Data;Descrição;Valor;Tipo;Status;Categoria;Conta;Parcela;Fatura';
+
+  const rows = transactions.map(t => {
+    const [y, m, d] = (t.date ?? '').split('-');
+    const data     = d && m && y ? `${d}/${m}/${y}` : '';
+    const valor    = (t.amount ?? 0).toFixed(2).replace('.', ',');
+    const tipo     = t.transferId ? 'Transferência' : (TYPE_LABEL[t.type ?? ''] ?? t.type ?? '');
+    const status   = STATUS_LABEL[t.status ?? ''] ?? t.status ?? '';
+    const categoria = csvField(t.categoryPath ?? t.categoryName ?? '');
+    const conta    = csvField(t.accountName ?? '');
+    const parcela  = t.installmentNumber && t.totalInstallments
+      ? `${t.installmentNumber}/${t.totalInstallments}`
+      : '';
+    const fatura   = t.invoiceDueDate
+      ? (() => {
+          const [fy, fm] = t.invoiceDueDate.split('-').map(Number);
+          return `${MONTH_ABBR_PT[(fm ?? 1) - 1]}/${fy}`;
+        })()
+      : '';
+
+    return [csvField(data), csvField(t.description), valor, tipo, status, categoria, conta, parcela, fatura].join(';');
+  });
+
+  return [header, ...rows].join('\n');
 }

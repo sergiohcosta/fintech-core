@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sortTransactions, applySort, getSortInfo } from './transaction-list.utils';
+import { sortTransactions, applySort, getSortInfo, isGhost, exportToCsv } from './transaction-list.utils';
 import type { TransactionResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
 
 function tx(overrides: Partial<TransactionResponseDTO> = {}): TransactionResponseDTO {
@@ -132,5 +132,88 @@ describe('getSortInfo', () => {
     const criteria = [{ col: 'date', dir: 'desc' }, { col: 'amount', dir: 'asc' }];
     expect(getSortInfo(criteria as any, 'amount'))
       .toEqual({ priority: 2, dir: 'asc' });
+  });
+});
+
+describe('isGhost', () => {
+  it('true só quando projected === true', () => {
+    expect(isGhost(tx({ projected: true }))).toBe(true);
+    expect(isGhost(tx({ projected: false }))).toBe(false);
+    expect(isGhost(tx())).toBe(false); // sem o campo = transação real
+  });
+});
+
+describe('exportToCsv', () => {
+  it('gera cabeçalho e linha com campos corretos', () => {
+    const csv = exportToCsv([{
+      id: '1', description: 'Netflix', amount: 45.9, date: '2026-06-15',
+      type: 'EXPENSE', status: 'PAID', categoryPath: 'Lazer → Streaming',
+      accountName: 'Nubank', installmentNumber: null, totalInstallments: null,
+      invoiceDueDate: null, projected: false,
+    } as TransactionResponseDTO]);
+
+    const [header, row] = csv.split('\n');
+    expect(header).toBe('Data;Descrição;Valor;Tipo;Status;Categoria;Conta;Parcela;Fatura');
+    expect(row).toBe('15/06/2026;Netflix;45,90;Despesa;Pago;Lazer → Streaming;Nubank;;');
+  });
+
+  it('usa categoryName quando categoryPath é null', () => {
+    const csv = exportToCsv([{
+      id: '2', description: 'Mercado', amount: 200, date: '2026-06-01',
+      type: 'EXPENSE', status: 'PENDING', categoryPath: null, categoryName: 'Alimentação',
+      accountName: 'Nubank', installmentNumber: null, totalInstallments: null,
+      invoiceDueDate: null, projected: false,
+    } as TransactionResponseDTO]);
+
+    const row = csv.split('\n')[1];
+    expect(row).toContain('Alimentação');
+  });
+
+  it('formata parcela como N/Total quando disponível', () => {
+    const csv = exportToCsv([{
+      id: '3', description: 'TV', amount: 300, date: '2026-06-01',
+      type: 'EXPENSE', status: 'PENDING', categoryPath: null, categoryName: null,
+      accountName: null, installmentNumber: 2, totalInstallments: 6,
+      invoiceDueDate: null, projected: false,
+    } as TransactionResponseDTO]);
+
+    const row = csv.split('\n')[1];
+    expect(row).toContain('2/6');
+  });
+
+  it('formata fatura como mmm/yyyy quando invoiceDueDate está presente', () => {
+    const csv = exportToCsv([{
+      id: '4', description: 'Compra', amount: 50, date: '2026-05-10',
+      type: 'EXPENSE', status: 'PAID', categoryPath: null, categoryName: null,
+      accountName: null, installmentNumber: null, totalInstallments: null,
+      invoiceDueDate: '2026-08-10', projected: false,
+    } as TransactionResponseDTO]);
+
+    const row = csv.split('\n')[1];
+    expect(row).toContain('ago/2026');
+  });
+
+  it('escapa campo com ponto-e-vírgula em aspas duplas (RFC 4180)', () => {
+    const csv = exportToCsv([{
+      id: '5', description: 'A; B', amount: 10, date: '2026-06-01',
+      type: 'INCOME', status: 'PAID', categoryPath: null, categoryName: null,
+      accountName: null, installmentNumber: null, totalInstallments: null,
+      invoiceDueDate: null, projected: false,
+    } as TransactionResponseDTO]);
+
+    const row = csv.split('\n')[1];
+    expect(row).toContain('"A; B"');
+  });
+
+  it('mapeia transferId para Tipo=Transferência', () => {
+    const csv = exportToCsv([{
+      id: '6', description: 'TED', amount: 500, date: '2026-06-01',
+      type: 'EXPENSE', status: 'PAID', categoryPath: null, categoryName: null,
+      accountName: null, installmentNumber: null, totalInstallments: null,
+      invoiceDueDate: null, projected: false, transferId: 'tr-uuid',
+    } as TransactionResponseDTO]);
+
+    const row = csv.split('\n')[1];
+    expect(row).toContain('Transferência');
   });
 });

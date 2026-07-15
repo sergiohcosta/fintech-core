@@ -1,0 +1,55 @@
+<div class="rrule-editor">
+  <div class="row">
+    <mat-form-field appearance="outline">
+      <mat-label>Frequência</mat-label>
+      <mat-select [ngModel]="frequency()" (ngModelChange)="frequency.set($event)">
+        <mat-option value="MONTHLY">Mensal</mat-option>
+        <mat-option value="YEARLY">Anual</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>A cada</mat-label>
+      <input matInput type="number" min="1" [ngModel]="interval()" (ngModelChange)="interval.set(+$event)" />
+      <span matTextSuffix>{{ frequency() === 'MONTHLY' ? 'mês(es)' : 'ano(s)' }}</span>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Dia</mat-label>
+      <mat-select [ngModel]="dayOfMonth()" (ngModelChange)="dayOfMonth.set($event)">
+        @for (d of days; track d) {
+          <mat-option [value]="d">{{ d }}</mat-option>
+        }
+        <mat-option value="LAST">Último dia</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <mat-radio-group class="end-group" [ngModel]="endKind()" (ngModelChange)="endKind.set($event)">
+    <mat-radio-button value="NEVER">Nunca termina</mat-radio-button>
+    <mat-radio-button value="UNTIL">Até a data</mat-radio-button>
+    <mat-radio-button value="COUNT">Após N ocorrências</mat-radio-button>
+  </mat-radio-group>
+
+  @if (endKind() === 'UNTIL') {
+    <mat-form-field appearance="outline">
+      <mat-label>Data final</mat-label>
+      <input matInput type="date" [ngModel]="untilDate()" (ngModelChange)="untilDate.set($event)" />
+    </mat-form-field>
+  }
+  @if (endKind() === 'COUNT') {
+    <mat-form-field appearance="outline">
+      <mat-label>Ocorrências</mat-label>
+      <input matInput type="number" min="1" [ngModel]="count()" (ngModelChange)="count.set(+$event)" />
+    </mat-form-field>
+  }
+
+  @if (preview().length) {
+    <div class="preview">
+      <span class="preview-label">Próximas:</span>
+      @for (d of preview(); track d.getTime()) {
+        <span class="chip">{{ d | date: 'dd/MM/yyyy' }}</span>
+      }
+    </div>
+  }
+</div>

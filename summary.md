@@ -12,7 +12,9 @@ Demais:    authenticated (JWT obrigatório)
 ```
 **Invariante:** toda query de negócio filtra pelo `tenant` autenticado. Senha só via BCrypt, nunca em DTO. JWT assina `sub = email`. `SecurityFilter` valida em toda requisição.
 
-**Login (`/auth/login`):** resposta genérica (401) tanto para email inexistente quanto para senha incorreta ou usuário inativo (sem enumeração de usuários). Rate limit em memória: 5 tentativas falhas por email a cada 1 minuto → `429 Too Many Requests` (`LoginRateLimiter`). `User.isEnabled()` reflete o campo `active` — checado no login e em toda requisição autenticada (`SecurityFilter`).
+**Login (`/auth/login`):** resposta genérica (401) tanto para email inexistente quanto para senha incorreta ou usuário inativo (sem enumeração de usuários). Rate limit em memória: 5 tentativas falhas por email a cada 1 minuto → `429 Too Many Requests` (`LoginRateLimiter`). **Chave = email apenas** (#144) — não deriva de `X-Forwarded-For` (controlável pelo cliente sem trusted proxy, permitia bypass rotacionando o header). Mapa com teto (`security.rate-limit.max-keys`, default 100k) + sweep periódico (`@Scheduled`, `@EnableScheduling`) evitam DoS de memória por flood de emails. `User.isEnabled()` reflete o campo `active` — checado no login e em toda requisição autenticada (`SecurityFilter`).
+
+**Export CSV (frontend):** `csvField` (`core/csv.utils.ts`) neutraliza CSV formula injection (#143) — prefixa `'` quando o valor começa com `= + - @` TAB/CR, além do quoting RFC 4180 (aspas para `; " \n \r`). Defesas distintas: quoting protege a estrutura do CSV, o apóstrofo impede a planilha de executar a fórmula.
 
 **Política de senha (registro e aceite de convite):** mínimo 8 e máximo 72 caracteres, com letra maiúscula, minúscula e número (`TenantRegistrationDTO`, `AcceptInviteDTO`).
 
@@ -66,13 +68,46 @@ GET (filtros) · GET/{id} · POST (1..N, parcelamento gera N) · PUT/{id} (com `
 ```
 para i=0..N-1:
   invoiceMonth = resolveInvoiceMonth(date, closingDay).plusMonths(i)
-  Transaction { date=dataCompra, installmentNumber=i+1, amount=total/N, invoice=faturaDoMês(i) }
+  Transaction { date=dataCompra, installmentNumber=i+1, amount=parcela(i), invoice=faturaDoMês(i) }
 ```
 `resolveInvoiceMonth`: `day <= closingDay` → mês corrente; senão → mês seguinte.
+`parcela(i)`: `total/N` truncado (DOWN, 2 casas) nas N−1 primeiras; a **última absorve o resíduo** (`total − (N−1)·parcela`) para que `soma(parcelas) == total` exatamente (#136).
 
 **DELETE `?scope=`:** SINGLE · THIS_AND_NEXT (próximas PENDING) · ALL (todas PENDING do grupo). Protege PAID. Retorna `{ deleted, skippedPaid }`.
 
+**Perna de transferência é imutável isoladamente (#138):** `PUT`/`DELETE` numa transação com `transferId != null` → **400** (`BusinessException`). Double-entry é invariante: as pernas nascem juntas (`createTransfer`) e morrem juntas (`DELETE /api/transfers/{transferId}`). Frontend desabilita editar/excluir individual nessas linhas.
+
 **PUT `propagate: string[]`:** aplica campos às parcelas futuras `PENDING` (`installmentNumber >` atual). PAID nunca revertido.
+
+## Linha do Tempo (`/transactions/timeline`) — só frontend
+
+Visualização alternativa das mesmas transações (consome `GET /api/transactions` — **nenhum endpoint novo**). Três views em tabs: **Calendário** (heatmap mensal), **Lista agrupada** (períodos relativos: Hoje/Ontem/Esta semana/Semana passada/Este mês/Mais antigos) e **Linha horizontal** (marcadores por dia-efetivo, colisão agrupada por data).
+
+- **Filtros independentes** da lista principal, persistidos em `localStorage` (`fintech.timeline.filters`); `description` é filtro client-side e **nunca** é persistida.
+- Reusa a regra `effectiveSortDate` do backend (parcela de cartão → `invoiceDueDate`; demais → `date`) — replicada em `timeline-shared.ts`.
+- **"Ver lista"** navega para `/transactions` passando os filtros via `queryParams` (`accountIds,status,type,startDate,endDate,description`); a lista os aplica em `TransactionList.mergeFiltersFromQueryParams` (queryParams **vencem** o `localStorage`).
+- Rota registrada **antes** de `transactions/:id` (senão `:id` capturaria a string `"timeline"`).
+- Lógica pura testável sem `TestBed` (`*-utils.ts`); o shell é coberto por spec com `overrideComponent()`. Specs de componente exigem `ng test` (não `npx vitest` cru). Spec/design: `docs/superpowers/specs/2026-06-23-transaction-timeline-design.md`.
+
+## Recorrência (`/api/recurrence-rules`) — Motor de Recorrência (núcleo)
+
+GET (lista ativas) · POST (valida RRULE) · GET/{id} · PATCH/{id} (`description`+`baseAmount`) · DELETE/{id} (cancela: `status=CANCELLED`) · PATCH/{id}/reactivate (reativa: `CANCELLED→ACTIVE`) · POST/{id}/occurrences/{date}/confirm · POST/{id}/occurrences/{date}/skip.
+
+**Regra vs. Transação.** A `RecurrenceRule` é a definição atemporal (string RRULE / RFC 5545, expandida pela lib `org.dmfs:lib-recur`). A `Transaction` é o fato imutável, gravado **só** após confirmação. Nada é materializado antecipadamente.
+
+**Projeção on-the-fly (`RecurrenceProjectionService`):** `fantasma(janela) = expand(rrule) − {ocorrências já materializadas} − {EXDATE}`, keyed pela data da ocorrência. Sempre recebe janela (`[from,to]`) — nunca expande "infinito".
+
+**`GET /api/transactions?includeProjected=true`:** mescla reais + fantasmas no período (default `false`, retrocompatível). Fantasma: `projected=true`, `id=null`, status `PENDING`, `recurrenceRuleId`+`occurrenceDate` preenchidos. Ordenação compartilha a regra `effectiveSortDate`. Filtro por `invoiceId` **não** projeta.
+
+**Confirmar:** materializa a ocorrência reusando o caminho de criação de transação (`materializeFromRule` → se cartão, fatura resolvida por `resolveInvoiceMonth`/`getOrCreate`). Body opcional `{amount?, date?}` (override — ajuste pontual; a regra segue projetando o `baseAmount`). Índice único parcial `(recurrence_rule_id, recurrence_occurrence)` + guard → **409** ao confirmar a mesma ocorrência 2x.
+- **Validação de slot (#146):** só confirma/pula regra `ACTIVE` (senão **422**), com `occurrence` ∈ expansão da RRULE no mês (`RecurrenceProjectionService.occursOn`); confirmar exige `occurrence` ∉ EXDATE. Sem isso, confirmar um não-slot convivia com o fantasma real → pagamento 2×.
+- **Vínculo automático ao planejamento (#140):** após materializar, `RecurrenceRuleService.confirmOccurrence` chama `BudgetItemService.linkRecurringOccurrence` — vincula a transação ao item RECURRING PENDENTE do ciclo aberto (se houver), pelo caminho unificado do #141. Sem isso, a transação apareceria como avulsa e o resumo contaria item planejado + avulsa (dupla contagem). Orquestrado no planejamento — `TransactionService` não conhece o domínio de budget.
+
+**Pular:** grava EXDATE em `recurrence_exceptions` (idempotente). A fantasma some no mês pulado e volta no seguinte. Valida slot/status como o confirmar (#146).
+
+**RRULE — subconjunto suportado:** `FREQ=MONTHLY|YEARLY`, `INTERVAL`, `BYMONTHDAY` (1..31 e `-1`=último dia), `UNTIL`, `COUNT`. `@ValidRrule` rejeita o resto (`BYDAY`/`BYSETPOS`/`BYWEEKNO`/`BYYEARDAY`/`BYHOUR`/`BYMINUTE`, e `FREQ` diário/semanal) → **400**. "Fim do mês" = `BYMONTHDAY=-1` (resolve 28/29 fev, 30 abr nativamente). Validação varre as chaves do rrule (o parser lax do lib-recur descarta partes inválidas no contexto).
+
+**Fora do núcleo (sub-projetos futuros):** pausa/retomada, edição "desta em diante", capping não-padrão 31→28, detach formal (#3); fantasma na timeline + simulador "E se...?" (#4). Parcelamento de cartão **permanece** em `InstallmentGroup`+`Invoice`. Spec: `docs/superpowers/specs/2026-06-25-motor-de-recorrencia-nucleo-design.md`.
 
 ## Transferências (`/api/transfers`)
 
@@ -83,12 +118,14 @@ POST (cria par EXPENSE origem + INCOME destino) · DELETE/{transferId} (remove a
 
 GET `?accountId=` · GET/{id} · POST/{id}/close · POST/{id}/pay `{ sourceAccountId }`
 
+**`totalAmount` (lista e detalhe) — líquido, não bruto:** `SUM(CASE WHEN type=EXPENSE THEN amount ELSE -amount END) WHERE status<>CANCELLED` (`sumAmountByInvoice`/`findByAccountWithTotals`). INCOME (estorno/reembolso) abate o total em vez de somar — mesma convenção de sinal do dashboard/saldo de conta. É o valor usado como base do pagamento em `pay()`.
+
 **Ciclo:** `OPEN → [close] CLOSED → [pay] PAID`
 - **close:** só muda status. Novas transações ainda aceitas (cobranças atrasadas).
-- **pay** (`@Transactional` única): PENDING→PAID via `@Modifying` batch; se total>0 cria EXPENSE na origem (`date=now()`, `description="Pagamento fatura {acc} {MM}/{yyyy}"`); fatura→PAID. Fecha o ciclo de caixa do cartão (`countInLiquidBalance=false`).
-- **Validações pay:** origem do tenant (404), origem ≠ CREDIT_CARD (422), fatura CLOSED (422).
+- **pay** (`@Transactional` única): **claim atômico** `UPDATE ... SET status=PAID WHERE id=:id AND status=CLOSED` (`markAsPaidIfClosed`) ANTES de qualquer efeito — 0 linhas afetadas → `IllegalStateException` (pagamento concorrente já venceu, #139). Só o vencedor: PENDING→PAID via `@Modifying` batch; se total>0 cria EXPENSE na origem (`date=now()`, `description="Pagamento fatura {acc} {MM}/{yyyy}"`). Fecha o ciclo de caixa do cartão (`countInLiquidBalance=false`).
+- **Validações pay:** origem do tenant (404), origem ≠ CREDIT_CARD (422), fatura CLOSED (422). Ordem: validações → claim atômico → efeitos.
 - **Lazy create** (`getOrCreate`): automático na 1ª transação do período. `UNIQUE(account, year, month)`. Race condition resolvida com `@Transactional(REQUIRES_NEW)` + retry (ADR-001 #83).
-- **dueDate:** `dueDay >= closingDay` → mesmo mês; senão → mês seguinte.
+- **dueDate:** `dueDay >= closingDay` → mesmo mês; senão → mês seguinte. Dia capado ao último do mês (`min(dia, lengthOfMonth)`) — closingDay/dueDay=31 em fevereiro não estoura `DateTimeException` (#137).
 
 ## Grupos de Parcelamento (`/api/installment-groups`)
 
@@ -107,13 +144,15 @@ AND t.status <> CANCELLED
 ```
 `t.invoice.dueDate` direto no WHERE gera INNER JOIN implícito no Hibernate e exclui transações sem fatura.
 
-`totalAccountBalance`: `SUM(±amount) WHERE status=PAID AND account.countInLiquidBalance=true` (sem filtro de período).
+`income`/`expense`/`transactionCount` **excluem** transferências (`transferId IS NULL`) e pagamentos de fatura (`paidInvoice IS NULL`) — senão a transferência infla os dois lados e o pagamento de cartão conta a despesa 2× (compra no mês do `dueDate` + pagamento no mês do débito) (#145).
 
-## Planejamento Mensal (`/api/{budget-cycles,budget-items,recurring-budget-items}` + `PATCH /api/tenant/settings`)
+`totalAccountBalance`: `SUM(±amount) WHERE status=PAID AND account.countInLiquidBalance=true AND account.active=true` (sem filtro de período). Exclui contas arquivadas (#151) — consistente com o `openingBalance` do ciclo. **Não** exclui o pagamento de fatura: é saída real de caixa e deve rebaixar o saldo.
 
-- `BudgetCycle`: datas calculadas por `startDay` (1 → mês calendário; N → dia N do mês anterior até N-1 do atual). Sincroniza parcelas de cartão ao abrir.
-- `BudgetItem`: criação, update, link/unlink a transações (guard anti-duplicação).
-- `RecurringBudgetItem`: templates; `deactivate` = soft-delete (`active=false`).
+## Planejamento Mensal (`/api/{budget-cycles,budget-items}` + `PATCH /api/tenant/settings`)
+
+- `BudgetCycle`: datas calculadas por `startDay` (1 → mês calendário; N → dia N do mês anterior até N-1 do atual). Ao abrir, popula itens recorrentes via `RecurrenceProjectionService` (projeção on-the-fly das `RecurrenceRule` ativas) e parcelas de cartão do período.
+- `BudgetItem`: criação, update, link/unlink a transações. **`link` e `realize` compartilham os mesmos guards (#141):** ciclo OPEN, item PENDING, transação em no máximo um item (qualquer ciclo), compatibilidade de tipo e sync de `amount` com a transação. Itens `source=RECURRING` carregam `recurrenceRuleId` + `recurrenceOccurrenceDate` para rastreabilidade.
+- **`syncInstallments` (aditivo, #152):** reconcilia só os PREVISTOS — remove apenas itens INSTALLMENT `status=PENDING` sem transação vinculada e regenera; itens REALIZED/vinculados são preservados (fato consumado não é apagado numa reconciliação), sem duplicar grupos já cobertos.
 
 **`openingBalance` (ao abrir):** `sumLiquidBalanceByTenant` = caixa líquido PAID **anterior** ao ciclo (`t.date < startDate`, contas `countInLiquidBalance=true`). O corte de data evita dupla contagem: transações dentro do período só entram via realizados/avulsas, nunca no opening.
 
@@ -123,12 +162,13 @@ AND t.status <> CANCELLED
 - `dailyAllowance` = `availableToSpend / dias restantes` (FLOOR 2 casas; 0 se ≤0 ou sem dias; null fora de OPEN).
 - `unplannedIncome/Expense` no DTO = **total** das avulsas (PAID+PENDING), para exibição; a lista de avulsas inclui PENDING com badge.
 - `BudgetItemResponse.transactionStatus`: status (PAID/PENDING) da transação vinculada — permite ao frontend distinguir realizado-em-caixa de realizado-pendente sem assumir `REALIZED = pago`.
+- `BudgetItemResponse.recurrenceRuleId` + `recurrenceOccurrenceDate`: presentes quando `source=RECURRING`; permitem ao frontend navegar para a regra ou exibir o slot canônico.
 
 **Frontend do Planejamento (ciclo atual):**
 - Cada card (Receitas, Despesas, Saldo, Disponível) tem ícone de "olho" → modal de composição (fórmula + itens contribuintes), montado de `BudgetSummaryService` no frontend a partir dos dados já carregados.
 - Cards atualizam em tempo real após mutações (refresh silencioso do ciclo, sem flash de loading).
 - Lista de não planejados: coluna de status (Pago/Pendente), ação "vincular a item planejado" e "criar item planejado" (cria + vincula à transação de origem).
-- Item de receita/despesa pode ser transformado em recorrente (template), com guard de deduplicação (avisa se já existe recorrente ativo de mesma descrição/tipo).
+- Aba "Recorrentes" gerencia `RecurrenceRule` diretamente (CRUD completo, incluindo reativação de regras canceladas) — a tabela `recurring_budget_items` foi removida (V21).
 
 ## Logging Estruturado (MDC)
 
@@ -153,7 +193,7 @@ Nunca logar dados sensíveis (senha, JWT, CPF). `tenantId`/`userId` já estão n
 - **Estado:** `signal/computed/effect`. Bridge com FormControl: `toSignal(control.valueChanges, { initialValue })` — `computed()` não reage a `FormControl.value` direto.
 - **Reatividade segura:** `untracked()` ao chamar loaders dentro de handlers que leem signals (evita loop).
 - **Tabelas agrupadas:** `mat-table` única com múltiplos `*matRowDef` + `when` predicates (`period-header`/`invoice-header`); primeiro `true` vence; `[attr.colspan]` para linha full-width.
-- **Testes:** lógica pura em arquivos sem imports Angular (ex: `transaction-list.utils.ts`, `amount-math.ts`, `installment-preview.ts`) — testável no Vitest sem `TestBed`.
+- **Testes:** lógica pura em arquivos sem imports Angular (ex: `transaction-list.utils.ts`, `amount-math.ts`, `installment-preview.ts`, `transaction-form.utils.ts`) — testável no Vitest sem `TestBed`. Parsing de valor (ponto-decimal e pt-BR) e formatação de data local (sem UTC) vivem em `transaction-form.utils.ts` (#148).
 
 ## Armadilhas Conhecidas (Codegen)
 

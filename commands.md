@@ -23,6 +23,61 @@ npm test                      # Run Vitest
 npm run api:generate          # Regenerate API client from OpenAPI spec
 ```
 
+### Scripts de Agente (atalhos anti-fricção)
+```bash
+./scripts/api-sync.sh              # Pipeline completo do contrato: spec → static → generate-sources → orval → limpa auth.service.ts
+./scripts/test-summary.sh          # Roda backend + frontend e imprime só o resumo agregado (logs em /tmp)
+./scripts/test-summary.sh backend  # Só Maven/surefire (a suíte completa demora >7 min)
+./scripts/clean-worktrees.sh       # Lista/remove worktrees órfãs com confirmação (rodar da raiz estável)
+```
+
+### Análise de Código (SonarQube)
+
+Instância local do SonarQube Community. Pré-requisito: `SONAR_TOKEN` no `.env`
+(gerar na UI: My Account → Security). Backend exige Docker de pé (a análise roda
+`mvn verify` com Testcontainers).
+
+```bash
+./scripts/sonar-scan.sh            # back + front
+./scripts/sonar-scan.sh backend    # só Java   (projeto fintech-core-backend)
+./scripts/sonar-scan.sh frontend   # só TS     (projeto fintech-core-frontend)
+```
+
+Projetos são auto-provisionados no 1º scan. Resultados em `http://localhost:9000`.
+
+Opcional: o hook `.githooks/post-merge` lembra (ou roda) a análise a cada merge na
+`develop`. Ativar uma vez: `git config core.hooksPath .githooks`. Por padrão só lembra;
+para auto-scan em background, defina `SONAR_AUTO_SCAN=1` no `.env` (pesa — `mvn verify`).
+
+### Deploy manual (prod)
+
+`deploy-hmg` dispara automático em todo merge de PR em `main`. `deploy-prod` roda na
+mesma run (`needs: deploy-hmg`, mesmo `SHA_TAG` já validado em hmg) mas **pausa**
+aguardando aprovação — gate via GitHub Environment `prod` (Settings → Environments →
+`prod` → Required reviewers, restrito a branches protegidas). Sem aprovação, o job
+fica `Waiting` indefinidamente.
+
+**Aprovar pela UI:** aba *Actions* do repo → run em andamento → clique em
+*Review deployments* → marca `prod` → *Approve and deploy*.
+
+**Aprovar via `gh` (CLI):**
+```bash
+# 1. Descobre o run_id da run pendente (branch main, evento push, status aguardando)
+gh run list --branch main --limit 5
+
+# 2. Descobre o environment_id do "prod" (id fixo do repo, não muda por run)
+gh api repos/sergiohcosta/fintech-core/environments/prod -q .id
+
+# 3. Aprova (state: approved) ou rejeita (state: rejected)
+gh api --method POST repos/sergiohcosta/fintech-core/actions/runs/<run_id>/pending_deployments \
+  -F 'environment_ids[]=<environment_id>' \
+  -F 'state=approved' \
+  -F 'comment=deploy manual aprovado'
+```
+
+**Rejeitar:** mesmo comando com `state=rejected` — a run marca `deploy-prod` como
+`failure` e encerra sem tocar o cluster.
+
 ### Health Check
 ```bash
 curl http://localhost:8080/actuator/health
@@ -43,3 +98,14 @@ docker compose up -d          # Container fintech-postgres precisa estar de pé
 ```
 
 O script valida a conexão e baixa o dump antes de tocar no banco local (falha de conexão não destrói os dados locais). Reinicie o backend após a sync para refletir as mudanças.
+
+### Sincronização de um tenant (Local ↔ Railway)
+
+Sincroniza **apenas o tenant-alvo** entre local e Railway, num sentido por execução. Reaproveita o `.env` (precisa de `DATABASE_URL_RAILWAY` = URL pública do Railway).
+
+```bash
+./scripts/sync-tenant.sh pull   # Railway → local  (Railway é a origem)
+./scripts/sync-tenant.sh push   # local   → Railway (local é a origem)
+```
+
+Cada run **substitui** os dados do tenant no destino pelos da origem (apaga + recarrega numa transação, sem merge); os demais tenants do destino não são tocados. Pede confirmação mostrando o sentido. Premissa: schema idêntico (mesmas migrations) nos dois lados.

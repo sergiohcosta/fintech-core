@@ -74,12 +74,14 @@ public class InvoiceService {
         int dueDay = details.getDueDay();
 
         // A fatura de referenceMonth fecha no mês seguinte (ex: fatura de junho fecha em 02/julho).
-        LocalDate closingDate = LocalDate.of(referenceYear, referenceMonth, 1)
-                .plusMonths(1)
-                .withDayOfMonth(closingDay);
+        // #137: capar o dia ao tamanho do mês evita DateTimeException (ex: closingDay=31 em
+        // fevereiro). A comparação dueDay >= closingDay abaixo permanece sobre os dias
+        // CONFIGURADOS, não os capados — capar antes mudaria o mês da fatura em fevereiro.
+        LocalDate closingDate = atDayCapped(
+                LocalDate.of(referenceYear, referenceMonth, 1).plusMonths(1), closingDay);
         LocalDate dueDate = dueDay >= closingDay
-                ? closingDate.withDayOfMonth(dueDay)
-                : closingDate.plusMonths(1).withDayOfMonth(dueDay);
+                ? atDayCapped(closingDate, dueDay)
+                : atDayCapped(closingDate.plusMonths(1), dueDay);
 
         return repository.save(Invoice.builder()
                 .account(account)
@@ -92,8 +94,23 @@ public class InvoiceService {
                 .build());
     }
 
+    // #137: "dia N ou o último dia do mês, o que vier primeiro" — mesma semântica do
+    // BYMONTHDAY=-1 do motor de recorrência. Evita withDayOfMonth(31) estourar em meses curtos.
+    private static LocalDate atDayCapped(LocalDate base, int day) {
+        return base.withDayOfMonth(Math.min(day, base.lengthOfMonth()));
+    }
+
     @Transactional(readOnly = true)
     public Invoice findByIdAndTenant(UUID id, Tenant tenant) {
+        return loadByIdAndTenant(id, tenant);
+    }
+
+    // Lookup interno SEM @Transactional, usado pelos métodos deste service (getDTO/close/pay),
+    // que já abrem transação própria — o find participa dela. Evita o self-invocation de um
+    // método @Transactional via 'this', que passaria por fora do proxy do Spring e ignoraria a
+    // anotação (regra S6809). O finder público acima mantém o @Transactional(readOnly=true) para
+    // quando é ponto de entrada via proxy (ex.: chamado por TransactionService).
+    private Invoice loadByIdAndTenant(UUID id, Tenant tenant) {
         // Comparação por ID evita Lombok canEqual() em proxy detached do SecurityContext
         return repository.findById(id)
                 .filter(inv -> inv.getAccount().getTenant().getId().equals(tenant.getId()))
@@ -103,7 +120,7 @@ public class InvoiceService {
     // Retorna DTO com total e contagem — tudo dentro da transação para evitar LazyInitializationException
     @Transactional(readOnly = true)
     public InvoiceResponseDTO getDTO(UUID id, Tenant tenant) {
-        return buildDTO(findByIdAndTenant(id, tenant));
+        return buildDTO(loadByIdAndTenant(id, tenant));
     }
 
     @Transactional(readOnly = true)
@@ -124,7 +141,7 @@ public class InvoiceService {
 
     @Transactional
     public InvoiceResponseDTO close(UUID id, Tenant tenant) {
-        Invoice invoice = findByIdAndTenant(id, tenant);
+        Invoice invoice = loadByIdAndTenant(id, tenant);
         if (invoice.getStatus() != InvoiceStatus.OPEN) {
             throw new IllegalStateException(
                     "Só é possível fechar faturas com status OPEN. Status atual: " + invoice.getStatus());
@@ -137,7 +154,7 @@ public class InvoiceService {
 
     @Transactional
     public InvoiceResponseDTO pay(UUID id, Tenant tenant, User user, UUID sourceAccountId) {
-        Invoice invoice = findByIdAndTenant(id, tenant);
+        Invoice invoice = loadByIdAndTenant(id, tenant);
         if (invoice.getStatus() != InvoiceStatus.CLOSED) {
             throw new IllegalStateException(
                     "Só é possível pagar faturas com status CLOSED. Status atual: " + invoice.getStatus());
@@ -149,6 +166,15 @@ public class InvoiceService {
         if (sourceAccount.getType() == AccountType.CREDIT_CARD) {
             throw new IllegalStateException(
                     "Não é possível pagar uma fatura com outra conta de cartão de crédito.");
+        }
+
+        // #139: claim atômico ANTES de qualquer efeito colateral. Sob concorrência os dois pay()
+        // passam pelo fast-fail acima (ambos leem CLOSED), mas só um consegue mudar CLOSED→PAID.
+        // O perdedor recebe 0 linhas afetadas e aborta aqui, sem criar o EXPENSE de pagamento.
+        int claimed = repository.markAsPaidIfClosed(id, InvoiceStatus.CLOSED, InvoiceStatus.PAID);
+        if (claimed == 0) {
+            throw new IllegalStateException(
+                    "Fatura não está mais no status CLOSED (pagamento concorrente já processado).");
         }
 
         BigDecimal total = transactionRepository.sumAmountByInvoice(invoice, TransactionStatus.CANCELLED);
@@ -166,6 +192,9 @@ public class InvoiceService {
                     .account(sourceAccount)
                     .tenant(invoice.getTenant())
                     .user(user)
+                    // #145: marca a transação como o pagamento desta fatura → dashboard a exclui
+                    // dos agregados (a despesa já foi contada nas compras via invoice.dueDate).
+                    .paidInvoice(invoice)
                     .build();
             transactionRepository.save(payment);
         }
