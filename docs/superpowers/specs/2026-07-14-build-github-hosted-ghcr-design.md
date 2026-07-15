@@ -1,7 +1,7 @@
 # Spec: Build em runner GitHub-hosted + push pro GHCR
 
 **Data:** 2026-07-14
-**Status:** proposto
+**Status:** aprovado
 
 ## Contexto
 

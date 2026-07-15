@@ -48,40 +48,40 @@ GitHub-hosted (ubuntu-latest)          self-hosted (k3s)
 ## Tarefas
 
 ### T1 — Spec + plano na `develop` (portão SDD)
-- [ ] Commit da spec e deste plano na `develop` (`docs(spec)` / `docs(plan)`) antes de criar a worktree.
+- [x] Commit da spec e deste plano na `develop` (`docs(spec)` / `docs(plan)`) antes de criar a worktree.
 
 ### T2 — Workflow: job `build-and-push` (fintech-core)
-- [ ] `runs-on: [self-hosted, k3s]` → `ubuntu-latest`.
-- [ ] Adicionar `permissions: { contents: read, packages: write }` no job.
-- [ ] Trocar o env: remover `REGISTRY_INTERNAL`; `SHA_TAG` mantém. (Manter `REGISTRY` só se ainda referenciado; senão remover.)
-- [ ] Step de login GHCR (`docker/login-action`, `registry: ghcr.io`, `username: ${{ github.actor }}`, `password: ${{ secrets.GITHUB_TOKEN }}`).
-- [ ] Backend: `-Dimage=ghcr.io/sergiohcosta/fintech-core-backend:$SHA_TAG`.
-- [ ] Frontend: `setup-buildx-action` + `build-push-action` (context `.`, file `frontend/Dockerfile`, push, tag GHCR). Remover steps `Instala crane`, `Instala kaniko executor` e o `Build & push frontend` via kaniko (com `ulimit`/`--snapshot-mode`).
+- [x] `runs-on: [self-hosted, k3s]` → `ubuntu-latest`.
+- [x] Adicionar `permissions: { contents: read, packages: write }` no job.
+- [x] Trocar o env: remover `REGISTRY_INTERNAL`; `SHA_TAG` mantém. (Manter `REGISTRY` só se ainda referenciado; senão remover.)
+- [x] Step de login GHCR (`docker/login-action`, `registry: ghcr.io`, `username: ${{ github.actor }}`, `password: ${{ secrets.GITHUB_TOKEN }}`).
+- [x] Backend: `-Dimage=ghcr.io/sergiohcosta/fintech-core-backend:$SHA_TAG`.
+- [x] Frontend: `setup-buildx-action` + `build-push-action` (context `.`, file `frontend/Dockerfile`, push, tag GHCR). Remover steps `Instala crane`, `Instala kaniko executor` e o `Build & push frontend` via kaniko (com `ulimit`/`--snapshot-mode`).
 
 ### T3 — Workflow: jobs `deploy-*` (fintech-core)
-- [ ] Nos três jobs, trocar o `kustomize edit set image` para `ghcr.io/sergiohcosta/fintech-core-{backend,frontend}=...:$SHA_TAG`.
-- [ ] Conferir que o env `REGISTRY` desses jobs (se ainda usado) reflete o novo nome ou foi removido.
+- [x] Nos três jobs, trocar o `kustomize edit set image` para `ghcr.io/sergiohcosta/fintech-core-{backend,frontend}=...:$SHA_TAG`.
+- [x] Conferir que o env `REGISTRY` desses jobs (se ainda usado) reflete o novo nome ou foi removido.
 
 ### T4 — Manifests (homelab-k8s, PR próprio base `main`)
-- [ ] `base/backend/deployment.yaml`: `image:` → `ghcr.io/sergiohcosta/fintech-core-backend:latest`.
-- [ ] `base/frontend/deployment.yaml`: `image:` → `ghcr.io/sergiohcosta/fintech-core-frontend:latest`.
-- [ ] Verificar overlays (`overlays/{dev,hmg,prod}`) — nenhum fixa a ref antiga.
+- [x] `base/backend/deployment.yaml`: `image:` → `ghcr.io/sergiohcosta/fintech-core-backend:latest`.
+- [x] `base/frontend/deployment.yaml`: `image:` → `ghcr.io/sergiohcosta/fintech-core-frontend:latest`.
+- [x] Verificar overlays (`overlays/{dev,hmg,prod}`) — nenhum fixa a ref antiga.
 
 ### T5 — Bootstrap GHCR (uma vez)
-- [ ] Rodar o pipeline uma vez para criar os packages no 1º push.
-- [ ] Tornar `fintech-core-backend` e `fintech-core-frontend` **públicos** (UI do GitHub ou `gh api`), senão o pull do kubelet dá `ImagePullBackOff`.
+- [x] Rodar o pipeline uma vez para criar os packages no 1º push.
+- [x] Tornar `fintech-core-backend` e `fintech-core-frontend` **públicos** (UI do GitHub ou `gh api`), senão o pull do kubelet dá `ImagePullBackOff`.
 
 ### T6 — Validação ponta a ponta
-- [ ] Push em `develop` → `build-and-push` verde em `ubuntu-latest` (sem #153); job reporta `success`.
-- [ ] `deploy-dev` **dispara** (não mais `skipped`).
-- [ ] `ghcr.io/...:sha-<sha>` existe (ambos) e público.
-- [ ] `kubectl get pods -n dev -o …image` = SHA novo; pods `Ready`; backend saudável (`/actuator/health`).
+- [x] Push em `develop` → `build-and-push` verde em `ubuntu-latest` (sem #153); job reporta `success`.
+- [x] `deploy-dev` **dispara** (não mais `skipped`).
+- [x] `ghcr.io/...:sha-<sha>` existe (ambos) e público.
+- [x] `kubectl get pods -n dev -o …image` = SHA novo; pods `Ready`; backend saudável (`/actuator/health`).
 
 ### T7 — Docs, issue, memória
-- [ ] Marcar a spec como `aprovado`.
-- [ ] Atualizar `commands.md` se o fluxo de deploy manual/observação mudar de nome de registry.
-- [ ] Comentar/fechar #153 conforme o resultado (o build deixou de depender da rede do homelab).
-- [ ] Atualizar a memória `project_cicd_pipeline_design.md` (build agora hosted + GHCR; #153 resolvido pela via da arquitetura, não do keepalive).
+- [x] Marcar a spec como `aprovado`.
+- [x] Atualizar `commands.md` se o fluxo de deploy manual/observação mudar de nome de registry.
+- [x] Comentar/fechar #153 conforme o resultado (o build deixou de depender da rede do homelab).
+- [x] Atualizar a memória `project_cicd_pipeline_design.md` (build agora hosted + GHCR; #153 resolvido pela via da arquitetura, não do keepalive).
 
 ## Ordem de merge (evita janela quebrada)
 
