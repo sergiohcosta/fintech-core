@@ -77,10 +77,18 @@ jobs:
 
           # 3) Smoke test através dos Services (não só a probe kubelet→localhost):
           # backend /actuator/health (prova app + DB + Flyway) e frontend / (nginx
-          # servindo o SPA). curl -fsS sai não-zero em resposta não-2xx.
-          if ! kubectl run smoke-${RANDOM} -n "$NS" --rm --attach --restart=Never \
-                --image=curlimages/curl:8.10.1 --command -- \
-                sh -c 'curl -fsS http://fintech-core-backend:8080/actuator/health && curl -fsS -o /dev/null http://fintech-core-frontend/'; then
+          # servindo o SPA). Feito com o `curl` do próprio runner (que já existe —
+          # o step do kustomize usa) via FQDN cross-namespace, em vez de `kubectl
+          # run`: a RBAC do gha-runner não permite criar pods nos namespaces (nem
+          # deve — princípio do menor privilégio). --retry cobre a propagação do
+          # Service logo após o rollout; --max-time evita travar.
+          smoke() {
+            curl -fsS --max-time 15 --retry 5 --retry-delay 3 --retry-connrefused \
+              "http://fintech-core-backend.$NS.svc.cluster.local:8080/actuator/health" >/dev/null \
+            && curl -fsS --max-time 15 --retry 5 --retry-delay 3 --retry-connrefused \
+              "http://fintech-core-frontend.$NS.svc.cluster.local/" >/dev/null
+          }
+          if ! smoke; then
             rollback
             exit 1
           fi
