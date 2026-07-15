@@ -15,6 +15,13 @@ description: >-
 
 # Campanha de Saneamento — Backlog de Bugs da Auditoria 2026-07
 
+> **✅ PROGRESSO (2026-07-14): Fases 1–4 CONCLUÍDAS e mergeadas em `develop`.** Todas as 6 críticas
+> e 7 altas fechadas: #135 #136 #137 #138 #139 #140 #141 #143 #144 #145 #146 #148 #151 #152.
+> Migration V22 (`paid_invoice_id`) aplicada. PR cumulativo #133 `develop→main` aberto.
+> **Restante:** Fase 5 (médias frontend #142 #147 #149 #150 + infra #153) e Fase 6 (#85 —
+> agora desbloqueada: fases 1 e 3 mergeadas). Detalhe de cada fix: `git log`, specs em
+> `docs/superpowers/specs/2026-07-12-*` e memória `project_status`.
+
 > **Estado datado (2026-07-04):** issues #135–#152 abertas + #85 (estrutural). Todas foram
 > conferidas contra o código em 2026-07-05 e **todos os bugs descritos existem no código atual**.
 > Issues mudam — antes de iniciar qualquer fase, re-verifique (requer GitHub CLI autenticada:
@@ -64,11 +71,11 @@ description: >-
 
 | Fase | Cluster | Issues | Risco |
 |---|---|---|---|
-| 1 | A — Aritmética e concorrência de dinheiro (fatura/parcelamento) | #135 #136 #137 #139 | Perda financeira direta |
-| 2 | B — Segurança | #143 #144 | Execução de código no cliente / brute-force |
-| 3 | C — Integridade double-entry e agregados do dashboard | #138 #145 #151 | Saldos mentem |
-| 4 | D — Recorrência ↔ Planejamento (contratos entre subsistemas) | #140 #141 #146 #152 #147 #142 | Dupla contagem, estados inválidos |
-| 5 | E — Frontend/UX de erro | #148 #149 #150 | Dados errados na entrada, sessão zumbi |
+| ~~1~~ ✅ | A — Aritmética e concorrência de dinheiro (fatura/parcelamento) | ~~#135 #136 #137 #139~~ | Perda financeira direta |
+| ~~2~~ ✅ | B — Segurança | ~~#143 #144~~ | Execução de código no cliente / brute-force |
+| ~~3~~ ✅ | C — Integridade double-entry e agregados do dashboard | ~~#138 #145 #151~~ | Saldos mentem |
+| ~~4~~ ✅ | D — Recorrência ↔ Planejamento (contratos entre subsistemas) | ~~#140 #141 #146 #152~~ (feitos) · #147 #142 (médias, pendentes) | Dupla contagem, estados inválidos |
+| 5 | E — Frontend/UX de erro | ~~#148~~ #149 #150 | Dados errados na entrada, sessão zumbi |
 | 6 | F — Estrutural: `effective_date` (#85) | #85 | Bloqueio de paginação/relatórios |
 
 Ordem obrigatória apenas para 1 e 2 (dinheiro e segurança primeiro). 3–5 podem ser paralelas em
