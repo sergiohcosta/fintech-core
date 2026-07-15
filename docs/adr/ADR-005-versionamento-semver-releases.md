@@ -76,6 +76,12 @@ Nada roda anônimo; SemVer é curadoria por cima do SHA, não substituto dele.
   cada commit. Commits de `main` entre releases rodam em hmg/prod só com SHA; é esperado.
 - Custo por release ≈ 2 comandos (`git tag` + `git push`); o resto é automático e sem rebuild.
 - Convenção de commit PT-BR **preservada** — nenhuma disciplina nova imposta ao dia a dia.
+- **Impacto SemVer declarado por PR** (campo no `pull_request_template.md`) + o agente sugere o
+  incremento ao concluir a mudança; a release usa o **máximo acumulado** desde a última tag
+  (fechar 1 issue ≠ 1 release). Eixo de **shipping** (tag → Release → imagem) separado do de
+  **planning** (Milestone/Iteration/issues), que só se encontram no número da versão. Milestones
+  são **opcionais** — o projeto usa Project+Iteration; adotar Milestones só pra agrupar issues por
+  versão, se surgir a necessidade (Iteration ≠ Milestone).
 
 ## Riscos
 
