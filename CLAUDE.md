@@ -161,4 +161,6 @@ Em cada interação significativa, o ciclo esperado é:
 4. **Executar** ensinando os conceitos aplicados
 5. **Consolidar** com perguntas reflexivas ou oferta de aprofundamento
 
+**Versionamento — sugerir sempre:** ao concluir uma mudança (feature/bugfix) ou preparar um PR, sugira o **incremento SemVer** dela (PATCH/MINOR/MAJOR; fronteira de compatibilidade = `api-spec/openapi.yaml`) e registre no campo "Impacto SemVer" do PR. A **release** não é por mudança: o bump é o **maior** impacto acumulado desde a última tag. Detalhe: skill `fintech-core-release-and-versioning`.
+
 A meta não é só ter o software funcionando — é o desenvolvedor entender profundamente *por que* funciona.

@@ -12,7 +12,10 @@ description: >
   esperar o build antes da tag, workflow fixado no commit da tag, corta-se da main). Use quando a
   tarefa for: versionar, versionamento, release, cortar release, criar tag, git tag, SemVer,
   Semantic Versioning, bump de versão, changelog, GitHub Release, nomear versão, pre-release, rc,
-  release candidate, "que versão está em prod/hmg", ou re-tag de imagem no GHCR. NÃO cobre o fluxo
+  release candidate, "que versão está em prod/hmg", ou re-tag de imagem no GHCR. Cobre também
+  qual incremento sugerir ao concluir uma feature/fechar issue (regra do máximo acumulado desde a
+  última tag) e a distinção entre eixo de shipping (tag/release/imagem) e de planning
+  (milestone/iteration/issues), incluindo Milestone ≠ Iteration. NÃO cobre o fluxo
   de mudança em si (spec → worktree → merge develop → PR main — use fintech-core-change-control)
   nem operar/deployar o cluster (use fintech-core-run-and-operate). Verificado contra o repo em
   2026-07-15.
@@ -62,6 +65,29 @@ o contrato que o frontend (e qualquer consumidor) depende.
 **Pré-1.0 (`0.y.z`) — regra atual do projeto:** o contrato ainda é instável. Use **MINOR pra
 feature, PATCH pra fix**, e **ignore MAJOR** até declarar `1.0.0` (= promessa de que o
 `openapi.yaml` não quebra mais sem aviso). Estado atual: `v0.1.0` cortada em 2026-07-15.
+
+### 2.1 Sugerir o incremento durante o fluxo (comportamento padrão)
+
+Ao concluir uma mudança (feature/bugfix) ou preparar um PR, **sugira o incremento SemVer dela** e
+registre no campo **"Impacto SemVer"** do PR template (`.github/pull_request_template.md`).
+
+**Classificação por mudança** (a fronteira é o `openapi.yaml`):
+- mexeu no contrato removendo/renomeando/mudando tipo de campo que o frontend usa → **MAJOR**;
+- senão, adicionou endpoint/campo/feature retrocompatível → **MINOR**;
+- senão (fix, refactor, docs, teste) → **PATCH**.
+
+**Regra do máximo acumulado — fechar 1 issue ≠ 1 release.** A versão nomeia um **marco curado**,
+não cada push. Várias mudanças acumulam entre tags; o bump da release é o **maior** impacto entre
+elas desde a última tag:
+
+```
+um MAJOR em qualquer PR do intervalo  → release MAJOR
+senão um MINOR em qualquer PR          → release MINOR
+senão                                   → release PATCH
+```
+
+Pré-1.0: trate MAJOR como MINOR (sem quebra formal até `1.0.0`), mas **registre** que houve quebra
+de contrato — vira MAJOR real quando declarar `1.0.0`.
 
 ## 3. Versionamento por ambiente
 
@@ -155,6 +181,31 @@ commit** → string idêntica. O commit é a chave comum, e ela já mora no git 
   biblioteca.
 
 Detalhe e gatilhos de adoção: ADR-005 "Fora de escopo".
+
+## 8. Tags, Releases, Milestones — dois eixos
+
+| Primitiva | git ou GitHub | Eixo | Papel |
+|-----------|---------------|------|-------|
+| **Tag** | git (objeto no repo) | shipping | ponteiro imutável pro commit; **gatilho** do `release.yml` |
+| **Release** | GitHub (sobre a tag) | shipping | publicação da tag: notas + assets + "latest"/"pre-release" |
+| **Milestone** | GitHub (planejamento) | planning | balde de issues/PRs rumo a uma versão; due date + % |
+
+**Tag vs Release:** tag existe sozinha (só o ponteiro); Release é a *publicação* de uma tag (exige
+uma, cria se faltar). Tag = fato git; Release = vitrine GitHub.
+
+**Dois eixos que só se encontram no número da versão:**
+- **Shipping** (esta skill) — olha pra trás, nomeia o que ESTÁ pronto: `commit → tag → Release → imagem`.
+- **Planning** (milestone + issues) — olha pra frente, o que DEVE entrar: `milestone vX.Y.0 → agrupa issues`.
+
+Nada auto-liga os dois; o número (`vX.Y.0`) é a ponte humana. Planeja-se o milestone, trabalha-se
+as issues, e quando entregam corta-se a tag → Release.
+
+**Milestone ≠ Iteration.** O projeto usa **GitHub Project + Iteration + Priority**, não Milestones.
+- *Iteration* = sprint time-boxed (janela de tempo).
+- *Milestone* = balde por objetivo/versão (escopo), independe de tempo.
+São ortogonais. Milestones são **opcionais** aqui — adote só se quiser agrupar "issues alvo da
+`vX.Y.0`"; pra dev único com Project+Iteration, o número da versão já liga plano↔entrega. O
+`--generate-notes` monta o changelog dos PRs **sem** precisar de milestone.
 
 ---
 
