@@ -59,38 +59,42 @@ jobs:
       - name: Build de produção
         run: npm run build -- --configuration=production
 
-  # Build das imagens (backend + frontend) e push pro registry do homelab
-  # (infra/registry, exposto via tailscale ingress). Roda no runner
-  # self-hosted (dentro do k3s) — nunca em runner hospedado, pra não expor
-  # kubeconfig em nenhum segredo do GitHub.
+  # Build das imagens (backend + frontend) e push pro GHCR (ghcr.io).
+  # Roda em runner GitHub-hosted (rede estável pro GitHub) — antes era
+  # self-hosted no k3s, mas o runner do homelab perdia a conexão de controle
+  # com o GitHub em builds longos (SSL drop, #153). GitHub-hosted fala com o
+  # GitHub pela rede do próprio GitHub, então esse modo de falha some. O push
+  # vai pro GHCR (autenticado pelo GITHUB_TOKEN embutido, zero segredo novo);
+  # como o repo é público, os packages são públicos e o kubelet do homelab
+  # puxa sem imagePullSecret. Só os jobs deploy-* seguem self-hosted (precisam
+  # de acesso ao cluster; são curtos e imunes ao #153).
   build-and-push:
     name: Build & Push das imagens
     needs: [test-backend, test-frontend]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
-    runs-on: [self-hosted, k3s]
+    runs-on: ubuntu-latest
+    # packages: write é o que autoriza o push pro GHCR com o GITHUB_TOKEN.
+    permissions:
+      contents: read
+      packages: write
     env:
-      # REGISTRY: hostname usado pelos manifests/kubelet pra *pull* (via
-      # tailscale ingress, TLS válido) — precisa bater com o que o
-      # deployment.yaml e o `kustomize edit set image` (job de deploy)
-      # esperam.
-      REGISTRY: registry.atlas-haddock.ts.net
-      # REGISTRY_INTERNAL: usado só pelo *push* — verificado que o pod do
-      # runner não resolve o hostname MagicDNS do tailscale (CoreDNS não
-      # encaminha pro resolver dele), então o push usa o Service
-      # cluster-local direto, em HTTP (--tls-verify=false; tráfego nunca
-      # sai da rede do cluster). O nome do repo:tag armazenado é o mesmo
-      # nos dois casos — o registry indexa por repo:tag, não pelo
-      # hostname usado pra alcançá-lo — então o pull via REGISTRY externo
-      # encontra a imagem normalmente.
-      REGISTRY_INTERNAL: registry.infra.svc.cluster.local:5000
+      # REGISTRY = base do repo no GHCR (dono em minúsculo, exigência do GHCR).
+      # Mesmo valor usado pelos jobs de deploy no `kustomize edit set image`,
+      # pra o nome da imagem casar entre build e deploy.
+      REGISTRY: ghcr.io/sergiohcosta
       SHA_TAG: sha-${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
+      # Login no GHCR: o login-action escreve ~/.docker/config.json, que o Jib
+      # e o buildx leem pra autenticar o push — nenhuma credencial extra.
+      - name: Login no GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       # Backend via Jib (plugin Maven): builda direto do bytecode compilado,
-      # sem Dockerfile/daemon/mount() — kaniko deixou de ser necessário aqui
-      # (era só pra contornar a falta de daemon Docker; Jib resolve isso
-      # nativamente). backend/Dockerfile continua existindo só pro
-      # Render/docker-compose.prod, não é mais usado neste pipeline.
+      # sem Dockerfile/daemon. Só o destino do -Dimage mudou pro GHCR.
       - name: Configura JDK 21
         uses: actions/setup-java@v4
         with:
@@ -100,27 +104,21 @@ jobs:
           cache-dependency-path: backend/pom.xml
       - name: Build & push backend (Jib)
         working-directory: ./backend
-        run: ./mvnw -B compile jib:build -Dimage=$REGISTRY_INTERNAL/fintech-core-backend:$SHA_TAG
-      # buildah/podman precisam de CAP_SYS_ADMIN (remount de propagação de
-      # mount pro overlay/vfs) — indisponível no pod do runner de propósito
-      # (é o motivo de termos self-hosted com RBAC restrito em vez de
-      # kubeconfig solto). Kaniko builda em userspace puro (unpack de layer
-      # via tar, nunca chama mount()) — zero capability extra. Sem daemon
-      # Docker no runner, então buscamos só o binário `executor` de dentro
-      # da imagem oficial via `crane export` (achata a imagem num tar,
-      # também userspace) em vez de baixar/rodar a imagem inteira. Frontend
-      # continua no kaniko (Jib só builda Java) — BuildKit rootless foi
-      # testado e descartado: bate na mesma parede de CAP_SYS_ADMIN do
-      # buildah nesse kernel/containerd (RootlessKit não consegue privatizar
-      # o mount de "/", que pertence ao userns do host, não ao novo).
-      - name: Instala crane
-        run: curl -sL https://github.com/google/go-containerregistry/releases/download/v0.21.7/go-containerregistry_Linux_x86_64.tar.gz | tar -xz -C /usr/local/bin crane
-      - name: Instala kaniko executor
-        run: crane export gcr.io/kaniko-project/executor:v1.24.0 - | tar -x -C /tmp kaniko/executor && sudo mv /tmp/kaniko/executor /usr/local/bin/kaniko-executor && sudo chmod +x /usr/local/bin/kaniko-executor
+        run: ./mvnw -B compile jib:build -Dimage=$REGISTRY/fintech-core-backend:$SHA_TAG
+      # Frontend via buildx: o runner GitHub-hosted tem daemon Docker, então
+      # não precisa mais do kaniko (que existia só pra buildar em userspace
+      # puro na ausência de daemon no pod self-hosted). Some crane, kaniko e
+      # os contornos de ulimit/snapshot. O contexto é a raiz do repo — o
+      # frontend/Dockerfile faz COPY de frontend/... a partir dela.
+      - name: Configura buildx
+        uses: docker/setup-buildx-action@v3
       - name: Build & push frontend
-        run: |
-          ulimit -n 65536
-          kaniko-executor --dockerfile=frontend/Dockerfile --context=dir://${{ github.workspace }} --destination=$REGISTRY_INTERNAL/fintech-core-frontend:$SHA_TAG --insecure --snapshot-mode=redo --compressed-caching=false
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: frontend/Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/fintech-core-frontend:${{ env.SHA_TAG }}
 
   # Deploy via kubectl no próprio runner (client-go cai pra InClusterConfig
   # automaticamente — sem kubeconfig nenhum, só o token da ServiceAccount
@@ -132,7 +130,7 @@ jobs:
     if: github.ref == 'refs/heads/develop'
     runs-on: [self-hosted, k3s]
     env:
-      REGISTRY: registry.atlas-haddock.ts.net
+      REGISTRY: ghcr.io/sergiohcosta
       SHA_TAG: sha-${{ github.sha }}
     steps:
       - name: Gera token do GitHub App pra checkout do homelab-k8s
@@ -166,7 +164,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: [self-hosted, k3s]
     env:
-      REGISTRY: registry.atlas-haddock.ts.net
+      REGISTRY: ghcr.io/sergiohcosta
       SHA_TAG: sha-${{ github.sha }}
     steps:
       - name: Gera token do GitHub App pra checkout do homelab-k8s
@@ -206,7 +204,7 @@ jobs:
     environment: prod
     runs-on: [self-hosted, k3s]
     env:
-      REGISTRY: registry.atlas-haddock.ts.net
+      REGISTRY: ghcr.io/sergiohcosta
       SHA_TAG: sha-${{ github.sha }}
     steps:
       - name: Gera token do GitHub App pra checkout do homelab-k8s
