@@ -2,3 +2,28 @@
     padding: 20px;
     font-family: Roboto, "Helvetica Neue", sans-serif;
 }
+
+// Marca d'água global: canto inferior direito, discreta, sobre qualquer tela.
+// pointer-events: none garante que nunca intercepta cliques por baixo dela.
+.app-version-watermark {
+    position: fixed;
+    right: 8px;
+    bottom: 6px;
+    z-index: 1000;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-family: "Roboto Mono", ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: 0.3px;
+    color: rgba(0, 0, 0, 0.45);
+    background: rgba(0, 0, 0, 0.04);
+    pointer-events: none;
+    user-select: none;
+}
+
+@media (prefers-color-scheme: dark) {
+    .app-version-watermark {
+        color: rgba(255, 255, 255, 0.5);
+        background: rgba(255, 255, 255, 0.08);
+    }
+}
