@@ -8,6 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth';
 import { environment } from '../../../../environments/environment';
+import { formatVersionLabel, readAppEnv } from '../../../core/app-env';
 
 @Component({
   selector: 'app-login',
@@ -38,6 +39,9 @@ export class LoginComponent implements OnInit {
 
   isLoading = signal(false);
   errorMessage = signal('');
+
+  // Versão/ambiente exibidos de forma evidente na tela de login.
+  readonly versionLabel = formatVersionLabel(readAppEnv());
 
   form = this.fb.group({
     email: [environment.devCredentials?.email ?? '', [Validators.required, Validators.email]],

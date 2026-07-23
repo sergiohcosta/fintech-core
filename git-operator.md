@@ -69,6 +69,11 @@ Nada roda anônimo: qualquer ambiente rastreia o commit exato pelo `sha-<commit>
 | **hmg** | push em `main` | SHA sempre; **carrega** `vX.Y.Z` quando o SHA que roda == commit taggado |
 | **prod** | mesma run da hmg (gate) | idem hmg — mesmo `SHA_TAG` já validado |
 
+**Marca d'água no frontend (ambiente + versão):** o app exibe `ambiente · versão` — discreta no canto inferior (global) e evidente na tela de login. Formato: `prod · v0.2.0 (a1b2c3d)` com SemVer, ou `dev · a1b2c3d` só com SHA. Mecânica (mesma imagem serve os 3 envs, então nada é build-time exceto o SHA):
+- `frontend/public/env.js` → `window.__APP_ENV`, lido por `core/app-env.ts`. Reescrito no boot do container pelo entrypoint `frontend/docker-entrypoint.d/40-app-env.sh` (nativo do nginx:alpine).
+- `APP_SHA` assado no build (`build-arg`, `ci-cd.yml`). `APP_ENVIRONMENT` (=namespace) e `APP_VERSION` (lookup de tag apontando pro SHA) injetados no deploy via `kubectl set env` (`deploy-env.yml`) — o manifesto do frontend fica sem `env:` de propósito, senão o `apply` sobrescreveria.
+- SemVer aparece só quando um deploy roda num SHA já taggado (bate com a regra hmg/prod acima). Em push normal ainda não há tag → mostra o SHA.
+
 **Regra de corte:** release **sai da `main`** (o que está validado em hmg/prod). `git tag -a vX.Y.Z` no commit de `main` já buildado → `.github/workflows/release.yml` re-tagga a imagem no GHCR (sem rebuild) e cria o GitHub Release com notas automáticas. Versão é **label**, não gate: não muda o deploy (que segue por push).
 
 > **Exceção histórica:** `v0.1.0` foi cortada da `develop` como primeira release de aprendizado, antes do `release.yml` estar na `main`. Da `v0.2.0` em diante, cortar sempre da `main`.

@@ -48,6 +48,10 @@ jobs:
         run: command -v kustomize >/dev/null 2>&1 || curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash /dev/stdin /usr/local/bin
       - name: Deploy verificado (rollout gated + smoke + rollback)
         working-directory: projects/fintech-core/overlays/${{ inputs.namespace }}
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_SHA: ${{ github.sha }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
@@ -56,6 +60,24 @@ jobs:
             $REGISTRY/fintech-core-backend=$REGISTRY/fintech-core-backend:$SHA_TAG \
             $REGISTRY/fintech-core-frontend=$REGISTRY/fintech-core-frontend:$SHA_TAG
           kubectl apply -k .
+
+          # 1b) Injeta a marca d'água do frontend (ambiente + versão SemVer).
+          # O manifesto do frontend NÃO declara `env:` de propósito → `kubectl
+          # apply` não gerencia a lista de env, então este `set env` sobrevive
+          # entre applies. namespace == nome do ambiente (dev/hmg/prod).
+          # SemVer só existe quando alguma tag aponta pro commit desta run
+          # (ADR-005: hmg/prod carregam vX.Y.Z quando SHA rodando == commit taggado);
+          # senão fica vazio e o frontend exibe só o SHA. Degrada se faltar jq.
+          APP_VERSION=""
+          if command -v jq >/dev/null 2>&1; then
+            APP_VERSION=$(curl -fsS -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+              "https://api.github.com/repos/${GH_REPO}/tags?per_page=100" \
+              | jq -r --arg sha "${GH_SHA}" 'map(select(.commit.sha == $sha)) | .[0].name // ""')
+          fi
+          echo "Marca d'água: APP_ENVIRONMENT=$NS APP_VERSION=${APP_VERSION:-<none>}"
+          kubectl set env deployment/fintech-core-frontend -n "$NS" \
+            APP_ENVIRONMENT="$NS" APP_VERSION="$APP_VERSION"
+
           kubectl rollout restart deployment/fintech-core-backend deployment/fintech-core-frontend -n "$NS"
 
           # rollback reverte ambos os deployments pra revisão anterior (imagem
