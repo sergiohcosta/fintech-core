@@ -19,8 +19,11 @@ import java.util.Properties;
 
 /**
  * Tenta conectar à branch develop do Neon no startup.
- * Lê application-local.properties diretamente do classpath — sem depender
+ * Lê local.neon.properties diretamente do classpath — sem depender
  * da ordem de carregamento do Spring — para garantir acesso às credenciais.
+ * Nome deliberadamente fora do padrão application-{profile}.properties: esse
+ * padrão é reservado pro carregamento automático de profile do Spring Boot
+ * (usado pelo profile real "local"), e este arquivo não deve colidir com ele.
  * Se Neon acessível: sobrescreve spring.datasource.* com credenciais da Neon.
  * Se inacessível: mantém banco local (Docker Compose) como fallback.
  */
@@ -83,7 +86,7 @@ public class NeonFallbackEnvironmentPostProcessor implements EnvironmentPostProc
     }
 
     private Properties loadLocalProperties() {
-        ClassPathResource resource = new ClassPathResource("application-local.properties");
+        ClassPathResource resource = new ClassPathResource("local.neon.properties");
         if (!resource.exists()) {
             return null;
         }
