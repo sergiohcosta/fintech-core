@@ -294,11 +294,18 @@ regra em forma de formulário:
 - Sem `Co-Authored-By`
 - Dataset atualizado se nova tabela/coluna/endpoint (nota: em 2026-07-04 o template ainda cita o
   nome antigo `V10__seed_dev.sql`; o seed real é `V13__seed_dev.sql` — siga a seção 4)
+- **Impacto SemVer** classificado (PATCH/MINOR/MAJOR) — o agente sugere ao concluir a mudança; a
+  fronteira é o `openapi.yaml`. Detalhe: `fintech-core-release-and-versioning` §2.1
 
 **Issues** (`.github/ISSUE_TEMPLATE/`): três templates — bug (`title: "fix: "`), feature
 (`title: "feat: "`), chore (`title: "chore: "`), todos com assignee `sergiohcosta` e seção
 "Critério de conclusão". Ao criar issue via agente: adicionar ao projeto, definir Iteration e
 Priority (Crítica/Alta/Média/Baixa) e designar para sergiohcosta.
+
+**Depois do merge em `main` — nomear a release:** cortar uma versão SemVer (`vX.Y.Z`) é o passo
+seguinte ao fluxo `develop → main`, e é opcional (nomeia-se marco, não todo push). Política,
+esquema SemVer e runbook em `fintech-core-release-and-versioning` (versão é label, corta-se da
+`main`, `release.yml` re-tagga a imagem + cria o GitHub Release). Racional: ADR-005.
 
 ---
 
@@ -313,6 +320,7 @@ Priority (Crítica/Alta/Média/Baixa) e designar para sergiohcosta.
 - [ ] Permissões: duas camadas + teste de 403 (se aplicável)
 - [ ] `database-schema.md` / `summary.md` / `domain.md` atualizados quando a fonte mudou
 - [ ] Commits PT-BR imperativos, sem co-autoria
+- [ ] Impacto SemVer da mudança sugerido e marcado no PR (input do próximo release — max acumulado)
 - [ ] Suíte verde; aprovação do dev; merge em develop; worktree removida
 - [ ] PR develop → main cumulativa, template preenchido
 

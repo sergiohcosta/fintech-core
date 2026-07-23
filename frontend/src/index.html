@@ -10,6 +10,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <!-- Config de runtime (ambiente/versão). Síncrono e antes do bundle: garante
+       window.__APP_ENV definido no boot do Angular. Servido de public/env.js;
+       sobrescrito pelo entrypoint do nginx no container. -->
+  <script src="env.js"></script>
 </head>
 <body>
   <app-root></app-root>

@@ -64,6 +64,7 @@ quando o **remote recebe push** (e um merge de PR pelo GitHub é um push no bran
 | Deploy (dev) | **push em `develop`** | self-hosted (k3s) | atualiza namespace `dev` |
 | Deploy (hmg) | **push em `main`** | self-hosted (k3s) | atualiza namespace `hmg` |
 | Deploy (prod) | **push em `main`**, mas **pausa no gate manual** | self-hosted (k3s) | atualiza `prod` só após aprovação |
+| Release (nomear versão) | **push de tag `v*`** (`release.yml`) | GitHub-hosted | re-tagga a imagem `sha-<sha>` como `vX.Y.Z` no GHCR (sem rebuild) + cria GitHub Release |
 
 Consequências práticas:
 - **`git push origin develop`** (ou merge local + push) → testes → build GHCR → **deploy-dev**. `dev` atualiza sozinho.
@@ -108,34 +109,41 @@ gh api --method POST repos/sergiohcosta/fintech-core/actions/runs/<run_id>/pendi
 **Rejeitar:** mesmo comando com `state=rejected` — a run marca `deploy-prod` como
 `failure` e encerra sem tocar o cluster.
 
+### Cortar uma release (versão SemVer)
+
+Racional e política: `git-operator.md` ("Versionamento e Releases") + ADR-005. Versão é
+**label** (nomeia um commit já buildado), não muda o deploy. Corte **da `main`** — o que
+está validado em hmg/prod.
+
+Pré-requisito: o commit a taggar **já passou pelo pipeline** (push em `main` → job
+`build-and-push` verde → imagem `sha-<sha>` existe no GHCR). Taggar commit não-buildado
+faz o `release.yml` falhar no re-tag ("tag not found").
+
+```bash
+# 1. Escolha o incremento (SemVer): PATCH=fix, MINOR=feature, MAJOR=quebra de contrato.
+#    Pré-1.0: MINOR pra feature, PATCH pra fix.
+
+# 2. Garanta que a main local está no commit já buildado
+git checkout main && git pull origin main
+
+# 3. Tag anotada + push (dispara o release.yml)
+git tag -a v0.2.0 -m "v0.2.0 - <resumo>"
+git push origin v0.2.0
+
+# 4. Acompanhe a run de Release (re-tag das 2 imagens + GitHub Release)
+gh run list --workflow release.yml --limit 1
+```
+
+O `release.yml` faz: login no GHCR → `docker buildx imagetools create` re-tagga
+`sha-<sha>` como `vX.Y.Z` nas 2 imagens (registry-side, sem rebuild) → `gh release create
+--generate-notes` monta o changelog do intervalo desde a tag anterior.
+
+**Gotcha do runtime:** empurrou vários commits na `main` de uma vez? Espere o
+`build-and-push` do commit-alvo ficar verde **antes** de push da tag — senão o re-tag corre
+antes da imagem existir. O `release.yml` roda a versão do workflow **fixada no commit da
+tag**; re-rodar uma tag já criada roda o código daquele commit, não o atual.
+
 ### Health Check
 ```bash
 curl http://localhost:8080/actuator/health
 ```
-
-### Sincronização do Banco (Neon → Local)
-
-Clona o banco da Neon.tech (fonte da verdade) para o Docker local via `scripts/sync-db.sh`.
-
-**Pré-requisitos:** Docker rodando, `pg_dump` instalado localmente, e um `.env` (ou `.env.local`) na raiz baseado em `scripts/.env.template` com `DATABASE_URL_NEON` preenchida:
-```
-DATABASE_URL_NEON=postgresql://[user]:[password]@[host]/[dbname]?sslmode=require
-```
-
-```bash
-docker compose up -d          # Container fintech-postgres precisa estar de pé
-./scripts/sync-db.sh          # Dump da Neon → reset do schema public local → restore
-```
-
-O script valida a conexão e baixa o dump antes de tocar no banco local (falha de conexão não destrói os dados locais). Reinicie o backend após a sync para refletir as mudanças.
-
-### Sincronização de um tenant (Local ↔ Railway)
-
-Sincroniza **apenas o tenant-alvo** entre local e Railway, num sentido por execução. Reaproveita o `.env` (precisa de `DATABASE_URL_RAILWAY` = URL pública do Railway).
-
-```bash
-./scripts/sync-tenant.sh pull   # Railway → local  (Railway é a origem)
-./scripts/sync-tenant.sh push   # local   → Railway (local é a origem)
-```
-
-Cada run **substitui** os dados do tenant no destino pelos da origem (apaga + recarrega numa transação, sem merge); os demais tenants do destino não são tocados. Pede confirmação mostrando o sentido. Premissa: schema idêntico (mesmas migrations) nos dois lados.

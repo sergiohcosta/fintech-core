@@ -14,6 +14,15 @@ Closes #
 - [ ] Testes
 - [ ] Config / Infra
 
+## Impacto SemVer
+
+<!-- Fronteira de compatibilidade = api-spec/openapi.yaml. Pré-1.0: use MINOR/PATCH.
+     A release acumula: o bump final é o MAIOR impacto entre os PRs desde a última tag. -->
+
+- [ ] **PATCH** — corrige bug, sem mudar o contrato
+- [ ] **MINOR** — feature nova, retrocompatível no contrato
+- [ ] **MAJOR** — quebra o contrato (remove/renomeia campo, muda tipo/semântica) — justifique abaixo
+
 ## Checklist
 
 - [ ] Testes adicionados ou atualizados

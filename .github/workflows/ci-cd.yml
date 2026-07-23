@@ -121,6 +121,10 @@ jobs:
           context: .
           file: frontend/Dockerfile
           push: true
+          # APP_SHA é assado na imagem (marca d'água). Ambiente/versão SemVer são
+          # injetados no deploy (deploy-env.yml), pois a mesma imagem serve os 3 envs.
+          build-args: |
+            APP_SHA=${{ github.sha }}
           tags: ${{ env.REGISTRY }}/fintech-core-frontend:${{ env.SHA_TAG }}
 
   # Deploy verificado via reusable workflow (.github/workflows/deploy-env.yml):
