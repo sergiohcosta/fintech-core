@@ -42,6 +42,22 @@ components:
       type: string
       enum: [ACTIVE, CANCELLED]
 
+    ImportMode:
+      type: string
+      enum: [NEW_TRANSACTIONS, RECONCILIATION]
+
+    ImportSourceType:
+      type: string
+      enum: [IMAGE, PDF_TEXT, PDF_SCANNED, CSV, OFX, AUDIO]
+
+    ImportBatchStatus:
+      type: string
+      enum: [PENDING, EXTRACTED, REVIEWED, COMMITTED, FAILED]
+
+    StagedTransactionStatus:
+      type: string
+      enum: [PENDING, CONFIRMED, DISCARDED]
+
     # --- Auth ---
 
     LoginDTO:
@@ -301,6 +317,10 @@ components:
         occurrenceDate:
           type: string
           format: date
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
           nullable: true
 
     # --- Invoices ---
@@ -942,6 +962,146 @@ components:
           format: date
         status:
           $ref: '#/components/schemas/RecurrenceStatus'
+
+    # --- Importação / Extração (Fase 0 — Fundação) ---
+
+    StagedFieldValueDTO:
+      type: object
+      description: Par {value, confidence} de um campo extraído (contrato normalizado §1.3).
+      required: [confidence]
+      properties:
+        value:
+          description: >-
+            Valor extraído do campo. Tipo heterogêneo por campo (número para amount,
+            string ISO para datas, string livre para description).
+          nullable: true
+        confidence:
+          type: number
+          format: double
+
+    NormalizedTransactionDTO:
+      type: object
+      description: Uma transação no schema normalizado — formato para o qual todo extrator converge.
+      required: [fields]
+      properties:
+        transactionId:
+          type: string
+          format: uuid
+          nullable: true
+        fields:
+          type: object
+          description: '{value, confidence} por campo, keyed pelo nome (amount, currency, transaction_date, posting_date, description, direction, payment_method).'
+          additionalProperties:
+            $ref: '#/components/schemas/StagedFieldValueDTO'
+        suggestedCategoryCode:
+          type: string
+          nullable: true
+        suggestedCategoryConfidence:
+          type: number
+          format: double
+          nullable: true
+        overallConfidence:
+          type: number
+          format: double
+          nullable: true
+        requiresReview:
+          type: boolean
+          nullable: true
+          description: Informativo — no create o backend DERIVA por threshold (§2.f), ignorando este valor.
+        duplicateCandidateOf:
+          type: string
+          format: uuid
+          nullable: true
+
+    NormalizedBatchDTO:
+      type: object
+      description: Batch normalizado de entrada — proveniência + lista de transações extraídas.
+      required: [importMode, sourceType, transactions]
+      properties:
+        importMode:
+          $ref: '#/components/schemas/ImportMode'
+        sourceType:
+          $ref: '#/components/schemas/ImportSourceType'
+        extractorUsed:
+          type: string
+          nullable: true
+        extractorVersion:
+          type: string
+          nullable: true
+        transactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/NormalizedTransactionDTO'
+
+    ImportBatchResponseDTO:
+      type: object
+      required: [id, importMode, sourceType, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        importMode:
+          $ref: '#/components/schemas/ImportMode'
+        sourceType:
+          $ref: '#/components/schemas/ImportSourceType'
+        extractorUsed:
+          type: string
+          nullable: true
+        extractorVersion:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/ImportBatchStatus'
+        createdAt:
+          type: string
+          format: date-time
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    StagedTransactionResponseDTO:
+      type: object
+      required: [id, batchId, fields, requiresReview, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        batchId:
+          type: string
+          format: uuid
+        fields:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/StagedFieldValueDTO'
+        suggestedCategoryCode:
+          type: string
+          nullable: true
+        suggestedCategoryConfidence:
+          type: number
+          format: double
+          nullable: true
+        overallConfidence:
+          type: number
+          format: double
+          nullable: true
+        requiresReview:
+          type: boolean
+        duplicateCandidateOf:
+          type: string
+          format: uuid
+          nullable: true
+        promotedTransactionId:
+          type: string
+          format: uuid
+          nullable: true
+        status:
+          $ref: '#/components/schemas/StagedTransactionStatus'
+        createdAt:
+          type: string
+          format: date-time
+          nullable: true
 
 paths:
 
@@ -2030,3 +2190,73 @@ paths:
       responses:
         '204':
           description: Ocorrência pulada (EXDATE gravada)
+
+  # --- Importação / Extração (Fase 0 — Fundação) ---
+
+  /api/imports/mock:
+    post:
+      tags: [imports]
+      operationId: createMockImport
+      summary: (dev) Cria um batch a partir de um schema normalizado mockado
+      description: >-
+        Prova o pipeline ponta a ponta sem extrator real. Grava o batch (EXTRACTED) e as
+        transações em staging (PENDING), derivando requires_review por threshold no backend.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NormalizedBatchDTO'
+      responses:
+        '201':
+          description: Batch criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportBatchResponseDTO'
+
+  /api/imports/{id}:
+    get:
+      tags: [imports]
+      operationId: getImport
+      summary: Detalhe de um batch de importação
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportBatchResponseDTO'
+        '404':
+          description: Batch não encontrado (ou de outro tenant)
+
+  /api/imports/{id}/staged:
+    get:
+      tags: [imports]
+      operationId: listImportStaged
+      summary: Lista as transações em staging de um batch
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StagedTransactionResponseDTO'
+        '404':
+          description: Batch não encontrado (ou de outro tenant)
