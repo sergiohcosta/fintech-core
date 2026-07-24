@@ -1122,3 +1122,66 @@ Authorization: Bearer {{token_carlos}}
 ### 10.7 Reativar recorrência cancelada
 PATCH http://localhost:8080/api/recurrence-rules/{{rule_spotify}}/reactivate
 Authorization: Bearer {{token_carlos}}
+
+###
+
+### ── Bloco 11: Importação / Extração (Fase 0 — Fundação) ───────────────────
+
+### 11.1 Criar batch a partir de um schema normalizado mockado (prova ponta a ponta)
+###      requiresReview é DERIVADO no backend por threshold — o valor enviado é ignorado.
+###      A 2ª transação tem amount confidence baixa (0.80 < 0.95) → deve voltar requires_review=true.
+POST http://localhost:8080/api/imports/mock
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{
+  "importMode": "NEW_TRANSACTIONS",
+  "sourceType": "IMAGE",
+  "extractorUsed": "mock_extractor",
+  "extractorVersion": "2026-07-24",
+  "transactions": [
+    {
+      "fields": {
+        "amount": { "value": 127.50, "confidence": 0.98 },
+        "transaction_date": { "value": "2026-06-28", "confidence": 0.95 },
+        "description": { "value": "PADARIA SAO JOSE", "confidence": 0.90 },
+        "direction": { "value": "debit", "confidence": 0.99 }
+      },
+      "suggestedCategoryCode": "alimentacao",
+      "suggestedCategoryConfidence": 0.70,
+      "overallConfidence": 0.95
+    },
+    {
+      "fields": {
+        "amount": { "value": 1000.00, "confidence": 0.80 }
+      },
+      "overallConfidence": 0.99
+    }
+  ]
+}
+
+> {% client.global.set("import_batch_id", response.body.id); %}
+
+###
+
+### 11.2 Detalhe do batch criado
+GET http://localhost:8080/api/imports/{{import_batch_id}}
+Authorization: Bearer {{token_carlos}}
+
+###
+
+### 11.3 Lista as transações em staging do batch (confira requires_review derivado)
+GET http://localhost:8080/api/imports/{{import_batch_id}}/staged
+Authorization: Bearer {{token_carlos}}
+
+###
+
+### 11.4 Batch do seed dev (V24) — já COMMITTED, com 2 staged CONFIRMED promovidas
+GET http://localhost:8080/api/imports/a0000000-0000-0000-0000-000000000001
+Authorization: Bearer {{token_carlos}}
+
+###
+
+### 11.5 Staged do batch seed (V24) — promoted_transaction_id aponta p/ transações do V13
+GET http://localhost:8080/api/imports/a0000000-0000-0000-0000-000000000001/staged
+Authorization: Bearer {{token_carlos}}

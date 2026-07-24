@@ -170,6 +170,26 @@ AND t.status <> CANCELLED
 - Lista de não planejados: coluna de status (Pago/Pendente), ação "vincular a item planejado" e "criar item planejado" (cria + vincula à transação de origem).
 - Aba "Recorrentes" gerencia `RecurrenceRule` diretamente (CRUD completo, incluindo reativação de regras canceladas) — a tabela `recurring_budget_items` foi removida (V21).
 
+## Importação / Extração (`/api/imports`) — Fundação (Fase 0)
+
+Fundação do pipeline de extração multi-mídia (roadmap `docs/roadmap-extracao-e-conciliacao.md`). **Sem extrator real ainda** — a Fase 0 só prova o contrato de dados de staging ponta a ponta. Spec: `docs/superpowers/specs/2026-07-24-extracao-fundacao-e-mvp-imagem-design.md`.
+
+| Método | Rota | Auth | Descrição |
+|--------|------|------|-----------|
+| POST | `/api/imports/mock` | authenticated | (dev) cria batch a partir de um `NormalizedBatchDTO` mockado — prova o ponta a ponta sem extrator |
+| GET | `/api/imports/{id}` | authenticated | detalhe do batch (404 se de outro tenant) |
+| GET | `/api/imports/{id}/staged` | authenticated | lista as transações em staging do batch (404 se de outro tenant) |
+
+**Staging separado, não `DRAFT` em `transactions`:** o dado extraído é probabilístico (carrega `confidence`, `requires_review`) e nasce em `import_batches` + `staged_transactions`, sendo **promovido** a `Transaction` só no commit (Fase 1). `transactions` continua sendo, linha a linha, apenas fato confirmado — nenhuma query de negócio existente precisa passar a filtrar dado sujo.
+
+**Isolamento de tenant (invariante nº1):** `ImportService` recebe `User` e filtra `user.getTenant()`. `staged_transactions.tenant_id` é **denormalizado** (também está no batch) — defesa nº1: toda leitura filtra o tenant direto na linha, sem depender de JOIN em `import_batches`. Recurso de outro tenant → **404** (não confirma existência).
+
+**`requires_review` é DERIVADO no código, nunca pelo modelo:** `deriveRequiresReview` marca `true` se `overallConfidence < import.review.overall-threshold` (0.90) **ou** se a confiança do campo `amount` < `import.review.amount-threshold` (0.95); ausência de confiança conta como duvidoso. O produto controla a régua por properties, sem retreinar nada. O campo `requiresReview` do DTO de entrada é ignorado.
+
+**`fields JSONB` (`@JdbcTypeCode(SqlTypes.JSON)`):** `{value, confidence}` por campo (amount, currency, transaction_date, posting_date, description, direction, payment_method), keyed pelo nome — mapa flexível (Hibernate 6 nativo, zero dependência nova). `posting_date DATE` nullable também entrou em `transactions` (V23), ainda não consumido (Fase 5).
+
+**Seed (V24):** 1 batch COMMITTED + 2 staged CONFIRMED com `promoted_transaction_id` → transações do V13.
+
 ## Logging Estruturado (MDC)
 
 | Chave | Quando | Valor |

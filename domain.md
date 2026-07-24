@@ -18,13 +18,18 @@ Tenant (UUID, budgetCycleStartDay)
   │    ├── FK → Invoice paidInvoice (nullable — este EXPENSE QUITA a fatura; #145)
   │    ├── FK → RecurrenceRule (nullable — materializada de uma regra)
   │    ├── recurrenceOccurrence: LocalDate (nullable — slot canônico da regra)
-  │    └── transferId: UUID (nullable — par INCOME↔EXPENSE de transferências)
+  │    ├── transferId: UUID (nullable — par INCOME↔EXPENSE de transferências)
+  │    └── postingDate: LocalDate (nullable — data de lançamento/fechamento; não consumida até Fase 5)
   ├── RecurrenceRule (description, baseAmount, type, rrule, startDate, status, account, category?)
   │    └── RecurrenceException (occurrenceDate — EXDATE: ocorrência "pulada")
   ├── BudgetCycle (startDate, endDate, openingBalance, status: OPEN | CLOSED)
   │    └── BudgetItem (description, amount, type, expectedDate, source, status,
   │                    category?, account?, recurrenceRule?, recurrenceOccurrenceDate?,
   │                    transaction?, installmentGroup?)
+  ├── ImportBatch (importMode, sourceType, extractorUsed, extractorVersion, status, createdBy)  [fundação da extração]
+  │    └── StagedTransaction (fields JSONB {value,confidence} por campo, suggestedCategoryCode?,
+  │                           suggestedCategoryConfidence?, overallConfidence?, requiresReview [derivado],
+  │                           duplicateCandidateOf?, promotedTransactionId? → Transaction, status)
   └── Invitation (email, token, expiresAt)
 ```
 
@@ -42,4 +47,8 @@ BudgetCycleStatus  : OPEN | CLOSED
 BudgetItemSource   : MANUAL | RECURRING | INSTALLMENT
 BudgetItemStatus   : PENDING | REALIZED | SKIPPED
 RecurrenceStatus   : ACTIVE | CANCELLED
+ImportMode              : NEW_TRANSACTIONS | RECONCILIATION
+ImportSourceType        : IMAGE | PDF_TEXT | PDF_SCANNED | CSV | OFX | AUDIO
+ImportBatchStatus       : PENDING | EXTRACTED | REVIEWED | COMMITTED | FAILED
+StagedTransactionStatus : PENDING | CONFIRMED | DISCARDED
 ```
