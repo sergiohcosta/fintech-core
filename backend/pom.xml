@@ -230,6 +230,15 @@
 								<importMapping>RecurrenceRulePatchDTO=com.fintech.api.dto.recurrence.RecurrenceRulePatchDTO</importMapping>
 								<importMapping>RecurrenceRuleResponseDTO=com.fintech.api.dto.recurrence.RecurrenceRuleResponseDTO</importMapping>
 								<importMapping>ConfirmOccurrenceDTO=com.fintech.api.dto.recurrence.ConfirmOccurrenceDTO</importMapping>
+								<importMapping>ImportMode=com.fintech.api.domain.enums.ImportMode</importMapping>
+								<importMapping>ImportSourceType=com.fintech.api.domain.enums.ImportSourceType</importMapping>
+								<importMapping>ImportBatchStatus=com.fintech.api.domain.enums.ImportBatchStatus</importMapping>
+								<importMapping>StagedTransactionStatus=com.fintech.api.domain.enums.StagedTransactionStatus</importMapping>
+								<importMapping>StagedFieldValueDTO=com.fintech.api.dto.imports.StagedFieldValueDTO</importMapping>
+								<importMapping>NormalizedTransactionDTO=com.fintech.api.dto.imports.NormalizedTransactionDTO</importMapping>
+								<importMapping>NormalizedBatchDTO=com.fintech.api.dto.imports.NormalizedBatchDTO</importMapping>
+								<importMapping>ImportBatchResponseDTO=com.fintech.api.dto.imports.ImportBatchResponseDTO</importMapping>
+								<importMapping>StagedTransactionResponseDTO=com.fintech.api.dto.imports.StagedTransactionResponseDTO</importMapping>
 							</importMappings>
 							<configOptions>
 								<interfaceOnly>true</interfaceOnly>
