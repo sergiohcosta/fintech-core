@@ -25,6 +25,8 @@ Schema em `db/migration/`. Seed em `db/seed/` (perfil `dev`): `V13` (dados gerai
 | V20 | seed `dev` — recorrência Família Costa (regra Netflix mensal + 1 EXDATE de exemplo) |
 | V21 | migra `recurring_budget_items` → `recurrence_rules` (big bang): INSERT SELECT + colunas `recurrence_rule_id`/`recurrence_occurrence_date` em `budget_items` + DROP TABLE `recurring_budget_items` |
 | V22 | `paid_invoice_id UUID` nullable (FK → `invoices`) em `transactions` + índice único parcial `(paid_invoice_id) WHERE paid_invoice_id IS NOT NULL` — marcador do pagamento de fatura (#145); dashboard exclui dos agregados e o índice garante 1 pagamento por fatura (reforça #139) |
+| V23 | `import_batches` + `staged_transactions` (fundação da extração/conciliação, Fase 0) + `posting_date DATE` nullable em `transactions`. Staging SEPARADO do núcleo: o dado extraído (probabilístico, com confidence) só é promovido a `transactions` no commit. `staged_transactions.fields` é JSONB; `staged_transactions.tenant_id` é **denormalizado** (defesa nº1 contra vazamento). `posting_date` ainda não consumido (Fase 5) |
+| V24 | seed `dev` — importação Família Costa: 1 `import_batches` COMMITTED + 2 `staged_transactions` CONFIRMED com `promoted_transaction_id` → transações Salário/Aluguel jun/2026 do V13 (resolvidas por chave natural, pois o V13 usa `gen_random_uuid()`) |
 
 > V10 não existe (seed renomeado para V13 para ficar acima do schema base).
 
@@ -38,5 +40,7 @@ Schema em `db/migration/`. Seed em `db/seed/` (perfil `dev`): `V13` (dados gerai
 - `recurrence_exceptions`: `UNIQUE(rule_id, occurrence_date)` — idempotência do "Pular" (EXDATE).
 - `transactions`: índice único parcial `(recurrence_rule_id, recurrence_occurrence) WHERE recurrence_rule_id IS NOT NULL` — impede confirmar a mesma ocorrência duas vezes.
 - `transactions`: índice único parcial `(paid_invoice_id) WHERE paid_invoice_id IS NOT NULL` — no máximo um pagamento por fatura (#145/#139).
+- `import_batches`: `import_mode IN (NEW_TRANSACTIONS, RECONCILIATION)`, `source_type IN (IMAGE, PDF_TEXT, PDF_SCANNED, CSV, OFX, AUDIO)`, `status IN (PENDING, EXTRACTED, REVIEWED, COMMITTED, FAILED)`; índice `(tenant_id, status)`.
+- `staged_transactions`: `status IN (PENDING, CONFIRMED, DISCARDED)`; FK `batch_id → import_batches ON DELETE CASCADE`; `tenant_id` denormalizado (FK → tenants); `promoted_transaction_id` FK nullable → `transactions`; índice `(batch_id)`.
 
 **Invariante:** migrations aplicadas são imutáveis. Correção sempre via nova versão.
