@@ -1103,6 +1103,50 @@ components:
           format: date-time
           nullable: true
 
+    # --- Importação / Extração (Fase 1 — MVP de imagem) ---
+
+    StagedCommitItemDTO:
+      type: object
+      description: Instrução de commit de uma staged — em qual conta lançar e (opcional) categoria.
+      required: [stagedId, accountId]
+      properties:
+        stagedId:
+          type: string
+          format: uuid
+        accountId:
+          type: string
+          format: uuid
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
+
+    ImportCommitRequestDTO:
+      type: object
+      description: Lista de staged a promover a Transaction (só as listadas são lançadas).
+      required: [items]
+      properties:
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/StagedCommitItemDTO'
+
+    StagedPatchDTO:
+      type: object
+      description: >-
+        Correções do usuário a uma staged antes de lançar. `fields` é um mapa parcial
+        {nomeDoCampo: novoValor} (só o valor); o backend grava confiança 1.0 (dado confirmado
+        por humano) e re-deriva requires_review.
+      properties:
+        fields:
+          type: object
+          nullable: true
+          additionalProperties: true
+        suggestedCategoryCode:
+          type: string
+          nullable: true
+
 paths:
 
   # --- Auth (sem autenticação) ---
@@ -2260,3 +2304,106 @@ paths:
                   $ref: '#/components/schemas/StagedTransactionResponseDTO'
         '404':
           description: Batch não encontrado (ou de outro tenant)
+
+  /api/imports:
+    post:
+      tags: [imports]
+      operationId: createImport
+      summary: Extrai um comprovante (imagem) e cria um batch com a transação em staging
+      description: >-
+        Multipart: envia a imagem (file) + o modo de importação. Aciona o VisionExtractor
+        (Spring AI + Ollama), grava o batch EXTRACTED e a transação em staging (PENDING),
+        derivando requires_review por threshold no backend. Falha de extração grava o batch
+        como FAILED (o fallback é o formulário manual de transação).
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, importMode]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Imagem do comprovante (image/*).
+                importMode:
+                  $ref: '#/components/schemas/ImportMode'
+      responses:
+        '201':
+          description: Batch criado (EXTRACTED) — ou FAILED se a extração não produziu dados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportBatchResponseDTO'
+        '400':
+          description: Arquivo ausente ou tipo não suportado (não é imagem)
+
+  /api/imports/{id}/staged/{stagedId}:
+    patch:
+      tags: [imports]
+      operationId: patchImportStaged
+      summary: Edita os campos de uma transação em staging antes de lançar
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: stagedId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StagedPatchDTO'
+      responses:
+        '200':
+          description: Staged atualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StagedTransactionResponseDTO'
+        '404':
+          description: Batch ou staged não encontrado (ou de outro tenant)
+
+  /api/imports/{id}/commit:
+    post:
+      tags: [imports]
+      operationId: commitImport
+      summary: Promove as staged selecionadas a transações
+      description: >-
+        Para cada staged listada (PENDING), valida a sanidade (valor plausível, data coerente),
+        cria a Transaction reusando o caminho de criação existente (débito→EXPENSE,
+        crédito→INCOME; conta escolhida pelo usuário) e marca a staged CONFIRMED. O batch vira
+        COMMITTED quando nenhuma staged fica mais PENDING.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportCommitRequestDTO'
+      responses:
+        '200':
+          description: Batch após o commit (COMMITTED se todas as staged foram resolvidas)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportBatchResponseDTO'
+        '400':
+          description: Staged inválida para lançamento (valor/data ausente ou inconsistente)
+        '404':
+          description: Batch ou staged não encontrado (ou de outro tenant)

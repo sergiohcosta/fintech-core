@@ -1125,7 +1125,7 @@ Authorization: Bearer {{token_carlos}}
 
 ###
 
-### ── Bloco 11: Importação / Extração (Fase 0 — Fundação) ───────────────────
+### ── Bloco 11: Importação / Extração (Fase 0 — Fundação + Fase 1 — MVP imagem) ─
 
 ### 11.1 Criar batch a partir de um schema normalizado mockado (prova ponta a ponta)
 ###      requiresReview é DERIVADO no backend por threshold — o valor enviado é ignorado.
@@ -1185,3 +1185,71 @@ Authorization: Bearer {{token_carlos}}
 ### 11.5 Staged do batch seed (V24) — promoted_transaction_id aponta p/ transações do V13
 GET http://localhost:8080/api/imports/a0000000-0000-0000-0000-000000000001/staged
 Authorization: Bearer {{token_carlos}}
+
+###
+
+### 11.6 (Fase 1) Upload de imagem real — aciona o VisionExtractor (Ollama)
+###      < ./comprovante.jpg é um PLACEHOLDER: coloque uma imagem de comprovante com esse nome
+###      ao lado deste arquivo .http (ou ajuste o caminho) antes de rodar este bloco. Requer o
+###      Ollama do import.vision configurado e no ar — sem isso (ou se a extração falhar), o
+###      batch volta como FAILED e o fallback é o formulário manual de transação (§6 da spec).
+POST http://localhost:8080/api/imports
+Authorization: Bearer {{token_carlos}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="comprovante.jpg"
+Content-Type: image/jpeg
+
+< ./comprovante.jpg
+--WebAppBoundary
+Content-Disposition: form-data; name="importMode"
+
+NEW_TRANSACTIONS
+--WebAppBoundary--
+
+> {%
+client.global.set("import_batch_id", response.body.id);
+%}
+
+###
+
+### 11.7 (Fase 1) Lista a staged recém-extraída e captura o id para editar/lançar
+###      Se o 11.6 voltou batch FAILED, esta lista vem vazia — pule para o formulário manual.
+GET http://localhost:8080/api/imports/{{import_batch_id}}/staged
+Authorization: Bearer {{token_carlos}}
+
+> {%
+client.global.set("staged_id", response.body[0].id);
+%}
+
+###
+
+### 11.8 (Fase 1) Corrige um campo da staged antes de lançar (ex.: valor ilegível na imagem)
+###      Valor editado grava confiança 1.0 (dado confirmado por humano) e requires_review é
+###      re-derivado com a nova confiança.
+PATCH http://localhost:8080/api/imports/{{import_batch_id}}/staged/{{staged_id}}
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{
+  "fields": {
+    "amount": "127.50",
+    "description": "Padaria São José"
+  }
+}
+
+###
+
+### 11.9 (Fase 1) Commit — promove a staged corrigida a Transaction (conta + categoria escolhidas)
+###      Reusa o caminho de criação de Transaction existente; o batch vira COMMITTED quando
+###      não sobra nenhuma staged PENDING.
+POST http://localhost:8080/api/imports/{{import_batch_id}}/commit
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{
+  "items": [
+    { "stagedId": "{{staged_id}}", "accountId": "{{id_bradesco}}", "categoryId": "{{id_cat_alimentacao}}" }
+  ]
+}

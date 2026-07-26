@@ -1,0 +1,200 @@
+<div class="import-page">
+  <h1 class="page-title">
+    <mat-icon>document_scanner</mat-icon>
+    Importar comprovante
+  </h1>
+
+  <!-- ETAPA 1: UPLOAD -->
+  @if (stage() === 'upload') {
+    <mat-card appearance="outlined" class="upload-card">
+      <mat-card-content>
+        <p class="hint">
+          Envie a foto de um comprovante (recibo, PIX, nota). Vamos extrair valor, data e
+          descrição automaticamente — você confere antes de lançar.
+        </p>
+
+        <div
+          class="dropzone"
+          [class.dragging]="dragging()"
+          (dragover)="onDragOver($event)"
+          (dragleave)="onDragLeave($event)"
+          (drop)="onDrop($event)">
+          <mat-icon class="dropzone-icon">cloud_upload</mat-icon>
+          @if (fileName()) {
+            <p class="file-name">{{ fileName() }}</p>
+            <button mat-button color="warn" type="button" (click)="clearFile()">
+              <mat-icon>close</mat-icon> Remover
+            </button>
+          } @else {
+            <p>Arraste uma imagem aqui ou</p>
+            <label class="file-input-label">
+              <input type="file" accept="image/*" hidden (change)="onFileSelected($event)" />
+              <span mat-stroked-button>Escolher arquivo</span>
+            </label>
+          }
+        </div>
+
+        @if (uploading()) {
+          <mat-progress-bar mode="indeterminate" />
+          <p class="hint center">Extraindo dados da imagem…</p>
+        }
+      </mat-card-content>
+
+      <mat-card-actions align="end">
+        <button
+          mat-flat-button
+          color="primary"
+          type="button"
+          [disabled]="!selectedFile() || uploading()"
+          (click)="upload()">
+          <mat-icon>auto_awesome</mat-icon>
+          Extrair
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  }
+
+  <!-- ETAPA 2 (falha): FALLBACK MANUAL -->
+  @if (stage() === 'failed') {
+    <mat-card appearance="outlined" class="failed-card">
+      <mat-card-content>
+        <mat-icon class="failed-icon" color="warn">report_problem</mat-icon>
+        <h2>Não foi possível extrair este comprovante</h2>
+        <p class="hint">
+          A imagem pode estar ilegível ou o serviço de extração indisponível. Você pode lançar a
+          transação manualmente.
+        </p>
+      </mat-card-content>
+      <mat-card-actions align="end">
+        <button mat-button type="button" (click)="reset()">Tentar outra imagem</button>
+        <button mat-flat-button color="primary" type="button" (click)="goToManual()">
+          <mat-icon>edit</mat-icon> Lançar manualmente
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  }
+
+  <!-- ETAPA 3: REVISÃO -->
+  @if (stage() === 'review') {
+    @if (loadingStaged()) {
+      <mat-progress-bar mode="indeterminate" />
+    }
+
+    <p class="hint">
+      Confira os dados extraídos. Campos com
+      <span class="conf-badge low">baixa confiança</span>
+      merecem atenção. Escolha a conta de cada lançamento e confirme.
+    </p>
+
+    @for (row of rows(); track row.stagedId) {
+      <mat-card appearance="outlined" class="review-card">
+        <mat-card-content>
+          @if (row.requiresReview) {
+            <div class="review-flag">
+              <mat-icon color="warn">flag</mat-icon>
+              <span>Revisar com atenção</span>
+            </div>
+          }
+
+          <div class="field-grid">
+            <!-- Valor -->
+            <mat-form-field appearance="outline">
+              <mat-label>Valor</mat-label>
+              <input
+                matInput
+                type="text"
+                inputmode="decimal"
+                [value]="row.amount"
+                (input)="onInput(row.stagedId, 'amount', $event)" />
+              <span matSuffix class="conf-badge" [class]="confClass(row, 'amount')"
+                    matTooltip="Confiança do modelo neste campo">{{ confPct(row, 'amount') }}</span>
+            </mat-form-field>
+
+            <!-- Data -->
+            <mat-form-field appearance="outline">
+              <mat-label>Data</mat-label>
+              <input
+                matInput
+                type="date"
+                [value]="row.transaction_date"
+                (input)="onInput(row.stagedId, 'transaction_date', $event)" />
+              <span matSuffix class="conf-badge" [class]="confClass(row, 'transaction_date')"
+                    matTooltip="Confiança do modelo neste campo">{{ confPct(row, 'transaction_date') }}</span>
+            </mat-form-field>
+
+            <!-- Descrição -->
+            <mat-form-field appearance="outline" class="span-2">
+              <mat-label>Descrição</mat-label>
+              <input
+                matInput
+                type="text"
+                [value]="row.description"
+                (input)="onInput(row.stagedId, 'description', $event)" />
+              <span matSuffix class="conf-badge" [class]="confClass(row, 'description')"
+                    matTooltip="Confiança do modelo neste campo">{{ confPct(row, 'description') }}</span>
+            </mat-form-field>
+
+            <!-- Direção -->
+            <mat-form-field appearance="outline">
+              <mat-label>Tipo</mat-label>
+              <mat-select
+                [value]="row.direction"
+                (selectionChange)="updateField(row.stagedId, 'direction', $event.value)">
+                <mat-option value="debit">Saída (despesa)</mat-option>
+                <mat-option value="credit">Entrada (receita)</mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <!-- Método de pagamento -->
+            <mat-form-field appearance="outline">
+              <mat-label>Método</mat-label>
+              <input
+                matInput
+                type="text"
+                [value]="row.payment_method"
+                (input)="onInput(row.stagedId, 'payment_method', $event)" />
+            </mat-form-field>
+
+            <!-- Conta (obrigatória) -->
+            <mat-form-field appearance="outline">
+              <mat-label>Conta *</mat-label>
+              <mat-select
+                [value]="row.accountId"
+                (selectionChange)="updateField(row.stagedId, 'accountId', $event.value)">
+                @for (acc of accounts(); track acc.id) {
+                  <mat-option [value]="acc.id">{{ acc.name }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            <!-- Categoria (opcional) -->
+            <mat-form-field appearance="outline">
+              <mat-label>Categoria</mat-label>
+              <mat-select
+                [value]="row.categoryId"
+                (selectionChange)="updateField(row.stagedId, 'categoryId', $event.value)">
+                <mat-option [value]="null">Sem categoria</mat-option>
+                @for (cat of categoryOptions(); track cat.id) {
+                  <mat-option [value]="cat.id">{{ cat.name }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    }
+
+    <div class="review-actions">
+      <button mat-button type="button" (click)="reset()">Cancelar</button>
+      <button
+        mat-flat-button
+        color="primary"
+        type="button"
+        [disabled]="!canConfirm()"
+        (click)="confirm()">
+        <mat-icon>check</mat-icon>
+        Confirmar e lançar
+      </button>
+    </div>
+  }
+</div>
