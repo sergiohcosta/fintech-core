@@ -44,6 +44,7 @@ export class ShellComponent {
   readonly navItems: NavItem[] = [
     { label: 'Dashboard',  icon: 'dashboard',    route: '/dashboard' },
     { label: 'Transações', icon: 'swap_horiz',   route: '/transactions' },
+    { label: 'Importar',   icon: 'document_scanner', route: '/import' },
     { label: 'Faturas',    icon: 'receipt_long', route: '/invoices' },
     { label: 'Planejamento', icon: 'event_note', route: '/planning' },
     { label: 'Recorrências', icon: 'autorenew',  route: '/recurrences' },

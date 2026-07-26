@@ -170,15 +170,22 @@ AND t.status <> CANCELLED
 - Lista de não planejados: coluna de status (Pago/Pendente), ação "vincular a item planejado" e "criar item planejado" (cria + vincula à transação de origem).
 - Aba "Recorrentes" gerencia `RecurrenceRule` diretamente (CRUD completo, incluindo reativação de regras canceladas) — a tabela `recurring_budget_items` foi removida (V21).
 
-## Importação / Extração (`/api/imports`) — Fundação (Fase 0)
+## Importação / Extração (`/api/imports`) — Fase 0 (fundação) + Fase 1 (MVP de imagem)
 
-Fundação do pipeline de extração multi-mídia (roadmap `docs/roadmap-extracao-e-conciliacao.md`). **Sem extrator real ainda** — a Fase 0 só prova o contrato de dados de staging ponta a ponta. Spec: `docs/superpowers/specs/2026-07-24-extracao-fundacao-e-mvp-imagem-design.md`.
+Pipeline de extração multi-mídia (roadmap `docs/roadmap-extracao-e-conciliacao.md`). A Fase 0 provou o contrato de staging ponta a ponta (sem extrator real); a Fase 1 liga o extrator de verdade para imagem e fecha o ciclo upload → revisão → commit. Spec: `docs/superpowers/specs/2026-07-24-extracao-fundacao-e-mvp-imagem-design.md`.
 
 | Método | Rota | Auth | Descrição |
 |--------|------|------|-----------|
+| POST | `/api/imports` | authenticated | **(Fase 1)** multipart (`file` + `importMode`) — aciona o `VisionExtractor`, grava batch `EXTRACTED` + staged `PENDING`. Falha de extração → batch `FAILED` (fallback é o formulário manual de transação) |
+| PATCH | `/api/imports/{id}/staged/{stagedId}` | authenticated | **(Fase 1)** edita campos de uma staged `PENDING` antes de lançar — grava confiança `1.0` (dado confirmado por humano) e re-deriva `requiresReview` |
+| POST | `/api/imports/{id}/commit` | authenticated | **(Fase 1)** promove as staged listadas (`items: [{stagedId, accountId, categoryId?}]`) a `Transaction`, reusando o caminho de criação existente; marca cada staged `CONFIRMED` e o batch `COMMITTED` quando não sobra nenhuma `PENDING` |
 | POST | `/api/imports/mock` | authenticated | (dev) cria batch a partir de um `NormalizedBatchDTO` mockado — prova o ponta a ponta sem extrator |
 | GET | `/api/imports/{id}` | authenticated | detalhe do batch (404 se de outro tenant) |
 | GET | `/api/imports/{id}/staged` | authenticated | lista as transações em staging do batch (404 se de outro tenant) |
+
+**Extrator (Fase 1):** `TransactionExtractor` é a porta agnóstica de provider; `VisionExtractor` é a implementação sobre o `ChatClient` do Spring AI 2.0.0-M2 (`spring-ai-starter-model-ollama`, default Ollama do homelab — troca de provider é troca de starter Maven + properties). Pede saída **estruturada e tipada** (`.entity(LlmReceiptExtractionDTO.class)` — um record plano, mais fácil pro modelo de visão preencher que o mapa aninhado do `NormalizedBatchDTO`) e **revalida a plausibilidade do nosso lado** antes de aceitar (guarda-corpo): schema íntegro não garante conteúdo são — o modelo pode alucinar um valor com formato válido. `amount` ausente ou ≤0 derruba a extração (`ExtractionException` → batch `FAILED`); data ilegível não derruba (confiança zerada, usuário completa na revisão). Mapeamento de direção: `debit`→`EXPENSE`, `credit`→`INCOME` (default `debit` se irreconhecível). `requires_review` **nunca** é decidido pelo extrator — quem deriva por threshold é sempre o `ImportService` (mesma regra da Fase 0).
+
+**Commit (`POST .../commit`):** por item, valida sanidade dos valores **atuais** (originais ou já editados via PATCH) — `amount >= 0.01` e `transaction_date` parseável, senão 400 (`BusinessException`). Cria a `Transaction` reusando `TransactionService.create` (não reimplementa regra de fatura/parcela) com `status=null` → aplica o default `PENDING`, igual a um lançamento manual. Staged já não-`PENDING` (reenvio) → 400.
 
 **Staging separado, não `DRAFT` em `transactions`:** o dado extraído é probabilístico (carrega `confidence`, `requires_review`) e nasce em `import_batches` + `staged_transactions`, sendo **promovido** a `Transaction` só no commit (Fase 1). `transactions` continua sendo, linha a linha, apenas fato confirmado — nenhuma query de negócio existente precisa passar a filtrar dado sujo.
 
