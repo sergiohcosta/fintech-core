@@ -1,27 +1,39 @@
 package com.fintech.api.service.imports;
 
+import com.fintech.api.domain.account.Account;
+import com.fintech.api.domain.enums.AccountType;
 import com.fintech.api.domain.enums.ImportBatchStatus;
 import com.fintech.api.domain.enums.ImportMode;
 import com.fintech.api.domain.enums.ImportSourceType;
+import com.fintech.api.domain.enums.StagedTransactionStatus;
+import com.fintech.api.domain.enums.TransactionType;
 import com.fintech.api.domain.enums.UserRole;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.imports.ImportBatchResponseDTO;
+import com.fintech.api.dto.imports.ImportCommitRequestDTO;
 import com.fintech.api.dto.imports.NormalizedBatchDTO;
 import com.fintech.api.dto.imports.NormalizedTransactionDTO;
+import com.fintech.api.dto.imports.StagedCommitItemDTO;
 import com.fintech.api.dto.imports.StagedFieldValueDTO;
+import com.fintech.api.dto.imports.StagedPatchDTO;
 import com.fintech.api.dto.imports.StagedTransactionResponseDTO;
+import com.fintech.api.dto.transaction.TransactionResponseDTO;
 import com.fintech.api.exception.EntityNotFoundException;
+import com.fintech.api.repository.AccountRepository;
 import com.fintech.api.repository.TenantRepository;
 import com.fintech.api.repository.UserRepository;
+import com.fintech.api.service.TransactionService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -39,11 +51,25 @@ class ImportServiceTest {
     @Autowired ImportService importService;
     @Autowired TenantRepository tenantRepository;
     @Autowired UserRepository userRepository;
+    @Autowired AccountRepository accountRepository;
+    @Autowired TransactionService transactionService;
 
     private Tenant persistTenant(String name) {
         Tenant t = new Tenant();
         t.setName(name);
         return tenantRepository.save(t);
+    }
+
+    private Account persistAccount(Tenant tenant, User user) {
+        return accountRepository.save(Account.builder()
+                .name("Conta Corrente")
+                .type(AccountType.CHECKING)
+                .countInLiquidBalance(true)
+                .countInNetWorth(true)
+                .active(true)
+                .tenant(tenant)
+                .createdBy(user)
+                .build());
     }
 
     private User persistUser(Tenant tenant, String email) {
@@ -90,6 +116,19 @@ class ImportServiceTest {
                 Map.of("amount", fieldValue(1000.00, "0.80")),
                 null, null,
                 new BigDecimal("0.99"),
+                null, null);
+    }
+
+    /** Comprovante de ENTRADA (direction=credit), alta confiança → deve promover como INCOME. */
+    private NormalizedTransactionDTO creditReceipt() {
+        return new NormalizedTransactionDTO(
+                null,
+                Map.of("amount", fieldValue(500.00, "0.98"),
+                        "transaction_date", fieldValue("2026-06-15", "0.95"),
+                        "direction", fieldValue("credit", "0.99"),
+                        "description", fieldValue("ESTORNO LOJA", "0.90")),
+                null, null,
+                new BigDecimal("0.95"),
                 null, null);
     }
 
@@ -155,6 +194,98 @@ class ImportServiceTest {
         // Contraprova: o batch EXISTE (o dono o enxerga) — o 404 acima é isolamento, não ausência.
         assertThat(importService.getBatch(batch.id(), ownerUser).id()).isEqualTo(batch.id());
         assertThat(importService.listStaged(batch.id(), ownerUser)).hasSize(1);
+    }
+
+    // ------------------------------------------------------------------------------------
+    // Fase 1 — commit (promoção) e patch
+    // ------------------------------------------------------------------------------------
+
+    @Test
+    void commitPromoveStagedParaTransacaoEFechaOBatch() {
+        Tenant tenant = persistTenant("Tenant Commit");
+        User user = persistUser(tenant, "commit@import.test");
+        Account account = persistAccount(tenant, user);
+
+        ImportBatchResponseDTO batch = importService.createBatch(batchOf(highConfidence()), user);
+        UUID stagedId = importService.listStaged(batch.id(), user).get(0).id();
+
+        ImportCommitRequestDTO req = new ImportCommitRequestDTO(
+                List.of(new StagedCommitItemDTO(stagedId, account.getId(), null)));
+        ImportBatchResponseDTO committed = importService.commit(batch.id(), req, user);
+
+        // Sem staged pendente restante → batch COMMITTED.
+        assertThat(committed.status()).isEqualTo(ImportBatchStatus.COMMITTED);
+
+        StagedTransactionResponseDTO afterStaged = importService.listStaged(batch.id(), user).get(0);
+        assertThat(afterStaged.status()).isEqualTo(StagedTransactionStatus.CONFIRMED);
+        assertThat(afterStaged.promotedTransactionId()).isNotNull();
+
+        // A transação nasceu com os valores da staged (highConfidence: 127.50, sem direction → EXPENSE).
+        TransactionResponseDTO tx = transactionService.findById(afterStaged.promotedTransactionId(), user);
+        assertThat(tx.amount()).isEqualByComparingTo("127.50");
+        assertThat(tx.type()).isEqualTo(TransactionType.EXPENSE);
+        assertThat(tx.date()).isEqualTo(LocalDate.parse("2026-06-28"));
+        assertThat(tx.accountId()).isEqualTo(account.getId());
+    }
+
+    @Test
+    void commitMapeiaDirectionCreditParaINCOME() {
+        Tenant tenant = persistTenant("Tenant Credit");
+        User user = persistUser(tenant, "credit@import.test");
+        Account account = persistAccount(tenant, user);
+
+        ImportBatchResponseDTO batch = importService.createBatch(batchOf(creditReceipt()), user);
+        UUID stagedId = importService.listStaged(batch.id(), user).get(0).id();
+
+        ImportCommitRequestDTO req = new ImportCommitRequestDTO(
+                List.of(new StagedCommitItemDTO(stagedId, account.getId(), null)));
+        importService.commit(batch.id(), req, user);
+
+        // Contraparte do teste EXPENSE acima: direction=credit deve virar INCOME na promoção.
+        StagedTransactionResponseDTO afterStaged = importService.listStaged(batch.id(), user).get(0);
+        TransactionResponseDTO tx = transactionService.findById(afterStaged.promotedTransactionId(), user);
+        assertThat(tx.type()).isEqualTo(TransactionType.INCOME);
+        assertThat(tx.amount()).isEqualByComparingTo("500.00");
+    }
+
+    @Test
+    void patchEditaCampoComConfiancaMaximaEReDerivaReview() {
+        Tenant tenant = persistTenant("Tenant Patch");
+        User user = persistUser(tenant, "patch@import.test");
+
+        // lowAmountConfidence: overall 0.99 (passa), amount 0.80 < 0.95 → requiresReview TRUE.
+        ImportBatchResponseDTO batch = importService.createBatch(batchOf(lowAmountConfidence()), user);
+        StagedTransactionResponseDTO before = importService.listStaged(batch.id(), user).get(0);
+        assertThat(before.requiresReview()).isTrue();
+
+        // Humano corrige o valor → confiança do amount vira 1.0 → requiresReview cai para FALSE.
+        StagedPatchDTO patch = new StagedPatchDTO(Map.of("amount", 2500.00), null);
+        StagedTransactionResponseDTO updated = importService.patchStaged(batch.id(), before.id(), patch, user);
+
+        assertThat(updated.fields().get("amount").value()).isEqualTo(2500.00);
+        assertThat(updated.fields().get("amount").confidence()).isEqualByComparingTo("1");
+        assertThat(updated.requiresReview()).isFalse();
+    }
+
+    @Test
+    void naoPermiteCommitNemPatchDeStagedDeOutroTenant() {
+        Tenant owner = persistTenant("Owner F1");
+        User ownerUser = persistUser(owner, "owner-f1@import.test");
+        Tenant intruder = persistTenant("Intruder F1");
+        User intruderUser = persistUser(intruder, "intruder-f1@import.test");
+        Account intruderAccount = persistAccount(intruder, intruderUser);
+
+        ImportBatchResponseDTO batch = importService.createBatch(batchOf(highConfidence()), ownerUser);
+        UUID stagedId = importService.listStaged(batch.id(), ownerUser).get(0).id();
+
+        // Invariante nº1: o intruso não commita nem edita staged do dono → 404 (não confirma existência).
+        ImportCommitRequestDTO req = new ImportCommitRequestDTO(
+                List.of(new StagedCommitItemDTO(stagedId, intruderAccount.getId(), null)));
+        assertThatThrownBy(() -> importService.commit(batch.id(), req, intruderUser))
+                .isInstanceOf(EntityNotFoundException.class);
+        assertThatThrownBy(() -> importService.patchStaged(
+                batch.id(), stagedId, new StagedPatchDTO(Map.of("amount", 1.0), null), intruderUser))
+                .isInstanceOf(EntityNotFoundException.class);
     }
 
     private boolean requiresReviewOf(List<StagedTransactionResponseDTO> staged, String overall) {

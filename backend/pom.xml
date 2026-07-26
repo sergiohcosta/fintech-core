@@ -28,12 +28,30 @@
 	</scm>
 	<properties>
 		<java.version>21</java.version>
+		<!-- Spring AI 2.0: linha que suporta Spring Boot 4 / Framework 7. É a camada agnóstica
+		     de LLM (ChatClient) usada pela extração de imagem (Fase 1). Pinado numa milestone
+		     (2.0.0 ainda não é GA na data) — ver <repositories> abaixo. -->
+		<spring-ai.version>2.0.0-M2</spring-ai.version>
 		<!-- SonarQube: chave do projeto e caminho do relatório JaCoCo.
 		     Manter a chave aqui também é onde o MCP do Sonar resolve o projeto. -->
 		<sonar.projectKey>fintech-core-backend</sonar.projectKey>
 		<sonar.projectName>Fintech Core Backend</sonar.projectName>
 		<sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
 	</properties>
+
+	<!-- BOM do Spring AI: alinha as versões de todos os módulos spring-ai-* a partir de uma
+	     única linha. Assim o starter do Ollama abaixo herda a versão sem repeti-la. -->
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.springframework.ai</groupId>
+				<artifactId>spring-ai-bom</artifactId>
+				<version>${spring-ai.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -119,7 +137,29 @@
 			<artifactId>lib-recur</artifactId>
 			<version>0.16.0</version>
 		</dependency>
+
+		<!-- Spring AI — starter do Ollama: auto-configura o ChatModel/ChatClient.Builder
+		     apontando para um servidor Ollama (default localhost:11434). É o adaptador
+		     agnóstico usado pelo VisionExtractor (Fase 1). Trocar de provider = trocar este
+		     starter + config, sem tocar no código de negócio. Versão herdada do BOM acima. -->
+		<dependency>
+			<groupId>org.springframework.ai</groupId>
+			<artifactId>spring-ai-starter-model-ollama</artifactId>
+		</dependency>
 	</dependencies>
+
+	<!-- Repositório de milestones do Spring: a linha 2.0.x do Spring AI (compatível com
+	     Boot 4) ainda não está no Maven Central como GA. Removível quando 2.0.0 for GA. -->
+	<repositories>
+		<repository>
+			<id>spring-milestones</id>
+			<name>Spring Milestones</name>
+			<url>https://repo.spring.io/milestone</url>
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
+		</repository>
+	</repositories>
 
 	<build>
 		<plugins>
@@ -239,6 +279,9 @@
 								<importMapping>NormalizedBatchDTO=com.fintech.api.dto.imports.NormalizedBatchDTO</importMapping>
 								<importMapping>ImportBatchResponseDTO=com.fintech.api.dto.imports.ImportBatchResponseDTO</importMapping>
 								<importMapping>StagedTransactionResponseDTO=com.fintech.api.dto.imports.StagedTransactionResponseDTO</importMapping>
+								<importMapping>ImportCommitRequestDTO=com.fintech.api.dto.imports.ImportCommitRequestDTO</importMapping>
+								<importMapping>StagedCommitItemDTO=com.fintech.api.dto.imports.StagedCommitItemDTO</importMapping>
+								<importMapping>StagedPatchDTO=com.fintech.api.dto.imports.StagedPatchDTO</importMapping>
 							</importMappings>
 							<configOptions>
 								<interfaceOnly>true</interfaceOnly>

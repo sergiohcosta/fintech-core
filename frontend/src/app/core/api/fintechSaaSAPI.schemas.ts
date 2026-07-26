@@ -51,6 +51,46 @@ export const RecurrenceStatus = {
   CANCELLED: 'CANCELLED',
 } as const;
 
+export type ImportMode = typeof ImportMode[keyof typeof ImportMode];
+
+
+export const ImportMode = {
+  NEW_TRANSACTIONS: 'NEW_TRANSACTIONS',
+  RECONCILIATION: 'RECONCILIATION',
+} as const;
+
+export type ImportSourceType = typeof ImportSourceType[keyof typeof ImportSourceType];
+
+
+export const ImportSourceType = {
+  IMAGE: 'IMAGE',
+  PDF_TEXT: 'PDF_TEXT',
+  PDF_SCANNED: 'PDF_SCANNED',
+  CSV: 'CSV',
+  OFX: 'OFX',
+  AUDIO: 'AUDIO',
+} as const;
+
+export type ImportBatchStatus = typeof ImportBatchStatus[keyof typeof ImportBatchStatus];
+
+
+export const ImportBatchStatus = {
+  PENDING: 'PENDING',
+  EXTRACTED: 'EXTRACTED',
+  REVIEWED: 'REVIEWED',
+  COMMITTED: 'COMMITTED',
+  FAILED: 'FAILED',
+} as const;
+
+export type StagedTransactionStatus = typeof StagedTransactionStatus[keyof typeof StagedTransactionStatus];
+
+
+export const StagedTransactionStatus = {
+  PENDING: 'PENDING',
+  CONFIRMED: 'CONFIRMED',
+  DISCARDED: 'DISCARDED',
+} as const;
+
 export interface LoginDTO {
   email: string;
   password: string;
@@ -555,6 +595,126 @@ export interface RecurrenceRuleResponseDTO {
   status: RecurrenceStatus;
 }
 
+/**
+ * Par {value, confidence} de um campo extraído (contrato normalizado §1.3).
+ */
+export interface StagedFieldValueDTO {
+  /** Valor extraído do campo. Tipo heterogêneo por campo (número para amount, string ISO para datas, string livre para description). */
+  value?: unknown | null;
+  confidence: number;
+}
+
+/**
+ * {value, confidence} por campo, keyed pelo nome (amount, currency, transaction_date, posting_date, description, direction, payment_method).
+ */
+export type NormalizedTransactionDTOFields = {[key: string]: StagedFieldValueDTO};
+
+/**
+ * Uma transação no schema normalizado — formato para o qual todo extrator converge.
+ */
+export interface NormalizedTransactionDTO {
+  /** @nullable */
+  transactionId?: string | null;
+  /** {value, confidence} por campo, keyed pelo nome (amount, currency, transaction_date, posting_date, description, direction, payment_method). */
+  fields: NormalizedTransactionDTOFields;
+  /** @nullable */
+  suggestedCategoryCode?: string | null;
+  /** @nullable */
+  suggestedCategoryConfidence?: number | null;
+  /** @nullable */
+  overallConfidence?: number | null;
+  /**
+     * Informativo — no create o backend DERIVA por threshold (§2.f), ignorando este valor.
+     * @nullable
+     */
+  requiresReview?: boolean | null;
+  /** @nullable */
+  duplicateCandidateOf?: string | null;
+}
+
+/**
+ * Batch normalizado de entrada — proveniência + lista de transações extraídas.
+ */
+export interface NormalizedBatchDTO {
+  importMode: ImportMode;
+  sourceType: ImportSourceType;
+  /** @nullable */
+  extractorUsed?: string | null;
+  /** @nullable */
+  extractorVersion?: string | null;
+  transactions: NormalizedTransactionDTO[];
+}
+
+export interface ImportBatchResponseDTO {
+  id: string;
+  importMode: ImportMode;
+  sourceType: ImportSourceType;
+  /** @nullable */
+  extractorUsed?: string | null;
+  /** @nullable */
+  extractorVersion?: string | null;
+  status: ImportBatchStatus;
+  /** @nullable */
+  createdAt?: string | null;
+  /** @nullable */
+  updatedAt?: string | null;
+}
+
+export type StagedTransactionResponseDTOFields = {[key: string]: StagedFieldValueDTO};
+
+export interface StagedTransactionResponseDTO {
+  id: string;
+  batchId: string;
+  fields: StagedTransactionResponseDTOFields;
+  /** @nullable */
+  suggestedCategoryCode?: string | null;
+  /** @nullable */
+  suggestedCategoryConfidence?: number | null;
+  /** @nullable */
+  overallConfidence?: number | null;
+  requiresReview: boolean;
+  /** @nullable */
+  duplicateCandidateOf?: string | null;
+  /** @nullable */
+  promotedTransactionId?: string | null;
+  status: StagedTransactionStatus;
+  /** @nullable */
+  createdAt?: string | null;
+}
+
+/**
+ * Instrução de commit de uma staged — em qual conta lançar e (opcional) categoria.
+ */
+export interface StagedCommitItemDTO {
+  stagedId: string;
+  accountId: string;
+  /** @nullable */
+  categoryId?: string | null;
+}
+
+/**
+ * Lista de staged a promover a Transaction (só as listadas são lançadas).
+ */
+export interface ImportCommitRequestDTO {
+  /** @minItems 1 */
+  items: StagedCommitItemDTO[];
+}
+
+/**
+ * @nullable
+ */
+export type StagedPatchDTOFields = { [key: string]: unknown } | null;
+
+/**
+ * Correções do usuário a uma staged antes de lançar. `fields` é um mapa parcial {nomeDoCampo: novoValor} (só o valor); o backend grava confiança 1.0 (dado confirmado por humano) e re-deriva requires_review.
+ */
+export interface StagedPatchDTO {
+  /** @nullable */
+  fields?: StagedPatchDTOFields;
+  /** @nullable */
+  suggestedCategoryCode?: string | null;
+}
+
 export type ListCategoriesParams = {
 includeArchived?: boolean;
 };
@@ -594,5 +754,11 @@ size?: number;
 
 export type CloseBudgetCycleParams = {
 force?: boolean;
+};
+
+export type CreateImportBody = {
+  /** Imagem do comprovante (image/*). */
+  file: Blob;
+  importMode: ImportMode;
 };
 
