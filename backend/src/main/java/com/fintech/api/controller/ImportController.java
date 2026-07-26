@@ -1,23 +1,30 @@
 package com.fintech.api.controller;
 
 import com.fintech.api.config.SecurityUtils;
+import com.fintech.api.domain.enums.ImportMode;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.imports.ImportBatchResponseDTO;
+import com.fintech.api.dto.imports.ImportCommitRequestDTO;
 import com.fintech.api.dto.imports.NormalizedBatchDTO;
+import com.fintech.api.dto.imports.StagedPatchDTO;
 import com.fintech.api.dto.imports.StagedTransactionResponseDTO;
+import com.fintech.api.exception.BusinessException;
 import com.fintech.api.openapi.ImportsApi;
 import com.fintech.api.service.imports.ImportService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 
 /**
- * Endpoints de importação (Fase 0). Controller FINO: delega imediatamente ao {@link ImportService}.
+ * Endpoints de importação. Controller FINO: delega imediatamente ao {@link ImportService}.
  * Sob {@code .anyRequest().authenticated()} — import não é operação restrita a ADMIN, nada muda
  * em {@code SecurityConfigurations}.
  */
@@ -27,6 +34,38 @@ import java.util.UUID;
 public class ImportController implements ImportsApi {
 
     private final ImportService importService;
+
+    // --- Fase 1 — extração real (imagem) ---
+
+    @Override
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ImportBatchResponseDTO> createImport(MultipartFile file, ImportMode importMode) {
+        byte[] bytes;
+        try {
+            bytes = file.getBytes();
+        } catch (IOException e) {
+            // Falha ao ler o multipart é erro do cliente (arquivo corrompido/incompleto) → 400.
+            throw new BusinessException("Não foi possível ler o arquivo enviado.");
+        }
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(importService.createFromImage(bytes, file.getContentType(), importMode, getAuthenticatedUser()));
+    }
+
+    @Override
+    @PatchMapping("/{id}/staged/{stagedId}")
+    public ResponseEntity<StagedTransactionResponseDTO> patchImportStaged(
+            @PathVariable UUID id, @PathVariable UUID stagedId, @Valid @RequestBody StagedPatchDTO stagedPatchDTO) {
+        return ResponseEntity.ok(importService.patchStaged(id, stagedId, stagedPatchDTO, getAuthenticatedUser()));
+    }
+
+    @Override
+    @PostMapping("/{id}/commit")
+    public ResponseEntity<ImportBatchResponseDTO> commitImport(
+            @PathVariable UUID id, @Valid @RequestBody ImportCommitRequestDTO importCommitRequestDTO) {
+        return ResponseEntity.ok(importService.commit(id, importCommitRequestDTO, getAuthenticatedUser()));
+    }
+
+    // --- Fase 0 — mock + consultas ---
 
     @Override
     @PostMapping("/mock")
