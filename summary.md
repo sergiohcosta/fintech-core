@@ -22,7 +22,7 @@ Demais:    authenticated (JWT obrigatório)
 
 | Método | Rota | Auth | Descrição |
 |--------|------|------|-----------|
-| POST | `/auth/register` | público | Cria Tenant + User(ADMIN) + JWT |
+| POST | `/auth/register` | público | Cria Tenant + User(ADMIN); retorna `{ id, name }` (201, **sem JWT** — login em seguida) |
 | POST | `/auth/login` | público | Valida credenciais + JWT |
 | POST | `/auth/accept-invite` | público | Valida token + cria User(MEMBER) + JWT |
 | POST | `/invites` | ADMIN | Cria convite (email + token + expiresAt) |
