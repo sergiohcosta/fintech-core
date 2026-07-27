@@ -56,4 +56,7 @@ public record LlmReceiptExtractionDTO(
         Double paymentMethodConfidence,
 
         @JsonPropertyDescription("Confiança agregada de 0.0 a 1.0 na extração completa do comprovante.")
-        Double overallConfidence) {}
+        Double overallConfidence,
+
+        @JsonPropertyDescription("true SOMENTE se a imagem mostrar uma LISTA de vários lançamentos (extrato, fatura ou histórico, com várias linhas de data e valor). false para um comprovante único de uma transação só.")
+        Boolean multipleTransactionsDetected) {}

@@ -60,10 +60,7 @@
       <mat-card-content>
         <mat-icon class="failed-icon" color="warn">report_problem</mat-icon>
         <h2>Não foi possível extrair este comprovante</h2>
-        <p class="hint">
-          A imagem pode estar ilegível ou o serviço de extração indisponível. Você pode lançar a
-          transação manualmente.
-        </p>
+        <p class="hint">{{ failureReason() }} Você pode lançar a transação manualmente.</p>
       </mat-card-content>
       <mat-card-actions align="end">
         <button mat-button type="button" (click)="reset()">Tentar outra imagem</button>

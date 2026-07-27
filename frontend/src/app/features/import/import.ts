@@ -103,6 +103,14 @@ export class ImportComponent implements OnInit {
     return 'review';
   });
 
+  // Motivo da recusa vindo do backend (#193). Fallback local só cobre batch antigo (pré-V25),
+  // que não tem motivo gravado — o texto certo é sempre o do backend, que conhece a causa.
+  readonly failureReason = computed(
+    () =>
+      this.batch()?.failureReason ??
+      'A imagem pode estar ilegível ou o serviço de extração indisponível.',
+  );
+
   readonly canConfirm = computed(() => allPendingHaveAccount(this.rows()) && !this.committing());
 
   ngOnInit(): void {
