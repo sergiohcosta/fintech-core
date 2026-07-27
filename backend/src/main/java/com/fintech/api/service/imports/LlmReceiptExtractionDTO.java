@@ -25,19 +25,19 @@ import java.math.BigDecimal;
  */
 public record LlmReceiptExtractionDTO(
 
-        @JsonPropertyDescription("Valor monetário total do comprovante como número decimal (ex.: 127.50). Sem símbolo de moeda, use ponto como separador decimal.")
+        @JsonPropertyDescription("Valor total lido na imagem, como número decimal com ponto (separador decimal). Sem símbolo de moeda. Leia os dígitos da imagem; não use números deste schema.")
         BigDecimal amount,
 
         @JsonPropertyDescription("Confiança de 0.0 a 1.0 na leitura do valor.")
         Double amountConfidence,
 
-        @JsonPropertyDescription("Data da compra/transação no formato ISO yyyy-MM-dd (ex.: 2026-06-28).")
+        @JsonPropertyDescription("Data da compra/transação no formato ISO yyyy-MM-dd (formato: 4 dígitos de ano, mês, dia). Leia a data da imagem, inclusive o ano EXATO mostrado — nunca altere nem presuma o ano.")
         String transactionDate,
 
         @JsonPropertyDescription("Confiança de 0.0 a 1.0 na leitura da data.")
         Double transactionDateConfidence,
 
-        @JsonPropertyDescription("Descrição curta: nome do estabelecimento ou do que foi pago.")
+        @JsonPropertyDescription("Nome do recebedor/estabelecimento (a empresa ou pessoa que recebeu o pagamento, ex.: o campo 'Recebedor'), NÃO o tipo da transação (não use 'Pix Enviado', 'Pagamento').")
         String description,
 
         @JsonPropertyDescription("Confiança de 0.0 a 1.0 na leitura da descrição.")
