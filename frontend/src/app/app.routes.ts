@@ -103,6 +103,10 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/recurrence/recurrence-list/recurrence-list').then(m => m.RecurrenceList)
       },
+      {
+        path: 'import',
+        loadComponent: () => import('./features/import/import').then(m => m.ImportComponent)
+      },
     ]
   }
 ];
