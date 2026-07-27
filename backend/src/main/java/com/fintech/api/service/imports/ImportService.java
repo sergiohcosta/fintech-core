@@ -105,9 +105,23 @@ public class ImportService {
                     .extractorUsed("vision_ollama")
                     .extractorVersion(extractorVersion)
                     .status(ImportBatchStatus.FAILED)
+                    .failureReason(failureReasonFor(e))
                     .build());
             return ImportBatchResponseDTO.fromEntity(failed);
         }
+    }
+
+    /**
+     * Mensagem de falha exibida ao usuário. Só a {@link ExtractionException} é repassada — ela é
+     * redigida por nós, em PT-BR, para o usuário final. Qualquer outra exceção (timeout do
+     * provider, NPE, erro de parse) carrega detalhe interno na mensagem e vira texto genérico:
+     * a borda da API não é lugar para mensagem de infra vazar (#193).
+     */
+    private String failureReasonFor(Exception e) {
+        return (e instanceof ExtractionException && e.getMessage() != null)
+                ? e.getMessage()
+                : "Não foi possível ler esta imagem. Ela pode estar ilegível ou o serviço de "
+                        + "extração pode estar indisponível.";
     }
 
     // ---------------------------------------------------------------------------------------

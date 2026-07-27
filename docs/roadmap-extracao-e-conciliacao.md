@@ -167,7 +167,7 @@ Princípio de ordenação: **construir de dentro pra fora** — cada fase é us�
 - [ ] Latência p95 upload→preview aceitável (poucos segundos, com feedback visual)
 - [ ] **Aprendizado:** custo real por extração (tokens/imagem) conhecido para precificação de planos
 
-**Fora de escopo (conhecido):** imagem contendo **múltiplas transações** (print do extrato completo, não um comprovante único). O extrator é 1:1 por desenho (schema plano — mais fácil pro modelo de visão preencher certo). Hoje esse caso é descartado silenciosamente em vez de recusado explicitamente — bug rastreado em #193 (guarda-corpo de curto prazo: detectar e recusar, não resolver). Suporte real a multi-transação por imagem é escopo da Fase 3 (#194).
+**Fora de escopo (conhecido), com recusa explícita:** imagem contendo **múltiplas transações** (print do extrato completo, não um comprovante único). O extrator é 1:1 por desenho (schema plano — mais fácil pro modelo de visão preencher certo). O caso é **detectado e recusado** (#193, entregue): o modelo sinaliza a lista de lançamentos, a extração falha e o batch `FAILED` carrega o motivo exibível ao usuário — em vez de escolher uma linha arbitrária e descartar o resto calado. Suporte real a multi-transação por imagem é escopo da Fase 3 (#194).
 
 ---
 

@@ -1052,6 +1052,13 @@ components:
           nullable: true
         status:
           $ref: '#/components/schemas/ImportBatchStatus'
+        failureReason:
+          type: string
+          nullable: true
+          description: >-
+            Motivo legível da falha, exibível ao usuário. Só preenchido quando status = FAILED —
+            distingue causas que pedem ações diferentes (ex.: imagem com vários lançamentos vs.
+            imagem ilegível).
         createdAt:
           type: string
           format: date-time
