@@ -16,6 +16,7 @@ import org.springframework.util.MimeTypeUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -42,29 +43,39 @@ public class VisionExtractor implements TransactionExtractor {
     private final String model;
     private final String extractorVersion;
 
+    // Formato pt-BR de data — fallback quando o modelo devolve dd/MM/yyyy apesar do pedido de ISO.
+    private static final DateTimeFormatter BR_DATE = DateTimeFormatter.ofPattern("dd/MM/uuuu");
+
     // Prompt fixo. Português alinhado ao domínio (comprovantes/recibos BR). Pedimos confiança
     // por campo E agregada — é o que alimenta o requires_review derivado depois. As instruções
     // de formato/schema JSON são anexadas automaticamente pelo Spring AI via .entity(...).
     private static final String PROMPT = """
             Você é um assistente que extrai dados de comprovantes financeiros (recibos, notas,
             comprovantes de PIX, faturas de compra). Analise a imagem e extraia APENAS os dados
-            visíveis do comprovante. Não invente valores: se um campo não estiver legível na
-            imagem, use confiança baixa (próxima de 0.0) para aquele campo.
+            visíveis. Leia os dígitos DIRETAMENTE da imagem — NUNCA use números escritos nestas
+            instruções. Se um campo não estiver legível, use confiança baixa (próxima de 0.0)
+            para aquele campo.
 
             Regras:
-            - amount: o valor monetário total, como número decimal com ponto (ex.: 127.50).
-            - transactionDate: a data da transação no formato ISO yyyy-MM-dd.
-            - description: nome do estabelecimento ou breve descrição do que foi pago.
-            - direction: "debit" se for uma saída de dinheiro (compra, despesa, pagamento);
-              "credit" se for uma entrada (recebimento, estorno). Comprovante de compra é "debit".
-            - paymentMethod: pix, credito, debito, dinheiro ou boleto, se identificável.
+            - amount: o VALOR TOTAL exato mostrado na imagem (o campo "Valor total", "Valor" ou
+              similar), como número decimal com ponto. No Brasil a vírgula é o separador decimal
+              e o ponto é separador de milhar: converta removendo os separadores de milhar e
+              trocando a vírgula decimal por ponto. Leia os dígitos da imagem; nunca invente nem
+              copie números deste texto.
+            - transactionDate: a data da transação no formato ISO yyyy-MM-dd. Copie a data EXATA
+              da imagem, INCLUSIVE o ano — nunca altere nem presuma o ano.
+            - description: o nome do RECEBEDOR/estabelecimento (a empresa ou pessoa), NÃO o tipo
+              da transação (não use "Pix Enviado", "Pagamento", "Compra aprovada" e afins).
+            - direction: "debit" para saída de dinheiro (compra, despesa, pagamento, Pix enviado);
+              "credit" para entrada (recebimento, estorno, Pix recebido). Compra é "debit".
+            - paymentMethod: pix, credito, debito, dinheiro ou boleto, conforme a imagem.
             - Para cada campo, informe uma confiança de 0.0 a 1.0 na sua leitura.
             - overallConfidence: sua confiança agregada na extração completa.
             """;
 
     public VisionExtractor(
             ChatClient chatClient,
-            @Value("${spring.ai.ollama.chat.options.model:qwen2.5vl}") String model,
+            @Value("${spring.ai.ollama.chat.options.model:llama3.2-vision}") String model,
             @Value("${import.vision.extractor-version:unknown}") String extractorVersion) {
         this.chatClient = chatClient;
         this.model = model;
@@ -156,12 +167,18 @@ public class VisionExtractor implements TransactionExtractor {
         if (trimmed == null) {
             return new NormalizedDate(null, BigDecimal.ZERO);
         }
-        try {
-            LocalDate parsed = LocalDate.parse(trimmed);
-            return new NormalizedDate(parsed.toString(), clampConfidence(rawConfidence));
-        } catch (DateTimeParseException e) {
-            return new NormalizedDate(null, BigDecimal.ZERO);
+        // O modelo às vezes devolve a data em pt-BR (dd/MM/yyyy) apesar do pedido de ISO.
+        // Tenta ISO e depois o formato brasileiro — recuperar a data é melhor que descartá-la;
+        // só zera a confiança quando NENHUM formato conhecido casa (aí o usuário completa na revisão).
+        for (DateTimeFormatter fmt : List.of(DateTimeFormatter.ISO_LOCAL_DATE, BR_DATE)) {
+            try {
+                LocalDate parsed = LocalDate.parse(trimmed, fmt);
+                return new NormalizedDate(parsed.toString(), clampConfidence(rawConfidence));
+            } catch (DateTimeParseException ignored) {
+                // tenta o próximo formato
+            }
         }
+        return new NormalizedDate(null, BigDecimal.ZERO);
     }
 
     /** Confiança em [0,1]; null vira 0.0 (ausência = duvidoso). */
