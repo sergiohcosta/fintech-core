@@ -59,6 +59,11 @@ public class ImportBatch {
     @Column(nullable = false, length = 20)
     private ImportBatchStatus status;
 
+    // Motivo legível da falha — só preenchido quando status = FAILED (#193). Texto pronto para
+    // exibição, redigido pelo backend; nunca a mensagem crua de uma exceção de infra.
+    @Column(name = "failure_reason", length = 500)
+    private String failureReason;
+
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;

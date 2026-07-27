@@ -27,6 +27,7 @@ Schema em `db/migration/`. Seed em `db/seed/` (perfil `dev`): `V13` (dados gerai
 | V22 | `paid_invoice_id UUID` nullable (FK → `invoices`) em `transactions` + índice único parcial `(paid_invoice_id) WHERE paid_invoice_id IS NOT NULL` — marcador do pagamento de fatura (#145); dashboard exclui dos agregados e o índice garante 1 pagamento por fatura (reforça #139) |
 | V23 | `import_batches` + `staged_transactions` (fundação da extração/conciliação, Fase 0) + `posting_date DATE` nullable em `transactions`. Staging SEPARADO do núcleo: o dado extraído (probabilístico, com confidence) só é promovido a `transactions` no commit. `staged_transactions.fields` é JSONB; `staged_transactions.tenant_id` é **denormalizado** (defesa nº1 contra vazamento). `posting_date` ainda não consumido (Fase 5) |
 | V24 | seed `dev` — importação Família Costa: 1 `import_batches` COMMITTED + 2 `staged_transactions` CONFIRMED com `promoted_transaction_id` → transações Salário/Aluguel jun/2026 do V13 (resolvidas por chave natural, pois o V13 usa `gen_random_uuid()`) |
+| V25 | `failure_reason VARCHAR(500)` nullable em `import_batches` — motivo legível da recusa/falha de extração (#193). Sem ela o batch `FAILED` era opaco e o frontend só sabia oferecer o formulário manual; com o guarda-corpo de imagem multi-transação há causas distintas que pedem ações distintas do usuário |
 
 > V10 não existe (seed renomeado para V13 para ficar acima do schema base).
 
