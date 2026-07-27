@@ -167,6 +167,8 @@ Princípio de ordenação: **construir de dentro pra fora** — cada fase é us�
 - [ ] Latência p95 upload→preview aceitável (poucos segundos, com feedback visual)
 - [ ] **Aprendizado:** custo real por extração (tokens/imagem) conhecido para precificação de planos
 
+**Fora de escopo (conhecido):** imagem contendo **múltiplas transações** (print do extrato completo, não um comprovante único). O extrator é 1:1 por desenho (schema plano — mais fácil pro modelo de visão preencher certo). Hoje esse caso é descartado silenciosamente em vez de recusado explicitamente — bug rastreado em #193 (guarda-corpo de curto prazo: detectar e recusar, não resolver). Suporte real a multi-transação por imagem é escopo da Fase 3 (#194).
+
 ---
 
 ### Fase 2 — CSV/OFX e revisão em lote
@@ -198,6 +200,7 @@ Princípio de ordenação: **construir de dentro pra fora** — cada fase é us�
 - Registry de templates para os 2–3 bancos principais (definidos pelos dados da Fase 2) — cabeça da curva apenas
 - **Validações de sanidade pós-extração** (guarda-corpo comum a template e IA): soma × total declarado, datas × período do extrato, ranges plausíveis
 - **Telemetria por formato**: volume, custo em tokens, taxa de casamento de template por banco — a base tanto do alerta de drift quanto da decisão de quais templates criar/promover
+- **Extração multi-transação por imagem única** (print de extrato completo, não PDF): generalização do `TransactionExtractor`/`VisionExtractor` da Fase 1 (schema plano → lista), reaproveitando o mesmo caminho de visão que o PDF escaneado desta fase já implementa e as validações de sanidade acima (soma × total declarado). Spec própria antes de implementar — #194 (guarda-corpo de curto prazo em #193)
 
 **Critérios de saída**
 - [ ] **Taxa de reconhecimento de template ≥90%** para os bancos cobertos
