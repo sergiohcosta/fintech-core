@@ -46,6 +46,13 @@ public class VisionExtractor implements TransactionExtractor {
     // Formato pt-BR de data — fallback quando o modelo devolve dd/MM/yyyy apesar do pedido de ISO.
     private static final DateTimeFormatter BR_DATE = DateTimeFormatter.ofPattern("dd/MM/uuuu");
 
+    // Mensagem exibida ao usuário quando a imagem está fora do escopo da Fase 1 (#193). Fica
+    // pública porque é contrato de comportamento coberto por teste, não texto solto.
+    public static final String MULTIPLE_TRANSACTIONS_MESSAGE =
+            "Esta imagem parece conter vários lançamentos (extrato ou fatura). Por enquanto só "
+                    + "conseguimos ler um comprovante por vez — envie o comprovante de uma única "
+                    + "transação ou lance manualmente.";
+
     // Prompt fixo. Português alinhado ao domínio (comprovantes/recibos BR). Pedimos confiança
     // por campo E agregada — é o que alimenta o requires_review derivado depois. As instruções
     // de formato/schema JSON são anexadas automaticamente pelo Spring AI via .entity(...).
@@ -71,6 +78,10 @@ public class VisionExtractor implements TransactionExtractor {
             - paymentMethod: pix, credito, debito, dinheiro ou boleto, conforme a imagem.
             - Para cada campo, informe uma confiança de 0.0 a 1.0 na sua leitura.
             - overallConfidence: sua confiança agregada na extração completa.
+            - multipleTransactionsDetected: true SOMENTE se a imagem mostrar uma LISTA de vários
+              lançamentos (extrato bancário, fatura de cartão, histórico) — várias linhas, cada
+              uma com sua própria data e seu próprio valor. Um comprovante único é false, mesmo
+              que mostre vários números (taxas, saldo, total). Conte as LINHAS de lançamento.
             """;
 
     public VisionExtractor(
@@ -119,6 +130,18 @@ public class VisionExtractor implements TransactionExtractor {
      * derruba a extração (o usuário completa na revisão), mas zera a confiança para exigir olho.
      */
     private NormalizedBatchDTO toNormalizedBatch(LlmReceiptExtractionDTO raw, ImportMode mode) {
+        // ORDEM IMPORTA: a recusa por multi-transação vem ANTES da validação de valor. Num print
+        // de extrato o modelo escolhe uma linha arbitrária e devolve um amount perfeitamente
+        // plausível — se o check de valor rodasse primeiro, o caso fora de escopo passaria e as
+        // demais linhas seriam descartadas em silêncio (#193).
+        //
+        // TRUE.equals (e não `raw.multipleTransactionsDetected()`) porque null = modelo que não
+        // preencheu a flag: nesse caso extrai normalmente. Ausência de sinal não é sinal de recusa
+        // — senão trocaríamos perda silenciosa de dado por recusa indevida de comprovante válido.
+        if (Boolean.TRUE.equals(raw.multipleTransactionsDetected())) {
+            throw new ExtractionException(MULTIPLE_TRANSACTIONS_MESSAGE);
+        }
+
         if (raw.amount() == null || raw.amount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new ExtractionException(
                     "Valor extraído ausente ou não plausível (amount=" + raw.amount() + ").");

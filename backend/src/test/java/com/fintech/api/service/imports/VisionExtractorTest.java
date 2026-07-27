@@ -57,7 +57,7 @@ class VisionExtractorTest {
                 "PADARIA SAO JOSE", 0.90,
                 "debit", 0.99,
                 "pix", 0.85,
-                0.94);
+                0.94, false);
     }
 
     @Test
@@ -88,13 +88,13 @@ class VisionExtractorTest {
     void guardaCorpoRejeitaValorAusenteOuNaoPlausivel() {
         // amount null → não há transação a lançar → falha a extração (batch vai a FAILED no service).
         LlmReceiptExtractionDTO semValor = new LlmReceiptExtractionDTO(
-                null, 0.10, "2026-06-28", 0.9, "x", 0.9, "debit", 0.9, null, null, 0.5);
+                null, 0.10, "2026-06-28", 0.9, "x", 0.9, "debit", 0.9, null, null, 0.5, false);
         assertThatThrownBy(() -> visionReturning(semValor).extract(IMAGE, "image/jpeg", ImportMode.NEW_TRANSACTIONS))
                 .isInstanceOf(ExtractionException.class);
 
         // amount <= 0 é implausível para um comprovante → também rejeita.
         LlmReceiptExtractionDTO valorZero = new LlmReceiptExtractionDTO(
-                BigDecimal.ZERO, 0.9, "2026-06-28", 0.9, "x", 0.9, "debit", 0.9, null, null, 0.9);
+                BigDecimal.ZERO, 0.9, "2026-06-28", 0.9, "x", 0.9, "debit", 0.9, null, null, 0.9, false);
         assertThatThrownBy(() -> visionReturning(valorZero).extract(IMAGE, "image/jpeg", ImportMode.NEW_TRANSACTIONS))
                 .isInstanceOf(ExtractionException.class);
     }
@@ -102,7 +102,7 @@ class VisionExtractorTest {
     @Test
     void dataIlegivelNaoDerrubaExtracaoMasZeraConfianca() {
         LlmReceiptExtractionDTO dataInvalida = new LlmReceiptExtractionDTO(
-                new BigDecimal("42.00"), 0.9, "sem-data", 0.7, "MERCADO", 0.9, "credit", 0.9, null, null, 0.9);
+                new BigDecimal("42.00"), 0.9, "sem-data", 0.7, "MERCADO", 0.9, "credit", 0.9, null, null, 0.9, null);
 
         NormalizedTransactionDTO tx = visionReturning(dataInvalida)
                 .extract(IMAGE, "image/png", ImportMode.NEW_TRANSACTIONS)
@@ -114,6 +114,40 @@ class VisionExtractorTest {
         // "credit" preservado; payment_method null é OMITIDO do mapa.
         assertThat(tx.fields().get("direction").value()).isEqualTo("credit");
         assertThat(tx.fields()).doesNotContainKey("payment_method");
+    }
+
+    /**
+     * #193 — print de extrato (vários lançamentos) é FORA DO ESCOPO da Fase 1 (1 imagem = 1
+     * transação). Antes desse guarda-corpo o modelo escolhia uma linha arbitrária, o valor passava
+     * no check de plausibilidade e as demais sumiam CALADAS. Recusa explícita > perda silenciosa.
+     */
+    @Test
+    void recusaImagemComMultiplasTransacoes() {
+        // Valor plausível de propósito: prova que a recusa NÃO depende do amount ser inválido —
+        // se a ordem das validações se inverter, este teste quebra.
+        LlmReceiptExtractionDTO extrato = new LlmReceiptExtractionDTO(
+                new BigDecimal("89.90"), 0.95, "2026-06-28", 0.95, "MERCADO", 0.9,
+                "debit", 0.95, null, null, 0.93, true);
+
+        assertThatThrownBy(() -> visionReturning(extrato).extract(IMAGE, "image/jpeg", ImportMode.NEW_TRANSACTIONS))
+                .isInstanceOf(ExtractionException.class)
+                .hasMessage(VisionExtractor.MULTIPLE_TRANSACTIONS_MESSAGE);
+    }
+
+    /**
+     * Retrocompatibilidade: modelo que não preenche a flag (null) ou a preenche com false segue
+     * extraindo. Ausência de sinal não é sinal de recusa — senão trocaríamos perda silenciosa de
+     * dado por recusa indevida de comprovante válido.
+     */
+    @Test
+    void flagAusenteNaoRecusaExtracao() {
+        LlmReceiptExtractionDTO semFlag = new LlmReceiptExtractionDTO(
+                new BigDecimal("10.00"), 0.9, "2026-06-28", 0.9, "X", 0.9,
+                "debit", 0.9, null, null, 0.9, null);
+
+        assertThat(visionReturning(semFlag)
+                .extract(IMAGE, "image/jpeg", ImportMode.NEW_TRANSACTIONS)
+                .transactions()).hasSize(1);
     }
 
     @Test
