@@ -4,9 +4,10 @@
 **Status:** proposto (aguardando aprovação)
 **Fonte do produto:** `docs/roadmap-extracao-e-conciliacao.md` — Fase 2 ("CSV/OFX e revisão em lote")
 **Spec anterior:** `docs/superpowers/specs/2026-07-24-extracao-fundacao-e-mvp-imagem-design.md` (Fases 0 e 1)
-**Épico:** #175 — [Épico] Fase 2 — CSV/OFX e revisão em lote (milestone *Fase 2*). Esta spec
-cobre a **metade A** do épico (backend); a metade B (UX de revisão em lote) fica no mesmo
-épico, com spec própria.
+**Issue:** #196 (sub-issue do épico **#175** — Fase 2, milestone *Fase 2*). Esta spec cobre a
+**metade A** do épico (backend); a metade B (UX de revisão em lote) fica no mesmo épico, com
+spec própria.
+**Plano de execução:** `docs/superpowers/plans/2026-07-28-extracao-fase2-csv-ofx.md`
 **Épico raiz:** #154 — extração multi-mídia e conciliação de transações
 Stack: @tech.md · Domínio: @domain.md · Migrations: @database-schema.md
 
