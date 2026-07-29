@@ -10,6 +10,7 @@ import com.fintech.api.dto.imports.StagedPatchDTO;
 import com.fintech.api.dto.imports.StagedTransactionResponseDTO;
 import com.fintech.api.exception.BusinessException;
 import com.fintech.api.openapi.ImportsApi;
+import com.fintech.api.service.imports.ExtractionInput;
 import com.fintech.api.service.imports.ImportService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -35,11 +36,11 @@ public class ImportController implements ImportsApi {
 
     private final ImportService importService;
 
-    // --- Fase 1 — extração real (imagem) ---
+    // --- Fase 1/2 — extração real (imagem, CSV, OFX...) ---
 
     @Override
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ImportBatchResponseDTO> createImport(MultipartFile file, ImportMode importMode) {
+    public ResponseEntity<ImportBatchResponseDTO> createImport(MultipartFile file, ImportMode importMode, Boolean force) {
         byte[] bytes;
         try {
             bytes = file.getBytes();
@@ -47,8 +48,12 @@ public class ImportController implements ImportsApi {
             // Falha ao ler o multipart é erro do cliente (arquivo corrompido/incompleto) → 400.
             throw new BusinessException("Não foi possível ler o arquivo enviado.");
         }
+        // Formato não reconhecido é responsabilidade do ExtractionRouter (por conteúdo, não pelo
+        // Content-Type do browser — ele mente); o controller só repassa a proveniência.
+        ExtractionInput input = new ExtractionInput(bytes, file.getOriginalFilename(), file.getContentType(), importMode);
+        boolean effectiveForce = Boolean.TRUE.equals(force);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(importService.createFromImage(bytes, file.getContentType(), importMode, getAuthenticatedUser()));
+                .body(importService.createFromFile(input, effectiveForce, getAuthenticatedUser()));
     }
 
     @Override

@@ -170,13 +170,15 @@ AND t.status <> CANCELLED
 - Lista de não planejados: coluna de status (Pago/Pendente), ação "vincular a item planejado" e "criar item planejado" (cria + vincula à transação de origem).
 - Aba "Recorrentes" gerencia `RecurrenceRule` diretamente (CRUD completo, incluindo reativação de regras canceladas) — a tabela `recurring_budget_items` foi removida (V21).
 
-## Importação / Extração (`/api/imports`) — Fase 0 (fundação) + Fase 1 (MVP de imagem)
+## Importação / Extração (`/api/imports`) — Fase 0 (fundação) + Fase 1 (imagem) + Fase 2 (CSV/OFX)
 
-Pipeline de extração multi-mídia (roadmap `docs/roadmap-extracao-e-conciliacao.md`). A Fase 0 provou o contrato de staging ponta a ponta (sem extrator real); a Fase 1 liga o extrator de verdade para imagem e fecha o ciclo upload → revisão → commit. Spec: `docs/superpowers/specs/2026-07-24-extracao-fundacao-e-mvp-imagem-design.md`.
+Pipeline de extração multi-mídia (roadmap `docs/roadmap-extracao-e-conciliacao.md`). A Fase 0 provou o contrato de staging ponta a ponta (sem extrator real); a Fase 1 ligou o extrator de verdade para imagem; a Fase 2 (fatiada, metade A) generalizou a porta pra N transações por arquivo e somou CSV/OFX. Specs: `docs/superpowers/specs/2026-07-24-extracao-fundacao-e-mvp-imagem-design.md` e `docs/superpowers/specs/2026-07-28-extracao-fase2-csv-ofx-design.md`.
+
+**Tipos aceitos e roteamento:** `IMAGE` (JPEG/PNG/GIF/WEBP), `CSV` (genérico, header por sinônimo) e `OFX` (1.x SGML ou 2.x XML). O `ExtractionRouter` escolhe o `TransactionExtractor` por **conteúdo** — nunca pelo `Content-Type` do cliente (mente com frequência: um `.ofx` chega como `application/octet-stream`). Ordem do funil (`@Order`): `OfxExtractor` (10, padrão universal) → `CsvExtractor` (20, genérico por heurística) → `VisionExtractor` (`LOWEST_PRECEDENCE`, IA — só entra quando nenhum parser determinístico reconheceu o arquivo). Formato que **nenhum** extrator reconhece → `BusinessException` (400, nenhum batch gravado — não há `sourceType` pra persistir). Extrator que reconheceu mas falhou ao processar → `ExtractionException` → batch `FAILED` (mesmo caminho da Fase 1).
 
 | Método | Rota | Auth | Descrição |
 |--------|------|------|-----------|
-| POST | `/api/imports` | authenticated | **(Fase 1)** multipart (`file` + `importMode`) — aciona o `VisionExtractor`, grava batch `EXTRACTED` + staged `PENDING`. Falha de extração → batch `FAILED` (fallback é o formulário manual de transação) |
+| POST | `/api/imports` | authenticated | multipart (`file` + `importMode`) + query `force` (default `false`) — roteia por conteúdo (imagem/CSV/OFX), grava batch `EXTRACTED` + staged `PENDING`. Falha de um extrator que reconheceu o arquivo → batch `FAILED` (fallback é o formulário manual); formato não reconhecido → 400; arquivo já importado por este tenant sem `force=true` → 409 |
 | PATCH | `/api/imports/{id}/staged/{stagedId}` | authenticated | **(Fase 1)** edita campos de uma staged `PENDING` antes de lançar — grava confiança `1.0` (dado confirmado por humano) e re-deriva `requiresReview` |
 | POST | `/api/imports/{id}/commit` | authenticated | **(Fase 1)** promove as staged listadas (`items: [{stagedId, accountId, categoryId?}]`) a `Transaction`, reusando o caminho de criação existente; marca cada staged `CONFIRMED` e o batch `COMMITTED` quando não sobra nenhuma `PENDING` |
 | POST | `/api/imports/mock` | authenticated | (dev) cria batch a partir de um `NormalizedBatchDTO` mockado — prova o ponta a ponta sem extrator |
@@ -200,6 +202,22 @@ Pipeline de extração multi-mídia (roadmap `docs/roadmap-extracao-e-conciliaca
 **`fields JSONB` (`@JdbcTypeCode(SqlTypes.JSON)`):** `{value, confidence}` por campo (amount, currency, transaction_date, posting_date, description, direction, payment_method), keyed pelo nome — mapa flexível (Hibernate 6 nativo, zero dependência nova). `posting_date DATE` nullable também entrou em `transactions` (V23), ainda não consumido (Fase 5).
 
 **Seed (V24):** 1 batch COMMITTED + 2 staged CONFIRMED com `promoted_transaction_id` → transações do V13.
+
+**`OfxExtractor` (Fase 2, `ofx_parser_v1`):** parser próprio enxuto — não uma lib de banking completa (`ofx4j` traria um cliente inteiro pra usar 5%). Truque que cobre SGML 1.x (tags sem fechamento) E XML 2.x com a MESMA regex (`<TAG>\s*([^<\r\n]+)`): o valor de uma tag termina no próximo `<` (fecha em XML) OU em quebra de linha (SGML). Mapeamento: `amount` = `|TRNAMT|` (conf. `1.0` — sinal é dado, não inferência), `direction` do sinal de `TRNAMT`, `transaction_date` de `DTPOSTED` (aceita `YYYYMMDD` e `YYYYMMDDHHMMSS[.SSS][TZ]`, só os 8 primeiros dígitos), `description` = `MEMO` ou `NAME` na ausência, `external_id` = `FITID` (autoridade de dedup), `currency` = `CURDEF` do envelope.
+
+**`CsvExtractor` (Fase 2, `csv_generic_v1`, `commons-csv`):** sem contrato fixo de colunas — resolve por heurística determinística (nunca IA). `supports()` exige header com ao menos 1 coluna de data e 1 de valor reconhecidas por sinônimo normalizado (sem acento, minúsculo); sem isso, 400 explícito (mandar pra IA é critério de saída da Fase 3). Delimitador (`,`/`;`) detectado tentando parsear com cada candidato e aceitando o de largura de coluna consistente — resolve nativamente aspas com o outro delimitador dentro do campo. Charset: BOM UTF-8 → UTF-8; senão UTF-8 estrito; só cai pra ISO-8859-1 se UTF-8 falhar. Decimal pt-BR vs. padrão inferido **por valor** (não por coluna fixa): dois separadores → o último é o decimal; só vírgula → vírgula é decimal.
+
+**Escala de confiança determinística (Fase 2):** `1.0` quando o campo veio de dado com contrato formal (TRNAMT com sinal, header casado por nome) ou foi confirmado por humano; `0.7` quando é inferência (direção pelo sinal do CSV, coluna de descrição escolhida por posição na ausência de sinônimo); `0.0` quando ausente/ilegível — mesma régua da Fase 1 (`clampConfidence` do `VisionExtractor`), agora explícita por camada de certeza em vez de só "confiança do modelo".
+
+**Guarda-corpo central de sanidade (`ImportService`, comum a todos os extratores):** `import.file.max-transactions` (default 500) excedido → `FAILED` antes de montar staged; data fora de `[hoje-10 anos, hoje+1 ano]` ou valor ausente/zero/ilegível → confiança do CAMPO zerada (valor preservado, nunca apagado — usuário corrige na revisão); zero transações com `amount` aproveitável → `FAILED` com motivo. Cada extrator já valida seu próprio formato; esta é a rede de segurança igual para todos, num só lugar.
+
+**Dedup por arquivo (409/`force`):** `sha256` dos bytes calculado **antes** de extrair. Achou batch com o mesmo hash **no mesmo tenant** → 409 (`DuplicateImportException`, corpo com `batchId`/`createdAt`/`filename`) — reimportar sem querer duplicaria um mês inteiro de lançamentos. `?force=true` reimporta mesmo assim. Escopo **por tenant**, não global: o mesmo arquivo pode legitimamente existir em duas famílias diferentes.
+
+**Dedup intra-batch:** `external_id` (FITID do OFX) é autoridade — único por transação segundo o padrão OFX; sem ele (CSV), cai no trio `(data, valor, descrição)`. Segunda ocorrência recebe `duplicateCandidateOf` = id da primeira; **nenhuma linha é descartada** — o usuário decide o que fazer na revisão. Frontend exibe badge "Possível duplicata".
+
+**`import_batches.source_hash`/`source_filename` (V26):** chave de dedup e proveniência. Nulável — batches de mock/legado (pré-Fase 2) seguem sem tocar.
+
+**Seed CSV (V27):** 1 batch `EXTRACTED` + 3 staged `PENDING` — a 3ª com `duplicate_candidate_of` preenchido (mesma data/valor/descrição da 1ª), ilustrando o badge de duplicata na tela de revisão.
 
 ## Logging Estruturado (MDC)
 

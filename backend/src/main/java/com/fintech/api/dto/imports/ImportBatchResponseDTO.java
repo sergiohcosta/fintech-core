@@ -20,6 +20,7 @@ public record ImportBatchResponseDTO(
         String extractorVersion,
         ImportBatchStatus status,
         String failureReason,
+        String sourceFilename,
         LocalDateTime createdAt,
         LocalDateTime updatedAt) {
 
@@ -27,6 +28,6 @@ public record ImportBatchResponseDTO(
         return new ImportBatchResponseDTO(
                 b.getId(), b.getImportMode(), b.getSourceType(),
                 b.getExtractorUsed(), b.getExtractorVersion(), b.getStatus(),
-                b.getFailureReason(), b.getCreatedAt(), b.getUpdatedAt());
+                b.getFailureReason(), b.getSourceFilename(), b.getCreatedAt(), b.getUpdatedAt());
     }
 }

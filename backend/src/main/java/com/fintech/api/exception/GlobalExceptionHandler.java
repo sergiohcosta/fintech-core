@@ -84,6 +84,21 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 
+    // 5c. Importação duplicada (mesmo arquivo, mesmo tenant) — 409 com dados do batch anterior
+    // pro frontend oferecer "importar mesmo assim" (force=true) sem precisar buscar de novo.
+    @ExceptionHandler(DuplicateImportException.class)
+    public ResponseEntity<Map<String, Object>> handleDuplicateImport(DuplicateImportException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("timestamp", LocalDateTime.now());
+        response.put("status", HttpStatus.CONFLICT.value());
+        response.put("error", HttpStatus.CONFLICT.getReasonPhrase());
+        response.put("message", ex.getMessage());
+        response.put("batchId", ex.getBatchId());
+        response.put("createdAt", ex.getCreatedAt());
+        response.put("filename", ex.getFilename());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
     // 6. Trata Convite Já Utilizado (410 Gone)
     @ExceptionHandler(InviteAlreadyUsedException.class)
     public ResponseEntity<Map<String, Object>> handleInviteAlreadyUsed(InviteAlreadyUsedException ex) {

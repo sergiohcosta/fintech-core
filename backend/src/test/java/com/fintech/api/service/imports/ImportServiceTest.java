@@ -1,6 +1,7 @@
 package com.fintech.api.service.imports;
 
 import com.fintech.api.domain.account.Account;
+import com.fintech.api.domain.category.Category;
 import com.fintech.api.domain.enums.AccountType;
 import com.fintech.api.domain.enums.ImportBatchStatus;
 import com.fintech.api.domain.enums.ImportMode;
@@ -19,8 +20,10 @@ import com.fintech.api.dto.imports.StagedFieldValueDTO;
 import com.fintech.api.dto.imports.StagedPatchDTO;
 import com.fintech.api.dto.imports.StagedTransactionResponseDTO;
 import com.fintech.api.dto.transaction.TransactionResponseDTO;
+import com.fintech.api.exception.DuplicateImportException;
 import com.fintech.api.exception.EntityNotFoundException;
 import com.fintech.api.repository.AccountRepository;
+import com.fintech.api.repository.CategoryRepository;
 import com.fintech.api.repository.TenantRepository;
 import com.fintech.api.repository.UserRepository;
 import com.fintech.api.service.TransactionService;
@@ -30,10 +33,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -52,6 +57,7 @@ class ImportServiceTest {
     @Autowired TenantRepository tenantRepository;
     @Autowired UserRepository userRepository;
     @Autowired AccountRepository accountRepository;
+    @Autowired CategoryRepository categoryRepository;
     @Autowired TransactionService transactionService;
 
     private Tenant persistTenant(String name) {
@@ -69,6 +75,15 @@ class ImportServiceTest {
                 .active(true)
                 .tenant(tenant)
                 .createdBy(user)
+                .build());
+    }
+
+    private Category persistCategory(Tenant tenant) {
+        return categoryRepository.save(Category.builder()
+                .name("Alimentação")
+                .icon("restaurant")
+                .color("#ff0000")
+                .tenant(tenant)
                 .build());
     }
 
@@ -133,9 +148,22 @@ class ImportServiceTest {
     }
 
     private NormalizedBatchDTO batchOf(NormalizedTransactionDTO... txs) {
+        return batchOfList(List.of(txs));
+    }
+
+    private NormalizedBatchDTO batchOfList(List<NormalizedTransactionDTO> txs) {
         return new NormalizedBatchDTO(
                 ImportMode.NEW_TRANSACTIONS, ImportSourceType.IMAGE,
-                "mock_extractor", "2026-07-24", List.of(txs));
+                "mock_extractor", "2026-07-24", txs);
+    }
+
+    /** Transação com {@code amount} presente mas ILEGÍVEL (string não numérica) — pra sanidade central. */
+    private NormalizedTransactionDTO amountIlegivel() {
+        return new NormalizedTransactionDTO(
+                null,
+                Map.of("amount", fieldValue("não-é-número", "1.0"),
+                        "transaction_date", fieldValue("2026-06-28", "1.0")),
+                null, null, new BigDecimal("1.0"), null, null);
     }
 
     @Test
@@ -286,6 +314,210 @@ class ImportServiceTest {
         assertThatThrownBy(() -> importService.patchStaged(
                 batch.id(), stagedId, new StagedPatchDTO(Map.of("amount", 1.0), null), intruderUser))
                 .isInstanceOf(EntityNotFoundException.class);
+    }
+
+    // ------------------------------------------------------------------------------------
+    // Onda 4 (Fase 2) — sanidade central, dedup intra-batch e dedup por arquivo (409/force)
+    // ------------------------------------------------------------------------------------
+
+    @Test
+    void linhaComValorIlegivelZeraConfiancaSemDerrubarOBatch() {
+        Tenant tenant = persistTenant("Tenant Sanidade Valor");
+        User user = persistUser(tenant, "sanidade-valor@import.test");
+
+        // Uma linha boa + uma com amount ilegível — o batch inteiro NÃO deve falhar.
+        ImportBatchResponseDTO batch = importService.createBatch(batchOf(highConfidence(), amountIlegivel()), user);
+        assertThat(batch.status()).isEqualTo(ImportBatchStatus.EXTRACTED);
+
+        List<StagedTransactionResponseDTO> staged = importService.listStaged(batch.id(), user);
+        assertThat(staged).hasSize(2);
+        StagedTransactionResponseDTO ruim = staged.stream()
+                .filter(s -> "não-é-número".equals(s.fields().get("amount").value()))
+                .findFirst().orElseThrow();
+        // Valor PRESERVADO (usuário vê o que foi lido), mas confiança ZERADA (força revisão).
+        assertThat(ruim.fields().get("amount").confidence()).isEqualByComparingTo("0");
+        assertThat(ruim.requiresReview()).isTrue();
+    }
+
+    @Test
+    void dataForaDaJanelaPlausivelZeraConfiancaDoCampo() {
+        Tenant tenant = persistTenant("Tenant Sanidade Data");
+        User user = persistUser(tenant, "sanidade-data@import.test");
+
+        NormalizedTransactionDTO dataAbsurda = new NormalizedTransactionDTO(
+                null,
+                Map.of("amount", fieldValue(10.00, "1.0"),
+                        "transaction_date", fieldValue("1999-01-01", "1.0")),  // > 10 anos atrás
+                null, null, new BigDecimal("1.0"), null, null);
+
+        ImportBatchResponseDTO batch = importService.createBatch(batchOf(dataAbsurda), user);
+        StagedTransactionResponseDTO staged = importService.listStaged(batch.id(), user).get(0);
+
+        assertThat(staged.fields().get("transaction_date").value()).isEqualTo("1999-01-01");
+        assertThat(staged.fields().get("transaction_date").confidence()).isEqualByComparingTo("0");
+    }
+
+    @Test
+    void zeroTransacoesAproveitaveisFalhaOBatchComMotivo() {
+        Tenant tenant = persistTenant("Tenant Zero Util");
+        User user = persistUser(tenant, "zero-util@import.test");
+
+        // Nenhuma transação com amount legível — nada de nenhum jeito pra revisar.
+        NormalizedTransactionDTO semAmount = new NormalizedTransactionDTO(
+                null, Map.of("description", fieldValue("linha lixo", "0.5")), null, null, new BigDecimal("0.5"), null, null);
+
+        ImportBatchResponseDTO batch = importService.createBatch(batchOf(semAmount, amountIlegivel()), user);
+
+        assertThat(batch.status()).isEqualTo(ImportBatchStatus.FAILED);
+        assertThat(batch.failureReason()).isNotNull();
+        assertThat(importService.listStaged(batch.id(), user)).isEmpty();
+    }
+
+    @Test
+    void arquivoAcimaDoLimiteDeTransacoesFalhaOBatch() {
+        Tenant tenant = persistTenant("Tenant Limite");
+        User user = persistUser(tenant, "limite@import.test");
+
+        // Default import.file.max-transactions=500 — 501 linhas boas excede o teto.
+        List<NormalizedTransactionDTO> muitas = IntStream.range(0, 501)
+                .mapToObj(i -> highConfidence())
+                .toList();
+
+        ImportBatchResponseDTO batch = importService.createBatch(batchOfList(muitas), user);
+
+        assertThat(batch.status()).isEqualTo(ImportBatchStatus.FAILED);
+        assertThat(batch.failureReason()).contains("501");
+        assertThat(importService.listStaged(batch.id(), user)).isEmpty();
+    }
+
+    @Test
+    void dedupIntraBatchPorExternalIdMarcaASegundaOcorrenciaSemDescartarNenhuma() {
+        Tenant tenant = persistTenant("Tenant Dedup FITID");
+        User user = persistUser(tenant, "dedup-fitid@import.test");
+
+        NormalizedTransactionDTO original = new NormalizedTransactionDTO(
+                null, Map.of("amount", fieldValue(20.00, "1.0"), "external_id", fieldValue("FITID-1", "1.0")),
+                null, null, new BigDecimal("1.0"), null, null);
+        NormalizedTransactionDTO repetida = new NormalizedTransactionDTO(
+                null, Map.of("amount", fieldValue(20.00, "1.0"), "external_id", fieldValue("FITID-1", "1.0")),
+                null, null, new BigDecimal("1.0"), null, null);
+
+        ImportBatchResponseDTO batch = importService.createBatch(batchOf(original, repetida), user);
+        List<StagedTransactionResponseDTO> staged = importService.listStaged(batch.id(), user);
+
+        assertThat(staged).hasSize(2);  // NENHUMA linha descartada
+        StagedTransactionResponseDTO primeira = staged.get(0);
+        StagedTransactionResponseDTO segunda = staged.get(1);
+        assertThat(primeira.duplicateCandidateOf()).isNull();
+        assertThat(segunda.duplicateCandidateOf()).isEqualTo(primeira.id());
+    }
+
+    @Test
+    void dedupIntraBatchPorTrioQuandoNaoHaExternalId() {
+        Tenant tenant = persistTenant("Tenant Dedup Trio");
+        User user = persistUser(tenant, "dedup-trio@import.test");
+
+        // Sem external_id (caso CSV) — mesma data+valor+descrição é candidata a duplicata.
+        NormalizedTransactionDTO original = new NormalizedTransactionDTO(
+                null, Map.of("amount", fieldValue(30.00, "1.0"),
+                        "transaction_date", fieldValue("2026-07-01", "1.0"),
+                        "description", fieldValue("MESMO ESTABELECIMENTO", "1.0")),
+                null, null, new BigDecimal("1.0"), null, null);
+        NormalizedTransactionDTO repetida = new NormalizedTransactionDTO(
+                null, Map.of("amount", fieldValue(30.00, "1.0"),
+                        "transaction_date", fieldValue("2026-07-01", "1.0"),
+                        "description", fieldValue("MESMO ESTABELECIMENTO", "1.0")),
+                null, null, new BigDecimal("1.0"), null, null);
+
+        ImportBatchResponseDTO batch = importService.createBatch(batchOf(original, repetida), user);
+        List<StagedTransactionResponseDTO> staged = importService.listStaged(batch.id(), user);
+
+        assertThat(staged).hasSize(2);
+        assertThat(staged.get(1).duplicateCandidateOf()).isEqualTo(staged.get(0).id());
+    }
+
+    private static final String CSV_SAMPLE = "date,amount,description\n2026-07-01,10.00,teste dedup arquivo\n";
+
+    private ExtractionInput csvInput(String filename) {
+        return new ExtractionInput(CSV_SAMPLE.getBytes(StandardCharsets.UTF_8), filename, "text/csv", ImportMode.NEW_TRANSACTIONS);
+    }
+
+    @Test
+    void reimportarMesmoArquivoSemForceDevolveConflitoEComForceReimporta() {
+        Tenant tenant = persistTenant("Tenant Dedup Arquivo");
+        User user = persistUser(tenant, "dedup-arquivo@import.test");
+
+        ImportBatchResponseDTO primeiro = importService.createFromFile(csvInput("extrato.csv"), false, user);
+        assertThat(primeiro.status()).isEqualTo(ImportBatchStatus.EXTRACTED);
+
+        // Mesmo arquivo, mesmo tenant, sem force → 409 (nenhum batch novo é criado).
+        assertThatThrownBy(() -> importService.createFromFile(csvInput("extrato.csv"), false, user))
+                .isInstanceOf(DuplicateImportException.class)
+                .satisfies(ex -> {
+                    DuplicateImportException dup = (DuplicateImportException) ex;
+                    assertThat(dup.getBatchId()).isEqualTo(primeiro.id());
+                });
+
+        // force=true reimporta mesmo assim (extrato corrigido pelo banco é caso legítimo).
+        ImportBatchResponseDTO segundo = importService.createFromFile(csvInput("extrato.csv"), true, user);
+        assertThat(segundo.id()).isNotEqualTo(primeiro.id());
+        assertThat(segundo.status()).isEqualTo(ImportBatchStatus.EXTRACTED);
+    }
+
+    @Test
+    void mesmoArquivoEmDoisTenantsEAceitoNosDoisEStagedDeUmInvisivelAoOutro() {
+        Tenant tenantA = persistTenant("Tenant Dedup A");
+        User userA = persistUser(tenantA, "dedup-a@import.test");
+        Tenant tenantB = persistTenant("Tenant Dedup B");
+        User userB = persistUser(tenantB, "dedup-b@import.test");
+
+        // Hash é o MESMO arquivo — mas o dedup é escopado por tenant (invariante nº1): os dois aceitam.
+        ImportBatchResponseDTO batchA = importService.createFromFile(csvInput("extrato-comum.csv"), false, userA);
+        ImportBatchResponseDTO batchB = importService.createFromFile(csvInput("extrato-comum.csv"), false, userB);
+
+        assertThat(batchA.status()).isEqualTo(ImportBatchStatus.EXTRACTED);
+        assertThat(batchB.status()).isEqualTo(ImportBatchStatus.EXTRACTED);
+        assertThat(batchA.id()).isNotEqualTo(batchB.id());
+
+        // Staged de A é invisível a B (404, não confirma existência).
+        assertThatThrownBy(() -> importService.listStaged(batchA.id(), userB))
+                .isInstanceOf(EntityNotFoundException.class);
+    }
+
+    @Test
+    void uploadDeFixtureCsvGetStagedCommitCriaTransacaoComContaECategoriaCorretas() {
+        Tenant tenant = persistTenant("Tenant CSV Ponta a Ponta");
+        User user = persistUser(tenant, "csv-e2e@import.test");
+        Account account = persistAccount(tenant, user);
+        Category category = persistCategory(tenant);
+
+        String csv = "date,amount,description\n2026-07-15,89.90,MERCADO TESTE E2E\n";
+        ExtractionInput input = new ExtractionInput(
+                csv.getBytes(StandardCharsets.UTF_8), "extrato-e2e.csv", "text/csv", ImportMode.NEW_TRANSACTIONS);
+
+        // Upload real: passa pelo ExtractionRouter → CsvExtractor de verdade (sem mock).
+        ImportBatchResponseDTO batch = importService.createFromFile(input, false, user);
+        assertThat(batch.status()).isEqualTo(ImportBatchStatus.EXTRACTED);
+        assertThat(batch.sourceType()).isEqualTo(ImportSourceType.CSV);
+
+        // GET /staged
+        List<StagedTransactionResponseDTO> staged = importService.listStaged(batch.id(), user);
+        assertThat(staged).hasSize(1);
+        StagedTransactionResponseDTO row = staged.get(0);
+        assertThat(row.fields().get("amount").value()).isEqualTo(new BigDecimal("89.90"));
+
+        // Commit com conta e categoria escolhidas pelo usuário na revisão.
+        ImportCommitRequestDTO req = new ImportCommitRequestDTO(
+                List.of(new StagedCommitItemDTO(row.id(), account.getId(), category.getId())));
+        ImportBatchResponseDTO committed = importService.commit(batch.id(), req, user);
+        assertThat(committed.status()).isEqualTo(ImportBatchStatus.COMMITTED);
+
+        StagedTransactionResponseDTO afterCommit = importService.listStaged(batch.id(), user).get(0);
+        TransactionResponseDTO tx = transactionService.findById(afterCommit.promotedTransactionId(), user);
+        assertThat(tx.amount()).isEqualByComparingTo("89.90");
+        assertThat(tx.accountId()).isEqualTo(account.getId());
+        assertThat(tx.categoryId()).isEqualTo(category.getId());
+        assertThat(tx.date()).isEqualTo(LocalDate.parse("2026-07-15"));
     }
 
     private boolean requiresReviewOf(List<StagedTransactionResponseDTO> staged, String overall) {
