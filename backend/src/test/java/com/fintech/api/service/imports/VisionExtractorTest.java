@@ -5,7 +5,10 @@ import com.fintech.api.domain.enums.ImportSourceType;
 import com.fintech.api.dto.imports.NormalizedBatchDTO;
 import com.fintech.api.dto.imports.NormalizedTransactionDTO;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.core.io.Resource;
+import org.springframework.util.MimeType;
 
 import java.math.BigDecimal;
 import java.util.function.Consumer;
@@ -13,8 +16,11 @@ import java.util.function.Consumer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -154,6 +160,50 @@ class VisionExtractorTest {
         assertThat(visionReturning(semFlag)
                 .extract(input(IMAGE, "image/jpeg"))
                 .transactions()).hasSize(1);
+    }
+
+    /**
+     * O {@code Resource} da imagem PRECISA ter filename: sem ele o Spring AI monta um multipart
+     * malformado e o Ollama rejeita com erro de zlib — a extração inteira quebrava em runtime,
+     * sem nada no código dizendo que o filename era obrigatório. Extensão coerente com o mimeType;
+     * mimeType desconhecido cai em .jpg (o caso mais comum de comprovante).
+     */
+    @Test
+    void resourceDaImagemCarregaFilenameCoerenteComOMimeType() {
+        assertThat(capturedFilename("image/png")).isEqualTo("receipt.png");
+        assertThat(capturedFilename("image/gif")).isEqualTo("receipt.gif");
+        assertThat(capturedFilename("image/webp")).isEqualTo("receipt.webp");
+        assertThat(capturedFilename("image/jpeg")).isEqualTo("receipt.jpg");
+        assertThat(capturedFilename("image/tiff")).isEqualTo("receipt.jpg");
+    }
+
+    /**
+     * Reexecuta o {@code Consumer} que o extrator passou para {@code .user(...)} contra um
+     * {@code PromptUserSpec} mockado — é assim que se enxerga o Resource que o Spring AI receberia,
+     * sem subir provider nenhum.
+     */
+    @SuppressWarnings("unchecked")
+    private String capturedFilename(String mimeType) {
+        ChatClient chatClient = mock(ChatClient.class, RETURNS_DEEP_STUBS);
+        when(chatClient.prompt()
+                .user(any(Consumer.class))
+                .call()
+                .entity(LlmReceiptExtractionDTO.class))
+                .thenReturn(fullReceipt());
+        new VisionExtractor(chatClient, "qwen2.5vl", "2026-07-24").extract(input(IMAGE, mimeType));
+
+        // atLeastOnce: a própria montagem do stub (when(...user(any())...)) já conta uma invocação;
+        // getValue() devolve a ÚLTIMA capturada, que é o Consumer real passado pelo extract().
+        ArgumentCaptor<Consumer<ChatClient.PromptUserSpec>> userSpec = ArgumentCaptor.forClass(Consumer.class);
+        verify(chatClient.prompt(), atLeastOnce()).user(userSpec.capture());
+
+        ChatClient.PromptUserSpec spec = mock(ChatClient.PromptUserSpec.class);
+        when(spec.text(anyString())).thenReturn(spec);
+        userSpec.getValue().accept(spec);
+
+        ArgumentCaptor<Resource> resource = ArgumentCaptor.forClass(Resource.class);
+        verify(spec).media(any(MimeType.class), resource.capture());
+        return resource.getValue().getFilename();
     }
 
     @Test
