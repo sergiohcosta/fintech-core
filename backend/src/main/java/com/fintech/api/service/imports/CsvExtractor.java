@@ -82,7 +82,7 @@ public class CsvExtractor implements TransactionExtractor {
         if (parsed == null) {
             return false;
         }
-        HeaderMapping mapping = matchHeader(parsed.records().get(0));
+        HeaderMapping mapping = matchHeader(parsed.header());
         // Header PLAUSÍVEL = pelo menos 1 coluna de data E 1 de valor reconhecidas. Sem isso,
         // não dá pra confiar que este é mesmo um extrato de transações (poderia ser qualquer CSV).
         return mapping.dateCol() >= 0 && mapping.amountCol() >= 0;
@@ -104,18 +104,36 @@ public class CsvExtractor implements TransactionExtractor {
         if (parsed == null) {
             throw new ExtractionException("Não foi possível ler este CSV — delimitador inconsistente entre linhas.");
         }
-        List<CSVRecord> records = parsed.records();
-        HeaderMapping mapping = matchHeader(records.get(0));
+        HeaderMapping mapping = matchHeader(parsed.header());
         if (mapping.dateCol() < 0 || mapping.amountCol() < 0) {
             throw new ExtractionException("Cabeçalho do CSV não tem coluna de data e/ou de valor reconhecível.");
         }
 
-        List<NormalizedTransactionDTO> transactions = records.stream()
-                .skip(1)
-                .map(row -> toTransaction(row, mapping))
+        // Cada linha é parseada ISOLADAMENTE (não o arquivo inteiro de uma vez): uma linha com
+        // aspa solta fora do padrão RFC 4180 vira "linha ruim" (mesma régua de dado ilegível —
+        // confiança 0, nada apagado), sem derrubar as demais transações do arquivo.
+        List<NormalizedTransactionDTO> transactions = parsed.dataLines().stream()
+                .map(line -> {
+                    CSVRecord row = parseSingleLine(line, parsed.delimiter());
+                    return row == null ? garbledTransaction() : toTransaction(row, mapping);
+                })
                 .toList();
 
         return new NormalizedBatchDTO(input.mode(), ImportSourceType.CSV, EXTRACTOR_USED, extractorVersion, transactions);
+    }
+
+    /**
+     * Linha que nem chega a parsear como CSV (ex.: aspa solta fora do padrão) — mesma régua da
+     * "linha ruim" (confiança 0 em tudo, nenhum valor apagado porque não há valor legível pra
+     * preservar), sem derrubar a transação nem o restante do arquivo.
+     */
+    private NormalizedTransactionDTO garbledTransaction() {
+        Map<String, StagedFieldValueDTO> fields = new LinkedHashMap<>();
+        fields.put("amount", new StagedFieldValueDTO(null, BigDecimal.ZERO));
+        fields.put("transaction_date", new StagedFieldValueDTO(null, BigDecimal.ZERO));
+        fields.put("direction", new StagedFieldValueDTO(null, BigDecimal.ZERO));
+        fields.put("description", new StagedFieldValueDTO(null, BigDecimal.ZERO));
+        return new NormalizedTransactionDTO(null, fields, null, null, BigDecimal.ZERO, null, null);
     }
 
     private NormalizedTransactionDTO toTransaction(CSVRecord row, HeaderMapping mapping) {
@@ -266,33 +284,53 @@ public class CsvExtractor implements TransactionExtractor {
     }
 
     /**
-     * Tenta ler o CSV com cada delimitador candidato (',' depois ';') e aceita o primeiro cuja
-     * largura (nº de colunas) é CONSISTENTE em todas as linhas — evita adivinhar delimitador por
-     * contagem bruta de caracteres, que quebraria com campo entre aspas contendo o outro delimitador.
+     * Detecta o delimitador (',' depois ';') e devolve o header + as linhas de dado CRUAS (ainda
+     * não parseadas). Cada linha é parseada INDIVIDUALMENTE aqui (não o arquivo inteiro de uma
+     * vez): assim, uma linha com aspa solta fora do padrão RFC 4180 (o commons-csv lança
+     * {@code CSVException} — capturada via {@link UncheckedIOException}, não {@link IOException})
+     * não invalida o delimitador nem o arquivo inteiro, só aquela linha (virará "linha ruim" no
+     * extract()). O delimitador é aceito se o header parseia E pelo menos UMA linha de dado bate
+     * a largura do header — não exige que TODAS as linhas sejam perfeitas.
      */
     private ParsedCsv tryParse(byte[] content) {
         String decoded = decode(content);
+        List<String> lines = decoded.lines().filter(l -> !l.isBlank()).toList();
+        if (lines.size() < 2) {
+            return null; // precisa header + ao menos 1 linha de dado
+        }
+        List<String> dataLines = lines.subList(1, lines.size());
+
         for (char delimiter : new char[] {',', ';'}) {
-            try {
-                CSVFormat format = CSVFormat.Builder.create(CSVFormat.DEFAULT)
-                        .setDelimiter(delimiter)
-                        .setTrim(true)
-                        .setIgnoreEmptyLines(true)
-                        .get();
-                List<CSVRecord> records = CSVParser.parse(decoded, format).getRecords();
-                if (records.size() < 2) {
-                    continue; // precisa header + ao menos 1 linha de dado
-                }
-                int width = records.get(0).size();
-                if (width < 2 || records.stream().anyMatch(r -> r.size() != width)) {
-                    continue; // largura inconsistente = delimitador errado (ou arquivo não é CSV)
-                }
-                return new ParsedCsv(delimiter, records);
-            } catch (IOException | UncheckedIOException e) {
-                // este delimitador produziu um CSV malformado — tenta o próximo candidato
+            CSVRecord header = parseSingleLine(lines.get(0), delimiter);
+            if (header == null || header.size() < 2) {
+                continue; // header não parseia com este delimitador (ou só teria 1 coluna)
             }
+            int width = header.size();
+            boolean anyDataLineMatches = dataLines.stream()
+                    .anyMatch(line -> {
+                        CSVRecord row = parseSingleLine(line, delimiter);
+                        return row != null && row.size() == width;
+                    });
+            if (!anyDataLineMatches) {
+                continue; // nenhuma linha de dado bate a largura do header com este delimitador
+            }
+            return new ParsedCsv(delimiter, header, dataLines);
         }
         return null;
+    }
+
+    /** Parseia UMA linha isolada; {@code null} se esta linha não é um CSV válido com este delimitador. */
+    private CSVRecord parseSingleLine(String line, char delimiter) {
+        try {
+            CSVFormat format = CSVFormat.Builder.create(CSVFormat.DEFAULT)
+                    .setDelimiter(delimiter)
+                    .setTrim(true)
+                    .get();
+            List<CSVRecord> records = CSVParser.parse(line, format).getRecords();
+            return records.isEmpty() ? null : records.get(0);
+        } catch (IOException | UncheckedIOException e) {
+            return null;
+        }
     }
 
     /**
@@ -315,7 +353,7 @@ public class CsvExtractor implements TransactionExtractor {
         }
     }
 
-    private record ParsedCsv(char delimiter, List<CSVRecord> records) {}
+    private record ParsedCsv(char delimiter, CSVRecord header, List<String> dataLines) {}
 
     private record HeaderMapping(int dateCol, int amountCol, int descriptionCol, int typeCol, int fallbackDescriptionCol) {}
 }
