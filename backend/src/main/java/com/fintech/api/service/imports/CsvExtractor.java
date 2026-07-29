@@ -13,6 +13,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
@@ -287,7 +288,7 @@ public class CsvExtractor implements TransactionExtractor {
                     continue; // largura inconsistente = delimitador errado (ou arquivo não é CSV)
                 }
                 return new ParsedCsv(delimiter, records);
-            } catch (IOException e) {
+            } catch (IOException | UncheckedIOException e) {
                 // este delimitador produziu um CSV malformado — tenta o próximo candidato
             }
         }
