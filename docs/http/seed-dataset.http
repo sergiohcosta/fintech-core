@@ -1125,7 +1125,7 @@ Authorization: Bearer {{token_carlos}}
 
 ###
 
-### ── Bloco 11: Importação / Extração (Fase 0 — Fundação + Fase 1 — MVP imagem) ─
+### ── Bloco 11: Importação / Extração (Fase 0 — Fundação + Fase 1 — imagem + Fase 2 — CSV/OFX) ─
 
 ### 11.1 Criar batch a partir de um schema normalizado mockado (prova ponta a ponta)
 ###      requiresReview é DERIVADO no backend por threshold — o valor enviado é ignorado.
@@ -1253,3 +1253,96 @@ Content-Type: application/json
     { "stagedId": "{{staged_id}}", "accountId": "{{id_bradesco}}", "categoryId": "{{id_cat_alimentacao}}" }
   ]
 }
+
+###
+
+### 11.10 (Fase 2) Batch CSV do seed dev (V27) — EXTRACTED, 3 staged PENDING (uma duplicata intra-batch)
+GET http://localhost:8080/api/imports/a0000000-0000-0000-0000-000000000002
+Authorization: Bearer {{token_carlos}}
+
+###
+
+### 11.11 (Fase 2) Staged do batch CSV seed (V27) — a 3ª tem duplicateCandidateOf apontando pra 1ª
+GET http://localhost:8080/api/imports/a0000000-0000-0000-0000-000000000002/staged
+Authorization: Bearer {{token_carlos}}
+
+###
+
+### 11.12 (Fase 2) Upload de CSV real — aciona o CsvExtractor (parser determinístico, sem Ollama)
+###       < ./extrato.csv é um PLACEHOLDER: coloque um CSV (header data/valor/descrição
+###       reconhecível — ver CsvExtractor) ao lado deste arquivo antes de rodar este bloco.
+POST http://localhost:8080/api/imports
+Authorization: Bearer {{token_carlos}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="extrato.csv"
+Content-Type: text/csv
+
+< ./extrato.csv
+--WebAppBoundary
+Content-Disposition: form-data; name="importMode"
+
+NEW_TRANSACTIONS
+--WebAppBoundary--
+
+> {%
+client.global.set("import_batch_id_csv", response.body.id);
+%}
+
+###
+
+### 11.13 (Fase 2) Upload de OFX real — aciona o OfxExtractor (SGML 1.x ou XML 2.x)
+###       < ./extrato.ofx é um PLACEHOLDER — coloque um arquivo OFX ao lado deste arquivo.
+POST http://localhost:8080/api/imports
+Authorization: Bearer {{token_carlos}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="extrato.ofx"
+Content-Type: application/octet-stream
+
+< ./extrato.ofx
+--WebAppBoundary
+Content-Disposition: form-data; name="importMode"
+
+NEW_TRANSACTIONS
+--WebAppBoundary--
+
+###
+
+### 11.14 (Fase 2 — Onda 4/5) Reenviar o MESMO arquivo do 11.12 → 409 (dedup por hash+tenant)
+###       Body do 409 traz batchId/createdAt/filename do batch anterior — repita o 11.12 antes
+###       de rodar este bloco pra ver o conflito (mesmo file, mesmo tenant, sem force).
+POST http://localhost:8080/api/imports
+Authorization: Bearer {{token_carlos}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="extrato.csv"
+Content-Type: text/csv
+
+< ./extrato.csv
+--WebAppBoundary
+Content-Disposition: form-data; name="importMode"
+
+NEW_TRANSACTIONS
+--WebAppBoundary--
+
+###
+
+### 11.15 (Fase 2 — Onda 4/5) force=true reimporta o mesmo arquivo mesmo assim (201, novo batch)
+POST http://localhost:8080/api/imports?force=true
+Authorization: Bearer {{token_carlos}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="extrato.csv"
+Content-Type: text/csv
+
+< ./extrato.csv
+--WebAppBoundary
+Content-Disposition: form-data; name="importMode"
+
+NEW_TRANSACTIONS
+--WebAppBoundary--
