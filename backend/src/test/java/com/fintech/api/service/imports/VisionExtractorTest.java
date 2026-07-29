@@ -20,11 +20,17 @@ import static org.mockito.Mockito.when;
 /**
  * Unitário do extrator de visão com o {@link ChatClient} MOCKADO (deep stubs) — a suíte NUNCA
  * bate no Ollama real. Prova o mapeamento saída-do-modelo → schema normalizado e o guarda-corpo
- * (§2.g): schema íntegro não basta, o conteúdo é revalidado do nosso lado.
+ * (§2.g): schema íntegro não basta, o conteúdo é revalidado do nosso lado. Também prova o
+ * {@code supports()} por magic number (Onda 1 — a porta deixou de ser "só de imagem").
  */
 class VisionExtractorTest {
 
-    private static final byte[] IMAGE = {1, 2, 3};
+    // Magic number JPEG real (FF D8 FF) — supports() decide por bytes, não pelo mimeType.
+    private static final byte[] IMAGE = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 1, 2, 3};
+
+    private static ExtractionInput input(byte[] content, String mimeType) {
+        return new ExtractionInput(content, "recibo.jpg", mimeType, ImportMode.NEW_TRANSACTIONS);
+    }
 
     /** Constrói um extrator cujo ChatClient devolve {@code fixture} na chamada .entity(...). */
     @SuppressWarnings("unchecked")
@@ -63,7 +69,7 @@ class VisionExtractorTest {
     @Test
     void mapeiaSaidaDoModeloParaSchemaNormalizado() {
         NormalizedBatchDTO batch = visionReturning(fullReceipt())
-                .extract(IMAGE, "image/jpeg", ImportMode.NEW_TRANSACTIONS);
+                .extract(input(IMAGE, "image/jpeg"));
 
         assertThat(batch.sourceType()).isEqualTo(ImportSourceType.IMAGE);
         assertThat(batch.importMode()).isEqualTo(ImportMode.NEW_TRANSACTIONS);
@@ -89,13 +95,13 @@ class VisionExtractorTest {
         // amount null → não há transação a lançar → falha a extração (batch vai a FAILED no service).
         LlmReceiptExtractionDTO semValor = new LlmReceiptExtractionDTO(
                 null, 0.10, "2026-06-28", 0.9, "x", 0.9, "debit", 0.9, null, null, 0.5, false);
-        assertThatThrownBy(() -> visionReturning(semValor).extract(IMAGE, "image/jpeg", ImportMode.NEW_TRANSACTIONS))
+        assertThatThrownBy(() -> visionReturning(semValor).extract(input(IMAGE, "image/jpeg")))
                 .isInstanceOf(ExtractionException.class);
 
         // amount <= 0 é implausível para um comprovante → também rejeita.
         LlmReceiptExtractionDTO valorZero = new LlmReceiptExtractionDTO(
                 BigDecimal.ZERO, 0.9, "2026-06-28", 0.9, "x", 0.9, "debit", 0.9, null, null, 0.9, false);
-        assertThatThrownBy(() -> visionReturning(valorZero).extract(IMAGE, "image/jpeg", ImportMode.NEW_TRANSACTIONS))
+        assertThatThrownBy(() -> visionReturning(valorZero).extract(input(IMAGE, "image/jpeg")))
                 .isInstanceOf(ExtractionException.class);
     }
 
@@ -105,7 +111,7 @@ class VisionExtractorTest {
                 new BigDecimal("42.00"), 0.9, "sem-data", 0.7, "MERCADO", 0.9, "credit", 0.9, null, null, 0.9, null);
 
         NormalizedTransactionDTO tx = visionReturning(dataInvalida)
-                .extract(IMAGE, "image/png", ImportMode.NEW_TRANSACTIONS)
+                .extract(input(IMAGE, "image/png"))
                 .transactions().get(0);
 
         // Data ilegível → valor null + confiança 0 (força revisão), mas a extração segue.
@@ -129,7 +135,7 @@ class VisionExtractorTest {
                 new BigDecimal("89.90"), 0.95, "2026-06-28", 0.95, "MERCADO", 0.9,
                 "debit", 0.95, null, null, 0.93, true);
 
-        assertThatThrownBy(() -> visionReturning(extrato).extract(IMAGE, "image/jpeg", ImportMode.NEW_TRANSACTIONS))
+        assertThatThrownBy(() -> visionReturning(extrato).extract(input(IMAGE, "image/jpeg")))
                 .isInstanceOf(ExtractionException.class)
                 .hasMessage(VisionExtractor.MULTIPLE_TRANSACTIONS_MESSAGE);
     }
@@ -146,14 +152,45 @@ class VisionExtractorTest {
                 "debit", 0.9, null, null, 0.9, null);
 
         assertThat(visionReturning(semFlag)
-                .extract(IMAGE, "image/jpeg", ImportMode.NEW_TRANSACTIONS)
+                .extract(input(IMAGE, "image/jpeg"))
                 .transactions()).hasSize(1);
     }
 
     @Test
     void falhaDoProviderViraExtractionException() {
         assertThatThrownBy(() -> visionThrowing(new RuntimeException("ollama indisponível"))
-                .extract(IMAGE, "image/jpeg", ImportMode.NEW_TRANSACTIONS))
+                .extract(input(IMAGE, "image/jpeg")))
                 .isInstanceOf(ExtractionException.class);
+    }
+
+    // --- supports() — magic number, não mimeType (Onda 1) ---
+
+    private VisionExtractor extractorForSupportsOnly() {
+        // ChatClient nunca é chamado nestes testes — supports() não toca no provider.
+        return new VisionExtractor(mock(ChatClient.class), "qwen2.5vl", "2026-07-24");
+    }
+
+    @Test
+    void supportsAceitaJpegPngGifWebpPorMagicNumber() {
+        VisionExtractor extractor = extractorForSupportsOnly();
+
+        byte[] jpeg = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF};
+        byte[] png = {(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
+        byte[] gif = {0x47, 0x49, 0x46, '8', '9', 'a'};
+        byte[] webp = {0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 'W', 'E', 'B', 'P'};
+
+        assertThat(extractor.supports(input(jpeg, "application/octet-stream"))).isTrue();
+        assertThat(extractor.supports(input(png, "application/octet-stream"))).isTrue();
+        assertThat(extractor.supports(input(gif, "application/octet-stream"))).isTrue();
+        assertThat(extractor.supports(input(webp, "application/octet-stream"))).isTrue();
+    }
+
+    @Test
+    void supportsRejeitaConteudoQueNaoEImagemMesmoComMimeTypeMentindo() {
+        VisionExtractor extractor = extractorForSupportsOnly();
+
+        // mimeType diz "image/jpeg", mas o conteúdo é texto puro (ex.: CSV) — supports() não confia nisso.
+        byte[] textoPlano = "data,valor\n2026-01-01,10.00\n".getBytes();
+        assertThat(extractor.supports(input(textoPlano, "image/jpeg"))).isFalse();
     }
 }

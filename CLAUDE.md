@@ -119,6 +119,7 @@ Regras extraídas de auditoria de sessões — cada uma causou loops reais de te
 - **Baseline verde:** antes de iniciar um plano SDD, rodar a suíte; falha pré-existente → abrir issue imediatamente, não tolerar "idêntico ao baseline" por 7 tasks.
 - **Retomada de sessão** ("continue", "retome"): antes de agir, ler `git worktree list`, o ledger de progresso do plano (`docs/superpowers/plans/` / `.superpowers/`) e `git log develop..HEAD` da worktree ativa.
 - **SonarQube:** o MCP só lê issues; quality gate e medidas sempre via `curl` com `SONAR_TOKEN` do `.env` (token `sqa_`). Não re-tentar tools do MCP que retornam `Insufficient privileges`.
+- **`docker compose down -v` não limpa o Postgres local:** o volume é bind mount (`./.docker/postgres-data`), não volume nomeado — `-v` não tem efeito nele. Rodar a suíte de testes (perfil sem seed) e depois subir a app local (perfil `local`, com seed) no MESMO banco deixa o histórico do Flyway inconsistente (`FlywayValidateException: resolved migration not applied` para as versões de seed, por estarem fora de ordem). Para resetar de verdade: `docker compose down` + `docker run --rm -v "$(pwd)/.docker/postgres-data:/data" busybox sh -c "rm -rf /data/*"` (sudo indisponível: o container roda como root e limpa via bind mount) + `docker compose up -d`. Evitar o problema: sempre subir a app local (que aplica o seed) **antes** de rodar testes de integração no mesmo Postgres.
 
 ### Dataset de Testes - @dataset.md
 
