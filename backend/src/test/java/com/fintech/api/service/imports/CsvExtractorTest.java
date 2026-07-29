@@ -118,4 +118,36 @@ class CsvExtractorTest {
         NormalizedTransactionDTO boa = batch.transactions().get(0);
         assertThat(boa.fields().get("amount").value()).isEqualTo(new BigDecimal("30.00"));
     }
+
+    /**
+     * Bug real de produção: um CSV de banco com aspas soltas (fora do padrão RFC 4180) faz o
+     * commons-csv lançar {@code CSVException} empacotada em {@link UncheckedIOException} — NÃO
+     * em {@link IOException} — dentro de {@code getRecords()}. O catch original só pegava
+     * {@code IOException}, então o erro subia cru até o {@code GlobalExceptionHandler} como 500.
+     * Extração deve degradar com uma exceção NOSSA (ou supports()=false), nunca vazar a exceção
+     * da lib como erro interno não tratado.
+     */
+    /**
+     * Bug real de produção: um CSV de banco com aspas soltas (fora do padrão RFC 4180) faz o
+     * commons-csv lançar {@code CSVException} empacotada em {@link UncheckedIOException} — NÃO
+     * em {@link IOException} — ao parsear o arquivo inteiro de uma vez. Cada linha agora é
+     * parseada ISOLADAMENTE: a linha com aspa solta vira "linha ruim" (confiança 0, mesma régua
+     * de dado ilegível), mas a OUTRA linha do mesmo arquivo é extraída normalmente — o arquivo
+     * inteiro não é mais descartado por causa de uma linha malformada.
+     */
+    @Test
+    void linhaComAspaSoltaViraLinhaRuimIsoladaSemDerrubarAsDemais() {
+        NormalizedBatchDTO batch = extractor.extract(input("csv_aspas_soltas_invalidas.csv"));
+
+        assertThat(batch.transactions()).hasSize(2);
+
+        NormalizedTransactionDTO ruim = batch.transactions().get(0);
+        assertThat(ruim.fields().get("amount").value()).isNull();
+        assertThat(ruim.fields().get("amount").confidence()).isEqualByComparingTo("0");
+        assertThat(ruim.overallConfidence()).isEqualByComparingTo("0");
+
+        NormalizedTransactionDTO boa = batch.transactions().get(1);
+        assertThat(boa.fields().get("amount").value()).isEqualTo(new BigDecimal("30.00"));
+        assertThat(boa.fields().get("description").value()).isEqualTo("OUTRA LOJA");
+    }
 }
