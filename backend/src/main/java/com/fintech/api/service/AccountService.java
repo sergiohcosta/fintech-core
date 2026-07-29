@@ -117,8 +117,13 @@ public class AccountService {
     }
 
     private AccountResponseDTO toResponse(Account account) {
+        // Cartão de crédito é passivo: o saldo deve refletir a dívida em aberto (PENDING),
+        // não o histórico de PAID — a fatura paga já debitou a conta de origem (#198).
+        TransactionStatus balanceStatus = account.getType() == AccountType.CREDIT_CARD
+                ? TransactionStatus.PENDING
+                : TransactionStatus.PAID;
         BigDecimal balance = accountRepository.calculateBalance(
-                account, TransactionType.INCOME, TransactionStatus.PAID);
+                account, TransactionType.INCOME, balanceStatus);
 
         CreditCardDetailsResponseDTO detailsDto = null;
         if (account.getType() == AccountType.CREDIT_CARD) {

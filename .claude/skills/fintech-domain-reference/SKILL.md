@@ -52,15 +52,22 @@ saldo(conta) = SUM(CASE WHEN type = INCOME THEN amount ELSE -amount END)
                WHERE account = :conta AND status = PAID
 ```
 
-`PENDING` não conta porque representa compromisso, não caixa: uma parcela de cartão pendente
-ainda não saiu de nenhuma conta; ela só vira caixa quando o pagamento da fatura a converte em
-PAID (seção 3). `CANCELLED` nunca conta em nada.
+`PENDING` não conta porque representa compromisso, não caixa: uma parcela pendente
+ainda não saiu de nenhuma conta líquida. `CANCELLED` nunca conta em nada.
+
+**Exceção `CREDIT_CARD` (#198):** para essa conta a fórmula inverte o status filtrado — soma
+`PENDING`, não `PAID` (`AccountService.toResponse`). Racional: o cartão é um passivo, e o saldo
+dele deve mostrar a **dívida em aberto** (compras ainda não pagas), não o histórico de compras
+já quitadas. Quando a fatura é paga (`InvoiceService.pay`, seção 3), o lote de transações da
+fatura vira `PAID` e some do saldo do cartão — o débito real já foi lançado como uma EXPENSE
+`PAID` na conta de origem naquele mesmo `pay()`. Sem essa exceção, pagar a fatura fazia o saldo
+do cartão piorar (as compras recém-pagas passavam a contar), o inverso do esperado.
 
 Existem **três "saldos" diferentes** e eles não são intercambiáveis:
 
 | Conceito | Escopo | Query real | Filtros |
 |---|---|---|---|
-| Saldo da conta (`balance` no `GET /api/accounts/{id}`) | uma conta | `AccountRepository.calculateBalance` | `status = PAID` |
+| Saldo da conta (`balance` no `GET /api/accounts/{id}`) | uma conta | `AccountRepository.calculateBalance` | `status = PAID` (`status = PENDING` se `CREDIT_CARD`) |
 | `totalAccountBalance` do dashboard | tenant inteiro, **sem filtro de período** | `TransactionRepository.sumNetLiquidBalanceByTenant` | `status = PAID` e `account.countInLiquidBalance = true` |
 | Patrimônio (net worth) | tenant | **não existe consumidor ainda** (2026-07-04) | flag `countInNetWorth` só é armazenada; futura tela de Patrimônio Total |
 
