@@ -8,6 +8,8 @@ import com.fintech.api.dto.imports.StagedFieldValueDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
@@ -34,10 +36,22 @@ import java.util.Map;
  *
  * <p>{@code requires_review} NÃO é decidido aqui (§2.f) — o {@code ImportService} deriva por
  * threshold. Este extrator só produz valores + confiança por campo.
+ *
+ * <p>{@code @Order(LOWEST)}: é o ÚLTIMO extrator do funil do {@link ExtractionRouter} (roadmap
+ * §1.2 — padrão universal → genérico → IA). IA é cara e ambígua; só entra quando nenhum parser
+ * determinístico (OFX, CSV) reconheceu o arquivo.
  */
 @Component
+@Order(Ordered.LOWEST_PRECEDENCE)
 @Slf4j
 public class VisionExtractor implements TransactionExtractor {
+
+    // Magic numbers dos formatos de imagem aceitos — supports() decide por BYTES, nunca pelo
+    // mimeType do cliente (o browser erra/mente o Content-Type com frequência).
+    private static final byte[] JPEG = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF};
+    private static final byte[] PNG = {(byte) 0x89, 0x50, 0x4E, 0x47};
+    private static final byte[] GIF = {0x47, 0x49, 0x46};
+    private static final byte[] WEBP_RIFF = {0x52, 0x49, 0x46, 0x46};
 
     private final ChatClient chatClient;
     private final String model;
@@ -94,7 +108,41 @@ public class VisionExtractor implements TransactionExtractor {
     }
 
     @Override
-    public NormalizedBatchDTO extract(byte[] imageBytes, String mimeType, ImportMode mode) {
+    public boolean supports(ExtractionInput input) {
+        byte[] content = input.content();
+        return startsWith(content, JPEG) || startsWith(content, PNG) || startsWith(content, GIF)
+                || startsWith(content, WEBP_RIFF);
+    }
+
+    private boolean startsWith(byte[] content, byte[] magic) {
+        if (content == null || content.length < magic.length) {
+            return false;
+        }
+        for (int i = 0; i < magic.length; i++) {
+            if (content[i] != magic[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public ImportSourceType sourceType() {
+        return ImportSourceType.IMAGE;
+    }
+
+    @Override
+    public String extractorVersion() {
+        return extractorVersion;
+    }
+
+    @Override
+    public NormalizedBatchDTO extract(ExtractionInput input) {
+        byte[] imageBytes = input.content();
+        ImportMode mode = input.mode();
+        // mimeType do cliente é só um HINT pro Spring AI montar o Resource — quem decide se é
+        // imagem de verdade é o supports() por magic number, chamado antes pelo router.
+        String mimeType = input.mimeType() != null ? input.mimeType() : "image/jpeg";
         MimeType mime = MimeTypeUtils.parseMimeType(mimeType);
         Resource imageResource = new ByteArrayResource(imageBytes);
 
