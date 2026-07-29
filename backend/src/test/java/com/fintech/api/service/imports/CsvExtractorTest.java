@@ -150,4 +150,24 @@ class CsvExtractorTest {
         assertThat(boa.fields().get("amount").value()).isEqualTo(new BigDecimal("30.00"));
         assertThat(boa.fields().get("description").value()).isEqualTo("OUTRA LOJA");
     }
+
+    /**
+     * Campo entre aspas com QUEBRA DE LINHA dentro é RFC 4180 válido e vale por UM registro —
+     * quebrar por linha física geraria uma transação fantasma (a "segunda metade" da descrição).
+     */
+    @Test
+    void deveTratarCampoComQuebraDeLinhaEntreAspasComoUmaTransacaoSo() {
+        NormalizedBatchDTO batch = extractor.extract(input("csv_campo_multilinha.csv"));
+
+        assertThat(batch.transactions()).hasSize(2);
+
+        NormalizedTransactionDTO primeira = batch.transactions().get(0);
+        assertThat(primeira.fields().get("amount").value()).isEqualTo(new BigDecimal("42.50"));
+        assertThat(primeira.fields().get("description").value())
+                .isEqualTo("MERCADO BOM PRECO\nFILIAL CENTRO");
+
+        NormalizedTransactionDTO segunda = batch.transactions().get(1);
+        assertThat(segunda.fields().get("amount").value()).isEqualTo(new BigDecimal("30.00"));
+        assertThat(segunda.fields().get("description").value()).isEqualTo("OUTRA LOJA");
+    }
 }
