@@ -144,7 +144,15 @@ public class VisionExtractor implements TransactionExtractor {
         // imagem de verdade é o supports() por magic number, chamado antes pelo router.
         String mimeType = input.mimeType() != null ? input.mimeType() : "image/jpeg";
         MimeType mime = MimeTypeUtils.parseMimeType(mimeType);
-        Resource imageResource = new ByteArrayResource(imageBytes);
+        // ByteArrayResource anônimo com getFilename() pra Spring AI serializar corretamente
+        // (sem filename, o multipart fica malformado → Ollama rejeita com zlib error).
+        String filename = resolveFilename(mime);
+        Resource imageResource = new ByteArrayResource(imageBytes) {
+            @Override
+            public String getFilename() {
+                return filename;
+            }
+        };
 
         long startNanos = System.nanoTime();
         LlmReceiptExtractionDTO raw;
@@ -263,6 +271,19 @@ public class VisionExtractor implements TransactionExtractor {
 
     private String blankToNull(String value) {
         return (value == null || value.isBlank()) ? null : value.trim();
+    }
+
+    private String resolveFilename(MimeType mime) {
+        if (mime == null) {
+            return "receipt.jpg";
+        }
+        String subtype = mime.getSubtype().toLowerCase();
+        return switch (subtype) {
+            case "png" -> "receipt.png";
+            case "gif" -> "receipt.gif";
+            case "webp" -> "receipt.webp";
+            default -> "receipt.jpg";
+        };
     }
 
     private record NormalizedDate(String isoValue, BigDecimal confidence) {}
