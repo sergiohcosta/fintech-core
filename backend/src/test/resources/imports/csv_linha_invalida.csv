@@ -1,0 +1,4 @@
+date,amount,description
+2026-07-15,30.00,linha ok 1
+texto-invalido,not-a-number,linha ruim
+2026-07-20,15.75,linha ok 2
