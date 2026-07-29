@@ -24,13 +24,16 @@ import type {
 import {
   allPendingHaveAccount,
   buildCommitRequest,
+  conflictMessage,
   confidenceLevel,
   directionLabel,
   fieldConfidence,
   fieldValueAsString,
   flattenCategories,
   formatConfidence,
+  parseDuplicateConflict,
   type CategoryOption,
+  type DuplicateConflict,
   type ReviewFieldKey,
 } from './import-utils';
 
@@ -47,6 +50,7 @@ interface ReviewRow {
   payment_method: string;
   accountId: string | null;
   categoryId: string | null;
+  duplicateCandidateOf: string | null;
   confidences: Record<ReviewFieldKey, number | null>;
 }
 
@@ -91,6 +95,8 @@ export class ImportComponent implements OnInit {
   readonly rows = signal<ReviewRow[]>([]);
   readonly accounts = signal<AccountResponse[]>([]);
   readonly categoryOptions = signal<CategoryOption[]>([]);
+  // 409 (mesmo arquivo já importado) — nenhum batch é criado; a tela oferece "importar mesmo assim".
+  readonly duplicateConflict = signal<DuplicateConflict | null>(null);
 
   readonly fileName = computed(() => this.selectedFile()?.name ?? '');
   readonly batchId = computed(() => this.batch()?.id ?? '');
@@ -148,18 +154,20 @@ export class ImportComponent implements OnInit {
 
   clearFile(): void {
     this.selectedFile.set(null);
+    this.duplicateConflict.set(null);
   }
 
   // --- Upload / extração ---
 
-  upload(): void {
+  upload(force = false): void {
     const file = this.selectedFile();
     if (!file) {
       return;
     }
     this.uploading.set(true);
+    this.duplicateConflict.set(null);
     this.imports
-      .createImport({ file, importMode: 'NEW_TRANSACTIONS' })
+      .createImport({ file, importMode: 'NEW_TRANSACTIONS' }, { force })
       .pipe(finalize(() => this.uploading.set(false)))
       .subscribe({
         next: (batch) => {
@@ -168,8 +176,30 @@ export class ImportComponent implements OnInit {
             this.loadStaged(batch.id);
           }
         },
-        error: (e) => this.snackBar.open(this.errorText(e, 'Falha ao extrair a imagem.'), 'OK', { duration: 6000 }),
+        error: (e) => {
+          // 409 (mesmo arquivo já importado) tem tratamento PRÓPRIO — não é um erro genérico de
+          // snackbar, é uma decisão do usuário (cancelar ou reimportar mesmo assim).
+          const conflict = parseDuplicateConflict(e);
+          if (conflict) {
+            this.duplicateConflict.set(conflict);
+            return;
+          }
+          this.snackBar.open(this.errorText(e, 'Falha ao extrair o arquivo.'), 'OK', { duration: 6000 });
+        },
       });
+  }
+
+  /** Usuário decidiu reimportar mesmo com o arquivo já tendo sido importado antes. */
+  importAnyway(): void {
+    this.upload(true);
+  }
+
+  dismissConflict(): void {
+    this.duplicateConflict.set(null);
+  }
+
+  conflictText(conflict: DuplicateConflict): string {
+    return conflictMessage(conflict);
   }
 
   private loadStaged(batchId: string): void {
@@ -196,6 +226,7 @@ export class ImportComponent implements OnInit {
       payment_method: fieldValueAsString(s, 'payment_method'),
       accountId: null,
       categoryId: null,
+      duplicateCandidateOf: s.duplicateCandidateOf ?? null,
       confidences: {
         amount: fieldConfidence(s, 'amount'),
         transaction_date: fieldConfidence(s, 'transaction_date'),
@@ -278,6 +309,7 @@ export class ImportComponent implements OnInit {
     this.batch.set(null);
     this.rows.set([]);
     this.selectedFile.set(null);
+    this.duplicateConflict.set(null);
   }
 
   // --- Helpers de template (delegam à lógica pura) ---

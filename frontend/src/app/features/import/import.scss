@@ -23,8 +23,13 @@
 
 .upload-card,
 .failed-card,
+.conflict-card,
 .review-card {
   margin-bottom: 1rem;
+}
+
+.conflict-card {
+  text-align: center;
 }
 
 .dropzone {

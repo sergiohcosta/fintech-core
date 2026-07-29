@@ -5,7 +5,7 @@ import { provideRouter, Router } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 
 import { ImportComponent } from './import';
 import { ImportsService } from '../../core/api/imports/imports.service';
@@ -131,5 +131,55 @@ describe('ImportComponent', () => {
       'b1', { items: [{ stagedId: 's1', accountId: 'acc-1', categoryId: null }] },
     );
     expect(navSpy).toHaveBeenCalledWith(['/transactions']);
+  });
+
+  it('409 (arquivo já importado) mostra conflito em vez de snackbar, sem criar batch', () => {
+    const conflictError = {
+      status: 409,
+      error: { batchId: 'b-antigo', createdAt: '2026-07-01T10:00:00', filename: 'extrato.csv' },
+    };
+    vi.spyOn(imports, 'createImport').mockReturnValue(throwError(() => conflictError) as any);
+
+    const c = TestBed.createComponent(ImportComponent).componentInstance;
+    c.ngOnInit();
+    c.selectedFile.set(fakeImage());
+    c.upload();
+
+    expect(c.stage()).toBe('upload');  // nenhum batch foi criado
+    expect(c.duplicateConflict()).toEqual({ batchId: 'b-antigo', createdAt: '2026-07-01T10:00:00', filename: 'extrato.csv' });
+  });
+
+  it('"importar mesmo assim" reenvia com force=true e "cancelar" limpa o conflito', () => {
+    const conflictError = { status: 409, error: { batchId: 'b-antigo', createdAt: null, filename: null } };
+    const createSpy = vi
+      .spyOn(imports, 'createImport')
+      .mockReturnValueOnce(throwError(() => conflictError) as any)
+      .mockReturnValueOnce(of(extractedBatch) as any);
+    vi.spyOn(imports, 'listImportStaged').mockReturnValue(of([staged]) as any);
+
+    const c = TestBed.createComponent(ImportComponent).componentInstance;
+    c.ngOnInit();
+    c.selectedFile.set(fakeImage());
+    c.upload();
+    expect(c.duplicateConflict()).not.toBeNull();
+
+    c.importAnyway();
+    expect(createSpy).toHaveBeenLastCalledWith(expect.anything(), { force: true });
+    expect(c.duplicateConflict()).toBeNull();
+    expect(c.stage()).toBe('review');
+  });
+
+  it('linha com duplicateCandidateOf preenchido carrega a flag na row', () => {
+    const stagedDuplicado = { ...staged, id: 's2', duplicateCandidateOf: 's1' };
+    vi.spyOn(imports, 'createImport').mockReturnValue(of(extractedBatch) as any);
+    vi.spyOn(imports, 'listImportStaged').mockReturnValue(of([staged, stagedDuplicado]) as any);
+
+    const c = TestBed.createComponent(ImportComponent).componentInstance;
+    c.ngOnInit();
+    c.selectedFile.set(fakeImage());
+    c.upload();
+
+    expect(c.rows()[0].duplicateCandidateOf).toBeNull();
+    expect(c.rows()[1].duplicateCandidateOf).toBe('s1');
   });
 });

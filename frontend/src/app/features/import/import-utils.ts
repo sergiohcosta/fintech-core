@@ -119,6 +119,61 @@ export interface CategoryOption {
   name: string;
 }
 
+// --- Dedup por arquivo (409/force — Onda 4/5 da Fase 2) ---
+
+export interface DuplicateConflict {
+  batchId: string;
+  createdAt: string | null;
+  filename: string | null;
+}
+
+interface HttpErrorLike {
+  status?: number;
+  error?: { batchId?: string; createdAt?: string | null; filename?: string | null };
+}
+
+/**
+ * Reconhece um 409 de importação duplicada (corpo com `batchId`/`createdAt`/`filename`, gravado
+ * pelo `DuplicateImportException` do backend) e devolve `null` para qualquer outro erro — o
+ * componente decide o que fazer com cada caso, esta função só INTERPRETA a resposta HTTP.
+ */
+export function parseDuplicateConflict(error: unknown): DuplicateConflict | null {
+  const err = error as HttpErrorLike;
+  if (err?.status !== 409 || !err.error?.batchId) {
+    return null;
+  }
+  return {
+    batchId: err.error.batchId,
+    createdAt: err.error.createdAt ?? null,
+    filename: err.error.filename ?? null,
+  };
+}
+
+/** Data do conflito em pt-BR; "data desconhecida" se ausente/ilegível — nunca quebra a UI. */
+export function formatConflictDate(createdAt: string | null): string {
+  if (!createdAt) {
+    return 'data desconhecida';
+  }
+  const parsed = new Date(createdAt);
+  if (Number.isNaN(parsed.getTime())) {
+    return createdAt;
+  }
+  return parsed.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+/** Mensagem exibida no card de conflito — data do batch anterior + nome do arquivo, se houver. */
+export function conflictMessage(conflict: DuplicateConflict): string {
+  const when = formatConflictDate(conflict.createdAt);
+  const filenamePart = conflict.filename ? ` (${conflict.filename})` : '';
+  return `Este arquivo já foi importado em ${when}${filenamePart}.`;
+}
+
 /** Achata a árvore de categorias em opções planas, com o caminho no nome (Pai › Filho). */
 export function flattenCategories(
   tree: CategoryResponseDTO[] | undefined | null,

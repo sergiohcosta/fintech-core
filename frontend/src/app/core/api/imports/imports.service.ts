@@ -27,6 +27,7 @@ import {
 
 import type {
   CreateImportBody,
+  CreateImportParams,
   ImportBatchResponseDTO,
   ImportCommitRequestDTO,
   NormalizedBatchDTO,
@@ -73,7 +74,69 @@ type HttpClientObserveOptions = HttpClientOptions & {
   readonly observe?: 'body' | 'events' | 'response';
 };
 
+type AngularHttpParamValue = string | number | boolean | Array<string | number | boolean>;
+type AngularHttpParamValueWithNullable = AngularHttpParamValue | null;
 
+function filterParams(
+  params: Record<string, unknown>,
+  requiredNullableKeys?: ReadonlySet<string>,
+  preserveRequiredNullables?: false,
+  passthroughKeys?: undefined,
+): Record<string, AngularHttpParamValue>;
+function filterParams(
+  params: Record<string, unknown>,
+  requiredNullableKeys: ReadonlySet<string> | undefined,
+  preserveRequiredNullables: true,
+  passthroughKeys?: undefined,
+): Record<string, AngularHttpParamValueWithNullable>;
+function filterParams(
+  params: Record<string, unknown>,
+  requiredNullableKeys: ReadonlySet<string> | undefined,
+  preserveRequiredNullables: boolean | undefined,
+  passthroughKeys: ReadonlySet<string>,
+): Record<string, unknown>;
+function filterParams(
+  params: Record<string, unknown>,
+  requiredNullableKeys: ReadonlySet<string> = new Set(),
+  preserveRequiredNullables = false,
+  passthroughKeys: ReadonlySet<string> = new Set(),
+): Record<string, unknown> {
+  const filteredParams: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(params)) {
+    if (passthroughKeys.has(key)) {
+      if (value !== undefined) {
+        filteredParams[key] = value;
+      }
+      continue;
+    }
+    if (Array.isArray(value)) {
+      const filtered = value.filter(
+        (item) =>
+          item != null &&
+          (typeof item === 'string' ||
+            typeof item === 'number' ||
+            typeof item === 'boolean'),
+      ) as Array<string | number | boolean>;
+      if (filtered.length) {
+        filteredParams[key] = filtered;
+      }
+    } else if (
+      preserveRequiredNullables &&
+      value === null &&
+      requiredNullableKeys.has(key)
+    ) {
+      filteredParams[key] = null;
+    } else if (
+      value != null &&
+      (typeof value === 'string' ||
+        typeof value === 'number' ||
+        typeof value === 'boolean')
+    ) {
+      filteredParams[key] = value;
+    }
+  }
+  return filteredParams;
+}
 
 
 
@@ -186,24 +249,30 @@ export class ImportsService {
     );
   }
 /**
- * Multipart: envia a imagem (file) + o modo de importação. Aciona o VisionExtractor (Spring AI + Ollama), grava o batch EXTRACTED e a transação em staging (PENDING), derivando requires_review por threshold no backend. Falha de extração grava o batch como FAILED (o fallback é o formulário manual de transação).
- * @summary Extrai um comprovante (imagem) e cria um batch com a transação em staging
+ * Multipart: envia o arquivo (file) + o modo de importação. O ExtractionRouter escolhe o extrator por CONTEÚDO (nunca pelo Content-Type do navegador — ele mente, ex.: .ofx chega como application/octet-stream): imagem aciona o VisionExtractor (Spring AI + Ollama), CSV e OFX usam parsers determinísticos. Grava o batch EXTRACTED e as transações em staging (PENDING), derivando requires_review por threshold no backend. Falha de um extrator que RECONHECEU o arquivo mas não conseguiu processá-lo grava o batch como FAILED (o fallback é o formulário manual de transação) — formato que NENHUM extrator reconhece é 400 direto, sem gravar batch. Dedup por arquivo (mesmo tenant): reenviar o mesmo arquivo sem force=true é 409; force=true reimporta mesmo assim.
+ * @summary Extrai um arquivo (imagem, CSV ou OFX) e cria um batch com as transações em staging
  */
- createImport<TData = ImportBatchResponseDTO>(createImportBody: CreateImportBody, options?: HttpClientBodyOptions): Observable<TData>;
- createImport<TData = ImportBatchResponseDTO>(createImportBody: CreateImportBody, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
- createImport<TData = ImportBatchResponseDTO>(createImportBody: CreateImportBody, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+ createImport<TData = ImportBatchResponseDTO>(createImportBody: CreateImportBody,
+    params?: CreateImportParams, options?: HttpClientBodyOptions): Observable<TData>;
+ createImport<TData = ImportBatchResponseDTO>(createImportBody: CreateImportBody,
+    params?: CreateImportParams, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ createImport<TData = ImportBatchResponseDTO>(createImportBody: CreateImportBody,
+    params?: CreateImportParams, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
   createImport<TData = ImportBatchResponseDTO>(
-    createImportBody: CreateImportBody, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {const formData = new FormData();
+    createImportBody: CreateImportBody,
+    params?: CreateImportParams, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {const formData = new FormData();
 formData.append(`file`, createImportBody.file);
 formData.append(`importMode`, createImportBody.importMode);
+
+    const filteredParams = filterParams({...params, ...options?.params}, new Set<string>([]));
 
     if (options?.observe === 'events') {
       return this.http.post<TData>(
       `/api/imports`,
       formData,{
-        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+    ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'events',
-      }
+        params: filteredParams,}
     );
     }
 
@@ -211,18 +280,18 @@ formData.append(`importMode`, createImportBody.importMode);
       return this.http.post<TData>(
       `/api/imports`,
       formData,{
-        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+    ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'response',
-      }
+        params: filteredParams,}
     );
     }
 
     return this.http.post<TData>(
       `/api/imports`,
       formData,{
-        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+    ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'body',
-      }
+        params: filteredParams,}
     );
   }
 /**

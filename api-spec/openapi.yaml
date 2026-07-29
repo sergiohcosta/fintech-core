@@ -1059,6 +1059,10 @@ components:
             Motivo legível da falha, exibível ao usuário. Só preenchido quando status = FAILED —
             distingue causas que pedem ações diferentes (ex.: imagem com vários lançamentos vs.
             imagem ilegível).
+        sourceFilename:
+          type: string
+          nullable: true
+          description: Nome do arquivo enviado pelo usuário (nulo em batches de mock/legado sem arquivo).
         createdAt:
           type: string
           format: date-time
@@ -2316,12 +2320,28 @@ paths:
     post:
       tags: [imports]
       operationId: createImport
-      summary: Extrai um comprovante (imagem) e cria um batch com a transação em staging
+      summary: Extrai um arquivo (imagem, CSV ou OFX) e cria um batch com as transações em staging
       description: >-
-        Multipart: envia a imagem (file) + o modo de importação. Aciona o VisionExtractor
-        (Spring AI + Ollama), grava o batch EXTRACTED e a transação em staging (PENDING),
-        derivando requires_review por threshold no backend. Falha de extração grava o batch
-        como FAILED (o fallback é o formulário manual de transação).
+        Multipart: envia o arquivo (file) + o modo de importação. O ExtractionRouter escolhe o
+        extrator por CONTEÚDO (nunca pelo Content-Type do navegador — ele mente, ex.: .ofx chega
+        como application/octet-stream): imagem aciona o VisionExtractor (Spring AI + Ollama), CSV
+        e OFX usam parsers determinísticos. Grava o batch EXTRACTED e as transações em staging
+        (PENDING), derivando requires_review por threshold no backend. Falha de um extrator que
+        RECONHECEU o arquivo mas não conseguiu processá-lo grava o batch como FAILED (o fallback
+        é o formulário manual de transação) — formato que NENHUM extrator reconhece é 400 direto,
+        sem gravar batch. Dedup por arquivo (mesmo tenant): reenviar o mesmo arquivo sem force=true
+        é 409; force=true reimporta mesmo assim.
+      parameters:
+        - name: force
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: >-
+            Reimporta mesmo que este arquivo (mesmo hash) já tenha sido importado antes por este
+            tenant. Sem isso, reenviar o mesmo extrato é 409 (evita duplicar um mês inteiro de
+            lançamentos por engano).
       requestBody:
         required: true
         content:
@@ -2333,7 +2353,7 @@ paths:
                 file:
                   type: string
                   format: binary
-                  description: Imagem do comprovante (image/*).
+                  description: Comprovante (image/*), extrato CSV ou arquivo OFX (1.x ou 2.x).
                 importMode:
                   $ref: '#/components/schemas/ImportMode'
       responses:
@@ -2344,7 +2364,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/ImportBatchResponseDTO'
         '400':
-          description: Arquivo ausente ou tipo não suportado (não é imagem)
+          description: >-
+            Arquivo ausente, ou formato não reconhecido por nenhum extrator (nem imagem, nem
+            CSV, nem OFX — nenhum batch é gravado nesse caso).
+        '409':
+          description: >-
+            Este arquivo (mesmo hash) já foi importado antes por este tenant — frontend deve
+            oferecer "importar mesmo assim" (?force=true). Body contém batchId, createdAt e
+            filename do batch anterior.
 
   /api/imports/{id}/staged/{stagedId}:
     patch:
