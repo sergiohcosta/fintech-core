@@ -138,6 +138,15 @@
 			<version>0.16.0</version>
 		</dependency>
 
+		<!-- Parser de CSV (Fase 2) — aspas/escape/delimitador-dentro-de-campo é onde um parser
+		     caseiro erra silenciosamente. Cobre a leitura; o mapeamento de colunas (header,
+		     charset, decimal) é heurística nossa no CsvExtractor. -->
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-csv</artifactId>
+			<version>1.14.0</version>
+		</dependency>
+
 		<!-- Spring AI — starter do Ollama: auto-configura o ChatModel/ChatClient.Builder
 		     apontando para um servidor Ollama (default localhost:11434). É o adaptador
 		     agnóstico usado pelo VisionExtractor (Fase 1). Trocar de provider = trocar este
