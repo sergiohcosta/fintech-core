@@ -42,7 +42,7 @@ GET (lista ativas) · POST · GET/{id} (inclui `balance`) · PUT/{id} (PATCH sem
 - `countInLiquidBalance` → `sumNetLiquidBalanceByTenant()` → `totalAccountBalance` do Dashboard.
 - `countInNetWorth` → armazenado, ainda não consumido (futura tela de Patrimônio).
 - Frontend auto-ajusta `countInLiquidBalance` ao trocar tipo (override permitido).
-- `balance`: `SUM(CASE WHEN type=INCOME THEN amount ELSE -amount END) WHERE account=:account AND status=PAID`.
+- `balance`: `SUM(CASE WHEN type=INCOME THEN amount ELSE -amount END) WHERE account=:account AND status=PAID`. **Exceção `CREDIT_CARD` (#198):** filtra `status=PENDING` em vez de `PAID` — o saldo do cartão é a dívida em aberto (compras ainda não pagas), não o histórico de pagas. Ao pagar a fatura (`InvoiceService.pay`), as transações da fatura viram `PAID` e **saem** do saldo do cartão — o débito real já foi registrado como EXPENSE `PAID` na conta de origem.
 
 ## Categorias (`/api/categories`)
 
