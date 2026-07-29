@@ -4,7 +4,7 @@
 **Status:** proposto (aguardando aprovação)
 **Fonte do produto:** `docs/roadmap-extracao-e-conciliacao.md` — camada de cobertura universal (IA)
 **Spec anterior:** `docs/superpowers/specs/2026-07-24-extracao-fundacao-e-mvp-imagem-design.md` (Fases 0 e 1)
-**Épico raiz:** #154 — extração multi-mídia e conciliação de transações
+**Issue:** #197 · **Épico raiz:** #154 — extração multi-mídia e conciliação de transações
 **Plano de execução:** `docs/superpowers/plans/2026-07-29-extracao-gemini-primario-ollama-fallback.md`
 Stack: @tech.md · Domínio: @domain.md · Migrations: @database-schema.md
 
