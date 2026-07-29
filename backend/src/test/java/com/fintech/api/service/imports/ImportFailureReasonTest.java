@@ -16,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 /**
@@ -36,7 +35,9 @@ class ImportFailureReasonTest {
     @Autowired TenantRepository tenantRepository;
     @Autowired UserRepository userRepository;
 
-    @MockitoBean TransactionExtractor extractor;
+    // Nomeado: desde a Onda 2 (OfxExtractor) há 2 beans de TransactionExtractor no contexto —
+    // sem o nome, o @MockitoBean não sabe qual dos dois substituir.
+    @MockitoBean(name = "visionExtractor") TransactionExtractor extractor;
 
     private User persistUser() {
         Tenant t = new Tenant();
@@ -54,8 +55,11 @@ class ImportFailureReasonTest {
     }
 
     private ImportBatchResponseDTO uploadFailingWith(RuntimeException error) {
-        when(extractor.extract(any(), eq("image/jpeg"), any())).thenThrow(error);
-        return importService.createFromImage(IMAGE, "image/jpeg", ImportMode.NEW_TRANSACTIONS, persistUser());
+        when(extractor.supports(any())).thenReturn(true);
+        when(extractor.sourceType()).thenReturn(com.fintech.api.domain.enums.ImportSourceType.IMAGE);
+        when(extractor.extract(any())).thenThrow(error);
+        ExtractionInput input = new ExtractionInput(IMAGE, "recibo.jpg", "image/jpeg", ImportMode.NEW_TRANSACTIONS);
+        return importService.createFromFile(input, false, persistUser());
     }
 
     /** Recusa de escopo (#193): a mensagem que redigimos chega íntegra ao usuário. */

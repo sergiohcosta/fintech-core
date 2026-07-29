@@ -64,6 +64,15 @@ public class ImportBatch {
     @Column(name = "failure_reason", length = 500)
     private String failureReason;
 
+    // SHA-256 (hex) dos bytes do arquivo — chave de dedup por (tenant, hash), Onda 4 da Fase 2.
+    // NULL em batches de mock/legado (sem arquivo de origem).
+    @Column(name = "source_hash", length = 64)
+    private String sourceHash;
+
+    // Nome do arquivo enviado — proveniência, exibido na mensagem de conflito (409) de reimportação.
+    @Column(name = "source_filename")
+    private String sourceFilename;
+
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;
