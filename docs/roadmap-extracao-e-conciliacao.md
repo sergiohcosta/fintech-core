@@ -167,6 +167,8 @@ Princípio de ordenação: **construir de dentro pra fora** — cada fase é us�
 - [ ] Latência p95 upload→preview aceitável (poucos segundos, com feedback visual)
 - [ ] **Aprendizado:** custo real por extração (tokens/imagem) conhecido para precificação de planos
 
+**Fora de escopo (conhecido), com recusa explícita:** imagem contendo **múltiplas transações** (print do extrato completo, não um comprovante único). O extrator é 1:1 por desenho (schema plano — mais fácil pro modelo de visão preencher certo). O caso é **detectado e recusado** (#193, entregue): o modelo sinaliza a lista de lançamentos, a extração falha e o batch `FAILED` carrega o motivo exibível ao usuário — em vez de escolher uma linha arbitrária e descartar o resto calado. Suporte real a multi-transação por imagem é escopo da Fase 3 (#194).
+
 ---
 
 ### Fase 2 — CSV/OFX e revisão em lote
@@ -174,17 +176,19 @@ Princípio de ordenação: **construir de dentro pra fora** — cada fase é us�
 **Objetivo:** cobrir formatos que trazem muitas transações de uma vez.
 
 **Entregas**
-- Parser de CSV genérico (sem registry ainda — colunas comuns por aproximação)
-- Parser OFX (padrão único, vários bancos de uma vez)
-- UX de revisão em lote: lista, seleção múltipla, edição de categoria em massa
-- Dedup intra-batch (mesmo arquivo importado 2x não duplica)
-- Validação de sanidade embrionária (schema íntegro, datas plausíveis, totais consistentes quando o arquivo declara saldo/total)
+- Parser de CSV genérico (sem registry ainda — colunas comuns por aproximação) — **entregue, metade A**
+- Parser OFX (padrão único, vários bancos de uma vez) — **entregue, metade A**
+- UX de revisão em lote: lista, seleção múltipla, edição de categoria em massa — **pendente, metade B** (a tela de revisão continua item a item; validado manualmente que 40-45 linhas não trava, mas a UX de revisar dezenas de linhas uma a uma ainda não foi resolvida)
+- Dedup intra-batch (mesmo arquivo importado 2x não duplica) — **entregue, metade A** (via `external_id`/FITID ou trio data+valor+descrição; nenhuma linha descartada, só marcada)
+- Validação de sanidade embrionária (schema íntegro, datas plausíveis) — **entregue, metade A**; "totais consistentes quando o arquivo declara saldo/total" (ex.: `LEDGERBAL` do OFX) — **pendente, metade B**
+
+**Metade A entregue** (spec `docs/superpowers/specs/2026-07-28-extracao-fase2-csv-ofx-design.md`, plano `docs/superpowers/plans/2026-07-28-extracao-fase2-csv-ofx.md`, #196): `ExtractionRouter` generaliza a porta pra N transações por arquivo; `OfxExtractor` e `CsvExtractor` (parsers determinísticos); dedup por arquivo (409/`force`, `sha256` escopado por tenant) e intra-batch; guarda-corpo central de sanidade (`max-transactions`, data/valor implausível, zero linhas aproveitáveis); contrato (`force` no `openapi.yaml`) e frontend mínimo (aceita CSV/OFX, trata 409, badge de duplicata).
 
 **Critérios de saída**
-- [ ] Arquivos reais dos bancos dos usuários iniciais processados **sem erro silencioso** (erro explícito é ok; valor errado passando calado não é)
-- [ ] **Taxa de conclusão de revisão de batch** saudável: usuários revisam 30+ transações sem abandonar no meio
-- [ ] Dedup intra-batch funcionando
-- [ ] **Aprendizado:** distribuição real de bancos dos usuários — define quais templates construir na Fase 3
+- [ ] Arquivos reais dos bancos dos usuários iniciais processados **sem erro silencioso** (erro explícito é ok; valor errado passando calado não é) — validado só com arquivos sintéticos até aqui; falta rodar com extratos reais de usuários
+- [ ] **Taxa de conclusão de revisão de batch** saudável: usuários revisam 30+ transações sem abandonar no meio — depende da UX de revisão em lote (metade B)
+- [x] Dedup intra-batch funcionando
+- [ ] **Aprendizado:** distribuição real de bancos dos usuários — define quais templates construir na Fase 3 (ver nota na issue #196 — ainda não há volume real de uso pra medir isso)
 
 ---
 
@@ -198,6 +202,7 @@ Princípio de ordenação: **construir de dentro pra fora** — cada fase é us�
 - Registry de templates para os 2–3 bancos principais (definidos pelos dados da Fase 2) — cabeça da curva apenas
 - **Validações de sanidade pós-extração** (guarda-corpo comum a template e IA): soma × total declarado, datas × período do extrato, ranges plausíveis
 - **Telemetria por formato**: volume, custo em tokens, taxa de casamento de template por banco — a base tanto do alerta de drift quanto da decisão de quais templates criar/promover
+- **Extração multi-transação por imagem única** (print de extrato completo, não PDF): generalização do `TransactionExtractor`/`VisionExtractor` da Fase 1 (schema plano → lista), reaproveitando o mesmo caminho de visão que o PDF escaneado desta fase já implementa e as validações de sanidade acima (soma × total declarado). Spec própria antes de implementar — #194 (guarda-corpo de curto prazo em #193)
 
 **Critérios de saída**
 - [ ] **Taxa de reconhecimento de template ≥90%** para os bancos cobertos

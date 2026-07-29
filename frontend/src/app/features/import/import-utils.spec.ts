@@ -6,6 +6,7 @@ import type {
 import {
   allPendingHaveAccount,
   buildCommitRequest,
+  conflictMessage,
   confidenceLevel,
   directionLabel,
   fieldConfidence,
@@ -13,7 +14,9 @@ import {
   fieldValueAsString,
   flattenCategories,
   formatConfidence,
+  formatConflictDate,
   isLowConfidence,
+  parseDuplicateConflict,
   type CommitRow,
 } from './import-utils';
 
@@ -99,6 +102,57 @@ describe('allPendingHaveAccount', () => {
     expect(allPendingHaveAccount([])).toBe(false);
     // CONFIRMED não bloqueia; mas precisa existir ao menos uma PENDING com conta
     expect(allPendingHaveAccount([{ stagedId: 's1', accountId: 'a', categoryId: null, status: 'CONFIRMED' }])).toBe(false);
+  });
+});
+
+describe('parseDuplicateConflict', () => {
+  it('reconhece um 409 com batchId no corpo', () => {
+    const error = { status: 409, error: { batchId: 'b1', createdAt: '2026-07-01T10:00:00', filename: 'extrato.csv' } };
+    expect(parseDuplicateConflict(error)).toEqual({
+      batchId: 'b1',
+      createdAt: '2026-07-01T10:00:00',
+      filename: 'extrato.csv',
+    });
+  });
+
+  it('devolve null para qualquer outro erro (400, 500, sem batchId)', () => {
+    expect(parseDuplicateConflict({ status: 400, error: { message: 'formato não reconhecido' } })).toBeNull();
+    expect(parseDuplicateConflict({ status: 500 })).toBeNull();
+    expect(parseDuplicateConflict({ status: 409, error: {} })).toBeNull();
+    expect(parseDuplicateConflict(null)).toBeNull();
+  });
+
+  it('createdAt/filename ausentes viram null, não quebram', () => {
+    expect(parseDuplicateConflict({ status: 409, error: { batchId: 'b1' } })).toEqual({
+      batchId: 'b1',
+      createdAt: null,
+      filename: null,
+    });
+  });
+});
+
+describe('formatConflictDate', () => {
+  it('formata data ISO em pt-BR', () => {
+    expect(formatConflictDate('2026-07-01T10:30:00')).toContain('2026');
+  });
+
+  it('null/inválida não quebra a UI', () => {
+    expect(formatConflictDate(null)).toBe('data desconhecida');
+    expect(formatConflictDate('lixo-nao-e-data')).toBe('lixo-nao-e-data');
+  });
+});
+
+describe('conflictMessage', () => {
+  it('inclui data e nome do arquivo quando presentes', () => {
+    const msg = conflictMessage({ batchId: 'b1', createdAt: '2026-07-01T10:00:00', filename: 'extrato.csv' });
+    expect(msg).toContain('extrato.csv');
+    expect(msg).toContain('2026');
+  });
+
+  it('sem filename, não inclui parênteses vazios', () => {
+    const msg = conflictMessage({ batchId: 'b1', createdAt: null, filename: null });
+    expect(msg).not.toContain('()');
+    expect(msg).toContain('data desconhecida');
   });
 });
 

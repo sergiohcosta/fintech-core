@@ -4,6 +4,7 @@ import com.fintech.api.domain.account.Account;
 import com.fintech.api.domain.account.CreditCardDetails;
 import com.fintech.api.domain.enums.AccountType;
 import com.fintech.api.domain.enums.CardBrand;
+import com.fintech.api.domain.enums.TransactionStatus;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.account.*;
@@ -117,6 +118,38 @@ class AccountServiceTest {
         service.archive(account.getId(), user);
 
         assertThat(account.isActive()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Saldo de cartão de crédito soma transações PENDING, não PAID (#198)")
+    void creditCardBalanceUsesPendingStatus() {
+        User user = buildUser();
+        Account account = Account.builder().id(UUID.randomUUID()).name("Nubank")
+                .type(AccountType.CREDIT_CARD).active(true).tenant(user.getTenant()).build();
+        when(accountRepository.findByIdAndTenant(account.getId(), user.getTenant()))
+                .thenReturn(Optional.of(account));
+        when(creditCardDetailsRepository.findByAccount(account)).thenReturn(Optional.empty());
+        when(accountRepository.calculateBalance(any(), any(), any())).thenReturn(new BigDecimal("-350.00"));
+
+        AccountResponseDTO result = service.findById(account.getId(), user);
+
+        verify(accountRepository).calculateBalance(eq(account), any(), eq(TransactionStatus.PENDING));
+        assertThat(result.balance()).isEqualByComparingTo("-350.00");
+    }
+
+    @Test
+    @DisplayName("Saldo de conta corrente continua somando apenas PAID")
+    void checkingBalanceUsesPaidStatus() {
+        User user = buildUser();
+        Account account = Account.builder().id(UUID.randomUUID()).name("Bradesco")
+                .type(AccountType.CHECKING).active(true).tenant(user.getTenant()).build();
+        when(accountRepository.findByIdAndTenant(account.getId(), user.getTenant()))
+                .thenReturn(Optional.of(account));
+        when(accountRepository.calculateBalance(any(), any(), any())).thenReturn(BigDecimal.ZERO);
+
+        service.findById(account.getId(), user);
+
+        verify(accountRepository).calculateBalance(eq(account), any(), eq(TransactionStatus.PAID));
     }
 
     private User buildUser() {

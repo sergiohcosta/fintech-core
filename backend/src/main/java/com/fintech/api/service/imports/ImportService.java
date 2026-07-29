@@ -2,7 +2,6 @@ package com.fintech.api.service.imports;
 
 import com.fintech.api.domain.enums.ImportBatchStatus;
 import com.fintech.api.domain.enums.ImportMode;
-import com.fintech.api.domain.enums.ImportSourceType;
 import com.fintech.api.domain.enums.StagedTransactionStatus;
 import com.fintech.api.domain.enums.TransactionStatus;
 import com.fintech.api.domain.enums.TransactionType;
@@ -21,6 +20,7 @@ import com.fintech.api.dto.imports.StagedTransactionResponseDTO;
 import com.fintech.api.dto.transaction.TransactionRequestDTO;
 import com.fintech.api.dto.transaction.TransactionResponseDTO;
 import com.fintech.api.exception.BusinessException;
+import com.fintech.api.exception.DuplicateImportException;
 import com.fintech.api.exception.EntityNotFoundException;
 import com.fintech.api.repository.ImportBatchRepository;
 import com.fintech.api.repository.StagedTransactionRepository;
@@ -32,7 +32,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,7 +57,7 @@ public class ImportService {
 
     private final ImportBatchRepository batchRepository;
     private final StagedTransactionRepository stagedRepository;
-    private final TransactionExtractor extractor;
+    private final ExtractionRouter extractionRouter;
     // Reusa o CAMINHO de criação de transação existente (fatura de cartão, parcelas, tenant) —
     // o commit não reimplementa regra de lançamento nenhuma (spec §6.5).
     private final TransactionService transactionService;
@@ -68,46 +71,95 @@ public class ImportService {
     @Value("${import.review.amount-threshold:0.95}")
     private BigDecimal amountThreshold;
 
-    @Value("${import.vision.extractor-version:unknown}")
-    private String extractorVersion;
+    // Teto de transações por arquivo — um CSV/OFX gigante não deve travar o commit nem virar um
+    // batch impraticável de revisar. Property (não hardcode) pro produto ajustar sem redeploy.
+    @Value("${import.file.max-transactions:500}")
+    private int maxTransactions;
 
     // ---------------------------------------------------------------------------------------
-    // Fase 1 — upload de imagem
+    // Fase 1/2 — upload de arquivo (imagem, CSV, OFX...)
     // ---------------------------------------------------------------------------------------
 
     /**
-     * Extrai um comprovante (imagem) e grava o batch + a staging. Falha de extração NÃO derruba
-     * o usuário: grava um batch {@code FAILED} e o frontend oferece o formulário manual (§6).
+     * Extrai um arquivo e grava o batch + a staging. O {@link ExtractionRouter} escolhe o extrator
+     * por CONTEÚDO — este método não sabe (nem precisa saber) qual formato é. Formato que NENHUM
+     * extrator reconhece propaga {@link BusinessException} (400, nenhum batch gravado — não há
+     * {@code sourceType} para persistir). Falha de um extrator que RECONHECEU o arquivo mas não
+     * conseguiu processá-lo NÃO derruba o usuário: grava um batch {@code FAILED} e o frontend
+     * oferece o formulário manual (§6).
+     *
+     * <p>{@code force}: dedup por arquivo (Onda 4) — o MESMO arquivo (por {@code sha256}) já
+     * importado antes por este tenant vira {@link DuplicateImportException} (409), a menos que o
+     * chamador passe {@code force=true} (reimportar é caso legítimo: extrato corrigido, etc.).
      */
     @Transactional
-    public ImportBatchResponseDTO createFromImage(byte[] imageBytes, String mimeType, ImportMode mode, User user) {
-        if (imageBytes == null || imageBytes.length == 0) {
-            throw new BusinessException("Arquivo de imagem vazio.");
+    public ImportBatchResponseDTO createFromFile(ExtractionInput input, boolean force, User user) {
+        if (input.content() == null || input.content().length == 0) {
+            throw new BusinessException("Arquivo vazio.");
         }
-        if (mimeType == null || !mimeType.toLowerCase().startsWith("image/")) {
-            throw new BusinessException("Tipo de arquivo não suportado: envie uma imagem (image/*).");
+        ImportMode effectiveMode = (input.mode() == null) ? ImportMode.NEW_TRANSACTIONS : input.mode();
+        ExtractionInput effectiveInput = new ExtractionInput(input.content(), input.filename(), input.mimeType(), effectiveMode);
+
+        // Hash ANTES de extrair — não gasta compute de extração pra descobrir que era repetido.
+        String sourceHash = sha256Hex(input.content());
+        if (!force) {
+            batchRepository.findFirstByTenantAndSourceHashOrderByCreatedAtDesc(user.getTenant(), sourceHash)
+                    .ifPresent(existing -> { throw new DuplicateImportException(existing); });
         }
-        ImportMode effectiveMode = (mode == null) ? ImportMode.NEW_TRANSACTIONS : mode;
+
+        // route() PODE lançar BusinessException (nenhum extrator reconhece o formato) — propaga
+        // direto como 400, sem passar pelo catch abaixo (não há sourceType para gravar um batch).
+        TransactionExtractor extractor = extractionRouter.route(effectiveInput);
 
         try {
-            NormalizedBatchDTO normalized = extractor.extract(imageBytes, mimeType, effectiveMode);
-            return createBatch(normalized, user);
+            NormalizedBatchDTO normalized = extractor.extract(effectiveInput);
+            return createBatch(normalized, sourceHash, input.filename(), user);
         } catch (Exception e) {
             // ExtractionException (guarda-corpo/provider) OU qualquer erro inesperado → FAILED.
             // O batch FAILED é registrado (proveniência) e o fallback manual assume no frontend.
-            log.error("Extração de imagem falhou; gravando batch FAILED. tenant={}, causa={}",
-                    user.getTenant().getId(), e.getMessage());
+            log.error("Extração de arquivo falhou; gravando batch FAILED. tenant={}, extrator={}, causa={}",
+                    user.getTenant().getId(), extractor.getClass().getSimpleName(), e.getMessage());
             ImportBatch failed = batchRepository.save(ImportBatch.builder()
                     .tenant(user.getTenant())
                     .createdBy(user)
                     .importMode(effectiveMode)
-                    .sourceType(ImportSourceType.IMAGE)
-                    .extractorUsed("vision_ollama")
-                    .extractorVersion(extractorVersion)
+                    .sourceType(extractor.sourceType())
+                    .extractorUsed(extractor.getClass().getSimpleName())
+                    .extractorVersion(extractor.extractorVersion())
+                    .sourceHash(sourceHash)
+                    .sourceFilename(input.filename())
                     .status(ImportBatchStatus.FAILED)
+                    .failureReason(failureReasonFor(e))
                     .build());
             return ImportBatchResponseDTO.fromEntity(failed);
         }
+    }
+
+    /** SHA-256 em hex — sempre disponível na JVM (algoritmo padrão do {@code MessageDigest}). */
+    private String sha256Hex(byte[] content) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(content);
+            StringBuilder hex = new StringBuilder(digest.length * 2);
+            for (byte b : digest) {
+                hex.append(String.format("%02x", b));
+            }
+            return hex.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 indisponível na JVM.", e);
+        }
+    }
+
+    /**
+     * Mensagem de falha exibida ao usuário. Só a {@link ExtractionException} é repassada — ela é
+     * redigida por nós, em PT-BR, para o usuário final. Qualquer outra exceção (timeout do
+     * provider, NPE, erro de parse) carrega detalhe interno na mensagem e vira texto genérico:
+     * a borda da API não é lugar para mensagem de infra vazar (#193).
+     */
+    private String failureReasonFor(Exception e) {
+        return (e instanceof ExtractionException && e.getMessage() != null)
+                ? e.getMessage()
+                : "Não foi possível ler esta imagem. Ela pode estar ilegível ou o serviço de "
+                        + "extração pode estar indisponível.";
     }
 
     // ---------------------------------------------------------------------------------------
@@ -117,9 +169,45 @@ public class ImportService {
     /**
      * Grava um batch (já "extraído") + suas transações em staging. Deriva {@code requiresReview}
      * no código por threshold — o campo homônimo do DTO de entrada é ignorado de propósito.
+     * Sem arquivo de origem (mock/Fase 0) — {@code sourceHash}/{@code sourceFilename} nulos.
      */
     @Transactional
     public ImportBatchResponseDTO createBatch(NormalizedBatchDTO batch, User user) {
+        return createBatch(batch, null, null, user);
+    }
+
+    /**
+     * Caminho comum a TODOS os extratores (imagem, OFX, CSV...) — guarda-corpo de sanidade e
+     * dedup intra-batch vivem aqui, não em cada extrator, pra não duplicar regra por formato.
+     */
+    @Transactional
+    public ImportBatchResponseDTO createBatch(NormalizedBatchDTO batch, String sourceHash, String sourceFilename, User user) {
+        // Sanidade nº1: arquivo gigante não vira um batch impraticável de revisar/commitar.
+        if (batch.transactions().size() > maxTransactions) {
+            return saveFailedBatch(batch, sourceHash, sourceFilename, user,
+                    "Arquivo tem " + batch.transactions().size() + " transações — acima do limite de "
+                            + maxTransactions + " suportado. Divida o arquivo em partes menores.");
+        }
+
+        // Sanidade nº2 (comum a todos os extratores): data fora de [hoje-10a, hoje+1a] ou valor
+        // ausente/zero zera a CONFIANÇA do campo (nunca descarta a linha) — cada extrator já faz
+        // sua própria checagem de formato; esta é a rede de segurança central, igual pra todos.
+        List<Map<String, StagedFieldValue>> allFields = batch.transactions().stream()
+                .map(tx -> applyCentralSanity(toFieldsMap(tx.fields())))
+                .toList();
+
+        // Sanidade nº3: zero linhas aproveitáveis (nenhum amount legível) → falha explícita, não
+        // um batch vazio ou cheio de lixo pro usuário revisar linha por linha. Reusa o resultado
+        // da sanidade acima: confiança > 0 em amount SÓ sobrevive se o valor era parseável e ≠ 0.
+        boolean anyUsable = allFields.stream().anyMatch(fields -> {
+            StagedFieldValue amount = fields.get("amount");
+            return amount != null && amount.confidence() != null && amount.confidence().signum() > 0;
+        });
+        if (!anyUsable) {
+            return saveFailedBatch(batch, sourceHash, sourceFilename, user,
+                    "Nenhuma transação aproveitável foi encontrada neste arquivo.");
+        }
+
         ImportBatch entity = batchRepository.save(ImportBatch.builder()
                 .tenant(user.getTenant())
                 .createdBy(user)
@@ -127,13 +215,24 @@ public class ImportService {
                 .sourceType(batch.sourceType())
                 .extractorUsed(batch.extractorUsed())
                 .extractorVersion(batch.extractorVersion())
+                .sourceHash(sourceHash)
+                .sourceFilename(sourceFilename)
                 // O batch chega "extraído". Aqui vira EXTRACTED; FAILED é o caminho de exceção acima.
                 .status(ImportBatchStatus.EXTRACTED)
                 .build());
 
-        for (NormalizedTransactionDTO tx : batch.transactions()) {
-            Map<String, StagedFieldValue> fields = toFieldsMap(tx.fields());
-            stagedRepository.save(StagedTransaction.builder()
+        // Dedup INTRA-batch: FITID repetido (OFX, chave forte) ou trio data+valor+descrição
+        // (CSV, sem identificador único) → a segunda ocorrência aponta pra primeira. NENHUMA
+        // linha é descartada — quem decide o que fazer com a duplicata é o usuário na revisão.
+        Map<String, UUID> seenDedupKeys = new HashMap<>();
+        List<NormalizedTransactionDTO> transactions = batch.transactions();
+        for (int i = 0; i < transactions.size(); i++) {
+            NormalizedTransactionDTO tx = transactions.get(i);
+            Map<String, StagedFieldValue> fields = allFields.get(i);
+            String dedupKey = dedupKey(fields);
+            UUID duplicateOf = dedupKey != null ? seenDedupKeys.get(dedupKey) : null;
+
+            StagedTransaction saved = stagedRepository.save(StagedTransaction.builder()
                     .batch(entity)
                     .tenant(user.getTenant())  // tenant denormalizado — defesa nº1 (spec §3)
                     .fields(fields)
@@ -141,12 +240,82 @@ public class ImportService {
                     .suggestedCategoryConfidence(tx.suggestedCategoryConfidence())
                     .overallConfidence(tx.overallConfidence())
                     .requiresReview(deriveRequiresReview(fields, tx.overallConfidence()))
-                    .duplicateCandidateOf(tx.duplicateCandidateOf())
+                    .duplicateCandidateOf(duplicateOf)
                     .status(StagedTransactionStatus.PENDING)
                     .build());
+
+            if (dedupKey != null) {
+                seenDedupKeys.putIfAbsent(dedupKey, saved.getId());
+            }
         }
 
         return ImportBatchResponseDTO.fromEntity(entity);
+    }
+
+    private ImportBatchResponseDTO saveFailedBatch(
+            NormalizedBatchDTO batch, String sourceHash, String sourceFilename, User user, String reason) {
+        ImportBatch failed = batchRepository.save(ImportBatch.builder()
+                .tenant(user.getTenant())
+                .createdBy(user)
+                .importMode(batch.importMode())
+                .sourceType(batch.sourceType())
+                .extractorUsed(batch.extractorUsed())
+                .extractorVersion(batch.extractorVersion())
+                .sourceHash(sourceHash)
+                .sourceFilename(sourceFilename)
+                .status(ImportBatchStatus.FAILED)
+                .failureReason(reason)
+                .build());
+        return ImportBatchResponseDTO.fromEntity(failed);
+    }
+
+    /**
+     * Guarda-corpo central (comum a todos os extratores): valor ausente/zero ou data fora de uma
+     * janela plausível ({@code [hoje-10 anos, hoje+1 ano]}) zera a CONFIANÇA do campo — nunca
+     * apaga o valor (o usuário ainda vê o que foi lido e corrige na revisão).
+     */
+    private Map<String, StagedFieldValue> applyCentralSanity(Map<String, StagedFieldValue> fields) {
+        Map<String, StagedFieldValue> adjusted = new LinkedHashMap<>(fields);
+
+        StagedFieldValue amount = adjusted.get("amount");
+        if (amount != null) {
+            BigDecimal amountValue = toBigDecimal(amount.value());
+            if (amountValue == null || amountValue.compareTo(BigDecimal.ZERO) == 0) {
+                adjusted.put("amount", new StagedFieldValue(amount.value(), BigDecimal.ZERO));
+            }
+        }
+
+        StagedFieldValue date = adjusted.get("transaction_date");
+        if (date != null) {
+            LocalDate parsedDate = toLocalDate(date.value());
+            boolean implausible = parsedDate == null
+                    || parsedDate.isBefore(LocalDate.now().minusYears(10))
+                    || parsedDate.isAfter(LocalDate.now().plusYears(1));
+            if (implausible) {
+                adjusted.put("transaction_date", new StagedFieldValue(date.value(), BigDecimal.ZERO));
+            }
+        }
+
+        return adjusted;
+    }
+
+    /**
+     * Chave de dedup intra-batch: {@code external_id} (FITID do OFX) é AUTORIDADE — único por
+     * transação segundo o padrão OFX. Sem ele (CSV), cai no trio (data, valor, descrição); sem
+     * NENHUM dado pra formar chave, devolve {@code null} (não arrisca dedup por coincidência vazia).
+     */
+    private String dedupKey(Map<String, StagedFieldValue> fields) {
+        StagedFieldValue externalId = fields.get("external_id");
+        if (externalId != null && externalId.value() != null) {
+            return "EXT:" + externalId.value();
+        }
+        Object date = fields.get("transaction_date") != null ? fields.get("transaction_date").value() : null;
+        Object amount = fields.get("amount") != null ? fields.get("amount").value() : null;
+        Object description = fields.get("description") != null ? fields.get("description").value() : null;
+        if (date == null && amount == null && description == null) {
+            return null;
+        }
+        return "TRIO:" + date + "|" + amount + "|" + description;
     }
 
     @Transactional(readOnly = true)

@@ -8,6 +8,8 @@ import com.fintech.api.dto.imports.StagedFieldValueDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
@@ -34,10 +36,22 @@ import java.util.Map;
  *
  * <p>{@code requires_review} NÃO é decidido aqui (§2.f) — o {@code ImportService} deriva por
  * threshold. Este extrator só produz valores + confiança por campo.
+ *
+ * <p>{@code @Order(LOWEST)}: é o ÚLTIMO extrator do funil do {@link ExtractionRouter} (roadmap
+ * §1.2 — padrão universal → genérico → IA). IA é cara e ambígua; só entra quando nenhum parser
+ * determinístico (OFX, CSV) reconheceu o arquivo.
  */
 @Component
+@Order(Ordered.LOWEST_PRECEDENCE)
 @Slf4j
 public class VisionExtractor implements TransactionExtractor {
+
+    // Magic numbers dos formatos de imagem aceitos — supports() decide por BYTES, nunca pelo
+    // mimeType do cliente (o browser erra/mente o Content-Type com frequência).
+    private static final byte[] JPEG = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF};
+    private static final byte[] PNG = {(byte) 0x89, 0x50, 0x4E, 0x47};
+    private static final byte[] GIF = {0x47, 0x49, 0x46};
+    private static final byte[] WEBP_RIFF = {0x52, 0x49, 0x46, 0x46};
 
     private final ChatClient chatClient;
     private final String model;
@@ -45,6 +59,13 @@ public class VisionExtractor implements TransactionExtractor {
 
     // Formato pt-BR de data — fallback quando o modelo devolve dd/MM/yyyy apesar do pedido de ISO.
     private static final DateTimeFormatter BR_DATE = DateTimeFormatter.ofPattern("dd/MM/uuuu");
+
+    // Mensagem exibida ao usuário quando a imagem está fora do escopo da Fase 1 (#193). Fica
+    // pública porque é contrato de comportamento coberto por teste, não texto solto.
+    public static final String MULTIPLE_TRANSACTIONS_MESSAGE =
+            "Esta imagem parece conter vários lançamentos (extrato ou fatura). Por enquanto só "
+                    + "conseguimos ler um comprovante por vez — envie o comprovante de uma única "
+                    + "transação ou lance manualmente.";
 
     // Prompt fixo. Português alinhado ao domínio (comprovantes/recibos BR). Pedimos confiança
     // por campo E agregada — é o que alimenta o requires_review derivado depois. As instruções
@@ -71,6 +92,10 @@ public class VisionExtractor implements TransactionExtractor {
             - paymentMethod: pix, credito, debito, dinheiro ou boleto, conforme a imagem.
             - Para cada campo, informe uma confiança de 0.0 a 1.0 na sua leitura.
             - overallConfidence: sua confiança agregada na extração completa.
+            - multipleTransactionsDetected: true SOMENTE se a imagem mostrar uma LISTA de vários
+              lançamentos (extrato bancário, fatura de cartão, histórico) — várias linhas, cada
+              uma com sua própria data e seu próprio valor. Um comprovante único é false, mesmo
+              que mostre vários números (taxas, saldo, total). Conte as LINHAS de lançamento.
             """;
 
     public VisionExtractor(
@@ -83,9 +108,51 @@ public class VisionExtractor implements TransactionExtractor {
     }
 
     @Override
-    public NormalizedBatchDTO extract(byte[] imageBytes, String mimeType, ImportMode mode) {
+    public boolean supports(ExtractionInput input) {
+        byte[] content = input.content();
+        return startsWith(content, JPEG) || startsWith(content, PNG) || startsWith(content, GIF)
+                || startsWith(content, WEBP_RIFF);
+    }
+
+    private boolean startsWith(byte[] content, byte[] magic) {
+        if (content == null || content.length < magic.length) {
+            return false;
+        }
+        for (int i = 0; i < magic.length; i++) {
+            if (content[i] != magic[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public ImportSourceType sourceType() {
+        return ImportSourceType.IMAGE;
+    }
+
+    @Override
+    public String extractorVersion() {
+        return extractorVersion;
+    }
+
+    @Override
+    public NormalizedBatchDTO extract(ExtractionInput input) {
+        byte[] imageBytes = input.content();
+        ImportMode mode = input.mode();
+        // mimeType do cliente é só um HINT pro Spring AI montar o Resource — quem decide se é
+        // imagem de verdade é o supports() por magic number, chamado antes pelo router.
+        String mimeType = input.mimeType() != null ? input.mimeType() : "image/jpeg";
         MimeType mime = MimeTypeUtils.parseMimeType(mimeType);
-        Resource imageResource = new ByteArrayResource(imageBytes);
+        // ByteArrayResource anônimo com getFilename() pra Spring AI serializar corretamente
+        // (sem filename, o multipart fica malformado → Ollama rejeita com zlib error).
+        String filename = resolveFilename(mime);
+        Resource imageResource = new ByteArrayResource(imageBytes) {
+            @Override
+            public String getFilename() {
+                return filename;
+            }
+        };
 
         long startNanos = System.nanoTime();
         LlmReceiptExtractionDTO raw;
@@ -119,6 +186,18 @@ public class VisionExtractor implements TransactionExtractor {
      * derruba a extração (o usuário completa na revisão), mas zera a confiança para exigir olho.
      */
     private NormalizedBatchDTO toNormalizedBatch(LlmReceiptExtractionDTO raw, ImportMode mode) {
+        // ORDEM IMPORTA: a recusa por multi-transação vem ANTES da validação de valor. Num print
+        // de extrato o modelo escolhe uma linha arbitrária e devolve um amount perfeitamente
+        // plausível — se o check de valor rodasse primeiro, o caso fora de escopo passaria e as
+        // demais linhas seriam descartadas em silêncio (#193).
+        //
+        // TRUE.equals (e não `raw.multipleTransactionsDetected()`) porque null = modelo que não
+        // preencheu a flag: nesse caso extrai normalmente. Ausência de sinal não é sinal de recusa
+        // — senão trocaríamos perda silenciosa de dado por recusa indevida de comprovante válido.
+        if (Boolean.TRUE.equals(raw.multipleTransactionsDetected())) {
+            throw new ExtractionException(MULTIPLE_TRANSACTIONS_MESSAGE);
+        }
+
         if (raw.amount() == null || raw.amount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new ExtractionException(
                     "Valor extraído ausente ou não plausível (amount=" + raw.amount() + ").");
@@ -192,6 +271,19 @@ public class VisionExtractor implements TransactionExtractor {
 
     private String blankToNull(String value) {
         return (value == null || value.isBlank()) ? null : value.trim();
+    }
+
+    private String resolveFilename(MimeType mime) {
+        if (mime == null) {
+            return "receipt.jpg";
+        }
+        String subtype = mime.getSubtype().toLowerCase();
+        return switch (subtype) {
+            case "png" -> "receipt.png";
+            case "gif" -> "receipt.gif";
+            case "webp" -> "receipt.webp";
+            default -> "receipt.jpg";
+        };
     }
 
     private record NormalizedDate(String isoValue, BigDecimal confidence) {}

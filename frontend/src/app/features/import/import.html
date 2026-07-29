@@ -1,57 +1,75 @@
 <div class="import-page">
   <h1 class="page-title">
     <mat-icon>document_scanner</mat-icon>
-    Importar comprovante
+    Importar transações
   </h1>
 
   <!-- ETAPA 1: UPLOAD -->
   @if (stage() === 'upload') {
-    <mat-card appearance="outlined" class="upload-card">
-      <mat-card-content>
-        <p class="hint">
-          Envie a foto de um comprovante (recibo, PIX, nota). Vamos extrair valor, data e
-          descrição automaticamente — você confere antes de lançar.
-        </p>
+    @if (duplicateConflict(); as conflict) {
+      <!-- Dedup por arquivo (409): nenhum batch foi criado — usuário decide cancelar ou reimportar. -->
+      <mat-card appearance="outlined" class="conflict-card">
+        <mat-card-content>
+          <mat-icon class="failed-icon" color="warn">warning</mat-icon>
+          <h2>Este arquivo já foi importado</h2>
+          <p class="hint">{{ conflictText(conflict) }}</p>
+        </mat-card-content>
+        <mat-card-actions align="end">
+          <button mat-button type="button" (click)="dismissConflict()">Cancelar</button>
+          <button mat-flat-button color="primary" type="button" (click)="importAnyway()">
+            <mat-icon>refresh</mat-icon> Importar mesmo assim
+          </button>
+        </mat-card-actions>
+      </mat-card>
+    } @else {
+      <mat-card appearance="outlined" class="upload-card">
+        <mat-card-content>
+          <p class="hint">
+            Envie a foto de um comprovante (recibo, PIX, nota), um extrato CSV ou um arquivo OFX
+            do seu banco. Vamos extrair valor, data e descrição automaticamente — você confere
+            antes de lançar.
+          </p>
 
-        <div
-          class="dropzone"
-          [class.dragging]="dragging()"
-          (dragover)="onDragOver($event)"
-          (dragleave)="onDragLeave($event)"
-          (drop)="onDrop($event)">
-          <mat-icon class="dropzone-icon">cloud_upload</mat-icon>
-          @if (fileName()) {
-            <p class="file-name">{{ fileName() }}</p>
-            <button mat-button color="warn" type="button" (click)="clearFile()">
-              <mat-icon>close</mat-icon> Remover
-            </button>
-          } @else {
-            <p>Arraste uma imagem aqui ou</p>
-            <label class="file-input-label">
-              <input type="file" accept="image/*" hidden (change)="onFileSelected($event)" />
-              <span mat-stroked-button>Escolher arquivo</span>
-            </label>
+          <div
+            class="dropzone"
+            [class.dragging]="dragging()"
+            (dragover)="onDragOver($event)"
+            (dragleave)="onDragLeave($event)"
+            (drop)="onDrop($event)">
+            <mat-icon class="dropzone-icon">cloud_upload</mat-icon>
+            @if (fileName()) {
+              <p class="file-name">{{ fileName() }}</p>
+              <button mat-button color="warn" type="button" (click)="clearFile()">
+                <mat-icon>close</mat-icon> Remover
+              </button>
+            } @else {
+              <p>Arraste um arquivo aqui ou</p>
+              <label class="file-input-label">
+                <input type="file" accept=".csv,.ofx,image/*" hidden (change)="onFileSelected($event)" />
+                <span mat-stroked-button>Escolher arquivo</span>
+              </label>
+            }
+          </div>
+
+          @if (uploading()) {
+            <mat-progress-bar mode="indeterminate" />
+            <p class="hint center">Extraindo dados do arquivo…</p>
           }
-        </div>
+        </mat-card-content>
 
-        @if (uploading()) {
-          <mat-progress-bar mode="indeterminate" />
-          <p class="hint center">Extraindo dados da imagem…</p>
-        }
-      </mat-card-content>
-
-      <mat-card-actions align="end">
-        <button
-          mat-flat-button
-          color="primary"
-          type="button"
-          [disabled]="!selectedFile() || uploading()"
-          (click)="upload()">
-          <mat-icon>auto_awesome</mat-icon>
-          Extrair
-        </button>
-      </mat-card-actions>
-    </mat-card>
+        <mat-card-actions align="end">
+          <button
+            mat-flat-button
+            color="primary"
+            type="button"
+            [disabled]="!selectedFile() || uploading()"
+            (click)="upload()">
+            <mat-icon>auto_awesome</mat-icon>
+            Extrair
+          </button>
+        </mat-card-actions>
+      </mat-card>
+    }
   }
 
   <!-- ETAPA 2 (falha): FALLBACK MANUAL -->
@@ -59,14 +77,11 @@
     <mat-card appearance="outlined" class="failed-card">
       <mat-card-content>
         <mat-icon class="failed-icon" color="warn">report_problem</mat-icon>
-        <h2>Não foi possível extrair este comprovante</h2>
-        <p class="hint">
-          A imagem pode estar ilegível ou o serviço de extração indisponível. Você pode lançar a
-          transação manualmente.
-        </p>
+        <h2>Não foi possível extrair este arquivo</h2>
+        <p class="hint">{{ failureReason() }} Você pode lançar a transação manualmente.</p>
       </mat-card-content>
       <mat-card-actions align="end">
-        <button mat-button type="button" (click)="reset()">Tentar outra imagem</button>
+        <button mat-button type="button" (click)="reset()">Tentar outro arquivo</button>
         <button mat-flat-button color="primary" type="button" (click)="goToManual()">
           <mat-icon>edit</mat-icon> Lançar manualmente
         </button>
@@ -93,6 +108,12 @@
             <div class="review-flag">
               <mat-icon color="warn">flag</mat-icon>
               <span>Revisar com atenção</span>
+            </div>
+          }
+          @if (row.duplicateCandidateOf) {
+            <div class="review-flag duplicate-flag" matTooltip="Outra linha deste arquivo tem os mesmos dados">
+              <mat-icon color="warn">content_copy</mat-icon>
+              <span>Possível duplicata</span>
             </div>
           }
 

@@ -26,7 +26,8 @@ Tenant (UUID, budgetCycleStartDay)
   │    └── BudgetItem (description, amount, type, expectedDate, source, status,
   │                    category?, account?, recurrenceRule?, recurrenceOccurrenceDate?,
   │                    transaction?, installmentGroup?)
-  ├── ImportBatch (importMode, sourceType, extractorUsed, extractorVersion, status, createdBy)  [fundação da extração]
+  ├── ImportBatch (importMode, sourceType, extractorUsed, extractorVersion, status, failureReason?,
+  │               sourceHash?, sourceFilename?, createdBy)  [fundação da extração]
   │    └── StagedTransaction (fields JSONB {value,confidence} por campo, suggestedCategoryCode?,
   │                           suggestedCategoryConfidence?, overallConfidence?, requiresReview [derivado],
   │                           duplicateCandidateOf?, promotedTransactionId? → Transaction, status)

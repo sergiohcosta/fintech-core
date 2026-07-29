@@ -654,6 +654,16 @@ export interface ImportBatchResponseDTO {
   /** @nullable */
   extractorVersion?: string | null;
   status: ImportBatchStatus;
+  /**
+     * Motivo legível da falha, exibível ao usuário. Só preenchido quando status = FAILED — distingue causas que pedem ações diferentes (ex.: imagem com vários lançamentos vs. imagem ilegível).
+     * @nullable
+     */
+  failureReason?: string | null;
+  /**
+     * Nome do arquivo enviado pelo usuário (nulo em batches de mock/legado sem arquivo).
+     * @nullable
+     */
+  sourceFilename?: string | null;
   /** @nullable */
   createdAt?: string | null;
   /** @nullable */
@@ -756,8 +766,15 @@ export type CloseBudgetCycleParams = {
 force?: boolean;
 };
 
+export type CreateImportParams = {
+/**
+ * Reimporta mesmo que este arquivo (mesmo hash) já tenha sido importado antes por este tenant. Sem isso, reenviar o mesmo extrato é 409 (evita duplicar um mês inteiro de lançamentos por engano).
+ */
+force?: boolean;
+};
+
 export type CreateImportBody = {
-  /** Imagem do comprovante (image/*). */
+  /** Comprovante (image/*), extrato CSV ou arquivo OFX (1.x ou 2.x). */
   file: Blob;
   importMode: ImportMode;
 };

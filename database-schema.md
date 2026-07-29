@@ -27,6 +27,9 @@ Schema em `db/migration/`. Seed em `db/seed/` (perfil `dev`): `V13` (dados gerai
 | V22 | `paid_invoice_id UUID` nullable (FK → `invoices`) em `transactions` + índice único parcial `(paid_invoice_id) WHERE paid_invoice_id IS NOT NULL` — marcador do pagamento de fatura (#145); dashboard exclui dos agregados e o índice garante 1 pagamento por fatura (reforça #139) |
 | V23 | `import_batches` + `staged_transactions` (fundação da extração/conciliação, Fase 0) + `posting_date DATE` nullable em `transactions`. Staging SEPARADO do núcleo: o dado extraído (probabilístico, com confidence) só é promovido a `transactions` no commit. `staged_transactions.fields` é JSONB; `staged_transactions.tenant_id` é **denormalizado** (defesa nº1 contra vazamento). `posting_date` ainda não consumido (Fase 5) |
 | V24 | seed `dev` — importação Família Costa: 1 `import_batches` COMMITTED + 2 `staged_transactions` CONFIRMED com `promoted_transaction_id` → transações Salário/Aluguel jun/2026 do V13 (resolvidas por chave natural, pois o V13 usa `gen_random_uuid()`) |
+| V25 | `failure_reason VARCHAR(500)` nullable em `import_batches` — motivo legível da recusa/falha de extração (#193). Sem ela o batch `FAILED` era opaco e o frontend só sabia oferecer o formulário manual; com o guarda-corpo de imagem multi-transação há causas distintas que pedem ações distintas do usuário |
+| V26 | `source_hash VARCHAR(64)` + `source_filename VARCHAR(255)` nullable em `import_batches` + índice `(tenant_id, source_hash)` — dedup por arquivo (Fase 2, Onda 4). CSV/OFX trazem N transações por arquivo; reimportar o mesmo extrato sem querer duplicaria um mês inteiro de lançamentos. Nulável: batches de mock/legado (pré-Fase 2) não têm arquivo de origem |
+| V27 | seed `dev` — importação via CSV Família Costa (Fase 2, Onda 5): 1 `import_batches` `EXTRACTED` (`source_hash`/`source_filename` populados) + 3 `staged_transactions` `PENDING`, a 3ª com `duplicate_candidate_of` apontando pra 1ª (dado real pro badge de duplicata na revisão) |
 
 > V10 não existe (seed renomeado para V13 para ficar acima do schema base).
 
@@ -40,7 +43,7 @@ Schema em `db/migration/`. Seed em `db/seed/` (perfil `dev`): `V13` (dados gerai
 - `recurrence_exceptions`: `UNIQUE(rule_id, occurrence_date)` — idempotência do "Pular" (EXDATE).
 - `transactions`: índice único parcial `(recurrence_rule_id, recurrence_occurrence) WHERE recurrence_rule_id IS NOT NULL` — impede confirmar a mesma ocorrência duas vezes.
 - `transactions`: índice único parcial `(paid_invoice_id) WHERE paid_invoice_id IS NOT NULL` — no máximo um pagamento por fatura (#145/#139).
-- `import_batches`: `import_mode IN (NEW_TRANSACTIONS, RECONCILIATION)`, `source_type IN (IMAGE, PDF_TEXT, PDF_SCANNED, CSV, OFX, AUDIO)`, `status IN (PENDING, EXTRACTED, REVIEWED, COMMITTED, FAILED)`; índice `(tenant_id, status)`.
+- `import_batches`: `import_mode IN (NEW_TRANSACTIONS, RECONCILIATION)`, `source_type IN (IMAGE, PDF_TEXT, PDF_SCANNED, CSV, OFX, AUDIO)`, `status IN (PENDING, EXTRACTED, REVIEWED, COMMITTED, FAILED)`; índice `(tenant_id, status)`; índice `(tenant_id, source_hash)` — dedup por arquivo escopado por tenant (V26).
 - `staged_transactions`: `status IN (PENDING, CONFIRMED, DISCARDED)`; FK `batch_id → import_batches ON DELETE CASCADE`; `tenant_id` denormalizado (FK → tenants); `promoted_transaction_id` FK nullable → `transactions`; índice `(batch_id)`.
 
 **Invariante:** migrations aplicadas são imutáveis. Correção sempre via nova versão.
