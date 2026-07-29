@@ -109,14 +109,10 @@ public class CsvExtractor implements TransactionExtractor {
             throw new ExtractionException("Cabeçalho do CSV não tem coluna de data e/ou de valor reconhecível.");
         }
 
-        // Cada linha é parseada ISOLADAMENTE (não o arquivo inteiro de uma vez): uma linha com
-        // aspa solta fora do padrão RFC 4180 vira "linha ruim" (mesma régua de dado ilegível —
+        // Linha que não parseou (null) vira "linha ruim" (mesma régua de dado ilegível —
         // confiança 0, nada apagado), sem derrubar as demais transações do arquivo.
-        List<NormalizedTransactionDTO> transactions = parsed.dataLines().stream()
-                .map(line -> {
-                    CSVRecord row = parseSingleLine(line, parsed.delimiter());
-                    return row == null ? garbledTransaction() : toTransaction(row, mapping);
-                })
+        List<NormalizedTransactionDTO> transactions = parsed.rows().stream()
+                .map(row -> row == null ? garbledTransaction() : toTransaction(row, mapping))
                 .toList();
 
         return new NormalizedBatchDTO(input.mode(), ImportSourceType.CSV, EXTRACTOR_USED, extractorVersion, transactions);
@@ -284,13 +280,22 @@ public class CsvExtractor implements TransactionExtractor {
     }
 
     /**
-     * Detecta o delimitador (',' depois ';') e devolve o header + as linhas de dado CRUAS (ainda
-     * não parseadas). Cada linha é parseada INDIVIDUALMENTE aqui (não o arquivo inteiro de uma
-     * vez): assim, uma linha com aspa solta fora do padrão RFC 4180 (o commons-csv lança
-     * {@code CSVException} — capturada via {@link UncheckedIOException}, não {@link IOException})
-     * não invalida o delimitador nem o arquivo inteiro, só aquela linha (virará "linha ruim" no
-     * extract()). O delimitador é aceito se o header parseia E pelo menos UMA linha de dado bate
-     * a largura do header — não exige que TODAS as linhas sejam perfeitas.
+     * Detecta o delimitador (',' depois ';') e devolve o header + as linhas de dado JÁ PARSEADAS
+     * ({@code null} na posição = linha que não parseou → "linha ruim" no extract()).
+     *
+     * <p>Duas passadas, nesta ordem, porque as duas propriedades desejadas se excluem num parse só:
+     * <ol>
+     *   <li><b>Arquivo inteiro</b> — é o único jeito de honrar RFC 4180 por completo, em especial
+     *       campo entre aspas com QUEBRA DE LINHA dentro (uma descrição multilinha é um registro
+     *       só, não N linhas). Aceito apenas se TODAS as linhas de dado batem a largura do header:
+     *       uma aspa solta faz o commons-csv engolir o resto do arquivo num campo gigante, e o
+     *       resultado passaria como "válido" com largura errada — a largura é o que separa os
+     *       dois casos.</li>
+     *   <li><b>Linha a linha</b> (fallback) — quando o arquivo inteiro não fecha, uma linha com
+     *       aspa solta fora do padrão (commons-csv lança {@code CSVException}, capturada via
+     *       {@link UncheckedIOException}, não {@link IOException}) fica ISOLADA como linha ruim
+     *       em vez de derrubar as demais transações. Basta UMA linha bater a largura do header.</li>
+     * </ol>
      */
     private ParsedCsv tryParse(byte[] content) {
         String decoded = decode(content);
@@ -298,7 +303,6 @@ public class CsvExtractor implements TransactionExtractor {
         if (lines.size() < 2) {
             return null; // precisa header + ao menos 1 linha de dado
         }
-        List<String> dataLines = lines.subList(1, lines.size());
 
         for (char delimiter : new char[] {',', ';'}) {
             CSVRecord header = parseSingleLine(lines.get(0), delimiter);
@@ -306,31 +310,49 @@ public class CsvExtractor implements TransactionExtractor {
                 continue; // header não parseia com este delimitador (ou só teria 1 coluna)
             }
             int width = header.size();
-            boolean anyDataLineMatches = dataLines.stream()
-                    .anyMatch(line -> {
-                        CSVRecord row = parseSingleLine(line, delimiter);
-                        return row != null && row.size() == width;
-                    });
-            if (!anyDataLineMatches) {
-                continue; // nenhuma linha de dado bate a largura do header com este delimitador
+
+            List<CSVRecord> whole = parseWhole(decoded, delimiter);
+            if (whole != null && whole.size() >= 2) {
+                List<CSVRecord> dataRows = whole.subList(1, whole.size());
+                if (dataRows.stream().allMatch(row -> row.size() == width)) {
+                    return new ParsedCsv(header, dataRows);
+                }
             }
-            return new ParsedCsv(delimiter, header, dataLines);
+
+            List<CSVRecord> rows = lines.subList(1, lines.size()).stream()
+                    .map(line -> parseSingleLine(line, delimiter))
+                    .toList(); // pode conter null — Stream.toList() aceita
+            if (rows.stream().anyMatch(row -> row != null && row.size() == width)) {
+                return new ParsedCsv(header, rows);
+            }
         }
         return null;
+    }
+
+    /** Parseia o arquivo INTEIRO; {@code null} se ele não é um CSV válido com este delimitador. */
+    private List<CSVRecord> parseWhole(String decoded, char delimiter) {
+        try {
+            return CSVParser.parse(decoded, csvFormat(delimiter)).getRecords();
+        } catch (IOException | UncheckedIOException e) {
+            return null;
+        }
     }
 
     /** Parseia UMA linha isolada; {@code null} se esta linha não é um CSV válido com este delimitador. */
     private CSVRecord parseSingleLine(String line, char delimiter) {
         try {
-            CSVFormat format = CSVFormat.Builder.create(CSVFormat.DEFAULT)
-                    .setDelimiter(delimiter)
-                    .setTrim(true)
-                    .get();
-            List<CSVRecord> records = CSVParser.parse(line, format).getRecords();
+            List<CSVRecord> records = CSVParser.parse(line, csvFormat(delimiter)).getRecords();
             return records.isEmpty() ? null : records.get(0);
         } catch (IOException | UncheckedIOException e) {
             return null;
         }
+    }
+
+    private CSVFormat csvFormat(char delimiter) {
+        return CSVFormat.Builder.create(CSVFormat.DEFAULT)
+                .setDelimiter(delimiter)
+                .setTrim(true)
+                .get();
     }
 
     /**
@@ -353,7 +375,8 @@ public class CsvExtractor implements TransactionExtractor {
         }
     }
 
-    private record ParsedCsv(char delimiter, CSVRecord header, List<String> dataLines) {}
+    /** {@code rows} pode conter {@code null} — posição de linha que não parseou (linha ruim). */
+    private record ParsedCsv(CSVRecord header, List<CSVRecord> rows) {}
 
     private record HeaderMapping(int dateCol, int amountCol, int descriptionCol, int typeCol, int fallbackDescriptionCol) {}
 }
