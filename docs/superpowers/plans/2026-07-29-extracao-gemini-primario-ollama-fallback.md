@@ -20,7 +20,7 @@ ficando estruturalmente fora do fallback.
 JUnit 5 + Mockito + AssertJ.
 
 **Spec de referência:** `docs/superpowers/specs/2026-07-29-extracao-gemini-primario-ollama-fallback-design.md`
-**Épico raiz:** #154 · **Issue:** a criar (`feat(import): Gemini primário com fallback Ollama`)
+**Épico raiz:** #154 · **Issue:** #197
 **Impacto SemVer:** MINOR (capacidade nova; `api-spec/openapi.yaml` inalterado)
 
 ## Global Constraints
