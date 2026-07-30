@@ -5,12 +5,16 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatInputModule } from '@angular/material/input';
 
 import { AccountsService } from '../../../core/api/accounts/accounts.service';
 import { AccountResponse, AccountType, InvoiceResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
+import { formatLocalDate } from '../../transaction/transaction-form/transaction-form.utils';
 
 export interface InvoicePayDialogResult {
   sourceAccountId: string;
+  paymentDate: string;
 }
 
 interface DialogData {
@@ -22,7 +26,8 @@ interface DialogData {
   standalone: true,
   imports: [
     CommonModule, CurrencyPipe, FormsModule,
-    MatDialogModule, MatSelectModule, MatFormFieldModule, MatButtonModule
+    MatDialogModule, MatSelectModule, MatFormFieldModule, MatButtonModule,
+    MatDatepickerModule, MatInputModule
   ],
   templateUrl: './invoice-pay-dialog.html'
 })
@@ -33,6 +38,10 @@ export class InvoicePayDialogComponent implements OnInit {
 
   accounts = signal<AccountResponse[]>([]);
   selectedAccountId = signal<string | null>(null);
+  // Sugestão = hoje ao abrir (#199); max do datepicker espelha a validação do backend
+  // (rejeita data futura) para não deixar a UI oferecer o que o servidor recusa.
+  paymentDate = signal<Date | null>(new Date());
+  maxDate = new Date();
 
   // AccountType é um const object (não enum TypeScript), então AccountType.CREDIT_CARD === 'CREDIT_CARD'.
   // A comparação funciona normalmente com o tipo string union gerado pelo Orval.
@@ -52,8 +61,9 @@ export class InvoicePayDialogComponent implements OnInit {
 
   confirm(): void {
     const id = this.selectedAccountId();
-    if (!id) return;
-    this.dialogRef.close({ sourceAccountId: id } as InvoicePayDialogResult);
+    const date = this.paymentDate();
+    if (!id || !date) return;
+    this.dialogRef.close({ sourceAccountId: id, paymentDate: formatLocalDate(date) } as InvoicePayDialogResult);
   }
 
   cancel(): void {

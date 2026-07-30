@@ -21,6 +21,15 @@
         }
       </mat-select>
     </mat-form-field>
+
+    <mat-form-field appearance="outline" style="width: 100%; margin-top: 8px;">
+      <mat-label>Data do pagamento</mat-label>
+      <input matInput [matDatepicker]="paymentDatePicker" [max]="maxDate"
+        [ngModel]="paymentDate()"
+        (ngModelChange)="paymentDate.set($event)">
+      <mat-datepicker-toggle matIconSuffix [for]="paymentDatePicker"></mat-datepicker-toggle>
+      <mat-datepicker #paymentDatePicker></mat-datepicker>
+    </mat-form-field>
   }
 </mat-dialog-content>
 
@@ -29,7 +38,7 @@
   <button
     mat-flat-button
     color="primary"
-    [disabled]="!selectedAccountId() || hasNoEligibleAccounts()"
+    [disabled]="!selectedAccountId() || !paymentDate() || hasNoEligibleAccounts()"
     (click)="confirm()">
     Confirmar pagamento
   </button>

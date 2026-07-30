@@ -963,6 +963,7 @@ Authorization: Bearer {{token_carlos}}
 ###
 
 ### 8.2 Pagar fatura Nubank Jan (substitua {ID} pelo id retornado no 8.1)
+# paymentDate é opcional (#199) — omitido aqui, o service usa LocalDate.now() como fallback.
 POST http://localhost:8080/api/invoices/{ID_NUBANK_JAN}/pay
 Authorization: Bearer {{token_carlos}}
 Content-Type: application/json
@@ -971,12 +972,12 @@ Content-Type: application/json
 
 ###
 
-### 8.3 Pagar fatura Nubank Fev
+### 8.3 Pagar fatura Nubank Fev com paymentDate explícito (#199 — registro retroativo)
 POST http://localhost:8080/api/invoices/{ID_NUBANK_FEV}/pay
 Authorization: Bearer {{token_carlos}}
 Content-Type: application/json
 
-{"sourceAccountId":"{{id_bradesco}}"}
+{"sourceAccountId":"{{id_bradesco}}","paymentDate":"2026-02-10"}
 
 ###
 

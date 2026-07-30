@@ -116,14 +116,14 @@ POST (cria par EXPENSE origem + INCOME destino) · DELETE/{transferId} (remove a
 
 ## Faturas (`/api/invoices`)
 
-GET `?accountId=` · GET/{id} · POST/{id}/close · POST/{id}/pay `{ sourceAccountId }`
+GET `?accountId=` · GET/{id} · POST/{id}/close · POST/{id}/pay `{ sourceAccountId, paymentDate? }`
 
 **`totalAmount` (lista e detalhe) — líquido, não bruto:** `SUM(CASE WHEN type=EXPENSE THEN amount ELSE -amount END) WHERE status<>CANCELLED` (`sumAmountByInvoice`/`findByAccountWithTotals`). INCOME (estorno/reembolso) abate o total em vez de somar — mesma convenção de sinal do dashboard/saldo de conta. É o valor usado como base do pagamento em `pay()`.
 
 **Ciclo:** `OPEN → [close] CLOSED → [pay] PAID`
 - **close:** só muda status. Novas transações ainda aceitas (cobranças atrasadas).
-- **pay** (`@Transactional` única): **claim atômico** `UPDATE ... SET status=PAID WHERE id=:id AND status=CLOSED` (`markAsPaidIfClosed`) ANTES de qualquer efeito — 0 linhas afetadas → `IllegalStateException` (pagamento concorrente já venceu, #139). Só o vencedor: PENDING→PAID via `@Modifying` batch; se total>0 cria EXPENSE na origem (`date=now()`, `description="Pagamento fatura {acc} {MM}/{yyyy}"`). Fecha o ciclo de caixa do cartão (`countInLiquidBalance=false`).
-- **Validações pay:** origem do tenant (404), origem ≠ CREDIT_CARD (422), fatura CLOSED (422). Ordem: validações → claim atômico → efeitos.
+- **pay** (`@Transactional` única): **claim atômico** `UPDATE ... SET status=PAID WHERE id=:id AND status=CLOSED` (`markAsPaidIfClosed`) ANTES de qualquer efeito — 0 linhas afetadas → `IllegalStateException` (pagamento concorrente já venceu, #139). Só o vencedor: PENDING→PAID via `@Modifying` batch; se total>0 cria EXPENSE na origem (`date=paymentDate` — **#199**: campo opcional do request, sugerido como hoje no modal do frontend; ausência vira `LocalDate.now()` no service; `description="Pagamento fatura {acc} {MM}/{yyyy}"`). Fecha o ciclo de caixa do cartão (`countInLiquidBalance=false`).
+- **Validações pay:** origem do tenant (404), origem ≠ CREDIT_CARD (422), fatura CLOSED (422), `paymentDate` não pode ser futuro (**400**, `BusinessException` — #199: o pagamento nasce `PAID` e `totalAccountBalance` não filtra período, então data futura rebaixaria hoje um caixa que ainda não saiu). Ordem: validações → claim atômico → efeitos.
 - **Lazy create** (`getOrCreate`): automático na 1ª transação do período. `UNIQUE(account, year, month)`. Race condition resolvida com `@Transactional(REQUIRES_NEW)` + retry (ADR-001 #83).
 - **dueDate:** `dueDay >= closingDay` → mesmo mês; senão → mês seguinte. Dia capado ao último do mês (`min(dia, lengthOfMonth)`) — closingDay/dueDay=31 em fevereiro não estoura `DateTimeException` (#137).
 
