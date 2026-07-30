@@ -1269,6 +1269,14 @@ Authorization: Bearer {{token_carlos}}
 
 ###
 
+### 11.11b (Fase 2 metade B) Descarta a staged candidata a duplicata do batch CSV seed (V27)
+###        PENDING → DISCARDED: a linha não vira Transaction e para de bloquear a revisão.
+###        Reenviar o mesmo POST → 400 (só transiciona a partir de PENDING).
+POST http://localhost:8080/api/imports/a0000000-0000-0000-0000-000000000002/staged/a1000000-0000-0000-0000-000000000005/discard
+Authorization: Bearer {{token_carlos}}
+
+###
+
 ### 11.12 (Fase 2) Upload de CSV real — aciona o CsvExtractor (parser determinístico, sem Ollama)
 ###       < ./extrato.csv é um PLACEHOLDER: coloque um CSV (header data/valor/descrição
 ###       reconhecível — ver CsvExtractor) ao lado deste arquivo antes de rodar este bloco.
