@@ -197,7 +197,10 @@ public class CsvExtractor implements TransactionExtractor {
         if (raw == null || raw.isBlank()) {
             return null;
         }
-        String trimmed = raw.trim();
+        // Remove símbolo de moeda e espaços ("R$ 74,87" → "74,87") antes de normalizar separador —
+        // sem isso, o símbolo sobrevive à troca de vírgula/ponto e o BigDecimal final estoura
+        // NumberFormatException (valor vira null em toda a coluna, derrubando o batch inteiro).
+        String trimmed = raw.trim().replaceAll("[^\\d,.\\-]", "");
         boolean hasComma = trimmed.indexOf(',') >= 0;
         boolean hasDot = trimmed.indexOf('.') >= 0;
         String normalized;
