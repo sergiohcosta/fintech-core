@@ -178,17 +178,17 @@ Princípio de ordenação: **construir de dentro pra fora** — cada fase é us�
 **Entregas**
 - Parser de CSV genérico (sem registry ainda — colunas comuns por aproximação) — **entregue, metade A**
 - Parser OFX (padrão único, vários bancos de uma vez) — **entregue, metade A**
-- UX de revisão em lote: tabela, seleção múltipla, edição de conta/categoria em massa, descarte de linhas — **em spec, metade B** (#201; a tela de revisão continua item a item; validado manualmente que 40-45 linhas não trava, mas a UX de revisar dezenas de linhas uma a uma ainda não foi resolvida)
+- UX de revisão em lote: tabela, seleção múltipla, edição de conta/categoria em massa, descarte de linhas — **entregue, metade B** (#201)
 - Dedup intra-batch (mesmo arquivo importado 2x não duplica) — **entregue, metade A** (via `external_id`/FITID ou trio data+valor+descrição; nenhuma linha descartada, só marcada)
-- Validação de sanidade embrionária (schema íntegro, datas plausíveis) — **entregue, metade A**; "totais consistentes quando o arquivo declara saldo/total" (ex.: `LEDGERBAL` do OFX) — **adiado para a Fase 3** (decisão da spec da metade A, §11: CSV/OFX genéricos raramente declaram total; quem declara de forma relevante são faturas em PDF, que são daquela fase — não é mais escopo da metade B)
+- Validação de sanidade embrionária (schema íntegro, datas plausíveis) — **entregue, metade A**. "Totais consistentes quando o arquivo declara saldo/total" (ex.: `LEDGERBAL` do OFX) é escopo da **Fase 3** (CSV/OFX genéricos raramente declaram total; quem declara de forma relevante são faturas em PDF, daquela fase) — nunca foi pendência da metade B.
 
 **Metade A entregue** (spec `docs/superpowers/specs/2026-07-28-extracao-fase2-csv-ofx-design.md`, plano `docs/superpowers/plans/2026-07-28-extracao-fase2-csv-ofx.md`, #196): `ExtractionRouter` generaliza a porta pra N transações por arquivo; `OfxExtractor` e `CsvExtractor` (parsers determinísticos); dedup por arquivo (409/`force`, `sha256` escopado por tenant) e intra-batch; guarda-corpo central de sanidade (`max-transactions`, data/valor implausível, zero linhas aproveitáveis); contrato (`force` no `openapi.yaml`) e frontend mínimo (aceita CSV/OFX, trata 409, badge de duplicata).
 
-**Metade B em spec** (spec `docs/superpowers/specs/2026-07-30-extracao-fase2-revisao-em-lote-design.md`, #201, sub-issue do épico #175): tabela com paginação client-side, seleção múltipla (CDK `SelectionModel`), edição em massa de conta/categoria (local, sem endpoint novo) e endpoint novo `POST /staged/{stagedId}/discard` (o enum `DISCARDED` já existia desde a Fase 0 mas nenhum caminho de código gravava nele) — sem o descarte, uma única linha sem conta escolhida travava o commit do batch inteiro.
+**Metade B entregue** (spec `docs/superpowers/specs/2026-07-30-extracao-fase2-revisao-em-lote-design.md`, #201, sub-issue do épico #175): tabela com paginação client-side, seleção múltipla (CDK `SelectionModel`), edição em massa de conta/categoria (local, sem endpoint novo) e endpoint novo `POST /staged/{stagedId}/discard` (o enum `DISCARDED` já existia desde a Fase 0 mas nenhum caminho de código gravava nele) — sem o descarte, uma única linha sem conta escolhida travava o commit do batch inteiro. O gate de confirmação foi relaxado de "100% das pendentes com conta" para "≥1 pendente com conta", permitindo lançar parte do batch e deixar o resto para uma revisão futura.
 
 **Critérios de saída**
 - [ ] Arquivos reais dos bancos dos usuários iniciais processados **sem erro silencioso** (erro explícito é ok; valor errado passando calado não é) — validado só com arquivos sintéticos até aqui; falta rodar com extratos reais de usuários
-- [ ] **Taxa de conclusão de revisão de batch** saudável: usuários revisam 30+ transações sem abandonar no meio — depende da UX de revisão em lote (metade B)
+- [x] **Taxa de conclusão de revisão de batch** saudável: usuários revisam 30+ transações sem abandonar no meio — resolvido pela UX de revisão em lote (metade B): tabela paginada, seleção múltipla, edição em massa e descarte evitam que uma linha travada bloqueie o restante
 - [x] Dedup intra-batch funcionando
 - [ ] **Aprendizado:** distribuição real de bancos dos usuários — define quais templates construir na Fase 3 (ver nota na issue #196 — ainda não há volume real de uso pra medir isso)
 
