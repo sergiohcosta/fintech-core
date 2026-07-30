@@ -367,6 +367,12 @@ components:
         sourceAccountId:
           type: string
           format: uuid
+        paymentDate:
+          type: string
+          format: date
+          description: >-
+            Data do débito na conta de origem (#199). Opcional — na ausência, o backend usa a
+            data corrente. Não pode ser posterior a hoje (rejeitado com 400).
 
     DeleteInstallmentScope:
       type: string

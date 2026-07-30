@@ -8,6 +8,7 @@ import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.invoice.InvoicePayDTO;
 import com.fintech.api.dto.invoice.InvoiceResponseDTO;
+import com.fintech.api.exception.BusinessException;
 import com.fintech.api.exception.EntityNotFoundException;
 import com.fintech.api.repository.AccountRepository;
 import com.fintech.api.repository.UserRepository;
@@ -89,7 +90,7 @@ class InvoiceControllerTest {
     void payInvoiceReturns200WhenValid() throws Exception {
         UUID invoiceId = UUID.randomUUID();
         UUID sourceAccountId = UUID.randomUUID();
-        InvoicePayDTO payDTO = new InvoicePayDTO(sourceAccountId);
+        InvoicePayDTO payDTO = new InvoicePayDTO(sourceAccountId, null);
 
         InvoiceResponseDTO responseDTO = new InvoiceResponseDTO(
                 invoiceId, UUID.randomUUID(), "Cartão Nubank",
@@ -97,7 +98,7 @@ class InvoiceControllerTest {
                 LocalDate.of(2026, 6, 5), LocalDate.of(2026, 6, 15),
                 InvoiceStatus.PAID, new BigDecimal("350.00"), 3L);
 
-        when(invoiceService.pay(eq(invoiceId), any(), any(), eq(sourceAccountId)))
+        when(invoiceService.pay(eq(invoiceId), any(), any(), eq(sourceAccountId), any()))
                 .thenReturn(responseDTO);
 
         mockMvc.perform(post("/api/invoices/{id}/pay", invoiceId)
@@ -112,9 +113,9 @@ class InvoiceControllerTest {
     void payInvoiceReturns422OnIllegalState() throws Exception {
         UUID invoiceId = UUID.randomUUID();
         UUID sourceAccountId = UUID.randomUUID();
-        InvoicePayDTO payDTO = new InvoicePayDTO(sourceAccountId);
+        InvoicePayDTO payDTO = new InvoicePayDTO(sourceAccountId, null);
 
-        when(invoiceService.pay(eq(invoiceId), any(), any(), eq(sourceAccountId)))
+        when(invoiceService.pay(eq(invoiceId), any(), any(), eq(sourceAccountId), any()))
                 .thenThrow(new IllegalStateException("Só é possível pagar faturas com status CLOSED."));
 
         mockMvc.perform(post("/api/invoices/{id}/pay", invoiceId)
@@ -125,13 +126,30 @@ class InvoiceControllerTest {
     }
 
     @Test
+    @DisplayName("POST /api/invoices/{id}/pay com paymentDate futuro → 400 (#199)")
+    void payInvoiceReturns400OnFuturePaymentDate() throws Exception {
+        UUID invoiceId = UUID.randomUUID();
+        UUID sourceAccountId = UUID.randomUUID();
+        InvoicePayDTO payDTO = new InvoicePayDTO(sourceAccountId, LocalDate.now().plusDays(1));
+
+        when(invoiceService.pay(eq(invoiceId), any(), any(), eq(sourceAccountId), any()))
+                .thenThrow(new BusinessException("A data do pagamento não pode ser futura."));
+
+        mockMvc.perform(post("/api/invoices/{id}/pay", invoiceId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(payDTO)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     @DisplayName("POST /api/invoices/{id}/pay quando serviço lança EntityNotFoundException → 404")
     void payInvoiceReturns404WhenNotFound() throws Exception {
         UUID invoiceId = UUID.randomUUID();
         UUID sourceAccountId = UUID.randomUUID();
-        InvoicePayDTO payDTO = new InvoicePayDTO(sourceAccountId);
+        InvoicePayDTO payDTO = new InvoicePayDTO(sourceAccountId, null);
 
-        when(invoiceService.pay(eq(invoiceId), any(), any(), eq(sourceAccountId)))
+        when(invoiceService.pay(eq(invoiceId), any(), any(), eq(sourceAccountId), any()))
                 .thenThrow(new EntityNotFoundException("Fatura não encontrada."));
 
         mockMvc.perform(post("/api/invoices/{id}/pay", invoiceId)
