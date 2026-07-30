@@ -10,6 +10,7 @@ import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.transaction.Transaction;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.invoice.InvoiceResponseDTO;
+import com.fintech.api.exception.BusinessException;
 import com.fintech.api.exception.EntityNotFoundException;
 import com.fintech.api.repository.AccountRepository;
 import com.fintech.api.repository.CreditCardDetailsRepository;
@@ -153,7 +154,7 @@ public class InvoiceService {
     }
 
     @Transactional
-    public InvoiceResponseDTO pay(UUID id, Tenant tenant, User user, UUID sourceAccountId) {
+    public InvoiceResponseDTO pay(UUID id, Tenant tenant, User user, UUID sourceAccountId, LocalDate paymentDate) {
         Invoice invoice = loadByIdAndTenant(id, tenant);
         if (invoice.getStatus() != InvoiceStatus.CLOSED) {
             throw new IllegalStateException(
@@ -166,6 +167,14 @@ public class InvoiceService {
         if (sourceAccount.getType() == AccountType.CREDIT_CARD) {
             throw new IllegalStateException(
                     "Não é possível pagar uma fatura com outra conta de cartão de crédito.");
+        }
+
+        // #199: ausência de paymentDate vira hoje; data futura é rejeitada aqui (400) porque o
+        // pagamento nasce PAID e o totalAccountBalance não filtra período — uma data futura
+        // rebaixaria hoje um caixa que ainda não saiu.
+        LocalDate effectiveDate = paymentDate != null ? paymentDate : LocalDate.now();
+        if (effectiveDate.isAfter(LocalDate.now())) {
+            throw new BusinessException("A data do pagamento não pode ser futura.");
         }
 
         // #139: claim atômico ANTES de qualquer efeito colateral. Sob concorrência os dois pay()
@@ -184,7 +193,7 @@ public class InvoiceService {
                     .type(TransactionType.EXPENSE)
                     .status(TransactionStatus.PAID)
                     .amount(total)
-                    .date(LocalDate.now())
+                    .date(effectiveDate)
                     .description(String.format("Pagamento fatura %s %02d/%d",
                             invoice.getAccount().getName(),
                             invoice.getReferenceMonth(),
@@ -203,9 +212,9 @@ public class InvoiceService {
                 invoice, TransactionStatus.PENDING, TransactionStatus.PAID);
 
         invoice.setStatus(InvoiceStatus.PAID);
-        log.info("Fatura paga [invoiceId={} referencia={}/{} tenantId={} sourceAccountId={}]",
+        log.info("Fatura paga [invoiceId={} referencia={}/{} tenantId={} sourceAccountId={} paymentDate={}]",
                 id, invoice.getReferenceMonth(), invoice.getReferenceYear(),
-                tenant.getId(), sourceAccountId);
+                tenant.getId(), sourceAccountId, effectiveDate);
         return buildDTO(repository.save(invoice));
     }
 
