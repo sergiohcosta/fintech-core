@@ -50,7 +50,8 @@ public class InvoiceController implements InvoicesApi {
             @Valid @RequestBody InvoicePayDTO invoicePayDTO) {
         User user = getAuthenticatedUser();
         return ResponseEntity.ok(
-            invoiceService.pay(id, user.getTenant(), user, invoicePayDTO.sourceAccountId())
+            invoiceService.pay(id, user.getTenant(), user,
+                    invoicePayDTO.sourceAccountId(), invoicePayDTO.paymentDate())
         );
     }
 

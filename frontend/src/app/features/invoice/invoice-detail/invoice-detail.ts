@@ -126,7 +126,10 @@ export class InvoiceDetail implements OnInit {
     });
     ref.afterClosed().subscribe((result: InvoicePayDialogResult | undefined) => {
       if (!result) return;
-      this.invoicesService.payInvoice(invoice.id, { sourceAccountId: result.sourceAccountId }).subscribe({
+      this.invoicesService.payInvoice(invoice.id, {
+        sourceAccountId: result.sourceAccountId,
+        paymentDate: result.paymentDate
+      }).subscribe({
         next: (inv) => { this.invoice.set(inv); this.snackBar.open('Fatura paga.', 'OK', { duration: 3000 }); },
         error: () => this.snackBar.open('Erro ao pagar fatura.', 'Fechar', { duration: 5000 })
       });

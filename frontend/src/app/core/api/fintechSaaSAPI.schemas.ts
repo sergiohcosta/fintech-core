@@ -250,6 +250,8 @@ export interface InvoiceResponseDTO {
 
 export interface InvoicePayDTO {
   sourceAccountId: string;
+  /** Data do débito na conta de origem (#199). Opcional — na ausência, o backend usa a data corrente. Não pode ser posterior a hoje (rejeitado com 400). */
+  paymentDate?: string;
 }
 
 export type DeleteInstallmentScope = typeof DeleteInstallmentScope[keyof typeof DeleteInstallmentScope];

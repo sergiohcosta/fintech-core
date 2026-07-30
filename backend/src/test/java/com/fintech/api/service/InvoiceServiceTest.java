@@ -11,6 +11,7 @@ import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.transaction.Transaction;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.invoice.InvoiceResponseDTO;
+import com.fintech.api.exception.BusinessException;
 import com.fintech.api.exception.EntityNotFoundException;
 import com.fintech.api.repository.AccountRepository;
 import com.fintech.api.repository.CreditCardDetailsRepository;
@@ -267,7 +268,7 @@ class InvoiceServiceTest {
         when(repository.markAsPaidIfClosed(any(), any(), any())).thenReturn(1);
         when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-        service.pay(invoice.getId(), invoice.getTenant(), user, source.getId());
+        service.pay(invoice.getId(), invoice.getTenant(), user, source.getId(), null);
 
         assertThat(invoice.getStatus()).isEqualTo(InvoiceStatus.PAID);
     }
@@ -281,7 +282,7 @@ class InvoiceServiceTest {
 
         when(repository.findById(invoice.getId())).thenReturn(Optional.of(invoice));
 
-        assertThatThrownBy(() -> service.pay(invoice.getId(), invoice.getTenant(), user, sourceId))
+        assertThatThrownBy(() -> service.pay(invoice.getId(), invoice.getTenant(), user, sourceId, null))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("CLOSED");
     }
@@ -303,7 +304,7 @@ class InvoiceServiceTest {
         when(repository.markAsPaidIfClosed(any(), any(), any())).thenReturn(1);
         when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-        service.pay(invoice.getId(), invoice.getTenant(), user, source.getId());
+        service.pay(invoice.getId(), invoice.getTenant(), user, source.getId(), null);
 
         ArgumentCaptor<Transaction> captor = ArgumentCaptor.forClass(Transaction.class);
         verify(transactionRepository).save(captor.capture());
@@ -335,7 +336,7 @@ class InvoiceServiceTest {
         when(repository.markAsPaidIfClosed(any(), any(), any())).thenReturn(1);
         when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-        service.pay(invoice.getId(), invoice.getTenant(), user, source.getId());
+        service.pay(invoice.getId(), invoice.getTenant(), user, source.getId(), null);
 
         verify(transactionRepository, never()).save(any(Transaction.class));
         assertThat(invoice.getStatus()).isEqualTo(InvoiceStatus.PAID);
@@ -356,7 +357,7 @@ class InvoiceServiceTest {
         when(repository.markAsPaidIfClosed(any(), any(), any())).thenReturn(1);
         when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-        service.pay(invoice.getId(), invoice.getTenant(), user, source.getId());
+        service.pay(invoice.getId(), invoice.getTenant(), user, source.getId(), null);
 
         verify(transactionRepository).updateStatusByInvoiceAndStatus(
                 invoice, TransactionStatus.PENDING, TransactionStatus.PAID);
@@ -374,7 +375,7 @@ class InvoiceServiceTest {
         when(accountRepository.findByIdAndTenant(creditCard.getId(), invoice.getTenant()))
                 .thenReturn(Optional.of(creditCard));
 
-        assertThatThrownBy(() -> service.pay(invoice.getId(), invoice.getTenant(), user, creditCard.getId()))
+        assertThatThrownBy(() -> service.pay(invoice.getId(), invoice.getTenant(), user, creditCard.getId(), null))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("cartão de crédito");
     }
@@ -390,7 +391,7 @@ class InvoiceServiceTest {
         when(accountRepository.findByIdAndTenant(unknownId, invoice.getTenant()))
                 .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.pay(invoice.getId(), invoice.getTenant(), user, unknownId))
+        assertThatThrownBy(() -> service.pay(invoice.getId(), invoice.getTenant(), user, unknownId, null))
                 .isInstanceOf(EntityNotFoundException.class);
     }
 
@@ -409,13 +410,83 @@ class InvoiceServiceTest {
                 .thenReturn(Optional.of(source));
         when(repository.markAsPaidIfClosed(any(), any(), any())).thenReturn(0);
 
-        assertThatThrownBy(() -> service.pay(invoice.getId(), invoice.getTenant(), user, source.getId()))
+        assertThatThrownBy(() -> service.pay(invoice.getId(), invoice.getTenant(), user, source.getId(), null))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("concorrente");
 
         verify(transactionRepository, never()).save(any(Transaction.class));
         verify(transactionRepository, never())
                 .updateStatusByInvoiceAndStatus(any(), any(), any());
+    }
+
+    // #199 — paymentDate escolhível
+
+    @Test
+    @DisplayName("pay: paymentDate explícito no passado → EXPENSE nasce com essa data")
+    void payUsesExplicitPastPaymentDate() {
+        Invoice invoice = buildInvoice(InvoiceStatus.CLOSED);
+        Account source = buildNonCreditCardAccount(invoice.getTenant());
+        User user = buildUser();
+        LocalDate paymentDate = LocalDate.now().minusDays(5);
+
+        when(repository.findById(invoice.getId())).thenReturn(Optional.of(invoice));
+        when(accountRepository.findByIdAndTenant(source.getId(), invoice.getTenant()))
+                .thenReturn(Optional.of(source));
+        when(transactionRepository.sumAmountByInvoice(any(), any())).thenReturn(new BigDecimal("100.00"));
+        when(transactionRepository.countByInvoice(any())).thenReturn(1L);
+        when(repository.markAsPaidIfClosed(any(), any(), any())).thenReturn(1);
+        when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        service.pay(invoice.getId(), invoice.getTenant(), user, source.getId(), paymentDate);
+
+        ArgumentCaptor<Transaction> captor = ArgumentCaptor.forClass(Transaction.class);
+        verify(transactionRepository).save(captor.capture());
+        assertThat(captor.getValue().getDate()).isEqualTo(paymentDate);
+    }
+
+    @Test
+    @DisplayName("pay: paymentDate null → EXPENSE nasce com LocalDate.now()")
+    void payFallsBackToTodayWhenPaymentDateIsNull() {
+        Invoice invoice = buildInvoice(InvoiceStatus.CLOSED);
+        Account source = buildNonCreditCardAccount(invoice.getTenant());
+        User user = buildUser();
+
+        when(repository.findById(invoice.getId())).thenReturn(Optional.of(invoice));
+        when(accountRepository.findByIdAndTenant(source.getId(), invoice.getTenant()))
+                .thenReturn(Optional.of(source));
+        when(transactionRepository.sumAmountByInvoice(any(), any())).thenReturn(new BigDecimal("100.00"));
+        when(transactionRepository.countByInvoice(any())).thenReturn(1L);
+        when(repository.markAsPaidIfClosed(any(), any(), any())).thenReturn(1);
+        when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        service.pay(invoice.getId(), invoice.getTenant(), user, source.getId(), null);
+
+        ArgumentCaptor<Transaction> captor = ArgumentCaptor.forClass(Transaction.class);
+        verify(transactionRepository).save(captor.capture());
+        assertThat(captor.getValue().getDate()).isEqualTo(LocalDate.now());
+    }
+
+    // A validação de data futura tem que vir ANTES do claim atômico markAsPaidIfClosed —
+    // senão uma data inválida deixaria a fatura PAID mesmo lançando a exceção (quebraria #139).
+    @Test
+    @DisplayName("pay: paymentDate futuro → BusinessException e fatura permanece CLOSED")
+    void payRejectsFuturePaymentDate() {
+        Invoice invoice = buildInvoice(InvoiceStatus.CLOSED);
+        Account source = buildNonCreditCardAccount(invoice.getTenant());
+        User user = buildUser();
+        LocalDate futureDate = LocalDate.now().plusDays(1);
+
+        when(repository.findById(invoice.getId())).thenReturn(Optional.of(invoice));
+        when(accountRepository.findByIdAndTenant(source.getId(), invoice.getTenant()))
+                .thenReturn(Optional.of(source));
+
+        assertThatThrownBy(() -> service.pay(invoice.getId(), invoice.getTenant(), user, source.getId(), futureDate))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("futura");
+
+        assertThat(invoice.getStatus()).isEqualTo(InvoiceStatus.CLOSED);
+        verify(repository, never()).markAsPaidIfClosed(any(), any(), any());
+        verify(transactionRepository, never()).save(any(Transaction.class));
     }
 
     // ---- helpers ----
