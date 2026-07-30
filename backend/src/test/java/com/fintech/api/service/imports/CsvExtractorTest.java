@@ -92,6 +92,22 @@ class CsvExtractorTest {
     }
 
     @Test
+    void extraiValorComSimboloDeMoeda() {
+        // Bug real: "R$ 74,87" sobrevivia à troca de separador ("R$ 74.87"), estourava
+        // NumberFormatException em toda a coluna e derrubava o batch inteiro (FAILED).
+        NormalizedBatchDTO batch = extractor.extract(input("csv_simbolo_moeda.csv"));
+
+        assertThat(batch.transactions()).hasSize(2);
+        NormalizedTransactionDTO primeira = batch.transactions().get(0);
+        assertThat(primeira.fields().get("amount").value()).isEqualTo(new BigDecimal("74.87"));
+        assertThat(primeira.fields().get("amount").confidence()).isEqualByComparingTo("1.0");
+        assertThat(primeira.fields().get("direction").value()).isEqualTo("credit");
+
+        NormalizedTransactionDTO segunda = batch.transactions().get(1);
+        assertThat(segunda.fields().get("amount").value()).isEqualTo(new BigDecimal("1200.00"));
+    }
+
+    @Test
     void supportsRejeitaHeaderIrreconhecivel() {
         assertThat(extractor.supports(input("csv_header_irreconhecivel.csv"))).isFalse();
     }
