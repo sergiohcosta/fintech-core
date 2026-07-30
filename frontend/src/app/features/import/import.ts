@@ -1,6 +1,8 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
+import { SelectionModel } from '@angular/cdk/collections';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -10,6 +12,9 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatTableModule } from '@angular/material/table';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatPaginatorModule, type PageEvent } from '@angular/material/paginator';
 import { forkJoin, of, switchMap } from 'rxjs';
 import { catchError, finalize } from 'rxjs/operators';
 
@@ -23,6 +28,7 @@ import type {
 } from '../../core/api/fintechSaaSAPI.schemas';
 import {
   anyPendingHasAccount,
+  applyBulkField,
   buildCommitRequest,
   conflictMessage,
   confidenceLevel,
@@ -74,6 +80,9 @@ interface ReviewRow {
     MatProgressBarModule,
     MatTooltipModule,
     MatSnackBarModule,
+    MatTableModule,
+    MatCheckboxModule,
+    MatPaginatorModule,
   ],
   templateUrl: './import.html',
   styleUrl: './import.scss',
@@ -89,6 +98,7 @@ export class ImportComponent implements OnInit {
   readonly uploading = signal(false);
   readonly loadingStaged = signal(false);
   readonly committing = signal(false);
+  readonly discarding = signal(false);
   readonly dragging = signal(false);
 
   readonly batch = signal<ImportBatchResponseDTO | null>(null);
@@ -117,7 +127,63 @@ export class ImportComponent implements OnInit {
       'A imagem pode estar ilegível ou o serviço de extração indisponível.',
   );
 
-  readonly canConfirm = computed(() => anyPendingHasAccount(this.rows()) && !this.committing());
+  readonly canConfirm = computed(
+    () => anyPendingHasAccount(this.rows()) && !this.committing() && !this.discarding(),
+  );
+
+  // --- Tabela: seleção, paginação e expansão (Fase 2 metade B) ---
+
+  /** Colunas da tabela compacta. A edição fina (valor/data/descrição/tipo) vive na linha expandida. */
+  readonly displayedColumns = [
+    'select',
+    'flags',
+    'amount',
+    'transaction_date',
+    'description',
+    'account',
+    'category',
+    'actions',
+  ];
+
+  /** Menor opção de página — abaixo disso o paginador não tem o que paginar e fica escondido. */
+  static readonly MIN_PAGE_SIZE = 10;
+  readonly pageSizeOptions = [10, 25, 50, 100];
+
+  /**
+   * `SelectionModel` do CDK guarda a seleção por `stagedId` (não por índice) — é o que permite
+   * a seleção sobreviver à troca de página, já que o id não muda quando a fatia visível muda.
+   * O signal `selectedIds` é o espelho lido pelo template: SelectionModel é um objeto mutável e
+   * não notifica o change detection Zoneless sozinho; a ponte é a subscrição em `changed`.
+   */
+  private readonly selection = new SelectionModel<string>(true, []);
+  readonly selectedIds = signal<readonly string[]>([]);
+
+  readonly pageIndex = signal(0);
+  readonly pageSize = signal(25);
+  readonly expandedId = signal<string | null>(null);
+
+  /** Fatia visível da página atual — paginação é 100% client-side sobre o array já carregado. */
+  readonly pagedRows = computed(() => {
+    const start = this.pageIndex() * this.pageSize();
+    return this.rows().slice(start, start + this.pageSize());
+  });
+
+  readonly showPaginator = computed(() => this.rows().length > ImportComponent.MIN_PAGE_SIZE);
+  readonly hasSelection = computed(() => this.selectedIds().length > 0);
+  readonly selectedCount = computed(() => this.selectedIds().length);
+
+  // Contagem explícita antes de confirmar: com o gate relaxado (§2f da spec), "confirmar" pode
+  // lançar só parte das linhas — o usuário precisa ver quantas de quantas vão de fato.
+  readonly pendingCount = computed(() => this.rows().filter((r) => r.status === 'PENDING').length);
+  readonly readyCount = computed(
+    () => this.rows().filter((r) => r.status === 'PENDING' && r.accountId).length,
+  );
+
+  constructor() {
+    this.selection.changed
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.selectedIds.set(this.selection.selected.slice()));
+  }
 
   ngOnInit(): void {
     this.accountsService.listAccounts().subscribe((list) => this.accounts.set(list));
@@ -184,7 +250,9 @@ export class ImportComponent implements OnInit {
             this.duplicateConflict.set(conflict);
             return;
           }
-          this.snackBar.open(this.errorText(e, 'Falha ao extrair o arquivo.'), 'OK', { duration: 6000 });
+          this.snackBar.open(this.errorText(e, 'Falha ao extrair o arquivo.'), 'OK', {
+            duration: 6000,
+          });
         },
       });
   }
@@ -208,8 +276,17 @@ export class ImportComponent implements OnInit {
       .listImportStaged(batchId)
       .pipe(finalize(() => this.loadingStaged.set(false)))
       .subscribe({
-        next: (staged) => this.rows.set(staged.map((s) => this.toRow(s))),
-        error: (e) => this.snackBar.open(this.errorText(e, 'Falha ao carregar os dados extraídos.'), 'OK', { duration: 6000 }),
+        // Linhas descartadas somem da revisão: descartar é decisão tomada, não estado a revisar.
+        next: (staged) => {
+          this.rows.set(staged.filter((s) => s.status !== 'DISCARDED').map((s) => this.toRow(s)));
+          this.selection.clear();
+          this.pageIndex.set(0);
+          this.expandedId.set(null);
+        },
+        error: (e) =>
+          this.snackBar.open(this.errorText(e, 'Falha ao carregar os dados extraídos.'), 'OK', {
+            duration: 6000,
+          }),
       });
   }
 
@@ -249,13 +326,139 @@ export class ImportComponent implements OnInit {
     this.updateField(stagedId, field, (event.target as HTMLInputElement).value);
   }
 
+  // --- Seleção ---
+
+  isSelected(stagedId: string): boolean {
+    // Lê o SIGNAL (e não `selection.isSelected`) de propósito: assim o template reavalia sozinho
+    // quando a seleção muda, sem depender de zone.js.
+    return this.selectedIds().includes(stagedId);
+  }
+
+  toggleRow(stagedId: string): void {
+    this.selection.toggle(stagedId);
+  }
+
+  /** Todas as linhas da página atual estão selecionadas? (estado do checkbox do cabeçalho) */
+  allOnPageSelected(): boolean {
+    const page = this.pagedRows();
+    return page.length > 0 && page.every((r) => this.isSelected(r.stagedId));
+  }
+
+  /** Alguma (mas não todas) selecionada na página → checkbox do cabeçalho indeterminado. */
+  someOnPageSelected(): boolean {
+    const page = this.pagedRows();
+    return page.some((r) => this.isSelected(r.stagedId)) && !this.allOnPageSelected();
+  }
+
+  /** "Selecionar todas" age só sobre a PÁGINA — nunca sobre linhas que o usuário não está vendo. */
+  toggleAllOnPage(): void {
+    const ids = this.pagedRows().map((r) => r.stagedId);
+    if (this.allOnPageSelected()) {
+      this.selection.deselect(...ids);
+    } else {
+      this.selection.select(...ids);
+    }
+  }
+
+  clearSelection(): void {
+    this.selection.clear();
+  }
+
+  // --- Paginação (client-side) ---
+
+  onPage(event: PageEvent): void {
+    this.pageIndex.set(event.pageIndex);
+    this.pageSize.set(event.pageSize);
+    // A seleção NÃO é limpa ao paginar: ela é keyed por stagedId, então continua coerente com
+    // linhas fora da página. Só a expansão fecha (pertence a uma linha que saiu da tela).
+    this.expandedId.set(null);
+  }
+
+  // --- Expansão da linha (edição fina) ---
+
+  toggleExpanded(stagedId: string): void {
+    this.expandedId.update((current) => (current === stagedId ? null : stagedId));
+  }
+
+  isExpanded(stagedId: string): boolean {
+    return this.expandedId() === stagedId;
+  }
+
+  // --- Edição em massa (local, sem API — §2d da spec) ---
+
+  applyAccountToSelected(accountId: string): void {
+    if (!accountId) {
+      return;
+    }
+    this.rows.update((rows) => applyBulkField(rows, this.selectedIds(), 'accountId', accountId));
+  }
+
+  applyCategoryToSelected(categoryId: string | null): void {
+    this.rows.update((rows) => applyBulkField(rows, this.selectedIds(), 'categoryId', categoryId));
+  }
+
+  // --- Descarte (PENDING → DISCARDED no backend, linha sai da view) ---
+
+  discardRow(stagedId: string): void {
+    this.discardMany([stagedId]);
+  }
+
+  discardSelected(): void {
+    this.discardMany(this.selectedIds());
+  }
+
+  /**
+   * Descarte em lote reusa o endpoint individual via `forkJoin` — mesmo padrão do `confirm()`.
+   * O volume aqui é de dezenas, não milhares: reusar rota já testada pesa mais que economizar
+   * N chamadas HTTP (§2e da spec).
+   */
+  private discardMany(ids: readonly string[]): void {
+    if (ids.length === 0 || this.discarding()) {
+      return;
+    }
+    const batchId = this.batchId();
+    const targets = ids.slice();
+    this.discarding.set(true);
+
+    forkJoin(targets.map((id) => this.imports.discardImportStaged(batchId, id)))
+      .pipe(finalize(() => this.discarding.set(false)))
+      .subscribe({
+        next: () => {
+          this.removeRows(targets);
+          const label =
+            targets.length === 1 ? 'Linha descartada.' : `${targets.length} linhas descartadas.`;
+          this.snackBar.open(label, 'OK', { duration: 3000 });
+        },
+        error: (e) =>
+          this.snackBar.open(this.errorText(e, 'Falha ao descartar as linhas.'), 'OK', {
+            duration: 6000,
+          }),
+      });
+  }
+
+  /** Remove da view + da seleção, e corrige a página se ela deixou de existir. */
+  private removeRows(ids: readonly string[]): void {
+    const removed = new Set(ids);
+    this.rows.update((rows) => rows.filter((r) => !removed.has(r.stagedId)));
+    this.selection.deselect(...ids);
+    if (this.expandedId() && removed.has(this.expandedId() as string)) {
+      this.expandedId.set(null);
+    }
+    const lastPage = Math.max(0, Math.ceil(this.rows().length / this.pageSize()) - 1);
+    if (this.pageIndex() > lastPage) {
+      this.pageIndex.set(lastPage);
+    }
+  }
+
   // --- Commit ---
 
   confirm(): void {
     const rows = this.rows();
     const pending = rows.filter((r) => r.status === 'PENDING' && r.accountId);
     if (pending.length === 0) {
-      this.snackBar.open('Selecione a conta de cada lançamento antes de confirmar.', 'OK', { duration: 4000 });
+      this.snackBar.open('Selecione a conta de cada lançamento antes de confirmar.', 'OK', {
+        duration: 4000,
+      });
       return;
     }
     const id = this.batchId();
@@ -271,7 +474,9 @@ export class ImportComponent implements OnInit {
       .pipe(
         switchMap(() => this.imports.commitImport(id, buildCommitRequest(rows))),
         catchError((e) => {
-          this.snackBar.open(this.errorText(e, 'Falha ao lançar as transações.'), 'OK', { duration: 6000 });
+          this.snackBar.open(this.errorText(e, 'Falha ao lançar as transações.'), 'OK', {
+            duration: 6000,
+          });
           return of(null);
         }),
         finalize(() => this.committing.set(false)),
@@ -310,7 +515,13 @@ export class ImportComponent implements OnInit {
     this.rows.set([]);
     this.selectedFile.set(null);
     this.duplicateConflict.set(null);
+    this.selection.clear();
+    this.pageIndex.set(0);
+    this.expandedId.set(null);
   }
+
+  /** `trackBy` da tabela: identidade da linha é o stagedId, não a posição. */
+  readonly trackRow = (_: number, row: ReviewRow): string => row.stagedId;
 
   // --- Helpers de template (delegam à lógica pura) ---
 

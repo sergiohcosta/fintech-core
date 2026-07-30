@@ -25,9 +25,9 @@
       <mat-card appearance="outlined" class="upload-card">
         <mat-card-content>
           <p class="hint">
-            Envie a foto de um comprovante (recibo, PIX, nota), um extrato CSV ou um arquivo OFX
-            do seu banco. Vamos extrair valor, data e descrição automaticamente — você confere
-            antes de lançar.
+            Envie a foto de um comprovante (recibo, PIX, nota), um extrato CSV ou um arquivo OFX do
+            seu banco. Vamos extrair valor, data e descrição automaticamente — você confere antes de
+            lançar.
           </p>
 
           <div
@@ -35,7 +35,8 @@
             [class.dragging]="dragging()"
             (dragover)="onDragOver($event)"
             (dragleave)="onDragLeave($event)"
-            (drop)="onDrop($event)">
+            (drop)="onDrop($event)"
+          >
             <mat-icon class="dropzone-icon">cloud_upload</mat-icon>
             @if (fileName()) {
               <p class="file-name">{{ fileName() }}</p>
@@ -45,7 +46,12 @@
             } @else {
               <p>Arraste um arquivo aqui ou</p>
               <label class="file-input-label">
-                <input type="file" accept=".csv,.ofx,image/*" hidden (change)="onFileSelected($event)" />
+                <input
+                  type="file"
+                  accept=".csv,.ofx,image/*"
+                  hidden
+                  (change)="onFileSelected($event)"
+                />
                 <span mat-stroked-button>Escolher arquivo</span>
               </label>
             }
@@ -63,7 +69,8 @@
             color="primary"
             type="button"
             [disabled]="!selectedFile() || uploading()"
-            (click)="upload()">
+            (click)="upload()"
+          >
             <mat-icon>auto_awesome</mat-icon>
             Extrair
           </button>
@@ -98,121 +105,293 @@
     <p class="hint">
       Confira os dados extraídos. Campos com
       <span class="conf-badge low">baixa confiança</span>
-      merecem atenção. Escolha a conta de cada lançamento e confirme.
+      merecem atenção. Escolha a conta de cada lançamento e confirme. Linhas que você não quer
+      lançar podem ser descartadas.
     </p>
 
-    @for (row of rows(); track row.stagedId) {
-      <mat-card appearance="outlined" class="review-card">
-        <mat-card-content>
+    <!-- Ações em massa: só existem quando há seleção. Conta/categoria são LOCAIS (nenhuma
+         chamada HTTP); descartar é a única que fala com o backend. -->
+    @if (hasSelection()) {
+      <div class="bulk-toolbar" data-testid="bulk-toolbar">
+        <span class="bulk-count">{{ selectedCount() }} selecionada(s)</span>
+
+        <mat-form-field appearance="outline" class="bulk-field">
+          <mat-label>Definir conta</mat-label>
+          <mat-select [value]="null" (selectionChange)="applyAccountToSelected($event.value)">
+            @for (acc of accounts(); track acc.id) {
+              <mat-option [value]="acc.id">{{ acc.name }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="bulk-field">
+          <mat-label>Definir categoria</mat-label>
+          <mat-select [value]="null" (selectionChange)="applyCategoryToSelected($event.value)">
+            <mat-option [value]="null">Sem categoria</mat-option>
+            @for (cat of categoryOptions(); track cat.id) {
+              <mat-option [value]="cat.id">{{ cat.name }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <button
+          mat-stroked-button
+          color="warn"
+          type="button"
+          [disabled]="discarding()"
+          (click)="discardSelected()"
+        >
+          <mat-icon>delete_outline</mat-icon> Descartar selecionadas
+        </button>
+        <button mat-button type="button" (click)="clearSelection()">Limpar seleção</button>
+      </div>
+    }
+
+    <table
+      mat-table
+      class="review-table"
+      multiTemplateDataRows
+      [dataSource]="pagedRows()"
+      [trackBy]="trackRow"
+    >
+      <!-- Seleção -->
+      <ng-container matColumnDef="select">
+        <th mat-header-cell *matHeaderCellDef>
+          <mat-checkbox
+            [checked]="allOnPageSelected()"
+            [indeterminate]="someOnPageSelected()"
+            (change)="toggleAllOnPage()"
+            aria-label="Selecionar todas da página"
+          />
+        </th>
+        <td mat-cell *matCellDef="let row">
+          <mat-checkbox
+            [checked]="isSelected(row.stagedId)"
+            (change)="toggleRow(row.stagedId)"
+            [attr.data-testid]="'select-' + row.stagedId"
+            aria-label="Selecionar linha"
+          />
+        </td>
+      </ng-container>
+
+      <!-- Sinalizações (revisão / possível duplicata) -->
+      <ng-container matColumnDef="flags">
+        <th mat-header-cell *matHeaderCellDef></th>
+        <td mat-cell *matCellDef="let row">
           @if (row.requiresReview) {
-            <div class="review-flag">
-              <mat-icon color="warn">flag</mat-icon>
-              <span>Revisar com atenção</span>
-            </div>
+            <mat-icon color="warn" matTooltip="Revisar com atenção">flag</mat-icon>
           }
           @if (row.duplicateCandidateOf) {
-            <div class="review-flag duplicate-flag" matTooltip="Outra linha deste arquivo tem os mesmos dados">
-              <mat-icon color="warn">content_copy</mat-icon>
-              <span>Possível duplicata</span>
+            <mat-icon color="warn" matTooltip="Outra linha deste arquivo tem os mesmos dados">
+              content_copy
+            </mat-icon>
+          }
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="amount">
+        <th mat-header-cell *matHeaderCellDef>Valor</th>
+        <td mat-cell *matCellDef="let row">
+          {{ row.amount || '—' }}
+          <span class="conf-badge" [class]="confClass(row, 'amount')">{{
+            confPct(row, 'amount')
+          }}</span>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="transaction_date">
+        <th mat-header-cell *matHeaderCellDef>Data</th>
+        <td mat-cell *matCellDef="let row">
+          {{ row.transaction_date || '—' }}
+          <span class="conf-badge" [class]="confClass(row, 'transaction_date')">
+            {{ confPct(row, 'transaction_date') }}
+          </span>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="description">
+        <th mat-header-cell *matHeaderCellDef>Descrição</th>
+        <td mat-cell *matCellDef="let row" class="desc-cell">
+          {{ row.description || '—' }}
+          <small class="direction-hint">{{ directionText(row.direction) }}</small>
+        </td>
+      </ng-container>
+
+      <!-- Conta e categoria ficam NA linha (é o que se edita em volume) -->
+      <ng-container matColumnDef="account">
+        <th mat-header-cell *matHeaderCellDef>Conta *</th>
+        <td mat-cell *matCellDef="let row">
+          <mat-form-field appearance="outline" class="cell-field" subscriptSizing="dynamic">
+            <mat-select
+              [value]="row.accountId"
+              (selectionChange)="updateField(row.stagedId, 'accountId', $event.value)"
+            >
+              @for (acc of accounts(); track acc.id) {
+                <mat-option [value]="acc.id">{{ acc.name }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="category">
+        <th mat-header-cell *matHeaderCellDef>Categoria</th>
+        <td mat-cell *matCellDef="let row">
+          <mat-form-field appearance="outline" class="cell-field" subscriptSizing="dynamic">
+            <mat-select
+              [value]="row.categoryId"
+              (selectionChange)="updateField(row.stagedId, 'categoryId', $event.value)"
+            >
+              <mat-option [value]="null">Sem categoria</mat-option>
+              @for (cat of categoryOptions(); track cat.id) {
+                <mat-option [value]="cat.id">{{ cat.name }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef></th>
+        <td mat-cell *matCellDef="let row" class="actions-cell">
+          <button
+            mat-icon-button
+            type="button"
+            matTooltip="Editar valor, data, descrição e tipo"
+            [attr.data-testid]="'expand-' + row.stagedId"
+            (click)="toggleExpanded(row.stagedId)"
+          >
+            <mat-icon>{{ isExpanded(row.stagedId) ? 'expand_less' : 'expand_more' }}</mat-icon>
+          </button>
+          <button
+            mat-icon-button
+            color="warn"
+            type="button"
+            matTooltip="Descartar esta linha"
+            [disabled]="discarding()"
+            [attr.data-testid]="'discard-' + row.stagedId"
+            (click)="discardRow(row.stagedId)"
+          >
+            <mat-icon>delete_outline</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <!-- Linha expandida: mesmos mat-form-field da revisão da Fase 1, só reorganizados -->
+      <ng-container matColumnDef="expandedDetail">
+        <td mat-cell *matCellDef="let row" [attr.colspan]="displayedColumns.length">
+          @if (isExpanded(row.stagedId)) {
+            <div class="field-grid detail-grid">
+              <mat-form-field appearance="outline">
+                <mat-label>Valor</mat-label>
+                <input
+                  matInput
+                  type="text"
+                  inputmode="decimal"
+                  [value]="row.amount"
+                  (input)="onInput(row.stagedId, 'amount', $event)"
+                />
+                <span
+                  matSuffix
+                  class="conf-badge"
+                  [class]="confClass(row, 'amount')"
+                  matTooltip="Confiança neste campo"
+                  >{{ confPct(row, 'amount') }}</span
+                >
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Data</mat-label>
+                <input
+                  matInput
+                  type="date"
+                  [value]="row.transaction_date"
+                  (input)="onInput(row.stagedId, 'transaction_date', $event)"
+                />
+                <span
+                  matSuffix
+                  class="conf-badge"
+                  [class]="confClass(row, 'transaction_date')"
+                  matTooltip="Confiança neste campo"
+                  >{{ confPct(row, 'transaction_date') }}</span
+                >
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="span-2">
+                <mat-label>Descrição</mat-label>
+                <input
+                  matInput
+                  type="text"
+                  [value]="row.description"
+                  (input)="onInput(row.stagedId, 'description', $event)"
+                />
+                <span
+                  matSuffix
+                  class="conf-badge"
+                  [class]="confClass(row, 'description')"
+                  matTooltip="Confiança neste campo"
+                  >{{ confPct(row, 'description') }}</span
+                >
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Tipo</mat-label>
+                <mat-select
+                  [value]="row.direction"
+                  (selectionChange)="updateField(row.stagedId, 'direction', $event.value)"
+                >
+                  <mat-option value="debit">Saída (despesa)</mat-option>
+                  <mat-option value="credit">Entrada (receita)</mat-option>
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Método</mat-label>
+                <input
+                  matInput
+                  type="text"
+                  [value]="row.payment_method"
+                  (input)="onInput(row.stagedId, 'payment_method', $event)"
+                />
+              </mat-form-field>
             </div>
           }
+        </td>
+      </ng-container>
 
-          <div class="field-grid">
-            <!-- Valor -->
-            <mat-form-field appearance="outline">
-              <mat-label>Valor</mat-label>
-              <input
-                matInput
-                type="text"
-                inputmode="decimal"
-                [value]="row.amount"
-                (input)="onInput(row.stagedId, 'amount', $event)" />
-              <span matSuffix class="conf-badge" [class]="confClass(row, 'amount')"
-                    matTooltip="Confiança do modelo neste campo">{{ confPct(row, 'amount') }}</span>
-            </mat-form-field>
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns" class="review-row"></tr>
+      <tr
+        mat-row
+        *matRowDef="let row; columns: ['expandedDetail']"
+        class="detail-row"
+        [class.detail-row-collapsed]="!isExpanded(row.stagedId)"
+      ></tr>
+    </table>
 
-            <!-- Data -->
-            <mat-form-field appearance="outline">
-              <mat-label>Data</mat-label>
-              <input
-                matInput
-                type="date"
-                [value]="row.transaction_date"
-                (input)="onInput(row.stagedId, 'transaction_date', $event)" />
-              <span matSuffix class="conf-badge" [class]="confClass(row, 'transaction_date')"
-                    matTooltip="Confiança do modelo neste campo">{{ confPct(row, 'transaction_date') }}</span>
-            </mat-form-field>
-
-            <!-- Descrição -->
-            <mat-form-field appearance="outline" class="span-2">
-              <mat-label>Descrição</mat-label>
-              <input
-                matInput
-                type="text"
-                [value]="row.description"
-                (input)="onInput(row.stagedId, 'description', $event)" />
-              <span matSuffix class="conf-badge" [class]="confClass(row, 'description')"
-                    matTooltip="Confiança do modelo neste campo">{{ confPct(row, 'description') }}</span>
-            </mat-form-field>
-
-            <!-- Direção -->
-            <mat-form-field appearance="outline">
-              <mat-label>Tipo</mat-label>
-              <mat-select
-                [value]="row.direction"
-                (selectionChange)="updateField(row.stagedId, 'direction', $event.value)">
-                <mat-option value="debit">Saída (despesa)</mat-option>
-                <mat-option value="credit">Entrada (receita)</mat-option>
-              </mat-select>
-            </mat-form-field>
-
-            <!-- Método de pagamento -->
-            <mat-form-field appearance="outline">
-              <mat-label>Método</mat-label>
-              <input
-                matInput
-                type="text"
-                [value]="row.payment_method"
-                (input)="onInput(row.stagedId, 'payment_method', $event)" />
-            </mat-form-field>
-
-            <!-- Conta (obrigatória) -->
-            <mat-form-field appearance="outline">
-              <mat-label>Conta *</mat-label>
-              <mat-select
-                [value]="row.accountId"
-                (selectionChange)="updateField(row.stagedId, 'accountId', $event.value)">
-                @for (acc of accounts(); track acc.id) {
-                  <mat-option [value]="acc.id">{{ acc.name }}</mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
-
-            <!-- Categoria (opcional) -->
-            <mat-form-field appearance="outline">
-              <mat-label>Categoria</mat-label>
-              <mat-select
-                [value]="row.categoryId"
-                (selectionChange)="updateField(row.stagedId, 'categoryId', $event.value)">
-                <mat-option [value]="null">Sem categoria</mat-option>
-                @for (cat of categoryOptions(); track cat.id) {
-                  <mat-option [value]="cat.id">{{ cat.name }}</mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
-          </div>
-        </mat-card-content>
-      </mat-card>
+    @if (showPaginator()) {
+      <mat-paginator
+        [length]="rows().length"
+        [pageSize]="pageSize()"
+        [pageIndex]="pageIndex()"
+        [pageSizeOptions]="pageSizeOptions"
+        (page)="onPage($event)"
+        aria-label="Paginação das transações extraídas"
+      />
     }
 
     <div class="review-actions">
+      <span class="hint commit-count">
+        {{ readyCount() }} de {{ pendingCount() }} serão lançadas agora
+      </span>
       <button mat-button type="button" (click)="reset()">Cancelar</button>
       <button
         mat-flat-button
         color="primary"
         type="button"
         [disabled]="!canConfirm()"
-        (click)="confirm()">
+        (click)="confirm()"
+      >
         <mat-icon>check</mat-icon>
         Confirmar e lançar
       </button>
