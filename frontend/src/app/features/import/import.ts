@@ -22,7 +22,7 @@ import type {
   StagedTransactionResponseDTO,
 } from '../../core/api/fintechSaaSAPI.schemas';
 import {
-  allPendingHaveAccount,
+  anyPendingHasAccount,
   buildCommitRequest,
   conflictMessage,
   confidenceLevel,
@@ -117,7 +117,7 @@ export class ImportComponent implements OnInit {
       'A imagem pode estar ilegível ou o serviço de extração indisponível.',
   );
 
-  readonly canConfirm = computed(() => allPendingHaveAccount(this.rows()) && !this.committing());
+  readonly canConfirm = computed(() => anyPendingHasAccount(this.rows()) && !this.committing());
 
   ngOnInit(): void {
     this.accountsService.listAccounts().subscribe((list) => this.accounts.set(list));
