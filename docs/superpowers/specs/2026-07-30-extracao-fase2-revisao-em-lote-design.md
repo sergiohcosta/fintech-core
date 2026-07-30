@@ -1,7 +1,7 @@
 # Spec: Extração — Fase 2 (metade B): UX de revisão em lote
 
 **Data:** 2026-07-30
-**Status:** proposto (aguardando aprovação)
+**Status:** entregue
 **Fonte do produto:** `docs/roadmap-extracao-e-conciliacao.md` — Fase 2 ("CSV/OFX e revisão em lote")
 **Spec anterior:** `docs/superpowers/specs/2026-07-28-extracao-fase2-csv-ofx-design.md` (metade A — backend, entregue, #196)
 **Issue:** #201 (sub-issue do épico **#175** — Fase 2, milestone *Fase 2*)
