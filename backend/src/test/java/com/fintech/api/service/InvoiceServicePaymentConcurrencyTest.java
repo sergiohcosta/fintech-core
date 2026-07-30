@@ -120,7 +120,7 @@ class InvoiceServicePaymentConcurrencyTest {
         Runnable payTask = () -> {
             try {
                 barrier.await();
-                invoiceService.pay(invoiceId, tenant, user, sourceAccount.getId());
+                invoiceService.pay(invoiceId, tenant, user, sourceAccount.getId(), null);
             } catch (Exception expectedForLoser) {
                 // O perdedor da corrida recebe IllegalStateException — comportamento esperado.
             }
