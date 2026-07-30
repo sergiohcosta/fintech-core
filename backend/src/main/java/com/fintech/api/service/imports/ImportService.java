@@ -368,6 +368,32 @@ public class ImportService {
         return StagedTransactionResponseDTO.fromEntity(staged);
     }
 
+    /**
+     * Descarta uma staged PENDING (Fase 2, metade B): a linha não vira {@code Transaction} e deixa
+     * de bloquear a revisão do batch (ex.: candidata a duplicata, linha de rodapé do extrato).
+     *
+     * <p>É uma TRANSIÇÃO DE ESTADO, não uma edição de campos — por isso endpoint próprio, e não
+     * um campo {@code status} no {@link StagedPatchDTO} (mesmo padrão de {@code close}/{@code pay}
+     * de fatura). Só transiciona a partir de PENDING; qualquer outro estado → 400.
+     */
+    @Transactional
+    public StagedTransactionResponseDTO discardStaged(UUID batchId, UUID stagedId, User user) {
+        ImportBatch batch = findBatch(batchId, user);  // valida tenant/existência do batch (404)
+        StagedTransaction staged = findStaged(stagedId, batchId, user);
+        if (staged.getStatus() != StagedTransactionStatus.PENDING) {
+            throw new BusinessException("Só é possível descartar uma staged pendente.");
+        }
+
+        staged.setStatus(StagedTransactionStatus.DISCARDED);
+
+        // Descartar a ÚLTIMA pendente resolve o batch tanto quanto lançá-la: sem isso, um batch
+        // cujas linhas foram todas descartadas ficaria EXTRACTED para sempre (o gate do commit()
+        // nunca roda, porque não há o que commitar). Mesma condição, chamada de dois pontos.
+        closeBatchIfNoPendingLeft(batch, user);
+
+        return StagedTransactionResponseDTO.fromEntity(staged);
+    }
+
     // ---------------------------------------------------------------------------------------
     // Fase 1 — commit (promoção staged → Transaction)
     // ---------------------------------------------------------------------------------------
@@ -413,14 +439,7 @@ public class ImportService {
             staged.setStatus(StagedTransactionStatus.CONFIRMED);
         }
 
-        // Batch vira COMMITTED quando nenhuma staged está mais PENDING (todas resolvidas).
-        boolean anyPending = stagedRepository
-                .findAllByBatch_IdAndTenantOrderByCreatedAt(batchId, user.getTenant())
-                .stream()
-                .anyMatch(s -> s.getStatus() == StagedTransactionStatus.PENDING);
-        if (!anyPending) {
-            batch.setStatus(ImportBatchStatus.COMMITTED);
-        }
+        closeBatchIfNoPendingLeft(batch, user);
 
         return ImportBatchResponseDTO.fromEntity(batch);
     }
@@ -428,6 +447,22 @@ public class ImportService {
     // ---------------------------------------------------------------------------------------
     // Internos
     // ---------------------------------------------------------------------------------------
+
+    /**
+     * Gate único de encerramento do batch: "não sobrou nenhuma staged PENDING" ⇒ COMMITTED.
+     * Chamado pelo {@code commit()} (todas lançadas) e pelo {@code discardStaged()} (a última
+     * pendente foi descartada). Condição em UM lugar só — duplicá-la é o tipo de regra que
+     * diverge silenciosamente numa mudança futura.
+     */
+    private void closeBatchIfNoPendingLeft(ImportBatch batch, User user) {
+        boolean anyPending = stagedRepository
+                .findAllByBatch_IdAndTenantOrderByCreatedAt(batch.getId(), user.getTenant())
+                .stream()
+                .anyMatch(s -> s.getStatus() == StagedTransactionStatus.PENDING);
+        if (!anyPending) {
+            batch.setStatus(ImportBatchStatus.COMMITTED);
+        }
+    }
 
     private ImportBatch findBatch(UUID id, User user) {
         return batchRepository.findByIdAndTenant(id, user.getTenant())
