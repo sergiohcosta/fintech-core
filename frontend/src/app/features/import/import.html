@@ -25,9 +25,10 @@
       <mat-card appearance="outlined" class="upload-card">
         <mat-card-content>
           <p class="hint">
-            Envie a foto de um comprovante (recibo, PIX, nota), um extrato CSV ou um arquivo OFX do
-            seu banco. Vamos extrair valor, data e descrição automaticamente — você confere antes de
-            lançar.
+            Envie a foto de um comprovante (recibo, PIX, nota), um extrato CSV, um arquivo OFX do
+            seu banco ou um PDF com texto (fatura/extrato gerado digitalmente — PDF escaneado ainda
+            não é suportado). Vamos extrair valor, data e descrição automaticamente — você confere
+            antes de lançar.
           </p>
 
           <div
@@ -48,7 +49,7 @@
               <label class="file-input-label">
                 <input
                   type="file"
-                  accept=".csv,.ofx,image/*"
+                  accept=".csv,.ofx,.pdf,image/*"
                   hidden
                   (change)="onFileSelected($event)"
                 />

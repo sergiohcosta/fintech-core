@@ -776,7 +776,7 @@ force?: boolean;
 };
 
 export type CreateImportBody = {
-  /** Comprovante (image/*), extrato CSV ou arquivo OFX (1.x ou 2.x). */
+  /** Comprovante (image/*), extrato CSV, arquivo OFX (1.x ou 2.x) ou PDF com texto. */
   file: Blob;
   importMode: ImportMode;
 };
