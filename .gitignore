@@ -19,3 +19,12 @@ frontend/coverage/
 .scannerwork/
 .sonar-scan.log
 .aider*
+
+# Android
+android/local.properties
+android/.gradle/
+android/**/build/
+android/.idea/
+android/*.iml
+android/captures/
+!android/gradle/wrapper/gradle-wrapper.jar
