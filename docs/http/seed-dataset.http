@@ -1126,7 +1126,7 @@ Authorization: Bearer {{token_carlos}}
 
 ###
 
-### ── Bloco 11: Importação / Extração (Fase 0 — Fundação + Fase 1 — imagem + Fase 2 — CSV/OFX) ─
+### ── Bloco 11: Importação / Extração (Fase 0 — Fundação + Fase 1 — imagem + Fase 2 — CSV/OFX + Fase 3 — PDF texto) ─
 
 ### 11.1 Criar batch a partir de um schema normalizado mockado (prova ponta a ponta)
 ###      requiresReview é DERIVADO no backend por threshold — o valor enviado é ignorado.
@@ -1312,6 +1312,29 @@ Content-Disposition: form-data; name="file"; filename="extrato.ofx"
 Content-Type: application/octet-stream
 
 < ./extrato.ofx
+--WebAppBoundary
+Content-Disposition: form-data; name="importMode"
+
+NEW_TRANSACTIONS
+--WebAppBoundary--
+
+###
+
+### 11.13b (Fase 3 — Onda 3) Upload de PDF com texto — aciona o PdfTextExtractor (heurística de
+###          linha, sem registry de templates). PDF escaneado (sem texto extraível) falha
+###          explicitamente em vez de cair na IA (fatia futura da Fase 3).
+###          < ./extrato.pdf é um PLACEHOLDER — coloque um PDF com camada de texto (não escaneado)
+###          ao lado deste arquivo, com linhas no padrão "data ... valor" (ex.: "15/07/2026
+###          MERCADO TESTE 89,90").
+POST http://localhost:8080/api/imports
+Authorization: Bearer {{token_carlos}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="extrato.pdf"
+Content-Type: application/pdf
+
+< ./extrato.pdf
 --WebAppBoundary
 Content-Disposition: form-data; name="importMode"
 

@@ -28,11 +28,19 @@ import com.fintech.api.repository.CategoryRepository;
 import com.fintech.api.repository.TenantRepository;
 import com.fintech.api.repository.UserRepository;
 import com.fintech.api.service.TransactionService;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
@@ -600,6 +608,62 @@ class ImportServiceTest {
         assertThat(tx.accountId()).isEqualTo(account.getId());
         assertThat(tx.categoryId()).isEqualTo(category.getId());
         assertThat(tx.date()).isEqualTo(LocalDate.parse("2026-07-15"));
+    }
+
+    @Test
+    void uploadDeFixturePdfComTextoGetStagedCommitCriaTransacaoComContaECategoriaCorretas() {
+        Tenant tenant = persistTenant("Tenant PDF Ponta a Ponta");
+        User user = persistUser(tenant, "pdf-e2e@import.test");
+        Account account = persistAccount(tenant, user);
+        Category category = persistCategory(tenant);
+
+        byte[] pdf = pdfComTexto("15/07/2026 MERCADO TESTE PDF E2E 89,90");
+        ExtractionInput input = new ExtractionInput(pdf, "extrato-e2e.pdf", "application/pdf", ImportMode.NEW_TRANSACTIONS);
+
+        // Upload real: passa pelo ExtractionRouter → PdfTextExtractor de verdade (sem mock).
+        ImportBatchResponseDTO batch = importService.createFromFile(input, false, user);
+        assertThat(batch.status()).isEqualTo(ImportBatchStatus.EXTRACTED);
+        assertThat(batch.sourceType()).isEqualTo(ImportSourceType.PDF_TEXT);
+
+        List<StagedTransactionResponseDTO> staged = importService.listStaged(batch.id(), user);
+        assertThat(staged).hasSize(1);
+        StagedTransactionResponseDTO row = staged.get(0);
+        assertThat(row.fields().get("amount").value()).isEqualTo(new BigDecimal("89.90"));
+
+        ImportCommitRequestDTO req = new ImportCommitRequestDTO(
+                List.of(new StagedCommitItemDTO(row.id(), account.getId(), category.getId())));
+        ImportBatchResponseDTO committed = importService.commit(batch.id(), req, user);
+        assertThat(committed.status()).isEqualTo(ImportBatchStatus.COMMITTED);
+
+        StagedTransactionResponseDTO afterCommit = importService.listStaged(batch.id(), user).get(0);
+        TransactionResponseDTO tx = transactionService.findById(afterCommit.promotedTransactionId(), user);
+        assertThat(tx.amount()).isEqualByComparingTo("89.90");
+        assertThat(tx.accountId()).isEqualTo(account.getId());
+        assertThat(tx.categoryId()).isEqualTo(category.getId());
+        assertThat(tx.date()).isEqualTo(LocalDate.parse("2026-07-15"));
+    }
+
+    /** PDF de verdade gerado em memória via PDFBox — mesmo padrão do {@code PdfTextExtractorTest}. */
+    private byte[] pdfComTexto(String... lines) {
+        try (PDDocument document = new PDDocument()) {
+            PDPage page = new PDPage();
+            document.addPage(page);
+            try (PDPageContentStream cs = new PDPageContentStream(document, page)) {
+                cs.beginText();
+                cs.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 12);
+                cs.newLineAtOffset(50, 700);
+                for (String line : lines) {
+                    cs.showText(line);
+                    cs.newLineAtOffset(0, -15);
+                }
+                cs.endText();
+            }
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            document.save(out);
+            return out.toByteArray();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     private boolean requiresReviewOf(List<StagedTransactionResponseDTO> staged, String overall) {
