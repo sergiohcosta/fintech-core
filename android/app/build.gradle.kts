@@ -4,6 +4,7 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.dagger.hilt.android")
     id("com.google.devtools.ksp")
+    id("org.openapi.generator")
 }
 
 android {
@@ -54,6 +55,11 @@ dependencies {
 
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+    // O ApiClient.kt gerado pelo openapi-generator (kotlin/jvm-retrofit2) importa
+    // ScalarsConverterFactory incondicionalmente na infraestrutura, independente do
+    // serializationLibrary configurado (gson) — sem essa dependência o código gerado
+    // não compila (import não resolvido).
+    implementation("com.squareup.retrofit2:converter-scalars:2.11.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
     implementation("com.google.code.gson:gson:2.11.0")
@@ -76,4 +82,59 @@ dependencies {
     testImplementation("org.robolectric:robolectric:4.13")
     testImplementation("androidx.test:core:1.6.1")
     testImplementation("androidx.work:work-testing:2.10.0")
+}
+
+openApiGenerate {
+    generatorName.set("kotlin")
+    library.set("jvm-retrofit2")
+    inputSpec.set("${rootDir}/../api-spec/openapi.yaml")
+    outputDir.set("${layout.buildDirectory.get()}/generated/openapi")
+    packageName.set("com.fintech.mobile.api")
+    apiPackage.set("com.fintech.mobile.api")
+    modelPackage.set("com.fintech.mobile.api.model")
+    configOptions.set(
+        mapOf(
+            "useCoroutines" to "true",
+            "dateLibrary" to "java8",
+            "serializationLibrary" to "gson"
+        )
+    )
+}
+
+android {
+    sourceSets {
+        getByName("main") {
+            kotlin.srcDir("${layout.buildDirectory.get()}/generated/openapi/src/main/kotlin")
+        }
+    }
+}
+
+// Bug conhecido do openapi-generator (kotlin/jvm-retrofit2): o valor default de um
+// parâmetro de query do tipo enum é emitido sem qualificar o nome do enum
+// (ex: "scope: DeleteInstallmentScope? = SINGLE" em vez de "= DeleteInstallmentScope.SINGLE"),
+// o que não compila em Kotlin. Bug aberto upstream (OpenAPITools/openapi-generator #12531,
+// #21437) sem fix disponível na 7.9.0. Como não podemos editar o código gerado (recriado a
+// cada build) nem o contrato (api-spec/openapi.yaml é fonte única, imutável por convenção do
+// projeto), corrigimos com um post-processing textual e específico logo após a geração.
+val fixGeneratedEnumDefaults = tasks.register("fixGeneratedEnumDefaults") {
+    dependsOn("openApiGenerate")
+    doLast {
+        val transactionsApiFile = file(
+            "${layout.buildDirectory.get()}/generated/openapi/src/main/kotlin/com/fintech/mobile/api/TransactionsApi.kt"
+        )
+        if (transactionsApiFile.exists()) {
+            val original = transactionsApiFile.readText()
+            val patched = original.replace(
+                "scope: DeleteInstallmentScope? = SINGLE",
+                "scope: DeleteInstallmentScope? = DeleteInstallmentScope.SINGLE"
+            )
+            if (patched != original) {
+                transactionsApiFile.writeText(patched)
+            }
+        }
+    }
+}
+
+tasks.named("preBuild") {
+    dependsOn(fixGeneratedEnumDefaults)
 }
