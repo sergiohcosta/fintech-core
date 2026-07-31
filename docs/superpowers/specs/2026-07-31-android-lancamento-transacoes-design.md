@@ -34,10 +34,23 @@ múltiplos tenants no mesmo dispositivo, testes instrumentados de UI.
 |---|---|---|---|
 | a | Stack de UI | Kotlin + Jetpack Compose | XML Views (legado — Google já recomenda Compose para projetos novos) |
 | b | Arquitetura de app | MVVM + Repository, camadas `ui/ → data/repository/ → data/{remote,local}/`, Hilt para DI | MVI (mais cerimônia que o escopo justifica); sem Repository (acopla ViewModel direto a Retrofit/Room, dificulta a decisão online-vs-fila) |
-| c | Cliente HTTP | Retrofit + OkHttp sobre `api-spec/openapi.yaml` (DTOs escritos à mão nesta v1, refletindo o contrato — sem codegen Kotlin ainda) | Codegen OpenAPI→Kotlin (openapi-generator tem gerador Kotlin/Retrofit) — adiado: adicionaria um pipeline de build novo para ~4 endpoints; considerar se o app crescer |
+| c | Cliente HTTP | Codegen a partir de `api-spec/openapi.yaml` via `openapi-generator` (gerador `kotlin`, biblioteca `jvm-retrofit2`), rodando no build Gradle — mesmo espírito do plugin Maven do backend e do Orval no frontend web: **um único** contrato-fonte para os 3 clientes | DTOs Kotlin escritos à mão — reintroduz o mesmo risco que o projeto já eliminou no backend/frontend: contrato divergindo silenciosamente do `openapi.yaml` conforme a API evolve |
 | d | Sincronização offline | Outbox local (Room) + `WorkManager` drenando a fila — só cobre `create`, sem sync bidirecional | Sync completo com reconciliação de conflitos — desnecessário: o app não edita/exclui, então não há conflito a resolver; histórico sempre busca fresco da API quando online, sem espelho local |
 | e | Sessão | JWT em `DataStore` com `EncryptedFile` (Jetpack Security) — mesmo token do web, sem refresh token | Refresh token — o backend não tem esse fluxo hoje (só JWT direto); implementar exigiria mudança no backend, fora do escopo de um cliente novo |
 | f | Ambiente de API | `localhost:8080` via emulador (`10.0.2.2:8080`) nesta v1 — sem build variants dev/prod ainda | Build flavors dev/prod (como o Angular tem `environments/`) — adiado para quando o app for além do ambiente de desenvolvimento local |
+
+**(c) Codegen em vez de DTOs manuais.**
+O projeto já resolveu esse problema duas vezes — `openapi-generator-maven-plugin` no backend
+(interfaces Spring a partir do spec) e Orval no frontend (`npm run api:generate`) — e as duas
+vezes a razão foi a mesma: escrita manual funciona no dia 1 e diverge silenciosamente no dia
+30, quando um campo muda no `openapi.yaml` e ninguém lembra de atualizar o cliente por igual.
+Um terceiro cliente reescrevendo DTOs à mão reintroduziria exatamente esse risco. O plugin
+`openapi-generator` tem gerador `kotlin` com biblioteca `jvm-retrofit2` nativa — gera
+data classes + interface Retrofit a partir do mesmo `api-spec/openapi.yaml`, plugado numa
+task Gradle (`generateAndroidApi`, análoga ao `generate-sources` do Maven), com saída em
+`build/generated/` (não versionada, mesmo padrão do backend). Isso também implica adotar o
+script `api-sync.sh` como o ponto de regeneração dos 3 clientes quando o contrato mudar —
+tratado no plano de implementação, não nesta spec.
 
 **(d) Por que outbox sem reconciliação é suficiente.**
 `TransactionRequestDTO` já é auto-contido (`description`, `amount`, `date`, `type`,
@@ -133,7 +146,6 @@ PendingTransaction(
 
 - Editar/excluir transação pelo app.
 - Telas de conta, categoria, fatura, orçamento, recorrência.
-- Codegen Kotlin do OpenAPI (DTOs manuais nesta v1).
 - Build variants dev/prod (aponta só para `localhost:8080` nesta v1).
 - Refresh token (depende de mudança no backend).
 - Biometria, notificações push, dark mode, multi-tenant no mesmo device.
