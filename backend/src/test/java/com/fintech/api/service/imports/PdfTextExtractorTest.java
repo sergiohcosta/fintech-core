@@ -3,6 +3,7 @@ package com.fintech.api.service.imports;
 import com.fintech.api.domain.enums.ImportMode;
 import com.fintech.api.domain.enums.ImportSourceType;
 import com.fintech.api.dto.imports.NormalizedBatchDTO;
+import com.fintech.api.dto.imports.NormalizedTransactionDTO;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -13,19 +14,22 @@ import org.junit.jupiter.api.Test;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Unitário PURO (sem Spring) do {@link PdfTextExtractor} — Onda 1 (esqueleto): roteamento por
- * magic number e falha explícita de PDF sem texto (escaneado) ou corrompido. A heurística de
- * reconhecimento de transação por linha entra na Onda 2 (spec §6.3).
+ * Unitário PURO (sem Spring) do {@link PdfTextExtractor}: roteamento por magic number, falha
+ * explícita de PDF sem texto (escaneado) ou corrompido (Onda 1), e a heurística de reconhecimento
+ * de transação por linha — data + valor na mesma linha (Onda 2, spec §6.3).
  *
  * <p>Fixtures são geradas EM MEMÓRIA via PDFBox (não arquivos binários commitados em
  * {@code src/test/resources}) — evita manter blob binário não-diffável para um caso tão simples
- * de reproduzir programaticamente.
+ * de reproduzir programaticamente. Só ASCII sem acento no texto das fixtures: a fonte Helvetica
+ * padrão (WinAnsiEncoding) do PDFBox não garante todo acento, e a heurística já reconhece
+ * "debito"/"credito" com ou sem acento (regex {@code d[ée]bito}/{@code cr[ée]dito}).
  */
 class PdfTextExtractorTest {
 
@@ -91,15 +95,82 @@ class PdfTextExtractorTest {
     }
 
     @Test
-    void extractDevolveBatchComSourceTypeEExtractorUsedCorretosQuandoHaTexto() {
-        NormalizedBatchDTO batch = extractor.extract(input(pdfComTexto("Extrato de teste com texto suficiente para passar do limiar")));
+    void extractDevolveBatchComSourceTypeEExtractorUsedCorretos() {
+        NormalizedBatchDTO batch = extractor.extract(input(pdfComTexto("01/07/2026 PADARIA TESTE 55,90")));
 
         assertThat(batch.sourceType()).isEqualTo(ImportSourceType.PDF_TEXT);
         assertThat(batch.extractorUsed()).isEqualTo("pdf_text_v1");
-        // Onda 1 (esqueleto): heurística de reconhecimento de linha ainda não existe (Onda 2) —
-        // o batch vem vazio, e é o guard-rail já existente no ImportService ("zero transações
-        // aproveitáveis") que converte isso em FAILED, sem duplicar a checagem aqui.
+    }
+
+    @Test
+    void extractDevolveBatchVazioQuandoNenhumaLinhaTemDataEValor() {
+        // Texto presente (passa do limiar de "tem camada de texto"), mas sem o padrão data+valor
+        // em nenhuma linha — o batch fica vazio, e é o guard-rail já existente no ImportService
+        // ("zero transações aproveitáveis") que converte isso em FAILED, sem duplicar a checagem aqui.
+        NormalizedBatchDTO batch = extractor.extract(
+                input(pdfComTexto("Extrato de teste com texto suficiente para passar do limiar")));
+
         assertThat(batch.transactions()).isEmpty();
+    }
+
+    @Test
+    void reconheceTransacoesComDataEValorEmFormatosDistintos() {
+        NormalizedBatchDTO batch = extractor.extract(input(pdfComTexto(
+                "01/07/2026 PADARIA TESTE 55,90",
+                "2026-07-02 ALUGUEL -1.200,00")));
+
+        assertThat(batch.transactions()).hasSize(2);
+
+        NormalizedTransactionDTO primeira = batch.transactions().get(0);
+        assertThat(primeira.fields().get("transaction_date").value()).isEqualTo("2026-07-01");
+        assertThat(primeira.fields().get("amount").value()).isEqualTo(new BigDecimal("55.90"));
+        assertThat(primeira.fields().get("amount").confidence()).isEqualByComparingTo("1.0");
+        assertThat(primeira.fields().get("description").value()).isEqualTo("PADARIA TESTE");
+        // Valor positivo, sem palavra-chave → credit (inferência pelo sinal, confiança 0.7).
+        assertThat(primeira.fields().get("direction").value()).isEqualTo("credit");
+        assertThat(primeira.fields().get("direction").confidence()).isEqualByComparingTo("0.7");
+
+        NormalizedTransactionDTO segunda = batch.transactions().get(1);
+        assertThat(segunda.fields().get("transaction_date").value()).isEqualTo("2026-07-02");
+        // Amount é sempre gravado em MÓDULO (mesma convenção do OFX/CSV) — o sinal só decide direction.
+        assertThat(segunda.fields().get("amount").value()).isEqualTo(new BigDecimal("1200.00"));
+        assertThat(segunda.fields().get("direction").value()).isEqualTo("debit");
+        assertThat(segunda.fields().get("description").value()).isEqualTo("ALUGUEL");
+    }
+
+    @Test
+    void linhaSemDataOuSemValorNaoViraTransacao() {
+        NormalizedBatchDTO batch = extractor.extract(input(pdfComTexto(
+                "EXTRATO DE CONTA CORRENTE",
+                "Saldo anterior",
+                "01/07/2026 PADARIA TESTE 55,90",
+                "Total de lancamentos: 1")));
+
+        // Só a linha com data E valor reconhecidos vira transação — as demais (cabeçalho, saldo
+        // sem data, rodapé com número solto sem data) não têm o par completo do padrão.
+        assertThat(batch.transactions()).hasSize(1);
+        assertThat(batch.transactions().get(0).fields().get("description").value()).isEqualTo("PADARIA TESTE");
+    }
+
+    @Test
+    void palavraChaveDebitoOuCreditoTemPrioridadeSobreOSinalDoValor() {
+        NormalizedBatchDTO batch = extractor.extract(input(pdfComTexto(
+                "03/07/2026 COMPRA DEBITO 45,00")));
+
+        // Valor POSITIVO (sem sinal de menos), mas a palavra-chave "DEBITO" na linha vence a
+        // inferência pelo sinal — mesma prioridade da direção no CsvExtractor (coluna de tipo
+        // explícita vale mais que o sinal do valor).
+        assertThat(batch.transactions().get(0).fields().get("direction").value()).isEqualTo("debit");
+    }
+
+    @Test
+    void aceitaDataComAnoReduzidoEValorComSimboloDeMoeda() {
+        NormalizedBatchDTO batch = extractor.extract(input(pdfComTexto(
+                "04/07/26 PAGAMENTO R$ 120,00")));
+
+        NormalizedTransactionDTO tx = batch.transactions().get(0);
+        assertThat(tx.fields().get("transaction_date").value()).isEqualTo("2026-07-04");
+        assertThat(tx.fields().get("amount").value()).isEqualTo(new BigDecimal("120.00"));
     }
 
     @Test
