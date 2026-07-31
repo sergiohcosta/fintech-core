@@ -249,8 +249,8 @@ export class ImportsService {
     );
   }
 /**
- * Multipart: envia o arquivo (file) + o modo de importação. O ExtractionRouter escolhe o extrator por CONTEÚDO (nunca pelo Content-Type do navegador — ele mente, ex.: .ofx chega como application/octet-stream): imagem aciona o VisionExtractor (Spring AI + Ollama), CSV e OFX usam parsers determinísticos. Grava o batch EXTRACTED e as transações em staging (PENDING), derivando requires_review por threshold no backend. Falha de um extrator que RECONHECEU o arquivo mas não conseguiu processá-lo grava o batch como FAILED (o fallback é o formulário manual de transação) — formato que NENHUM extrator reconhece é 400 direto, sem gravar batch. Dedup por arquivo (mesmo tenant): reenviar o mesmo arquivo sem force=true é 409; force=true reimporta mesmo assim.
- * @summary Extrai um arquivo (imagem, CSV ou OFX) e cria um batch com as transações em staging
+ * Multipart: envia o arquivo (file) + o modo de importação. O ExtractionRouter escolhe o extrator por CONTEÚDO (nunca pelo Content-Type do navegador — ele mente, ex.: .ofx chega como application/octet-stream): imagem aciona o VisionExtractor (Spring AI + Ollama), CSV e OFX usam parsers determinísticos, e PDF com camada de texto usa heurística de linha (data + valor) via Apache PDFBox — PDF escaneado (sem texto extraível) falha explicitamente, sem tentar OCR/IA nesta fase. Grava o batch EXTRACTED e as transações em staging (PENDING), derivando requires_review por threshold no backend. Falha de um extrator que RECONHECEU o arquivo mas não conseguiu processá-lo grava o batch como FAILED (o fallback é o formulário manual de transação) — formato que NENHUM extrator reconhece é 400 direto, sem gravar batch. Dedup por arquivo (mesmo tenant): reenviar o mesmo arquivo sem force=true é 409; force=true reimporta mesmo assim.
+ * @summary Extrai um arquivo (imagem, CSV, OFX ou PDF com texto) e cria um batch com as transações em staging
  */
  createImport<TData = ImportBatchResponseDTO>(createImportBody: CreateImportBody,
     params?: CreateImportParams, options?: HttpClientBodyOptions): Observable<TData>;
