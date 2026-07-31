@@ -199,12 +199,15 @@ Princípio de ordenação: **construir de dentro pra fora** — cada fase é us�
 **Objetivo:** faturas de cartão — o formato mais heterogêneo e mais valioso para a conciliação futura — com a garantia estrutural de que **nenhum formato desconhecido bloqueia o usuário**.
 
 **Entregas**
-- Extrator de texto de PDF + extração via visão para PDF escaneado
+- Extrator de texto de PDF (heurística de linha, sem registry) — **entregue, fatia 1** (#205)
+- Extração via visão para PDF escaneado — fatia futura
 - **IA como camada universal**: qualquer PDF/CSV que não case com template nem parser genérico vai para extração via IA, transparente para o usuário (mapeamento manual vira opcional, não último recurso)
 - Registry de templates para os 2–3 bancos principais (definidos pelos dados da Fase 2) — cabeça da curva apenas
 - **Validações de sanidade pós-extração** (guarda-corpo comum a template e IA): soma × total declarado, datas × período do extrato, ranges plausíveis
 - **Telemetria por formato**: volume, custo em tokens, taxa de casamento de template por banco — a base tanto do alerta de drift quanto da decisão de quais templates criar/promover
 - **Extração multi-transação por imagem única** (print de extrato completo, não PDF): generalização do `TransactionExtractor`/`VisionExtractor` da Fase 1 (schema plano → lista), reaproveitando o mesmo caminho de visão que o PDF escaneado desta fase já implementa e as validações de sanidade acima (soma × total declarado). Spec própria antes de implementar — #194 (guarda-corpo de curto prazo em #193)
+
+**Fatia 1 entregue** (spec `docs/superpowers/specs/2026-07-31-extracao-fase3-pdf-texto-design.md`, #205, sub-issue do épico #176): `PdfTextExtractor` (Apache PDFBox) reconhece PDF com camada de texto pelo magic number, extrai o texto via `PDFTextStripper` e reconhece transação por heurística de linha (data + valor na mesma linha) — sem registry de templates, sem validação soma × total, sem suporte a PDF escaneado (falha explícita, encaminhando para o formulário manual ou envio como imagem). Reaproveita 100% do pipeline genérico existente (`ExtractionRouter`, guard-rails de sanidade do `ImportService`, dedup por trio data+valor+descrição) — nenhuma mudança no núcleo.
 
 **Critérios de saída**
 - [ ] **Taxa de reconhecimento de template ≥90%** para os bancos cobertos
