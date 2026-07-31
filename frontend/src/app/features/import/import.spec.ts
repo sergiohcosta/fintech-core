@@ -18,17 +18,32 @@ import type {
 } from '../../core/api/fintechSaaSAPI.schemas';
 
 const account: AccountResponse = {
-  id: 'acc-1', name: 'Conta', type: 'CHECKING',
-  countInLiquidBalance: true, countInNetWorth: true, active: true, balance: 0,
+  id: 'acc-1',
+  name: 'Conta',
+  type: 'CHECKING',
+  countInLiquidBalance: true,
+  countInNetWorth: true,
+  active: true,
+  balance: 0,
 };
 const extractedBatch: ImportBatchResponseDTO = {
-  id: 'b1', importMode: 'NEW_TRANSACTIONS', sourceType: 'IMAGE', status: 'EXTRACTED',
+  id: 'b1',
+  importMode: 'NEW_TRANSACTIONS',
+  sourceType: 'IMAGE',
+  status: 'EXTRACTED',
 };
 const failedBatch: ImportBatchResponseDTO = {
-  id: 'b2', importMode: 'NEW_TRANSACTIONS', sourceType: 'IMAGE', status: 'FAILED',
+  id: 'b2',
+  importMode: 'NEW_TRANSACTIONS',
+  sourceType: 'IMAGE',
+  status: 'FAILED',
 };
 const staged: StagedTransactionResponseDTO = {
-  id: 's1', batchId: 'b1', requiresReview: true, status: 'PENDING', overallConfidence: 0.8,
+  id: 's1',
+  batchId: 'b1',
+  requiresReview: true,
+  status: 'PENDING',
+  overallConfidence: 0.8,
   fields: {
     amount: { value: 127.5, confidence: 0.98 },
     transaction_date: { value: '2026-06-28', confidence: 0.5 },
@@ -129,12 +144,12 @@ describe('ImportComponent', () => {
     expect(c.canConfirm()).toBe(true);
     c.confirm();
 
-    expect(patchSpy).toHaveBeenCalledWith(
-      'b1', 's1', { fields: expect.objectContaining({ amount: '127.5' }) },
-    );
-    expect(commitSpy).toHaveBeenCalledWith(
-      'b1', { items: [{ stagedId: 's1', accountId: 'acc-1', categoryId: null }] },
-    );
+    expect(patchSpy).toHaveBeenCalledWith('b1', 's1', {
+      fields: expect.objectContaining({ amount: '127.5' }),
+    });
+    expect(commitSpy).toHaveBeenCalledWith('b1', {
+      items: [{ stagedId: 's1', accountId: 'acc-1', categoryId: null }],
+    });
     expect(navSpy).toHaveBeenCalledWith(['/transactions']);
   });
 
@@ -150,12 +165,19 @@ describe('ImportComponent', () => {
     c.selectedFile.set(fakeImage());
     c.upload();
 
-    expect(c.stage()).toBe('upload');  // nenhum batch foi criado
-    expect(c.duplicateConflict()).toEqual({ batchId: 'b-antigo', createdAt: '2026-07-01T10:00:00', filename: 'extrato.csv' });
+    expect(c.stage()).toBe('upload'); // nenhum batch foi criado
+    expect(c.duplicateConflict()).toEqual({
+      batchId: 'b-antigo',
+      createdAt: '2026-07-01T10:00:00',
+      filename: 'extrato.csv',
+    });
   });
 
   it('"importar mesmo assim" reenvia com force=true e "cancelar" limpa o conflito', () => {
-    const conflictError = { status: 409, error: { batchId: 'b-antigo', createdAt: null, filename: null } };
+    const conflictError = {
+      status: 409,
+      error: { batchId: 'b-antigo', createdAt: null, filename: null },
+    };
     const createSpy = vi
       .spyOn(imports, 'createImport')
       .mockReturnValueOnce(throwError(() => conflictError) as any)
