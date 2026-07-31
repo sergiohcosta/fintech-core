@@ -33,7 +33,7 @@ import {
   formatLocalDate,
 } from '../transaction/transaction-form/transaction-form.utils';
 import {
-  anyPendingHasAccount,
+  anyRowReadyToCommit,
   applyBulkField,
   buildCommitRequest,
   conflictMessage,
@@ -45,6 +45,7 @@ import {
   formatAmountDisplay,
   formatConfidence,
   formatDatePtBr,
+  isReadyToCommit,
   parseDuplicateConflict,
   type CategoryOption,
   type DuplicateConflict,
@@ -141,7 +142,7 @@ export class ImportComponent implements OnInit {
   );
 
   readonly canConfirm = computed(
-    () => anyPendingHasAccount(this.rows()) && !this.committing() && !this.discarding(),
+    () => anyRowReadyToCommit(this.rows()) && !this.committing() && !this.discarding(),
   );
 
   // --- Tabela: seleção, paginação e expansão (Fase 2 metade B) ---
@@ -189,9 +190,14 @@ export class ImportComponent implements OnInit {
   // Contagem explícita antes de confirmar: com o gate relaxado (§2f da spec), "confirmar" pode
   // lançar só parte das linhas — o usuário precisa ver quantas de quantas vão de fato.
   readonly pendingCount = computed(() => this.rows().filter((r) => r.status === 'PENDING').length);
-  readonly readyCount = computed(
-    () => this.rows().filter((r) => r.status === 'PENDING' && r.accountId).length,
-  );
+  readonly readyCount = computed(() => this.rows().filter(isReadyToCommit).length);
+
+  /** Linha com conta escolhida (o usuário já decidiu que quer lançar) mas valor/data inválidos —
+   *  não vai pro commit ainda; o ícone na coluna de flags avisa por que ela ficou de fora da
+   *  contagem de "prontas" sem o usuário precisar tentar confirmar pra descobrir. */
+  isBlockedFromCommit(row: ReviewRow): boolean {
+    return row.status === 'PENDING' && !!row.accountId && !isReadyToCommit(row);
+  }
 
   constructor() {
     this.selection.changed
@@ -541,11 +547,18 @@ export class ImportComponent implements OnInit {
 
   confirm(): void {
     const rows = this.rows();
-    const pending = rows.filter((r) => r.status === 'PENDING' && r.accountId);
-    if (pending.length === 0) {
-      this.snackBar.open('Selecione a conta de cada lançamento antes de confirmar.', 'OK', {
-        duration: 4000,
-      });
+    // Só as REALMENTE prontas (conta + valor + data válidos) — mesma régua de `isReadyToCommit`
+    // usada em `buildCommitRequest`. Uma linha com conta escolhida mas valor/data inválidos NÃO
+    // entra aqui: nunca chega a virar PATCH nem commit, então nunca dispara o erro genérico do
+    // backend (que, além de expor o UUID da staged, derrubaria o lote inteiro — commit() é
+    // `@Transactional` único).
+    const ready = rows.filter(isReadyToCommit);
+    if (ready.length === 0) {
+      this.snackBar.open(
+        'Nenhuma linha pronta pra lançar — verifique conta, valor e data de cada uma.',
+        'OK',
+        { duration: 4000 },
+      );
       return;
     }
     const id = this.batchId();
@@ -553,7 +566,7 @@ export class ImportComponent implements OnInit {
 
     // Persiste as edições (PATCH marca confiança 1.0) ANTES de lançar — o commit lê os valores
     // já gravados. forkJoin garante que todos os patches terminem antes do commit disparar.
-    const patches = pending.map((r) =>
+    const patches = ready.map((r) =>
       this.imports.patchImportStaged(id, r.stagedId, { fields: this.patchFieldsOf(r) }),
     );
 

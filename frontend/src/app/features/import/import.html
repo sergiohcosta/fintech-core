@@ -203,6 +203,14 @@
               content_copy
             </mat-icon>
           }
+          @if (isBlockedFromCommit(row)) {
+            <mat-icon
+              color="warn"
+              matTooltip="Valor ou data inválidos — esta linha não será lançada até corrigir"
+            >
+              error_outline
+            </mat-icon>
+          }
         </td>
       </ng-container>
 
