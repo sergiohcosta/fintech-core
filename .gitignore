@@ -22,6 +22,8 @@ frontend/coverage/
 
 # Android
 android/local.properties
+android/.kotlin/
+android/*.hprof
 android/.gradle/
 android/**/build/
 android/.idea/
