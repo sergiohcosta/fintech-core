@@ -14,8 +14,11 @@ import {
   fieldValue,
   fieldValueAsString,
   flattenCategories,
+  formatAmountCurrency,
+  formatAmountDisplay,
   formatConfidence,
   formatConflictDate,
+  formatDatePtBr,
   isLowConfidence,
   parseDuplicateConflict,
   type CommitRow,
@@ -98,14 +101,26 @@ describe('buildCommitRequest', () => {
 
 describe('anyPendingHasAccount', () => {
   it('true quando toda PENDING tem conta (comportamento antigo continua válido)', () => {
-    expect(anyPendingHasAccount([{ stagedId: 's1', accountId: 'a', categoryId: null, status: 'PENDING' }])).toBe(true);
+    expect(
+      anyPendingHasAccount([
+        { stagedId: 's1', accountId: 'a', categoryId: null, status: 'PENDING' },
+      ]),
+    ).toBe(true);
   });
 
   it('false quando não há nenhuma PENDING com conta', () => {
-    expect(anyPendingHasAccount([{ stagedId: 's1', accountId: null, categoryId: null, status: 'PENDING' }])).toBe(false);
+    expect(
+      anyPendingHasAccount([
+        { stagedId: 's1', accountId: null, categoryId: null, status: 'PENDING' },
+      ]),
+    ).toBe(false);
     expect(anyPendingHasAccount([])).toBe(false);
     // CONFIRMED com conta não conta — só PENDING habilita o "Confirmar"
-    expect(anyPendingHasAccount([{ stagedId: 's1', accountId: 'a', categoryId: null, status: 'CONFIRMED' }])).toBe(false);
+    expect(
+      anyPendingHasAccount([
+        { stagedId: 's1', accountId: 'a', categoryId: null, status: 'CONFIRMED' },
+      ]),
+    ).toBe(false);
   });
 
   it('true com mistura — só precisa de UMA PENDING com conta (gate relaxado, Fase 2 metade B)', () => {
@@ -174,7 +189,10 @@ describe('applyBulkField', () => {
 
 describe('parseDuplicateConflict', () => {
   it('reconhece um 409 com batchId no corpo', () => {
-    const error = { status: 409, error: { batchId: 'b1', createdAt: '2026-07-01T10:00:00', filename: 'extrato.csv' } };
+    const error = {
+      status: 409,
+      error: { batchId: 'b1', createdAt: '2026-07-01T10:00:00', filename: 'extrato.csv' },
+    };
     expect(parseDuplicateConflict(error)).toEqual({
       batchId: 'b1',
       createdAt: '2026-07-01T10:00:00',
@@ -183,7 +201,9 @@ describe('parseDuplicateConflict', () => {
   });
 
   it('devolve null para qualquer outro erro (400, 500, sem batchId)', () => {
-    expect(parseDuplicateConflict({ status: 400, error: { message: 'formato não reconhecido' } })).toBeNull();
+    expect(
+      parseDuplicateConflict({ status: 400, error: { message: 'formato não reconhecido' } }),
+    ).toBeNull();
     expect(parseDuplicateConflict({ status: 500 })).toBeNull();
     expect(parseDuplicateConflict({ status: 409, error: {} })).toBeNull();
     expect(parseDuplicateConflict(null)).toBeNull();
@@ -211,7 +231,11 @@ describe('formatConflictDate', () => {
 
 describe('conflictMessage', () => {
   it('inclui data e nome do arquivo quando presentes', () => {
-    const msg = conflictMessage({ batchId: 'b1', createdAt: '2026-07-01T10:00:00', filename: 'extrato.csv' });
+    const msg = conflictMessage({
+      batchId: 'b1',
+      createdAt: '2026-07-01T10:00:00',
+      filename: 'extrato.csv',
+    });
     expect(msg).toContain('extrato.csv');
     expect(msg).toContain('2026');
   });
@@ -227,7 +251,12 @@ describe('flattenCategories', () => {
   it('achata a árvore com caminho no nome', () => {
     const tree: CategoryResponseDTO[] = [
       {
-        id: 'p', name: 'Pets', icon: 'pets', color: '#000', archived: false, children: [
+        id: 'p',
+        name: 'Pets',
+        icon: 'pets',
+        color: '#000',
+        archived: false,
+        children: [
           { id: 'c', name: 'Ração', icon: 'x', color: '#000', archived: false, children: [] },
         ],
       },
@@ -244,5 +273,39 @@ describe('flattenCategories', () => {
   it('lida com null/undefined', () => {
     expect(flattenCategories(null)).toEqual([]);
     expect(flattenCategories(undefined)).toEqual([]);
+  });
+});
+
+describe('formatAmountCurrency', () => {
+  it('formata valor canônico (ponto decimal) como moeda pt-BR', () => {
+    expect(formatAmountCurrency('1234.5')).toBe('R$\u00a01.234,50');
+    expect(formatAmountCurrency('7')).toBe('R$\u00a07,00');
+  });
+
+  it('vazio ou inválido vira travessão', () => {
+    expect(formatAmountCurrency('')).toBe('—');
+    expect(formatAmountCurrency('abc')).toBe('—');
+  });
+});
+
+describe('formatAmountDisplay', () => {
+  it('formata só os dígitos pt-BR, sem símbolo de moeda', () => {
+    expect(formatAmountDisplay('1234.5')).toBe('1.234,50');
+  });
+
+  it('vazio ou inválido vira string vazia (input some, não "—")', () => {
+    expect(formatAmountDisplay('')).toBe('');
+    expect(formatAmountDisplay('abc')).toBe('');
+  });
+});
+
+describe('formatDatePtBr', () => {
+  it('converte ISO (yyyy-MM-dd) para dd/mm/aaaa', () => {
+    expect(formatDatePtBr('2026-06-28')).toBe('28/06/2026');
+  });
+
+  it('vazio vira travessão; string não parseável é devolvida como está', () => {
+    expect(formatDatePtBr('')).toBe('—');
+    expect(formatDatePtBr('não-é-data')).toBe('não-é-data');
   });
 });

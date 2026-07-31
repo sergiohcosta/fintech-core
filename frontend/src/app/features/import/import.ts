@@ -15,6 +15,8 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatPaginatorModule, type PageEvent } from '@angular/material/paginator';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule } from '@angular/material/core';
 import { forkJoin, of, switchMap } from 'rxjs';
 import { catchError, finalize } from 'rxjs/operators';
 
@@ -27,16 +29,22 @@ import type {
   StagedTransactionResponseDTO,
 } from '../../core/api/fintechSaaSAPI.schemas';
 import {
+  parseAmountInput,
+  formatLocalDate,
+} from '../transaction/transaction-form/transaction-form.utils';
+import {
   anyPendingHasAccount,
   applyBulkField,
   buildCommitRequest,
   conflictMessage,
   confidenceLevel,
-  directionLabel,
   fieldConfidence,
   fieldValueAsString,
   flattenCategories,
+  formatAmountCurrency,
+  formatAmountDisplay,
   formatConfidence,
+  formatDatePtBr,
   parseDuplicateConflict,
   type CategoryOption,
   type DuplicateConflict,
@@ -50,6 +58,9 @@ interface ReviewRow {
   requiresReview: boolean;
   overallConfidence: number | null;
   amount: string;
+  /** Espelho de `amount` formatado pt-BR para o input de edição (padrão de `transaction-form.ts`):
+   *  digitar é livre, o parse pt-BR só acontece no blur — `amount` (canônico) é o que vai no PATCH. */
+  amountDisplay: string;
   transaction_date: string;
   description: string;
   direction: string;
@@ -83,6 +94,8 @@ interface ReviewRow {
     MatTableModule,
     MatCheckboxModule,
     MatPaginatorModule,
+    MatDatepickerModule,
+    MatNativeDateModule,
   ],
   templateUrl: './import.html',
   styleUrl: './import.scss',
@@ -140,6 +153,7 @@ export class ImportComponent implements OnInit {
     'amount',
     'transaction_date',
     'description',
+    'direction',
     'account',
     'category',
     'actions',
@@ -297,6 +311,7 @@ export class ImportComponent implements OnInit {
       requiresReview: s.requiresReview,
       overallConfidence: s.overallConfidence ?? null,
       amount: fieldValueAsString(s, 'amount'),
+      amountDisplay: formatAmountDisplay(fieldValueAsString(s, 'amount')),
       transaction_date: fieldValueAsString(s, 'transaction_date'),
       description: fieldValueAsString(s, 'description'),
       direction: fieldValueAsString(s, 'direction') || 'debit',
@@ -324,6 +339,67 @@ export class ImportComponent implements OnInit {
 
   onInput(stagedId: string, field: keyof ReviewRow, event: Event): void {
     this.updateField(stagedId, field, (event.target as HTMLInputElement).value);
+  }
+
+  // --- Edição de valor (máscara pt-BR, mesmo padrão de transaction-form.ts) ---
+
+  /** Digitação livre: só espelha o texto exibido, sem parsear ainda (evita brigar com o usuário
+   *  no meio da digitação, ex. vírgula sendo trocada por ponto a cada tecla). */
+  onAmountInputRow(stagedId: string, event: Event): void {
+    const raw = (event.target as HTMLInputElement).value;
+    this.rows.update((rows) =>
+      rows.map((r) => (r.stagedId === stagedId ? { ...r, amountDisplay: raw } : r)),
+    );
+  }
+
+  /** No blur, interpreta o texto digitado (pt-BR ou ponto-decimal) e grava o valor CANÔNICO
+   *  (ponto-decimal) em `amount` — é ele que vai no PATCH; `amountDisplay` só formata pra tela. */
+  onAmountBlurRow(stagedId: string, event: Event): void {
+    const raw = (event.target as HTMLInputElement).value;
+    const parsed = parseAmountInput(raw);
+    this.rows.update((rows) =>
+      rows.map((r) => {
+        if (r.stagedId !== stagedId) {
+          return r;
+        }
+        if (parsed === null) {
+          return { ...r, amount: '', amountDisplay: '' };
+        }
+        const canonical = String(parsed);
+        return { ...r, amount: canonical, amountDisplay: formatAmountDisplay(canonical) };
+      }),
+    );
+  }
+
+  /** No foco, troca a formatação pt-BR (ponto de milhar) pelo texto cru mais fácil de editar. */
+  onAmountFocusRow(stagedId: string, event: Event): void {
+    const row = this.rows().find((r) => r.stagedId === stagedId);
+    const input = event.target as HTMLInputElement;
+    input.value = row?.amount ? row.amount.replace('.', ',') : '';
+  }
+
+  // --- Edição de data (mat-datepicker; locale pt-BR já é global em app.config.ts) ---
+
+  dateValue(row: ReviewRow): Date | null {
+    if (!row.transaction_date) {
+      return null;
+    }
+    const d = new Date(`${row.transaction_date}T00:00:00`);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  onDateChange(stagedId: string, date: Date | null): void {
+    this.updateField(stagedId, 'transaction_date', date ? formatLocalDate(date) : '');
+  }
+
+  // --- Helpers de exibição pt-BR (coluna compacta, somente leitura) ---
+
+  amountText(row: ReviewRow): string {
+    return formatAmountCurrency(row.amount);
+  }
+
+  dateText(row: ReviewRow): string {
+    return formatDatePtBr(row.transaction_date);
   }
 
   // --- Seleção ---
@@ -364,6 +440,13 @@ export class ImportComponent implements OnInit {
     this.selection.clear();
   }
 
+  /** Seleciona TODAS as linhas do lote, não só a página atual — é o que permite "aplicar a mesma
+   *  conta a todas as transações" com um clique, mesmo com o resultado espalhado em várias
+   *  páginas da tabela (a paginação aqui é só client-side, sobre o array já carregado). */
+  selectAllRows(): void {
+    this.selection.select(...this.rows().map((r) => r.stagedId));
+  }
+
   // --- Paginação (client-side) ---
 
   onPage(event: PageEvent): void {
@@ -395,6 +478,10 @@ export class ImportComponent implements OnInit {
 
   applyCategoryToSelected(categoryId: string | null): void {
     this.rows.update((rows) => applyBulkField(rows, this.selectedIds(), 'categoryId', categoryId));
+  }
+
+  applyDirectionToSelected(direction: string): void {
+    this.rows.update((rows) => applyBulkField(rows, this.selectedIds(), 'direction', direction));
   }
 
   // --- Descarte (PENDING → DISCARDED no backend, linha sai da view) ---
@@ -531,10 +618,6 @@ export class ImportComponent implements OnInit {
 
   confClass(row: ReviewRow, key: ReviewFieldKey): 'low' | 'high' {
     return confidenceLevel(row.confidences[key]);
-  }
-
-  directionText(value: string): string {
-    return directionLabel(value);
   }
 
   private errorText(error: unknown, fallback: string): string {

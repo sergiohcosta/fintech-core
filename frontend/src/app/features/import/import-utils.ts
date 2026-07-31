@@ -12,11 +12,7 @@ import type {
  */
 
 export type ReviewFieldKey =
-  | 'amount'
-  | 'transaction_date'
-  | 'description'
-  | 'direction'
-  | 'payment_method';
+  'amount' | 'transaction_date' | 'description' | 'direction' | 'payment_method';
 
 /** Campos exibidos na revisão, na ordem. */
 export const REVIEW_FIELD_KEYS: ReviewFieldKey[] = [
@@ -83,6 +79,44 @@ export function confidenceLevel(
 /** Rótulo humano da direção (debit = saída/despesa, credit = entrada/receita). */
 export function directionLabel(value: unknown): string {
   return value === 'credit' ? 'Entrada (receita)' : 'Saída (despesa)';
+}
+
+// --- Regionalização pt-BR de valor e data (exibição na revisão) ---
+
+/** Valor cru (ponto decimal, ex. "1234.5") → "R$ 1.234,50"; inválido/vazio → "—". */
+export function formatAmountCurrency(raw: string): string {
+  const n = Number(raw);
+  if (raw === '' || !Number.isFinite(n)) {
+    return '—';
+  }
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n);
+}
+
+/** Valor cru (ponto decimal) → só os dígitos formatados pt-BR ("1.234,50"), sem símbolo — usado
+ *  no input de edição (o "R$" vem de um `matTextPrefix` separado, como no formulário manual). */
+export function formatAmountDisplay(raw: string): string {
+  const n = Number(raw);
+  if (raw === '' || !Number.isFinite(n)) {
+    return '';
+  }
+  return new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(n);
+}
+
+/** Data ISO (yyyy-MM-dd) → "dd/mm/aaaa"; inválida/vazia → "—". `T00:00:00` evita o D-1 de fuso
+ *  horário que `new Date('yyyy-MM-dd')` sozinho causaria em offsets positivos (mesmo cuidado de
+ *  `formatLocalDate` em transaction-form.utils.ts). */
+export function formatDatePtBr(raw: string): string {
+  if (!raw) {
+    return '—';
+  }
+  const d = new Date(`${raw}T00:00:00`);
+  if (Number.isNaN(d.getTime())) {
+    return raw;
+  }
+  return d.toLocaleDateString('pt-BR');
 }
 
 /** Linha editável mínima usada pelo componente — só o que o payload de commit precisa. */
