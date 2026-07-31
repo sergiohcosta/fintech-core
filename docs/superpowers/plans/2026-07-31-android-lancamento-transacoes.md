@@ -729,8 +729,8 @@ git commit -m "feat(android): módulo de rede (Retrofit/OkHttp) e sessão JWT se
 - Test: `android/app/src/test/java/com/fintech/mobile/core/network/ApiCallTest.kt`
 
 **Interfaces:**
-- Consumes: nada (lógica pura, só depende de `Gson`, `retrofit2.HttpException` e `java.io.IOException`).
-- Produces: `sealed class ApiResult<out T>` (`Success<T>`, `ValidationError`, `HttpError`, `NetworkError`) e `suspend fun <T> apiCall(gson: Gson, block: suspend () -> T): ApiResult<T>` — usados por todos os Repositories a partir da Tarefa 7.
+- Consumes: `retrofit2.Response<T>` — **divergência confirmada na Tarefa 2**: todo método gerado (`AuthApi`, `AccountsApi`, `CategoriesApi`, `TransactionsApi`) retorna `suspend fun ...: Response<T>`, nunca `T` direto (comportamento padrão da biblioteca `jvm-retrofit2` do openapi-generator com `useCoroutines=true` — não há `HttpException` lançada para status HTTP não-2xx; o chamador recebe `Response` com `isSuccessful=false`). `apiCall` abaixo já reflete isso.
+- Produces: `sealed class ApiResult<out T>` (`Success<T>`, `ValidationError`, `HttpError`, `NetworkError`) e `suspend fun <T> apiCall(gson: Gson, block: suspend () -> Response<T>): ApiResult<T>` — usados por todos os Repositories a partir da Tarefa 7. Assinatura dos call sites não muda de forma perceptível: `apiCall(gson) { transactionsApi.createTransaction(dto) }` compila igual, só o tipo inferido do lambda passa de `T` para `Response<T>`.
 
 - [ ] **Step 1: Escrever o teste**
 
@@ -743,7 +743,6 @@ import kotlinx.coroutines.test.runTest
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Test
-import retrofit2.HttpException
 import retrofit2.Response
 import java.io.IOException
 import kotlin.test.assertEquals
@@ -754,8 +753,8 @@ class ApiCallTest {
     private val gson = Gson()
 
     @Test
-    fun `maps a successful call to Success`() = runTest {
-        val result = apiCall(gson) { "ok" }
+    fun `maps a successful response to Success`() = runTest {
+        val result = apiCall(gson) { Response.success("ok") }
         assertEquals(ApiResult.Success("ok"), result)
     }
 
@@ -763,9 +762,8 @@ class ApiCallTest {
     fun `maps 400 with body to ValidationError with field details`() = runTest {
         val body = """{"message":"Dados inválidos","details":{"amount":"deve ser maior que zero"}}"""
             .toResponseBody("application/json".toMediaType())
-        val exception = HttpException(Response.error<Any>(400, body))
 
-        val result = apiCall<Unit>(gson) { throw exception }
+        val result = apiCall<Unit>(gson) { Response.error(400, body) }
 
         assertIs<ApiResult.ValidationError>(result)
         assertEquals("Dados inválidos", result.message)
@@ -773,12 +771,11 @@ class ApiCallTest {
     }
 
     @Test
-    fun `maps a non-400 http error to HttpError with the status code`() = runTest {
+    fun `maps a non-400 error response to HttpError with the status code`() = runTest {
         val body = """{"message":"Fatura não encontrada"}"""
             .toResponseBody("application/json".toMediaType())
-        val exception = HttpException(Response.error<Any>(404, body))
 
-        val result = apiCall<Unit>(gson) { throw exception }
+        val result = apiCall<Unit>(gson) { Response.error(404, body) }
 
         assertIs<ApiResult.HttpError>(result)
         assertEquals(404, result.code)
@@ -836,32 +833,43 @@ data class BackendErrorResponse(
 package com.fintech.mobile.core.network
 
 import com.google.gson.Gson
-import retrofit2.HttpException
+import retrofit2.Response
 import java.io.IOException
 
-suspend fun <T> apiCall(gson: Gson, block: suspend () -> T): ApiResult<T> {
+// Todo método gerado pelo openapi-generator (kotlin/jvm-retrofit2) retorna Response<T> —
+// não lança HttpException em status não-2xx. Só IOException (sem conexão/timeout) é
+// exceção de verdade aqui; erro HTTP é um valor (response.isSuccessful == false).
+suspend fun <T> apiCall(gson: Gson, block: suspend () -> Response<T>): ApiResult<T> {
     return try {
-        ApiResult.Success(block())
-    } catch (e: HttpException) {
-        val parsed = parseErrorBody(gson, e)
-        if (e.code() == 400) {
-            ApiResult.ValidationError(
-                message = parsed?.message ?: "Dados inválidos",
-                fieldErrors = parsed?.details ?: emptyMap()
-            )
+        val response = block()
+        if (response.isSuccessful) {
+            val body = response.body()
+            if (body != null) {
+                ApiResult.Success(body)
+            } else {
+                ApiResult.HttpError(code = response.code(), message = "Resposta vazia")
+            }
         } else {
-            ApiResult.HttpError(
-                code = e.code(),
-                message = parsed?.message ?: (e.message() ?: "Erro ${e.code()}")
-            )
+            val parsed = parseErrorBody(gson, response)
+            if (response.code() == 400) {
+                ApiResult.ValidationError(
+                    message = parsed?.message ?: "Dados inválidos",
+                    fieldErrors = parsed?.details ?: emptyMap()
+                )
+            } else {
+                ApiResult.HttpError(
+                    code = response.code(),
+                    message = parsed?.message ?: response.message().ifBlank { "Erro ${response.code()}" }
+                )
+            }
         }
     } catch (e: IOException) {
         ApiResult.NetworkError(e)
     }
 }
 
-private fun parseErrorBody(gson: Gson, e: HttpException): BackendErrorResponse? {
-    val raw = e.response()?.errorBody()?.string() ?: return null
+private fun parseErrorBody(gson: Gson, response: Response<*>): BackendErrorResponse? {
+    val raw = response.errorBody()?.string() ?: return null
     return runCatching { gson.fromJson(raw, BackendErrorResponse::class.java) }.getOrNull()
 }
 ```
@@ -1250,6 +1258,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
+import retrofit2.Response
 import kotlin.test.assertIs
 
 class AuthRepositoryTest {
@@ -1260,7 +1269,7 @@ class AuthRepositoryTest {
     fun `saves the token and returns Success when login succeeds`() = runTest {
         val authApi = mockk<AuthApi>()
         coEvery { authApi.login(LoginDTO(email = "carlos@costa.com", password = "costa123")) } returns
-            LoginResponseDTO(token = "jwt-token-123")
+            Response.success(LoginResponseDTO(token = "jwt-token-123"))
         val tokenProvider = mockk<TokenProvider>(relaxUnitFun = true)
 
         val repository = AuthRepository(authApi, tokenProvider, gson)
@@ -1273,7 +1282,7 @@ class AuthRepositoryTest {
     @Test
     fun `does not save a token when the backend returns a blank token`() = runTest {
         val authApi = mockk<AuthApi>()
-        coEvery { authApi.login(any()) } returns LoginResponseDTO(token = null)
+        coEvery { authApi.login(any()) } returns Response.success(LoginResponseDTO(token = null))
         val tokenProvider = mockk<TokenProvider>(relaxUnitFun = true)
 
         val repository = AuthRepository(authApi, tokenProvider, gson)
@@ -1364,7 +1373,6 @@ import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
-import retrofit2.HttpException
 import retrofit2.Response
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -1393,7 +1401,7 @@ class LoginViewModelTest {
     @Test
     fun `successful login moves to Success state`() = runTest {
         val authApi = mockk<AuthApi>()
-        coEvery { authApi.login(any()) } returns LoginResponseDTO(token = "jwt-abc")
+        coEvery { authApi.login(any()) } returns Response.success(LoginResponseDTO(token = "jwt-abc"))
         val viewModel = viewModelWith(authApi)
 
         viewModel.login("carlos@costa.com", "costa123")
@@ -1406,7 +1414,7 @@ class LoginViewModelTest {
     fun `401 from the backend shows an invalid credentials message`() = runTest {
         val authApi = mockk<AuthApi>()
         val body = "{}".toResponseBody("application/json".toMediaType())
-        coEvery { authApi.login(any()) } throws HttpException(Response.error<Any>(401, body))
+        coEvery { authApi.login(any()) } returns Response.error(401, body)
         val viewModel = viewModelWith(authApi)
 
         viewModel.login("carlos@costa.com", "senha-errada")
@@ -1608,6 +1616,7 @@ import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
+import retrofit2.Response
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -1626,7 +1635,7 @@ class AccountRepositoryTest {
             balance = 150.0
         )
         val api = mockk<AccountsApi>()
-        coEvery { api.listAccounts() } returns listOf(account)
+        coEvery { api.listAccounts() } returns Response.success(listOf(account))
 
         val result = AccountRepository(api, Gson()).listAccounts()
 
@@ -1648,6 +1657,7 @@ import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
+import retrofit2.Response
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -1665,7 +1675,7 @@ class CategoryRepositoryTest {
             children = emptyList()
         )
         val api = mockk<CategoriesApi>()
-        coEvery { api.listCategories(any()) } returns listOf(category)
+        coEvery { api.listCategories(any()) } returns Response.success(listOf(category))
 
         val result = CategoryRepository(api, Gson()).listCategories()
 
@@ -1772,7 +1782,6 @@ import kotlinx.coroutines.test.runTest
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Test
-import retrofit2.HttpException
 import retrofit2.Response
 import java.io.IOException
 import java.time.LocalDate
@@ -1809,7 +1818,7 @@ class TransactionRepositoryTest {
         val api = mockk<TransactionsApi>()
         val body = """{"message":"Erro de Validação","details":{"amount":"deve ser maior que zero"}}"""
             .toResponseBody("application/json".toMediaType())
-        coEvery { api.createTransaction(sampleDto) } throws HttpException(Response.error<Any>(400, body))
+        coEvery { api.createTransaction(sampleDto) } returns Response.error(400, body)
         val dao = mockk<PendingTransactionDao>()
 
         val result = TransactionRepository(api, dao, gson).create(sampleDto)
@@ -1821,7 +1830,7 @@ class TransactionRepositoryTest {
     @Test
     fun `returns Saved when the API accepts the transaction`() = runTest {
         val api = mockk<TransactionsApi>()
-        coEvery { api.createTransaction(sampleDto) } returns emptyList<TransactionResponseDTO>()
+        coEvery { api.createTransaction(sampleDto) } returns Response.success(emptyList<TransactionResponseDTO>())
         val dao = mockk<PendingTransactionDao>()
 
         val result = TransactionRepository(api, dao, gson).create(sampleDto)
@@ -2524,7 +2533,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import retrofit2.HttpException
 import retrofit2.Response
 import java.io.IOException
 import java.time.LocalDate
@@ -2561,7 +2569,7 @@ class SyncWorkerTest {
     fun `removes a pending item after a successful sync`() = runTest {
         val pending = PendingTransactionEntity(localId = 1, payloadJson = gson.toJson(sampleDto), createdAt = 1L)
         val api = mockk<TransactionsApi>()
-        coEvery { api.createTransaction(sampleDto) } returns emptyList<TransactionResponseDTO>()
+        coEvery { api.createTransaction(sampleDto) } returns Response.success(emptyList<TransactionResponseDTO>())
         val dao = mockk<PendingTransactionDao>()
         coEvery { dao.getByStatus(PendingTransactionEntity.STATUS_PENDING) } returns listOf(pending)
         coEvery { dao.delete(1L) } returns Unit
@@ -2577,7 +2585,7 @@ class SyncWorkerTest {
         val pending = PendingTransactionEntity(localId = 1, payloadJson = gson.toJson(sampleDto), createdAt = 1L)
         val api = mockk<TransactionsApi>()
         val body = """{"message":"valor inválido"}""".toResponseBody("application/json".toMediaType())
-        coEvery { api.createTransaction(sampleDto) } throws HttpException(Response.error<Any>(400, body))
+        coEvery { api.createTransaction(sampleDto) } returns Response.error(400, body)
         val dao = mockk<PendingTransactionDao>()
         coEvery { dao.getByStatus(PendingTransactionEntity.STATUS_PENDING) } returns listOf(pending)
         coEvery { dao.updateStatus(1L, PendingTransactionEntity.STATUS_FAILED, "valor inválido") } returns Unit
