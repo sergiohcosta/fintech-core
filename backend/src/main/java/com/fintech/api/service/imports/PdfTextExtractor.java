@@ -3,6 +3,7 @@ package com.fintech.api.service.imports;
 import com.fintech.api.domain.enums.ImportSourceType;
 import com.fintech.api.dto.imports.NormalizedBatchDTO;
 import com.fintech.api.dto.imports.NormalizedTransactionDTO;
+import com.fintech.api.dto.imports.StagedFieldValueDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -12,14 +13,26 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Extrator de texto de PDF — primeira fatia da Fase 3 do funil do {@link ExtractionRouter}
  * (roadmap §1.2: padrão universal (OFX) → GENÉRICO (CSV, aqui) → IA). Diferente do CSV, texto de
  * PDF não tem separador estrutural nenhum (sem coluna, sem tag) — o único sinal disponível é o
- * padrão típico de uma linha de extrato (data + descrição + valor), reconhecido por heurística de
- * linha (Onda 2 deste plano).
+ * padrão típico de uma linha de extrato: uma DATA e um VALOR monetário na mesma linha. Sem
+ * registry de templates ainda (isso é fatia futura da Fase 3, que depende de volume real por
+ * banco), a heurística é genérica e por isso necessariamente mais frágil que a de coluna do
+ * {@link CsvExtractor} — esperado, não defeito: é o dado que a fase existe para produzir
+ * (roadmap §3, "cada transição exige aprendizado").
  *
  * <p><b>PDF escaneado (sem camada de texto) falha EXPLICITAMENTE aqui</b>, em vez de tentar
  * visão/OCR: o {@link VisionExtractor} hoje só processa bytes de imagem (prompt de comprovante),
@@ -50,6 +63,22 @@ public class PdfTextExtractor implements TransactionExtractor {
     // realmente sem texto) é pior que falso positivo (recusar um PDF com pouquíssimo texto real),
     // porque o guard-rail de "zero transações aproveitáveis" do ImportService já cobre o segundo caso.
     private static final int MIN_TEXT_CHARS = 20;
+
+    // Data: DD/MM/YYYY, DD/MM/YY (ano reduzido, base 2000) ou YYYY-MM-DD.
+    private static final Pattern DATE_PATTERN =
+            Pattern.compile("\\b(\\d{2}/\\d{2}/\\d{4}|\\d{2}/\\d{2}/\\d{2}|\\d{4}-\\d{2}-\\d{2})\\b");
+
+    // Valor monetário: sinal opcional, "R$ " opcional, dígitos com separador de milhar (ponto OU
+    // vírgula) e sempre 2 casas decimais no final — mesma ambiguidade pt-BR vs. padrão do CSV
+    // (Fase 2), resolvida por VALOR (qual separador aparece por último) em parseAmount().
+    private static final Pattern AMOUNT_PATTERN =
+            Pattern.compile("([+-])?\\s*(?:R\\$\\s?)?(\\d{1,3}(?:[.,]\\d{3})*[.,]\\d{2})");
+
+    private static final Pattern DEBIT_KEYWORD = Pattern.compile("(?i)d[ée]bito");
+    private static final Pattern CREDIT_KEYWORD = Pattern.compile("(?i)cr[ée]dito");
+
+    private static final DateTimeFormatter BR_DATE_LONG = DateTimeFormatter.ofPattern("dd/MM/uuuu");
+    private static final DateTimeFormatter BR_DATE_SHORT = DateTimeFormatter.ofPattern("dd/MM/uu");
 
     private final String extractorVersion;
 
@@ -96,11 +125,12 @@ public class PdfTextExtractor implements TransactionExtractor {
                             + "envie como imagem.");
         }
 
-        // Heurística de reconhecimento de linha (data + descrição + valor) entra na Onda 2 deste
-        // plano. Por ora, o caminho feliz (PDF com texto) devolve batch vazio — o guard-rail de
-        // "zero transações aproveitáveis" do ImportService já converte isso em FAILED explícito,
-        // sem duplicar essa checagem aqui.
-        List<NormalizedTransactionDTO> transactions = List.of();
+        // Linhas sem os dois padrões (data + valor) simplesmente não viram transação — não é erro
+        // de linha, é ausência de sinal (cabeçalho, rodapé, linha de saldo). Se NENHUMA linha do
+        // documento gerar transação, o batch fica vazio e é o guard-rail já existente no
+        // ImportService ("zero transações aproveitáveis" → FAILED) que lida com isso, sem
+        // duplicar essa checagem aqui.
+        List<NormalizedTransactionDTO> transactions = parseLines(text);
 
         return new NormalizedBatchDTO(input.mode(), ImportSourceType.PDF_TEXT, EXTRACTOR_USED, extractorVersion, transactions);
     }
@@ -114,5 +144,113 @@ public class PdfTextExtractor implements TransactionExtractor {
             // mesma regra do restante do pipeline (ImportService.failureReasonFor).
             throw new ExtractionException("Não foi possível abrir este PDF — arquivo corrompido ou protegido por senha.", e);
         }
+    }
+
+    /** Reconhece transações linha a linha: precisa casar UMA data E UM valor na mesma linha. */
+    private List<NormalizedTransactionDTO> parseLines(String text) {
+        List<NormalizedTransactionDTO> transactions = new ArrayList<>();
+        for (String line : text.lines().toList()) {
+            if (line.isBlank()) {
+                continue;
+            }
+            Matcher dateMatcher = DATE_PATTERN.matcher(line);
+            Matcher amountMatcher = AMOUNT_PATTERN.matcher(line);
+            if (!dateMatcher.find() || !amountMatcher.find()) {
+                continue; // não é (ou não parece ser) uma linha de transação
+            }
+
+            LocalDate date = parseDate(dateMatcher.group(1));
+            BigDecimal amount = parseAmount(amountMatcher.group(2));
+            if (date == null || amount == null) {
+                continue; // padrão bateu mas o conteúdo não é um valor/data válido de verdade
+            }
+            if ("-".equals(amountMatcher.group(1))) {
+                amount = amount.negate();
+            }
+
+            transactions.add(toTransaction(line, dateMatcher, amountMatcher, date, amount));
+        }
+        return transactions;
+    }
+
+    private NormalizedTransactionDTO toTransaction(
+            String line, Matcher dateMatcher, Matcher amountMatcher, LocalDate date, BigDecimal amount) {
+        Map<String, StagedFieldValueDTO> fields = new LinkedHashMap<>();
+
+        // Padrão bateu exatamente na linha → confiança máxima na IDENTIFICAÇÃO do campo (mesma
+        // régua do OFX: dado lido de um contrato reconhecível, não posição adivinhada).
+        fields.put("amount", new StagedFieldValueDTO(amount.abs(), BigDecimal.ONE));
+        fields.put("transaction_date", new StagedFieldValueDTO(date.toString(), BigDecimal.ONE));
+
+        // Direção e descrição são INFERÊNCIA (posição/sinal, sem contrato formal por trás) →
+        // confiança 0.7, mesma régua do CSV genérico (Fase 2, decisão d).
+        fields.put("direction", new StagedFieldValueDTO(direction(line, amount), new BigDecimal("0.7")));
+        fields.put("description", new StagedFieldValueDTO(description(line, dateMatcher, amountMatcher), new BigDecimal("0.7")));
+
+        BigDecimal overallConfidence = fields.get("amount").confidence().min(fields.get("transaction_date").confidence());
+        return new NormalizedTransactionDTO(null, fields, null, null, overallConfidence, null, null);
+    }
+
+    /** Palavra-chave explícita na linha vence; sem ela, cai no sinal do valor (mesma convenção do CSV). */
+    private String direction(String line, BigDecimal signedAmount) {
+        if (DEBIT_KEYWORD.matcher(line).find()) {
+            return "debit";
+        }
+        if (CREDIT_KEYWORD.matcher(line).find()) {
+            return "credit";
+        }
+        return signedAmount.signum() < 0 ? "debit" : "credit";
+    }
+
+    /** Texto restante da linha após remover a data e o valor reconhecidos, espaços colapsados. */
+    private String description(String line, Matcher dateMatcher, Matcher amountMatcher) {
+        List<int[]> ranges = new ArrayList<>();
+        ranges.add(new int[] {dateMatcher.start(), dateMatcher.end()});
+        ranges.add(new int[] {amountMatcher.start(), amountMatcher.end()});
+        ranges.sort((a, b) -> b[0] - a[0]); // remove do fim pro começo, senão os índices deslocam
+
+        StringBuilder sb = new StringBuilder(line);
+        for (int[] range : ranges) {
+            sb.delete(range[0], range[1]);
+        }
+        String result = sb.toString().trim().replaceAll("\\s+", " ");
+        return result.isEmpty() ? null : result;
+    }
+
+    /**
+     * Mesma ambiguidade pt-BR ({@code 1.234,56}) vs. padrão ({@code 1234.56}) do
+     * {@link CsvExtractor}, resolvida por VALOR: se o valor casado tem os dois separadores, o
+     * ÚLTIMO é o decimal (o outro é milhar); só vírgula → vírgula é decimal; senão assume ponto.
+     */
+    private BigDecimal parseAmount(String raw) {
+        boolean hasComma = raw.indexOf(',') >= 0;
+        boolean hasDot = raw.indexOf('.') >= 0;
+        String normalized;
+        if (hasComma && hasDot) {
+            normalized = raw.lastIndexOf(',') > raw.lastIndexOf('.')
+                    ? raw.replace(".", "").replace(',', '.')
+                    : raw.replace(",", "");
+        } else if (hasComma) {
+            normalized = raw.replace(',', '.');
+        } else {
+            normalized = raw;
+        }
+        try {
+            return new BigDecimal(normalized);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /** Aceita {@code DD/MM/YYYY}, {@code DD/MM/YY} (ano reduzido, base 2000) e {@code YYYY-MM-DD}. */
+    private LocalDate parseDate(String raw) {
+        for (DateTimeFormatter fmt : List.of(DateTimeFormatter.ISO_LOCAL_DATE, BR_DATE_LONG, BR_DATE_SHORT)) {
+            try {
+                return LocalDate.parse(raw, fmt);
+            } catch (DateTimeParseException ignored) {
+                // tenta o próximo formato
+            }
+        }
+        return null;
     }
 }
