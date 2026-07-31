@@ -20,6 +20,7 @@ import com.fintech.api.dto.imports.StagedFieldValueDTO;
 import com.fintech.api.dto.imports.StagedPatchDTO;
 import com.fintech.api.dto.imports.StagedTransactionResponseDTO;
 import com.fintech.api.dto.transaction.TransactionResponseDTO;
+import com.fintech.api.exception.BusinessException;
 import com.fintech.api.exception.DuplicateImportException;
 import com.fintech.api.exception.EntityNotFoundException;
 import com.fintech.api.repository.AccountRepository;
@@ -314,6 +315,87 @@ class ImportServiceTest {
         assertThatThrownBy(() -> importService.patchStaged(
                 batch.id(), stagedId, new StagedPatchDTO(Map.of("amount", 1.0), null), intruderUser))
                 .isInstanceOf(EntityNotFoundException.class);
+    }
+
+    // ------------------------------------------------------------------------------------
+    // Fase 2 metade B — descarte de staged
+    // ------------------------------------------------------------------------------------
+
+    @Test
+    void descartaStagedPendenteSemFecharOBatchQuandoAindaSobraPendente() {
+        Tenant tenant = persistTenant("Tenant Discard");
+        User user = persistUser(tenant, "discard@import.test");
+
+        // Duas staged: descartar UMA deixa a outra pendente → batch segue EXTRACTED.
+        ImportBatchResponseDTO batch = importService.createBatch(batchOf(highConfidence(), creditReceipt()), user);
+        List<StagedTransactionResponseDTO> staged = importService.listStaged(batch.id(), user);
+
+        StagedTransactionResponseDTO descartada =
+                importService.discardStaged(batch.id(), staged.get(0).id(), user);
+
+        assertThat(descartada.status()).isEqualTo(StagedTransactionStatus.DISCARDED);
+        assertThat(descartada.promotedTransactionId()).isNull();  // descartar nunca vira Transaction
+        assertThat(importService.getBatch(batch.id(), user).status()).isEqualTo(ImportBatchStatus.EXTRACTED);
+    }
+
+    @Test
+    void descartarAUltimaPendenteFechaOBatchComoCommitted() {
+        Tenant tenant = persistTenant("Tenant Discard Ultima");
+        User user = persistUser(tenant, "discard-ultima@import.test");
+        Account account = persistAccount(tenant, user);
+
+        ImportBatchResponseDTO batch = importService.createBatch(batchOf(highConfidence(), creditReceipt()), user);
+        List<StagedTransactionResponseDTO> staged = importService.listStaged(batch.id(), user);
+
+        // Uma é lançada, a outra descartada — o batch não fica preso em EXTRACTED por causa
+        // da linha que o usuário decidiu não lançar (gate único compartilhado com o commit).
+        importService.commit(batch.id(), new ImportCommitRequestDTO(
+                List.of(new StagedCommitItemDTO(staged.get(0).id(), account.getId(), null))), user);
+        assertThat(importService.getBatch(batch.id(), user).status()).isEqualTo(ImportBatchStatus.EXTRACTED);
+
+        importService.discardStaged(batch.id(), staged.get(1).id(), user);
+
+        assertThat(importService.getBatch(batch.id(), user).status()).isEqualTo(ImportBatchStatus.COMMITTED);
+    }
+
+    @Test
+    void naoDescartaStagedJaConfirmadaNemJaDescartada() {
+        Tenant tenant = persistTenant("Tenant Discard Estado");
+        User user = persistUser(tenant, "discard-estado@import.test");
+        Account account = persistAccount(tenant, user);
+
+        ImportBatchResponseDTO batch = importService.createBatch(batchOf(highConfidence(), creditReceipt()), user);
+        List<StagedTransactionResponseDTO> staged = importService.listStaged(batch.id(), user);
+        UUID confirmadaId = staged.get(0).id();
+        UUID descartadaId = staged.get(1).id();
+
+        importService.commit(batch.id(), new ImportCommitRequestDTO(
+                List.of(new StagedCommitItemDTO(confirmadaId, account.getId(), null))), user);
+        importService.discardStaged(batch.id(), descartadaId, user);
+
+        // Já CONFIRMED (não desfaz um lançamento por aqui) e já DISCARDED (não é idempotente
+        // por decisão: reenvio duplicado deve gritar, não passar batido).
+        assertThatThrownBy(() -> importService.discardStaged(batch.id(), confirmadaId, user))
+                .isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> importService.discardStaged(batch.id(), descartadaId, user))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void naoDescartaStagedDeOutroTenant() {
+        Tenant owner = persistTenant("Owner Discard");
+        User ownerUser = persistUser(owner, "owner-discard@import.test");
+        Tenant intruder = persistTenant("Intruder Discard");
+        User intruderUser = persistUser(intruder, "intruder-discard@import.test");
+
+        ImportBatchResponseDTO batch = importService.createBatch(batchOf(highConfidence()), ownerUser);
+        UUID stagedId = importService.listStaged(batch.id(), ownerUser).get(0).id();
+
+        // Invariante nº1: 404 (não confirma existência) — e a staged do dono segue intocada.
+        assertThatThrownBy(() -> importService.discardStaged(batch.id(), stagedId, intruderUser))
+                .isInstanceOf(EntityNotFoundException.class);
+        assertThat(importService.listStaged(batch.id(), ownerUser).get(0).status())
+                .isEqualTo(StagedTransactionStatus.PENDING);
     }
 
     // ------------------------------------------------------------------------------------
