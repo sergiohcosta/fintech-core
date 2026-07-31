@@ -119,37 +119,74 @@ export function formatDatePtBr(raw: string): string {
   return d.toLocaleDateString('pt-BR');
 }
 
-/** Linha editável mínima usada pelo componente — só o que o payload de commit precisa. */
+/** Linha editável mínima usada pelo componente — o que o payload de commit precisa MAIS os dois
+ *  campos que o backend valida em `commit()` (amount/transaction_date) — precisamos deles aqui
+ *  pra replicar a mesma validação ANTES de mandar a linha, nunca depois. */
 export interface CommitRow {
   stagedId: string;
   accountId: string | null;
   categoryId: string | null;
   status: string;
+  amount: string;
+  transaction_date: string;
+}
+
+/** Valor "pronto pra lançar": presente e >= 0,01 — mesma régua de `ImportService#commit`
+ *  (`toBigDecimal` + `compareTo(0.01)`) no backend, replicada aqui pra nunca depender do
+ *  round-trip HTTP só pra descobrir que o valor está em branco/inválido. */
+export function isAmountReady(raw: string): boolean {
+  const n = Number(raw);
+  return raw !== '' && Number.isFinite(n) && n >= 0.01;
+}
+
+/** Data "pronta pra lançar": presente e parseável. `T00:00:00` evita ambiguidade de fuso,
+ *  mesmo cuidado de `formatDatePtBr`/`formatLocalDate`. */
+export function isDateReady(raw: string): boolean {
+  if (!raw) {
+    return false;
+  }
+  return !Number.isNaN(new Date(`${raw}T00:00:00`).getTime());
 }
 
 /**
- * Monta o payload de commit: só as linhas ainda PENDING e com conta escolhida. `categoryId`
+ * Linha realmente pronta pra ir no commit: PENDING, com conta escolhida E valor/data válidos.
+ * Antes a checagem só olhava conta — uma linha com valor em branco passava pro backend, que
+ * rejeitava com `BusinessException` (mensagem só com o UUID da staged, nada amigável) e, pior,
+ * derrubava o commit inteiro junto (o método é `@Transactional` único: uma linha ruim invalida
+ * as boas também). Validar aqui evita os dois problemas — a linha ruim simplesmente não entra
+ * no lote, fica PENDING, e o usuário corrige com calma (mesma filosofia do gate relaxado).
+ */
+export function isReadyToCommit(row: CommitRow): boolean {
+  return (
+    row.status === 'PENDING' &&
+    !!row.accountId &&
+    isAmountReady(row.amount) &&
+    isDateReady(row.transaction_date)
+  );
+}
+
+/**
+ * Monta o payload de commit: só as linhas realmente prontas (`isReadyToCommit`). `categoryId`
  * vazio vira null (transação sem categoria, ajustável depois).
  */
 export function buildCommitRequest(rows: CommitRow[]): ImportCommitRequestDTO {
-  const items: StagedCommitItemDTO[] = rows
-    .filter((r) => r.status === 'PENDING' && !!r.accountId)
-    .map((r) => ({
-      stagedId: r.stagedId,
-      accountId: r.accountId as string,
-      categoryId: r.categoryId ? r.categoryId : null,
-    }));
+  const items: StagedCommitItemDTO[] = rows.filter(isReadyToCommit).map((r) => ({
+    stagedId: r.stagedId,
+    accountId: r.accountId as string,
+    categoryId: r.categoryId ? r.categoryId : null,
+  }));
   return { items };
 }
 
 /**
- * Pré-condição do "Confirmar": existe ao menos uma linha PENDING com conta escolhida.
- * Antes (`allPendingHaveAccount`) exigia que TODAS as PENDING tivessem conta — gate relaxado
- * na revisão em lote (Fase 2 metade B): commitar 30+ linhas sem decidir 100% delas de uma vez
- * é o caso comum, e `buildCommitRequest` já filtra fora quem não tem conta.
+ * Pré-condição do "Confirmar": existe ao menos uma linha realmente pronta pra lançar (conta +
+ * valor + data válidos). Antes (`allPendingHaveAccount`) exigia que TODAS as PENDING tivessem
+ * conta; depois (`anyPendingHasAccount`) relaxou pra "só uma" — mas não olhava valor/data, o que
+ * deixava passar pro commit uma linha que o backend ia rejeitar. `buildCommitRequest` já filtra
+ * pela mesma régua, então as duas funções nunca divergem sobre o que é "pronto".
  */
-export function anyPendingHasAccount(rows: CommitRow[]): boolean {
-  return rows.some((r) => r.status === 'PENDING' && !!r.accountId);
+export function anyRowReadyToCommit(rows: CommitRow[]): boolean {
+  return rows.some(isReadyToCommit);
 }
 
 /**

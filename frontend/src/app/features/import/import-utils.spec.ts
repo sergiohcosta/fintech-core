@@ -4,7 +4,7 @@ import type {
   StagedTransactionResponseDTO,
 } from '../../core/api/fintechSaaSAPI.schemas';
 import {
-  anyPendingHasAccount,
+  anyRowReadyToCommit,
   applyBulkField,
   buildCommitRequest,
   conflictMessage,
@@ -19,10 +19,24 @@ import {
   formatConfidence,
   formatConflictDate,
   formatDatePtBr,
+  isAmountReady,
+  isDateReady,
   isLowConfidence,
+  isReadyToCommit,
   parseDuplicateConflict,
   type CommitRow,
 } from './import-utils';
+
+/** Fixture base de `CommitRow` já "pronta" — os testes sobrescrevem só o campo que importa. */
+const readyRow = (overrides: Partial<CommitRow> = {}): CommitRow => ({
+  stagedId: 's1',
+  accountId: 'acc-1',
+  categoryId: null,
+  status: 'PENDING',
+  amount: '10.5',
+  transaction_date: '2026-06-28',
+  ...overrides,
+});
 
 const stagedFixture: StagedTransactionResponseDTO = {
   id: 's1',
@@ -84,13 +98,61 @@ describe('extração de campos', () => {
   });
 });
 
+describe('isAmountReady', () => {
+  it('valor >= 0.01 é pronto', () => {
+    expect(isAmountReady('10.5')).toBe(true);
+    expect(isAmountReady('0.01')).toBe(true);
+  });
+
+  it('vazio, zero, negativo ou não numérico não é pronto (mesma régua do backend)', () => {
+    expect(isAmountReady('')).toBe(false);
+    expect(isAmountReady('0')).toBe(false);
+    expect(isAmountReady('-5')).toBe(false);
+    expect(isAmountReady('abc')).toBe(false);
+  });
+});
+
+describe('isDateReady', () => {
+  it('data ISO válida é pronta', () => {
+    expect(isDateReady('2026-06-28')).toBe(true);
+  });
+
+  it('vazia ou não parseável não é pronta', () => {
+    expect(isDateReady('')).toBe(false);
+    expect(isDateReady('não-é-data')).toBe(false);
+  });
+});
+
+describe('isReadyToCommit', () => {
+  it('PENDING + conta + valor + data válidos → pronta', () => {
+    expect(isReadyToCommit(readyRow())).toBe(true);
+  });
+
+  it('valor em branco (o bug relatado) → NÃO pronta, mesmo com conta escolhida', () => {
+    expect(isReadyToCommit(readyRow({ amount: '' }))).toBe(false);
+  });
+
+  it('data inválida → não pronta', () => {
+    expect(isReadyToCommit(readyRow({ transaction_date: '' }))).toBe(false);
+  });
+
+  it('sem conta → não pronta', () => {
+    expect(isReadyToCommit(readyRow({ accountId: null }))).toBe(false);
+  });
+
+  it('já CONFIRMED → não pronta (não é mais candidata a commit)', () => {
+    expect(isReadyToCommit(readyRow({ status: 'CONFIRMED' }))).toBe(false);
+  });
+});
+
 describe('buildCommitRequest', () => {
-  it('inclui só linhas PENDING com conta; categoria vazia vira null', () => {
+  it('inclui só linhas realmente prontas; categoria vazia vira null', () => {
     const rows: CommitRow[] = [
-      { stagedId: 's1', accountId: 'acc-1', categoryId: 'cat-1', status: 'PENDING' },
-      { stagedId: 's2', accountId: 'acc-2', categoryId: '', status: 'PENDING' },
-      { stagedId: 's3', accountId: null, categoryId: null, status: 'PENDING' }, // sem conta → fora
-      { stagedId: 's4', accountId: 'acc-4', categoryId: null, status: 'CONFIRMED' }, // já lançada → fora
+      readyRow({ stagedId: 's1', categoryId: 'cat-1' }),
+      readyRow({ stagedId: 's2', accountId: 'acc-2', categoryId: '' }),
+      readyRow({ stagedId: 's3', accountId: null }), // sem conta → fora
+      readyRow({ stagedId: 's4', status: 'CONFIRMED' }), // já lançada → fora
+      readyRow({ stagedId: 's5', amount: '' }), // valor em branco → fora (o bug relatado)
     ];
     const req = buildCommitRequest(rows);
     expect(req.items).toHaveLength(2);
@@ -99,37 +161,26 @@ describe('buildCommitRequest', () => {
   });
 });
 
-describe('anyPendingHasAccount', () => {
-  it('true quando toda PENDING tem conta (comportamento antigo continua válido)', () => {
-    expect(
-      anyPendingHasAccount([
-        { stagedId: 's1', accountId: 'a', categoryId: null, status: 'PENDING' },
-      ]),
-    ).toBe(true);
+describe('anyRowReadyToCommit', () => {
+  it('true quando toda PENDING tem conta+valor+data (comportamento antigo continua válido)', () => {
+    expect(anyRowReadyToCommit([readyRow()])).toBe(true);
   });
 
-  it('false quando não há nenhuma PENDING com conta', () => {
-    expect(
-      anyPendingHasAccount([
-        { stagedId: 's1', accountId: null, categoryId: null, status: 'PENDING' },
-      ]),
-    ).toBe(false);
-    expect(anyPendingHasAccount([])).toBe(false);
+  it('false quando não há nenhuma linha pronta (sem conta, ou sem valor)', () => {
+    expect(anyRowReadyToCommit([readyRow({ accountId: null })])).toBe(false);
+    expect(anyRowReadyToCommit([readyRow({ amount: '' })])).toBe(false);
+    expect(anyRowReadyToCommit([])).toBe(false);
     // CONFIRMED com conta não conta — só PENDING habilita o "Confirmar"
-    expect(
-      anyPendingHasAccount([
-        { stagedId: 's1', accountId: 'a', categoryId: null, status: 'CONFIRMED' },
-      ]),
-    ).toBe(false);
+    expect(anyRowReadyToCommit([readyRow({ status: 'CONFIRMED' })])).toBe(false);
   });
 
-  it('true com mistura — só precisa de UMA PENDING com conta (gate relaxado, Fase 2 metade B)', () => {
+  it('true com mistura — só precisa de UMA linha pronta (gate relaxado, Fase 2 metade B)', () => {
     const rows: CommitRow[] = [
-      { stagedId: 's1', accountId: 'a', categoryId: null, status: 'PENDING' },
-      { stagedId: 's2', accountId: null, categoryId: null, status: 'PENDING' },
-      { stagedId: 's3', accountId: null, categoryId: null, status: 'PENDING' },
+      readyRow({ stagedId: 's1' }),
+      readyRow({ stagedId: 's2', accountId: null }),
+      readyRow({ stagedId: 's3', amount: '' }),
     ];
-    expect(anyPendingHasAccount(rows)).toBe(true);
+    expect(anyRowReadyToCommit(rows)).toBe(true);
   });
 });
 
@@ -140,6 +191,8 @@ describe('applyBulkField', () => {
       accountId: null,
       categoryId: null,
       status: 'PENDING',
+      amount: '',
+      transaction_date: '',
     }));
 
   it('aplica o valor só ao subconjunto selecionado, preservando ordem e demais linhas', () => {
