@@ -64,6 +64,13 @@ public class ImportController implements ImportsApi {
     }
 
     @Override
+    @PostMapping("/{id}/staged/{stagedId}/discard")
+    public ResponseEntity<StagedTransactionResponseDTO> discardImportStaged(
+            @PathVariable UUID id, @PathVariable UUID stagedId) {
+        return ResponseEntity.ok(importService.discardStaged(id, stagedId, getAuthenticatedUser()));
+    }
+
+    @Override
     @PostMapping("/{id}/commit")
     public ResponseEntity<ImportBatchResponseDTO> commitImport(
             @PathVariable UUID id, @Valid @RequestBody ImportCommitRequestDTO importCommitRequestDTO) {

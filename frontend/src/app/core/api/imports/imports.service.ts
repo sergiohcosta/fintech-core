@@ -339,6 +339,47 @@ formData.append(`importMode`, createImportBody.importMode);
     );
   }
 /**
+ * Transição de estado PENDING → DISCARDED: a linha não vira Transaction e deixa de bloquear a revisão do batch. Verbo de transição como sub-recurso (mesmo padrão de /invoices/{id}/close e /recurrence-rules/{id}/occurrences/{date}/skip), não um PATCH de campos. Quando nenhuma staged do batch fica mais PENDING, o batch vira COMMITTED — mesma regra do commit.
+ * @summary Descarta uma transação em staging (não será lançada)
+ */
+ discardImportStaged<TData = StagedTransactionResponseDTO>(id: string,
+    stagedId: string, options?: HttpClientBodyOptions): Observable<TData>;
+ discardImportStaged<TData = StagedTransactionResponseDTO>(id: string,
+    stagedId: string, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ discardImportStaged<TData = StagedTransactionResponseDTO>(id: string,
+    stagedId: string, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  discardImportStaged<TData = StagedTransactionResponseDTO>(
+    id: string,
+    stagedId: string, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    if (options?.observe === 'events') {
+      return this.http.post<TData>(
+      `/api/imports/${id}/staged/${stagedId}/discard`,
+      undefined,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'events',
+      }
+    );
+    }
+
+    if (options?.observe === 'response') {
+      return this.http.post<TData>(
+      `/api/imports/${id}/staged/${stagedId}/discard`,
+      undefined,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'response',
+      }
+    );
+    }
+
+    return this.http.post<TData>(
+      `/api/imports/${id}/staged/${stagedId}/discard`,
+      undefined,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'body',
+      }
+    );
+  }
+/**
  * Para cada staged listada (PENDING), valida a sanidade (valor plausível, data coerente), cria a Transaction reusando o caminho de criação existente (débito→EXPENSE, crédito→INCOME; conta escolhida pelo usuário) e marca a staged CONFIRMED. O batch vira COMMITTED quando nenhuma staged fica mais PENDING.
  * @summary Promove as staged selecionadas a transações
  */

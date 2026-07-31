@@ -4,7 +4,8 @@ import type {
   StagedTransactionResponseDTO,
 } from '../../core/api/fintechSaaSAPI.schemas';
 import {
-  allPendingHaveAccount,
+  anyPendingHasAccount,
+  applyBulkField,
   buildCommitRequest,
   conflictMessage,
   confidenceLevel,
@@ -95,13 +96,79 @@ describe('buildCommitRequest', () => {
   });
 });
 
-describe('allPendingHaveAccount', () => {
-  it('true só quando toda PENDING tem conta e há ao menos uma', () => {
-    expect(allPendingHaveAccount([{ stagedId: 's1', accountId: 'a', categoryId: null, status: 'PENDING' }])).toBe(true);
-    expect(allPendingHaveAccount([{ stagedId: 's1', accountId: null, categoryId: null, status: 'PENDING' }])).toBe(false);
-    expect(allPendingHaveAccount([])).toBe(false);
-    // CONFIRMED não bloqueia; mas precisa existir ao menos uma PENDING com conta
-    expect(allPendingHaveAccount([{ stagedId: 's1', accountId: 'a', categoryId: null, status: 'CONFIRMED' }])).toBe(false);
+describe('anyPendingHasAccount', () => {
+  it('true quando toda PENDING tem conta (comportamento antigo continua válido)', () => {
+    expect(anyPendingHasAccount([{ stagedId: 's1', accountId: 'a', categoryId: null, status: 'PENDING' }])).toBe(true);
+  });
+
+  it('false quando não há nenhuma PENDING com conta', () => {
+    expect(anyPendingHasAccount([{ stagedId: 's1', accountId: null, categoryId: null, status: 'PENDING' }])).toBe(false);
+    expect(anyPendingHasAccount([])).toBe(false);
+    // CONFIRMED com conta não conta — só PENDING habilita o "Confirmar"
+    expect(anyPendingHasAccount([{ stagedId: 's1', accountId: 'a', categoryId: null, status: 'CONFIRMED' }])).toBe(false);
+  });
+
+  it('true com mistura — só precisa de UMA PENDING com conta (gate relaxado, Fase 2 metade B)', () => {
+    const rows: CommitRow[] = [
+      { stagedId: 's1', accountId: 'a', categoryId: null, status: 'PENDING' },
+      { stagedId: 's2', accountId: null, categoryId: null, status: 'PENDING' },
+      { stagedId: 's3', accountId: null, categoryId: null, status: 'PENDING' },
+    ];
+    expect(anyPendingHasAccount(rows)).toBe(true);
+  });
+});
+
+describe('applyBulkField', () => {
+  const makeRows = (n: number): CommitRow[] =>
+    Array.from({ length: n }, (_, i) => ({
+      stagedId: `s${i}`,
+      accountId: null,
+      categoryId: null,
+      status: 'PENDING',
+    }));
+
+  it('aplica o valor só ao subconjunto selecionado, preservando ordem e demais linhas', () => {
+    const rows = makeRows(10);
+    const selected = ['s2', 's4', 's7'];
+    const result = applyBulkField(rows, selected, 'accountId', 'acc-1');
+
+    expect(result).toHaveLength(10);
+    expect(result.map((r) => r.stagedId)).toEqual(rows.map((r) => r.stagedId));
+    for (const row of result) {
+      if (selected.includes(row.stagedId)) {
+        expect(row.accountId).toBe('acc-1');
+      } else {
+        expect(row.accountId).toBeNull();
+      }
+    }
+  });
+
+  it('conjunto vazio devolve array com o mesmo conteúdo (nenhuma linha muda)', () => {
+    const rows = makeRows(3);
+    const result = applyBulkField(rows, [], 'accountId', 'acc-1');
+    expect(result).toEqual(rows);
+    expect(result).not.toBe(rows);
+  });
+
+  it('funciona tanto para accountId quanto para categoryId', () => {
+    const rows = makeRows(3);
+    const result = applyBulkField(rows, ['s0', 's1'], 'categoryId', 'cat-9');
+    expect(result[0].categoryId).toBe('cat-9');
+    expect(result[1].categoryId).toBe('cat-9');
+    expect(result[2].categoryId).toBeNull();
+  });
+
+  it('não muta o array original', () => {
+    const rows = makeRows(2);
+    applyBulkField(rows, ['s0'], 'accountId', 'acc-1');
+    expect(rows[0].accountId).toBeNull();
+  });
+
+  it('aceita Set além de array de ids selecionados', () => {
+    const rows = makeRows(3);
+    const result = applyBulkField(rows, new Set(['s1']), 'accountId', 'acc-2');
+    expect(result[1].accountId).toBe('acc-2');
+    expect(result[0].accountId).toBeNull();
   });
 });
 
