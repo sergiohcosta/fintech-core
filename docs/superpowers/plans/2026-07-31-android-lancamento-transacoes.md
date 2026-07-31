@@ -72,9 +72,10 @@ include(":app")
 ```kotlin
 plugins {
     id("com.android.application") version "8.7.0" apply false
-    id("org.jetbrains.kotlin.android") version "2.1.0" apply false
+    id("org.jetbrains.kotlin.android") version "2.0.21" apply false
+    id("org.jetbrains.kotlin.plugin.compose") version "2.0.21" apply false
     id("com.google.dagger.hilt.android") version "2.52" apply false
-    id("com.google.devtools.ksp") version "2.1.0-1.0.29" apply false
+    id("com.google.devtools.ksp") version "2.0.21-1.0.28" apply false
     id("org.openapi.generator") version "7.4.0" apply false
 }
 ```
@@ -92,6 +93,7 @@ kotlin.code.style=official
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.dagger.hilt.android")
     id("com.google.devtools.ksp")
 }
