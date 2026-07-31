@@ -155,6 +155,16 @@
 			<groupId>org.springframework.ai</groupId>
 			<artifactId>spring-ai-starter-model-ollama</artifactId>
 		</dependency>
+
+		<!-- Extração de texto de PDF (Fase 3) — Apache 2.0, puro Java, sem dependência
+			 nativa. Preferida a iText (AGPL/comercial, incompatível com SaaS fechado sem
+			 licença) e a Tika (mais pesado; internamente já delega para PDFBox no caso de
+			 PDF). Só precisamos de PDFTextStripper — nada de manipulação/assinatura de PDF. -->
+		<dependency>
+			<groupId>org.apache.pdfbox</groupId>
+			<artifactId>pdfbox</artifactId>
+			<version>3.0.7</version>
+		</dependency>
 	</dependencies>
 
 	<!-- Repositório de milestones do Spring: a linha 2.0.x do Spring AI (compatível com
