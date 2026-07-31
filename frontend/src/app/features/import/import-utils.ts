@@ -108,10 +108,34 @@ export function buildCommitRequest(rows: CommitRow[]): ImportCommitRequestDTO {
   return { items };
 }
 
-/** Pré-condição do "Confirmar": existe ao menos uma linha PENDING e TODAS têm conta escolhida. */
-export function allPendingHaveAccount(rows: CommitRow[]): boolean {
-  const pending = rows.filter((r) => r.status === 'PENDING');
-  return pending.length > 0 && pending.every((r) => !!r.accountId);
+/**
+ * Pré-condição do "Confirmar": existe ao menos uma linha PENDING com conta escolhida.
+ * Antes (`allPendingHaveAccount`) exigia que TODAS as PENDING tivessem conta — gate relaxado
+ * na revisão em lote (Fase 2 metade B): commitar 30+ linhas sem decidir 100% delas de uma vez
+ * é o caso comum, e `buildCommitRequest` já filtra fora quem não tem conta.
+ */
+export function anyPendingHasAccount(rows: CommitRow[]): boolean {
+  return rows.some((r) => r.status === 'PENDING' && !!r.accountId);
+}
+
+/**
+ * Aplica `value` ao campo `field` das linhas cujo `stagedId` está em `selectedIds`, devolvendo
+ * um array NOVO (sem mutar `rows` — padrão de `signal.set()`/`update()` do projeto). Linhas fora
+ * do conjunto selecionado são preservadas por referência (evita re-render desnecessário de quem
+ * compara por identidade). Genérico sobre `T` para servir tanto `CommitRow` quanto o `ReviewRow`
+ * do componente (ambos têm `stagedId`), sem acoplar esta camada pura ao tipo do componente.
+ */
+export function applyBulkField<T extends { stagedId: string }, K extends keyof T>(
+  rows: T[],
+  selectedIds: readonly string[] | ReadonlySet<string>,
+  field: K,
+  value: T[K],
+): T[] {
+  const ids = selectedIds instanceof Set ? selectedIds : new Set(selectedIds);
+  if (ids.size === 0) {
+    return rows.slice();
+  }
+  return rows.map((row) => (ids.has(row.stagedId) ? { ...row, [field]: value } : row));
 }
 
 export interface CategoryOption {

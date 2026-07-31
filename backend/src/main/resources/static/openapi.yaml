@@ -2413,6 +2413,42 @@ paths:
         '404':
           description: Batch ou staged não encontrado (ou de outro tenant)
 
+  /api/imports/{id}/staged/{stagedId}/discard:
+    post:
+      tags: [imports]
+      operationId: discardImportStaged
+      summary: Descarta uma transação em staging (não será lançada)
+      description: >-
+        Transição de estado PENDING → DISCARDED: a linha não vira Transaction e deixa de
+        bloquear a revisão do batch. Verbo de transição como sub-recurso (mesmo padrão de
+        /invoices/{id}/close e /recurrence-rules/{id}/occurrences/{date}/skip), não um PATCH
+        de campos. Quando nenhuma staged do batch fica mais PENDING, o batch vira COMMITTED —
+        mesma regra do commit.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: stagedId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Staged descartada (status=DISCARDED)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StagedTransactionResponseDTO'
+        '400':
+          description: Staged não está PENDING (já confirmada ou já descartada)
+        '404':
+          description: Batch ou staged não encontrado (ou de outro tenant)
+
   /api/imports/{id}/commit:
     post:
       tags: [imports]
