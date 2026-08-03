@@ -3,8 +3,6 @@ package com.fintech.mobile.ui.newtransaction
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -91,7 +89,7 @@ fun NewTransactionScreen(
 
         uiState.submitError?.let { Text(it) }
 
-        Button(onClick = viewModel::submit) {
+        Button(onClick = viewModel::submit, enabled = !uiState.isSubmitting) {
             Text(if (uiState.isSubmitting) "Salvando..." else "Salvar")
         }
     }
