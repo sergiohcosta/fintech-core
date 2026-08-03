@@ -4,30 +4,22 @@ import com.fintech.api.domain.enums.ImportMode;
 import com.fintech.api.domain.enums.ImportSourceType;
 import com.fintech.api.dto.imports.NormalizedBatchDTO;
 import com.fintech.api.dto.imports.NormalizedTransactionDTO;
+import com.fintech.api.service.imports.vision.VisionModelClient;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.core.io.Resource;
 import org.springframework.util.MimeType;
 
 import java.math.BigDecimal;
-import java.util.function.Consumer;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
-import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 /**
- * Unitário do extrator de visão com o {@link ChatClient} MOCKADO (deep stubs) — a suíte NUNCA
- * bate no Ollama real. Prova o mapeamento saída-do-modelo → schema normalizado e o guarda-corpo
- * (§2.g): schema íntegro não basta, o conteúdo é revalidado do nosso lado. Também prova o
- * {@code supports()} por magic number (Onda 1 — a porta deixou de ser "só de imagem").
+ * Unitário do extrator de visão com {@link VisionModelClient} FAKE (Onda 1 — a mecânica do
+ * {@code ChatClient} saiu daqui e migrou para {@code OllamaVisionClientTest}). Prova o mapeamento
+ * saída-do-modelo → schema normalizado e o guarda-corpo (§2.g): schema íntegro não basta, o
+ * conteúdo é revalidado do nosso lado. Também prova o {@code supports()} por magic number.
  */
 class VisionExtractorTest {
 
@@ -38,28 +30,35 @@ class VisionExtractorTest {
         return new ExtractionInput(content, "recibo.jpg", mimeType, ImportMode.NEW_TRANSACTIONS);
     }
 
-    /** Constrói um extrator cujo ChatClient devolve {@code fixture} na chamada .entity(...). */
-    @SuppressWarnings("unchecked")
-    private VisionExtractor visionReturning(LlmReceiptExtractionDTO fixture) {
-        ChatClient chatClient = mock(ChatClient.class, RETURNS_DEEP_STUBS);
-        when(chatClient.prompt()
-                .user(any(Consumer.class))
-                .call()
-                .entity(LlmReceiptExtractionDTO.class))
-                .thenReturn(fixture);
-        return new VisionExtractor(chatClient, "qwen2.5vl", "2026-07-24");
+    /** Fake de {@link VisionModelClient} que devolve {@code fixture} sem tocar em provider nenhum. */
+    private record FakeVisionModelClient(LlmReceiptExtractionDTO fixture, RuntimeException error)
+            implements VisionModelClient {
+
+        @Override
+        public LlmReceiptExtractionDTO extract(String prompt, MimeType mimeType, Resource imageResource) {
+            if (error != null) {
+                throw error;
+            }
+            return fixture;
+        }
+
+        @Override
+        public String providerId() {
+            return "ollama";
+        }
+
+        @Override
+        public String modelId() {
+            return "qwen2.5vl";
+        }
     }
 
-    /** Constrói um extrator cujo ChatClient lança na chamada .entity(...) (falha de provider). */
-    @SuppressWarnings("unchecked")
+    private VisionExtractor visionReturning(LlmReceiptExtractionDTO fixture) {
+        return new VisionExtractor(List.of(new FakeVisionModelClient(fixture, null)), "2026-07-24");
+    }
+
     private VisionExtractor visionThrowing(RuntimeException error) {
-        ChatClient chatClient = mock(ChatClient.class, RETURNS_DEEP_STUBS);
-        when(chatClient.prompt()
-                .user(any(Consumer.class))
-                .call()
-                .entity(LlmReceiptExtractionDTO.class))
-                .thenThrow(error);
-        return new VisionExtractor(chatClient, "qwen2.5vl", "2026-07-24");
+        return new VisionExtractor(List.of(new FakeVisionModelClient(null, error)), "2026-07-24");
     }
 
     private LlmReceiptExtractionDTO fullReceipt() {
@@ -79,7 +78,7 @@ class VisionExtractorTest {
 
         assertThat(batch.sourceType()).isEqualTo(ImportSourceType.IMAGE);
         assertThat(batch.importMode()).isEqualTo(ImportMode.NEW_TRANSACTIONS);
-        // Proveniência: sabe qual modelo gerou o dado.
+        // Proveniência: sabe qual provider+modelo gerou o dado — mesmo formato de antes da Onda 1.
         assertThat(batch.extractorUsed()).isEqualTo("vision_ollama_qwen2.5vl");
         assertThat(batch.extractorVersion()).isEqualTo("2026-07-24");
         assertThat(batch.transactions()).hasSize(1);
@@ -162,62 +161,52 @@ class VisionExtractorTest {
                 .transactions()).hasSize(1);
     }
 
-    /**
-     * O {@code Resource} da imagem PRECISA ter filename: sem ele o Spring AI monta um multipart
-     * malformado e o Ollama rejeita com erro de zlib — a extração inteira quebrava em runtime,
-     * sem nada no código dizendo que o filename era obrigatório. Extensão coerente com o mimeType;
-     * mimeType desconhecido cai em .jpg (o caso mais comum de comprovante).
-     */
-    @Test
-    void resourceDaImagemCarregaFilenameCoerenteComOMimeType() {
-        assertThat(capturedFilename("image/png")).isEqualTo("receipt.png");
-        assertThat(capturedFilename("image/gif")).isEqualTo("receipt.gif");
-        assertThat(capturedFilename("image/webp")).isEqualTo("receipt.webp");
-        assertThat(capturedFilename("image/jpeg")).isEqualTo("receipt.jpg");
-        assertThat(capturedFilename("image/tiff")).isEqualTo("receipt.jpg");
-    }
-
-    /**
-     * Reexecuta o {@code Consumer} que o extrator passou para {@code .user(...)} contra um
-     * {@code PromptUserSpec} mockado — é assim que se enxerga o Resource que o Spring AI receberia,
-     * sem subir provider nenhum.
-     */
-    @SuppressWarnings("unchecked")
-    private String capturedFilename(String mimeType) {
-        ChatClient chatClient = mock(ChatClient.class, RETURNS_DEEP_STUBS);
-        when(chatClient.prompt()
-                .user(any(Consumer.class))
-                .call()
-                .entity(LlmReceiptExtractionDTO.class))
-                .thenReturn(fullReceipt());
-        new VisionExtractor(chatClient, "qwen2.5vl", "2026-07-24").extract(input(IMAGE, mimeType));
-
-        // atLeastOnce: a própria montagem do stub (when(...user(any())...)) já conta uma invocação;
-        // getValue() devolve a ÚLTIMA capturada, que é o Consumer real passado pelo extract().
-        ArgumentCaptor<Consumer<ChatClient.PromptUserSpec>> userSpec = ArgumentCaptor.forClass(Consumer.class);
-        verify(chatClient.prompt(), atLeastOnce()).user(userSpec.capture());
-
-        ChatClient.PromptUserSpec spec = mock(ChatClient.PromptUserSpec.class);
-        when(spec.text(anyString())).thenReturn(spec);
-        userSpec.getValue().accept(spec);
-
-        ArgumentCaptor<Resource> resource = ArgumentCaptor.forClass(Resource.class);
-        verify(spec).media(any(MimeType.class), resource.capture());
-        return resource.getValue().getFilename();
-    }
-
     @Test
     void falhaDoProviderViraExtractionException() {
-        assertThatThrownBy(() -> visionThrowing(new RuntimeException("ollama indisponível"))
+        assertThatThrownBy(() -> visionThrowing(new ExtractionException("ollama indisponível"))
                 .extract(input(IMAGE, "image/jpeg")))
                 .isInstanceOf(ExtractionException.class);
     }
 
-    // --- supports() — magic number, não mimeType (Onda 1) ---
+    @Test
+    void nenhumDadoRetornadoPeloClientViraExtractionException() {
+        assertThatThrownBy(() -> visionReturning(null).extract(input(IMAGE, "image/jpeg")))
+                .isInstanceOf(ExtractionException.class);
+    }
+
+    @Test
+    void usaOPrimeiroClientDaLista() {
+        // Onda 1: só há um client, mas a mecânica "primeiro da lista" já é exercida aqui — a Onda
+        // seguinte soma um 2º client sem precisar reescrever este teste.
+        VisionModelClient primeiro = new FakeVisionModelClient(fullReceipt(), null);
+        VisionModelClient nuncaChamado = new VisionModelClient() {
+            @Override
+            public LlmReceiptExtractionDTO extract(String prompt, MimeType mimeType, Resource imageResource) {
+                throw new AssertionError("client fora da posição 0 não deveria ser chamado nesta Onda");
+            }
+
+            @Override
+            public String providerId() {
+                return "nunca-chamado";
+            }
+
+            @Override
+            public String modelId() {
+                return "nunca-chamado";
+            }
+        };
+
+        NormalizedBatchDTO batch = new VisionExtractor(List.of(primeiro, nuncaChamado), "2026-07-24")
+                .extract(input(IMAGE, "image/jpeg"));
+
+        assertThat(batch.extractorUsed()).isEqualTo("vision_ollama_qwen2.5vl");
+    }
+
+    // --- supports() — magic number, não mimeType ---
 
     private VisionExtractor extractorForSupportsOnly() {
-        // ChatClient nunca é chamado nestes testes — supports() não toca no provider.
-        return new VisionExtractor(mock(ChatClient.class), "qwen2.5vl", "2026-07-24");
+        // Nenhum client é chamado nestes testes — supports() não toca no provider.
+        return new VisionExtractor(List.of(new FakeVisionModelClient(fullReceipt(), null)), "2026-07-24");
     }
 
     @Test

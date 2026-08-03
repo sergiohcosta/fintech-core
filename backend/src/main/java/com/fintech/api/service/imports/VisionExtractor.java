@@ -5,8 +5,8 @@ import com.fintech.api.domain.enums.ImportSourceType;
 import com.fintech.api.dto.imports.NormalizedBatchDTO;
 import com.fintech.api.dto.imports.NormalizedTransactionDTO;
 import com.fintech.api.dto.imports.StagedFieldValueDTO;
+import com.fintech.api.service.imports.vision.VisionModelClient;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -25,11 +25,15 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Extrator de visão — implementação da porta {@link TransactionExtractor} sobre o
- * {@code ChatClient} do Spring AI (adaptador Ollama por default, agnóstico por config).
+ * Extrator de visão — implementação da porta {@link TransactionExtractor}. A partir da Onda 1
+ * (plano "extração Gemini primário / Ollama fallback") a chamada ao modelo em si vive atrás da
+ * porta {@link VisionModelClient} — este extrator não sabe mais que existe um {@code ChatClient}
+ * ou um Ollama; recebe uma {@link List} de clients e usa o primeiro (spec: a ordem por
+ * {@code @Order} decide prioridade, hoje só há um client, então "primeiro da lista" é ainda
+ * comportamento idêntico ao de antes).
  *
- * <p>Fluxo: monta um prompt fixo + a imagem ({@code .media()}), pede a saída TIPADA
- * ({@code .entity(LlmReceiptExtractionDTO.class)} — o Spring AI força/valida o SCHEMA), e então
+ * <p>Fluxo: monta o prompt fixo + a imagem, delega ao {@link VisionModelClient} escolhido (que
+ * devolve a saída TIPADA crua — {@link LlmReceiptExtractionDTO}), e então
  * <b>revalida a PLAUSIBILIDADE</b> do nosso lado (guarda-corpo §2.g): schema íntegro não garante
  * conteúdo são — o modelo pode alucinar um valor com formato válido. Só depois mapeia para o
  * {@link NormalizedBatchDTO} da Fase 0.
@@ -53,8 +57,7 @@ public class VisionExtractor implements TransactionExtractor {
     private static final byte[] GIF = {0x47, 0x49, 0x46};
     private static final byte[] WEBP_RIFF = {0x52, 0x49, 0x46, 0x46};
 
-    private final ChatClient chatClient;
-    private final String model;
+    private final List<VisionModelClient> visionModelClients;
     private final String extractorVersion;
 
     // Formato pt-BR de data — fallback quando o modelo devolve dd/MM/yyyy apesar do pedido de ISO.
@@ -99,11 +102,9 @@ public class VisionExtractor implements TransactionExtractor {
             """;
 
     public VisionExtractor(
-            ChatClient chatClient,
-            @Value("${spring.ai.ollama.chat.options.model:llama3.2-vision}") String model,
+            List<VisionModelClient> visionModelClients,
             @Value("${import.vision.extractor-version:unknown}") String extractorVersion) {
-        this.chatClient = chatClient;
-        this.model = model;
+        this.visionModelClients = visionModelClients;
         this.extractorVersion = extractorVersion;
     }
 
@@ -140,31 +141,19 @@ public class VisionExtractor implements TransactionExtractor {
     public NormalizedBatchDTO extract(ExtractionInput input) {
         byte[] imageBytes = input.content();
         ImportMode mode = input.mode();
-        // mimeType do cliente é só um HINT pro Spring AI montar o Resource — quem decide se é
+        // mimeType do cliente é só um HINT pro client montar o Resource — quem decide se é
         // imagem de verdade é o supports() por magic number, chamado antes pelo router.
         String mimeType = input.mimeType() != null ? input.mimeType() : "image/jpeg";
         MimeType mime = MimeTypeUtils.parseMimeType(mimeType);
-        // ByteArrayResource anônimo com getFilename() pra Spring AI serializar corretamente
-        // (sem filename, o multipart fica malformado → Ollama rejeita com zlib error).
-        String filename = resolveFilename(mime);
-        Resource imageResource = new ByteArrayResource(imageBytes) {
-            @Override
-            public String getFilename() {
-                return filename;
-            }
-        };
+        Resource imageResource = new ByteArrayResource(imageBytes);
+
+        // Por enquanto há um só client na lista (Ollama) — "primeiro da lista" reproduz o
+        // comportamento de hoje bit a bit. A Onda seguinte soma um 2º client e a escolha por
+        // disponibilidade (retry/fallback) entra aqui.
+        VisionModelClient client = visionModelClients.get(0);
 
         long startNanos = System.nanoTime();
-        LlmReceiptExtractionDTO raw;
-        try {
-            raw = chatClient.prompt()
-                    .user(u -> u.text(PROMPT).media(mime, imageResource))
-                    .call()
-                    .entity(LlmReceiptExtractionDTO.class);
-        } catch (Exception e) {
-            // Qualquer falha do provider/parse vira ExtractionException → batch FAILED (fallback manual).
-            throw new ExtractionException("Falha ao extrair dados da imagem via modelo de visão.", e);
-        }
+        LlmReceiptExtractionDTO raw = client.extract(PROMPT, mime, imageResource);
         long latencyMs = (System.nanoTime() - startNanos) / 1_000_000;
 
         if (raw == null) {
@@ -173,10 +162,10 @@ public class VisionExtractor implements TransactionExtractor {
 
         // Critério de saída: latência conhecida (no homelab o custo em $ é zero; medimos tempo).
         // Tokens não são expostos pelo caminho .entity(); latência é a métrica que importa aqui.
-        log.info("Extração de visão concluída: model={}, extractorVersion={}, latencyMs={}, overallConfidence={}",
-                model, extractorVersion, latencyMs, raw.overallConfidence());
+        log.info("Extração de visão concluída: provider={}, model={}, extractorVersion={}, latencyMs={}, overallConfidence={}",
+                client.providerId(), client.modelId(), extractorVersion, latencyMs, raw.overallConfidence());
 
-        return toNormalizedBatch(raw, mode);
+        return toNormalizedBatch(raw, mode, client);
     }
 
     /**
@@ -185,7 +174,7 @@ public class VisionExtractor implements TransactionExtractor {
      * (&gt; 0) — sem ele não há transação a lançar, então falha a extração. Data ilegível não
      * derruba a extração (o usuário completa na revisão), mas zera a confiança para exigir olho.
      */
-    private NormalizedBatchDTO toNormalizedBatch(LlmReceiptExtractionDTO raw, ImportMode mode) {
+    private NormalizedBatchDTO toNormalizedBatch(LlmReceiptExtractionDTO raw, ImportMode mode, VisionModelClient client) {
         // ORDEM IMPORTA: a recusa por multi-transação vem ANTES da validação de valor. Num print
         // de extrato o modelo escolhe uma linha arbitrária e devolve um amount perfeitamente
         // plausível — se o check de valor rodasse primeiro, o caso fora de escopo passaria e as
@@ -227,8 +216,9 @@ public class VisionExtractor implements TransactionExtractor {
                 null,  // requires_review derivado no ImportService (§2.f), nunca pelo modelo
                 null);
 
-        // extractorUsed carrega a proveniência: qual modelo gerou o dado (ex.: vision_ollama_qwen2.5vl).
-        String extractorUsed = "vision_ollama_" + model;
+        // extractorUsed carrega a proveniência: qual provider+modelo gerou o dado
+        // (ex.: vision_ollama_qwen2.5vl) — mesmo formato de antes da Onda 1, agora vindo do client.
+        String extractorUsed = "vision_" + client.providerId() + "_" + client.modelId();
         return new NormalizedBatchDTO(mode, ImportSourceType.IMAGE, extractorUsed, extractorVersion, List.of(tx));
     }
 
@@ -271,19 +261,6 @@ public class VisionExtractor implements TransactionExtractor {
 
     private String blankToNull(String value) {
         return (value == null || value.isBlank()) ? null : value.trim();
-    }
-
-    private String resolveFilename(MimeType mime) {
-        if (mime == null) {
-            return "receipt.jpg";
-        }
-        String subtype = mime.getSubtype().toLowerCase();
-        return switch (subtype) {
-            case "png" -> "receipt.png";
-            case "gif" -> "receipt.gif";
-            case "webp" -> "receipt.webp";
-            default -> "receipt.jpg";
-        };
     }
 
     private record NormalizedDate(String isoValue, BigDecimal confidence) {}
