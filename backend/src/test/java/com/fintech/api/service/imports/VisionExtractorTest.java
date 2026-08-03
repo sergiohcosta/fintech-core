@@ -81,6 +81,14 @@ class VisionExtractorTest {
         // Proveniência: sabe qual provider+modelo gerou o dado — mesmo formato de antes da Onda 1.
         assertThat(batch.extractorUsed()).isEqualTo("vision_ollama_qwen2.5vl");
         assertThat(batch.extractorVersion()).isEqualTo("2026-07-24");
+        // Proveniência ESTRUTURADA (V28, Onda 3): o extrator mede provider/modelo/latência — quem
+        // grava é o ImportService, mas o dado já nasce aqui, não é reconstruído depois.
+        assertThat(batch.extractorProvider()).isEqualTo("ollama");
+        assertThat(batch.extractorModel()).isEqualTo("qwen2.5vl");
+        assertThat(batch.extractionLatencyMs()).isNotNull().isGreaterThanOrEqualTo(0);
+        // Sem fallback nesta Onda (a política em si é a Onda 4) — o client fake é o único da lista.
+        assertThat(batch.fallbackFrom()).isNull();
+        assertThat(batch.fallbackReason()).isNull();
         assertThat(batch.transactions()).hasSize(1);
 
         NormalizedTransactionDTO tx = batch.transactions().get(0);

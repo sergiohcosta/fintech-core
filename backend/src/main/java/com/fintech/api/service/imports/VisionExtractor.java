@@ -165,7 +165,7 @@ public class VisionExtractor implements TransactionExtractor {
         log.info("Extração de visão concluída: provider={}, model={}, extractorVersion={}, latencyMs={}, overallConfidence={}",
                 client.providerId(), client.modelId(), extractorVersion, latencyMs, raw.overallConfidence());
 
-        return toNormalizedBatch(raw, mode, client);
+        return toNormalizedBatch(raw, mode, client, latencyMs);
     }
 
     /**
@@ -174,7 +174,8 @@ public class VisionExtractor implements TransactionExtractor {
      * (&gt; 0) — sem ele não há transação a lançar, então falha a extração. Data ilegível não
      * derruba a extração (o usuário completa na revisão), mas zera a confiança para exigir olho.
      */
-    private NormalizedBatchDTO toNormalizedBatch(LlmReceiptExtractionDTO raw, ImportMode mode, VisionModelClient client) {
+    private NormalizedBatchDTO toNormalizedBatch(
+            LlmReceiptExtractionDTO raw, ImportMode mode, VisionModelClient client, long latencyMs) {
         // ORDEM IMPORTA: a recusa por multi-transação vem ANTES da validação de valor. Num print
         // de extrato o modelo escolhe uma linha arbitrária e devolve um amount perfeitamente
         // plausível — se o check de valor rodasse primeiro, o caso fora de escopo passaria e as
@@ -219,7 +220,12 @@ public class VisionExtractor implements TransactionExtractor {
         // extractorUsed carrega a proveniência: qual provider+modelo gerou o dado
         // (ex.: vision_ollama_qwen2.5vl) — mesmo formato de antes da Onda 1, agora vindo do client.
         String extractorUsed = "vision_" + client.providerId() + "_" + client.modelId();
-        return new NormalizedBatchDTO(mode, ImportSourceType.IMAGE, extractorUsed, extractorVersion, List.of(tx));
+        // Proveniência estruturada (V28, Onda 3): quem MEDE é o extrator (aqui), quem GRAVA é o
+        // ImportService — a fronteira "extrator não toca banco" não muda. fallbackFrom/Reason
+        // ficam null nesta Onda: a política de fallback em si é a Onda 4.
+        return new NormalizedBatchDTO(
+                mode, ImportSourceType.IMAGE, extractorUsed, extractorVersion, List.of(tx),
+                client.providerId(), client.modelId(), (int) latencyMs, null, null);
     }
 
     /** Normaliza para "debit"/"credit"; qualquer coisa não reconhecida cai em "debit" (compra é o caso comum). */

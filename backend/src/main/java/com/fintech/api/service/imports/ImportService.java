@@ -217,6 +217,13 @@ public class ImportService {
                 .extractorVersion(batch.extractorVersion())
                 .sourceHash(sourceHash)
                 .sourceFilename(sourceFilename)
+                // Proveniência estruturada (V28): o extrator MEDE (provider/modelo/latência/
+                // fallback), o service GRAVA — mesma fronteira de sempre (extrator não toca banco).
+                .extractorProvider(batch.extractorProvider())
+                .extractorModel(batch.extractorModel())
+                .extractionLatencyMs(batch.extractionLatencyMs())
+                .fallbackFrom(batch.fallbackFrom())
+                .fallbackReason(batch.fallbackReason())
                 // O batch chega "extraído". Aqui vira EXTRACTED; FAILED é o caminho de exceção acima.
                 .status(ImportBatchStatus.EXTRACTED)
                 .build());
@@ -263,6 +270,13 @@ public class ImportService {
                 .extractorVersion(batch.extractorVersion())
                 .sourceHash(sourceHash)
                 .sourceFilename(sourceFilename)
+                // A extração em si terminou (o extrator devolveu o batch) — a proveniência que ele
+                // mediu continua válida mesmo que a sanidade CENTRAL derrube o batch depois.
+                .extractorProvider(batch.extractorProvider())
+                .extractorModel(batch.extractorModel())
+                .extractionLatencyMs(batch.extractionLatencyMs())
+                .fallbackFrom(batch.fallbackFrom())
+                .fallbackReason(batch.fallbackReason())
                 .status(ImportBatchStatus.FAILED)
                 .failureReason(reason)
                 .build());
