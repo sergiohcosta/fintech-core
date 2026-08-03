@@ -4,8 +4,8 @@ import com.fintech.mobile.api.TransactionsApi
 import com.fintech.mobile.api.model.TransactionRequestDTO
 import com.fintech.mobile.api.model.TransactionResponseDTO
 import com.fintech.mobile.api.model.TransactionType
+import com.fintech.mobile.api.infrastructure.Serializer
 import com.fintech.mobile.data.local.PendingTransactionDao
-import com.google.gson.Gson
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -22,7 +22,10 @@ import kotlin.test.assertIs
 
 class TransactionRepositoryTest {
 
-    private val gson = Gson()
+    // Serializer.gson é o mesmo Gson usado em produção pelo NetworkModule (TypeAdapters
+    // ISO-8601 para java.time.*, sem reflexão) — testa o formato real de serialização e
+    // elimina a necessidade de liberar reflexão via --add-opens na JVM de teste.
+    private val gson = Serializer.gson
     private val sampleDto = TransactionRequestDTO(
         description = "Mercado",
         amount = 150.0,
