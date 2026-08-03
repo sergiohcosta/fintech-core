@@ -7,8 +7,12 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
+import org.springframework.http.HttpStatus;
 import org.springframework.util.MimeType;
 import org.springframework.util.MimeTypeUtils;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 
 import java.math.BigDecimal;
 import java.util.function.Consumer;
@@ -95,6 +99,49 @@ class OllamaVisionClientTest {
                 MimeTypeUtils.parseMimeType("image/jpeg"),
                 new ByteArrayResource(new byte[] {1, 2, 3})))
                 .isInstanceOf(ExtractionException.class);
+    }
+
+    // --- Onda 4 — mesma classificação de disponibilidade do GeminiVisionClient, mas a partir das
+    // exceções nativas do RestClient (transporte do Spring AI com o Ollama local) ---
+
+    @Test
+    void classifica5xxDoOllamaComoIndisponibilidade() {
+        ChatClient chatClient = chatClientThrowing(
+                HttpServerErrorException.create(HttpStatus.SERVICE_UNAVAILABLE, "Service Unavailable", null, null, null));
+        OllamaVisionClient client = new OllamaVisionClient(chatClient, "qwen2.5vl");
+
+        assertThatThrownBy(() -> client.extract(
+                "prompt fixo", MimeTypeUtils.parseMimeType("image/jpeg"), new ByteArrayResource(new byte[] {1})))
+                .isInstanceOf(VisionProviderUnavailableException.class)
+                .extracting(e -> ((VisionProviderUnavailableException) e).reasonCode())
+                .isEqualTo("unavailable");
+    }
+
+    /** Timeout/conexão recusada com o Ollama do homelab (sem resposta HTTP nenhuma) — indisponibilidade. */
+    @Test
+    void classificaTimeoutDoOllamaComoIndisponibilidade() {
+        ChatClient chatClient = chatClientThrowing(
+                new ResourceAccessException("Read timed out", new java.net.SocketTimeoutException("Read timed out")));
+        OllamaVisionClient client = new OllamaVisionClient(chatClient, "qwen2.5vl");
+
+        assertThatThrownBy(() -> client.extract(
+                "prompt fixo", MimeTypeUtils.parseMimeType("image/jpeg"), new ByteArrayResource(new byte[] {1})))
+                .isInstanceOf(VisionProviderUnavailableException.class)
+                .extracting(e -> ((VisionProviderUnavailableException) e).reasonCode())
+                .isEqualTo("unavailable");
+    }
+
+    /** 404 (ex.: modelo não puxado no Ollama local) não está na lista da spec — falha de conteúdo, sem fallback. */
+    @Test
+    void status404DoOllamaContinuaExtractionException() {
+        ChatClient chatClient = chatClientThrowing(
+                HttpClientErrorException.create(HttpStatus.NOT_FOUND, "Not Found", null, null, null));
+        OllamaVisionClient client = new OllamaVisionClient(chatClient, "qwen2.5vl");
+
+        assertThatThrownBy(() -> client.extract(
+                "prompt fixo", MimeTypeUtils.parseMimeType("image/jpeg"), new ByteArrayResource(new byte[] {1})))
+                .isInstanceOf(ExtractionException.class)
+                .isNotInstanceOf(VisionProviderUnavailableException.class);
     }
 
     /**

@@ -2,6 +2,8 @@ package com.fintech.api.service.imports.vision;
 
 import com.fintech.api.service.imports.ExtractionException;
 import com.fintech.api.service.imports.LlmReceiptExtractionDTO;
+import com.google.genai.errors.ClientException;
+import com.google.genai.errors.ServerException;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.ai.chat.client.ChatClient;
@@ -95,6 +97,76 @@ class GeminiVisionClientTest {
                 MimeTypeUtils.parseMimeType("image/jpeg"),
                 new ByteArrayResource(new byte[] {1, 2, 3})))
                 .isInstanceOf(ExtractionException.class);
+    }
+
+    // --- Onda 4 — classificação de disponibilidade (spec §3.2: "Quando cair pro próximo") ---
+
+    /**
+     * 429 (RESOURCE_EXHAUSTED, cota do free tier estourada) é o cenário CENTRAL da feature —
+     * vira {@link VisionProviderUnavailableException} com reasonCode "quota" para o
+     * {@code VisionExtractor} tentar o Ollama em seguida.
+     */
+    @Test
+    void classifica429ComoIndisponibilidadePorCota() {
+        ChatClient chatClient = chatClientThrowing(
+                new ClientException(429, "RESOURCE_EXHAUSTED", "Quota exceeded for quota metric ..."));
+        GeminiVisionClient client = new GeminiVisionClient(chatClient, "gemini-2.5-flash");
+
+        assertThatThrownBy(() -> client.extract(
+                "prompt fixo", MimeTypeUtils.parseMimeType("image/jpeg"), new ByteArrayResource(new byte[] {1})))
+                .isInstanceOf(VisionProviderUnavailableException.class)
+                .extracting(e -> ((VisionProviderUnavailableException) e).reasonCode())
+                .isEqualTo("quota");
+    }
+
+    /** 5xx (erro do lado do provider, não da nossa requisição) também é falha de disponibilidade. */
+    @Test
+    void classifica5xxComoIndisponibilidade() {
+        ChatClient chatClient = chatClientThrowing(
+                new ServerException(503, "UNAVAILABLE", "The model is overloaded. Please try again later."));
+        GeminiVisionClient client = new GeminiVisionClient(chatClient, "gemini-2.5-flash");
+
+        assertThatThrownBy(() -> client.extract(
+                "prompt fixo", MimeTypeUtils.parseMimeType("image/jpeg"), new ByteArrayResource(new byte[] {1})))
+                .isInstanceOf(VisionProviderUnavailableException.class)
+                .extracting(e -> ((VisionProviderUnavailableException) e).reasonCode())
+                .isEqualTo("unavailable");
+    }
+
+    /**
+     * 404 (ex.: nome de modelo inválido) NÃO está na lista da spec ("429/5xx/timeout/401/403/400")
+     * — não é disponibilidade, é config quebrada. Continua ExtractionException, sem fallback (um
+     * modelo mal configurado no Gemini não vira "tenta o Ollama").
+     */
+    @Test
+    void statusForaDaListaDeDisponibilidadeContinuaExtractionException() {
+        ChatClient chatClient = chatClientThrowing(new ClientException(404, "NOT_FOUND", "Model not found."));
+        GeminiVisionClient client = new GeminiVisionClient(chatClient, "gemini-2.5-flash");
+
+        assertThatThrownBy(() -> client.extract(
+                "prompt fixo", MimeTypeUtils.parseMimeType("image/jpeg"), new ByteArrayResource(new byte[] {1})))
+                .isInstanceOf(ExtractionException.class)
+                .isNotInstanceOf(VisionProviderUnavailableException.class);
+    }
+
+    /**
+     * Regra inegociável do plano ("nunca logar a chave, nem parcialmente"): mesmo quando a
+     * mensagem CRUA do provider ecoa algo parecido com uma chave (401 típico de credencial
+     * inválida), a exceção que o client propaga é a NOSSA (redigida), nunca repassa
+     * {@code e.getMessage()} do erro original.
+     */
+    @Test
+    void mensagemDeIndisponibilidadeNaoContemAChaveDeApi() {
+        String chaveFake = "AIzaSyFAKE1234567890abcdefFAKEKEY";
+        ChatClient chatClient = chatClientThrowing(
+                new ClientException(401, "UNAUTHENTICATED", "API key " + chaveFake + " is invalid or expired."));
+        GeminiVisionClient client = new GeminiVisionClient(chatClient, "gemini-2.5-flash");
+
+        assertThatThrownBy(() -> client.extract(
+                "prompt fixo", MimeTypeUtils.parseMimeType("image/jpeg"), new ByteArrayResource(new byte[] {1})))
+                .isInstanceOf(VisionProviderUnavailableException.class)
+                .extracting(Throwable::getMessage, org.assertj.core.api.InstanceOfAssertFactories.STRING)
+                .doesNotContain(chaveFake);
     }
 
     /**

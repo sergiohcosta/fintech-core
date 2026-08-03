@@ -6,6 +6,8 @@ import com.fintech.api.dto.imports.NormalizedBatchDTO;
 import com.fintech.api.dto.imports.NormalizedTransactionDTO;
 import com.fintech.api.dto.imports.StagedFieldValueDTO;
 import com.fintech.api.service.imports.vision.VisionModelClient;
+import com.fintech.api.service.imports.vision.VisionProviderErrorClassifier;
+import com.fintech.api.service.imports.vision.VisionProviderUnavailableException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.Ordered;
@@ -28,9 +30,17 @@ import java.util.Map;
  * Extrator de visão — implementação da porta {@link TransactionExtractor}. A partir da Onda 1
  * (plano "extração Gemini primário / Ollama fallback") a chamada ao modelo em si vive atrás da
  * porta {@link VisionModelClient} — este extrator não sabe mais que existe um {@code ChatClient}
- * ou um Ollama; recebe uma {@link List} de clients e usa o primeiro (spec: a ordem por
- * {@code @Order} decide prioridade, hoje só há um client, então "primeiro da lista" é ainda
- * comportamento idêntico ao de antes).
+ * ou um Ollama; recebe uma {@link List} de clients ordenada por {@code @Order} (Gemini 10, Ollama
+ * 20) e tenta em ordem.
+ *
+ * <p><b>Política de fallback (Onda 4, spec §3.2):</b> só uma falha de DISPONIBILIDADE
+ * ({@link VisionProviderUnavailableException} — 429/5xx/timeout/401/403/400) dispara a tentativa
+ * do PRÓXIMO client da lista. Qualquer outra exceção (incl. {@link ExtractionException} de
+ * conteúdo — imagem ilegível, extrato multi-transação #193, {@code amount} implausível) propaga
+ * IMEDIATAMENTE, sem tentar o próximo — falha de conteúdo repetida no outro modelo pagaria
+ * latência dobrada pra chegar à MESMA conclusão, e mascararia o {@code failureReason} de #193. Essa
+ * distinção é garantida por CONSTRUÇÃO: o guarda-corpo de plausibilidade só roda depois que um
+ * client já "venceu" (retornou sem lançar), então é fisicamente impossível ele disparar fallback.
  *
  * <p>Fluxo: monta o prompt fixo + a imagem, delega ao {@link VisionModelClient} escolhido (que
  * devolve a saída TIPADA crua — {@link LlmReceiptExtractionDTO}), e então
@@ -139,6 +149,12 @@ public class VisionExtractor implements TransactionExtractor {
 
     @Override
     public NormalizedBatchDTO extract(ExtractionInput input) {
+        if (visionModelClients.isEmpty()) {
+            // Config quebrada (nenhum client habilitado, ex.: sem GEMINI_API_KEY e sem Ollama) —
+            // falha EXPLÍCITA, não um NullPointerException em visionModelClients.get(0).
+            throw new ExtractionException("Nenhum provider de visão configurado.");
+        }
+
         byte[] imageBytes = input.content();
         ImportMode mode = input.mode();
         // mimeType do cliente é só um HINT pro client montar o Resource — quem decide se é
@@ -147,14 +163,62 @@ public class VisionExtractor implements TransactionExtractor {
         MimeType mime = MimeTypeUtils.parseMimeType(mimeType);
         Resource imageResource = new ByteArrayResource(imageBytes);
 
-        // Por enquanto há um só client na lista (Ollama) — "primeiro da lista" reproduz o
-        // comportamento de hoje bit a bit. A Onda seguinte soma um 2º client e a escolha por
-        // disponibilidade (retry/fallback) entra aqui.
-        VisionModelClient client = visionModelClients.get(0);
+        VisionModelClient winner = null;
+        LlmReceiptExtractionDTO raw = null;
+        long latencyMs = 0;
 
-        long startNanos = System.nanoTime();
-        LlmReceiptExtractionDTO raw = client.extract(PROMPT, mime, imageResource);
-        long latencyMs = (System.nanoTime() - startNanos) / 1_000_000;
+        // Proveniência do fallback (V28): só populada se ALGUM client tentado antes do vencedor
+        // falhou por disponibilidade. fallbackFrom == null já responde "houve fallback?" (spec
+        // §5.1) — guardamos o PRIMEIRO que falhou (com só 2 providers configurados hoje, é
+        // exatamente "de quem" a extração precisou fugir).
+        String fallbackFrom = null;
+        String fallbackReason = null;
+        VisionProviderUnavailableException lastFailure = null;
+
+        for (VisionModelClient client : visionModelClients) {
+            long startNanos = System.nanoTime();
+            try {
+                raw = client.extract(PROMPT, mime, imageResource);
+                latencyMs = (System.nanoTime() - startNanos) / 1_000_000;
+                winner = client;
+                break;
+            } catch (VisionProviderUnavailableException e) {
+                // Só ESTA exceção é capturada aqui — qualquer outra (ExtractionException de
+                // conteúdo, erro inesperado) propaga direto pro chamador, sem tentar o próximo
+                // client. É essa seletividade do catch que implementa a regra central da Onda.
+                if (fallbackFrom == null) {
+                    fallbackFrom = client.providerId();
+                    fallbackReason = e.reasonCode();
+                }
+                lastFailure = e;
+
+                // 401/403 é ERROR, não WARN: degradar pro próximo provider é UX melhor que
+                // falhar de vez, mas silenciar um provider morto por credencial inválida faria
+                // ninguém perceber que ele está fora do ar (spec: "401/403 — cai pro fallback,
+                // mas loga ERROR").
+                if (VisionProviderErrorClassifier.REASON_AUTH.equals(e.reasonCode())) {
+                    log.error("Provider de visão indisponível por falha de autenticação, tentando "
+                                    + "próximo (se houver): provider={}, reason={}, motivo={}",
+                            client.providerId(), e.reasonCode(), e.getMessage());
+                } else {
+                    log.warn("Provider de visão indisponível, tentando próximo (se houver): "
+                                    + "provider={}, reason={}, motivo={}",
+                            client.providerId(), e.reasonCode(), e.getMessage());
+                }
+            }
+        }
+
+        if (winner == null) {
+            // Todos os providers da lista falharam por disponibilidade — o motivo do ÚLTIMO erro
+            // (spec: "ExtractionException com o motivo do ÚLTIMO"), numa mensagem redigida por
+            // nós (nunca o texto cru do provider — lastFailure.getMessage() já é nosso, não do
+            // SDK; ver VisionProviderUnavailableException).
+            String reason = lastFailure != null ? lastFailure.getMessage() : "nenhum provider disponível";
+            throw new ExtractionException(
+                    "Não foi possível extrair os dados da imagem: todos os provedores de visão "
+                            + "configurados estão indisponíveis no momento (" + reason + ").",
+                    lastFailure);
+        }
 
         if (raw == null) {
             throw new ExtractionException("Modelo de visão não retornou dados estruturados.");
@@ -162,10 +226,12 @@ public class VisionExtractor implements TransactionExtractor {
 
         // Critério de saída: latência conhecida (no homelab o custo em $ é zero; medimos tempo).
         // Tokens não são expostos pelo caminho .entity(); latência é a métrica que importa aqui.
-        log.info("Extração de visão concluída: provider={}, model={}, extractorVersion={}, latencyMs={}, overallConfidence={}",
-                client.providerId(), client.modelId(), extractorVersion, latencyMs, raw.overallConfidence());
+        log.info("Extração de visão concluída: provider={}, model={}, extractorVersion={}, latencyMs={}, "
+                        + "overallConfidence={}, fallbackFrom={}, fallbackReason={}",
+                winner.providerId(), winner.modelId(), extractorVersion, latencyMs, raw.overallConfidence(),
+                fallbackFrom, fallbackReason);
 
-        return toNormalizedBatch(raw, mode, client, latencyMs);
+        return toNormalizedBatch(raw, mode, winner, latencyMs, fallbackFrom, fallbackReason);
     }
 
     /**
@@ -175,7 +241,8 @@ public class VisionExtractor implements TransactionExtractor {
      * derruba a extração (o usuário completa na revisão), mas zera a confiança para exigir olho.
      */
     private NormalizedBatchDTO toNormalizedBatch(
-            LlmReceiptExtractionDTO raw, ImportMode mode, VisionModelClient client, long latencyMs) {
+            LlmReceiptExtractionDTO raw, ImportMode mode, VisionModelClient client, long latencyMs,
+            String fallbackFrom, String fallbackReason) {
         // ORDEM IMPORTA: a recusa por multi-transação vem ANTES da validação de valor. Num print
         // de extrato o modelo escolhe uma linha arbitrária e devolve um amount perfeitamente
         // plausível — se o check de valor rodasse primeiro, o caso fora de escopo passaria e as
@@ -218,14 +285,15 @@ public class VisionExtractor implements TransactionExtractor {
                 null);
 
         // extractorUsed carrega a proveniência: qual provider+modelo gerou o dado
-        // (ex.: vision_ollama_qwen2.5vl) — mesmo formato de antes da Onda 1, agora vindo do client.
+        // (ex.: vision_ollama_qwen2.5vl) — mesmo formato de antes da Onda 1, agora vindo do client
+        // VENCEDOR (o que efetivamente respondeu, não necessariamente o primeiro tentado).
         String extractorUsed = "vision_" + client.providerId() + "_" + client.modelId();
-        // Proveniência estruturada (V28, Onda 3): quem MEDE é o extrator (aqui), quem GRAVA é o
+        // Proveniência estruturada (V28): quem MEDE é o extrator (aqui), quem GRAVA é o
         // ImportService — a fronteira "extrator não toca banco" não muda. fallbackFrom/Reason
-        // ficam null nesta Onda: a política de fallback em si é a Onda 4.
+        // (Onda 4) só vêm preenchidos quando um provider anterior falhou por disponibilidade.
         return new NormalizedBatchDTO(
                 mode, ImportSourceType.IMAGE, extractorUsed, extractorVersion, List.of(tx),
-                client.providerId(), client.modelId(), (int) latencyMs, null, null);
+                client.providerId(), client.modelId(), (int) latencyMs, fallbackFrom, fallbackReason);
     }
 
     /** Normaliza para "debit"/"credit"; qualquer coisa não reconhecida cai em "debit" (compra é o caso comum). */
