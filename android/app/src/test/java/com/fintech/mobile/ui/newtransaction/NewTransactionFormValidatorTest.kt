@@ -84,6 +84,34 @@ class NewTransactionFormValidatorTest {
     }
 
     @Test
+    fun `NaN amount is a field error`() {
+        val result = NewTransactionFormValidator.validate(
+            description = "Mercado",
+            amountText = "NaN",
+            accountId = accountId,
+            totalInstallmentsText = "",
+            requiresInstallments = false
+        )
+
+        assertIs<FormValidationResult.Invalid>(result)
+        assertTrue(result.fieldErrors.containsKey("amount"))
+    }
+
+    @Test
+    fun `Infinity amount is a field error`() {
+        val result = NewTransactionFormValidator.validate(
+            description = "Mercado",
+            amountText = "Infinity",
+            accountId = accountId,
+            totalInstallmentsText = "",
+            requiresInstallments = false
+        )
+
+        assertIs<FormValidationResult.Invalid>(result)
+        assertTrue(result.fieldErrors.containsKey("amount"))
+    }
+
+    @Test
     fun `zero installments is a field error when required`() {
         val result = NewTransactionFormValidator.validate(
             description = "Notebook",
