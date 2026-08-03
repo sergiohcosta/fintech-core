@@ -3,6 +3,7 @@ package com.fintech.api.service.imports.vision;
 import com.fintech.api.service.imports.ExtractionException;
 import com.fintech.api.service.imports.LlmReceiptExtractionDTO;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.io.ByteArrayResource;
@@ -18,6 +19,11 @@ import org.springframework.util.MimeType;
  * <p>{@code @Order(20)}: mesma numeração usada pelo {@code ExtractionRouter} para os extratores
  * determinísticos — reserva o espaço abaixo (10) para o provider gerenciado (Gemini) que a Onda
  * seguinte introduz como primário.
+ *
+ * <p><b>Onda 2:</b> o {@code ChatClient} injetado agora é {@link Qualifier qualified} —
+ * {@code VisionAiConfig} passou a expor um {@code ChatClient} por provider (não mais um único
+ * genérico), porque com dois starters Spring AI no classpath a auto-config do
+ * {@code ChatClient.Builder} deixa de resolver (candidato de {@code ChatModel} não é mais único).
  */
 @Component
 @Order(20)
@@ -27,7 +33,7 @@ public class OllamaVisionClient implements VisionModelClient {
     private final String model;
 
     public OllamaVisionClient(
-            ChatClient chatClient,
+            @Qualifier("ollamaVisionChatClient") ChatClient chatClient,
             @Value("${spring.ai.ollama.chat.options.model:llama3.2-vision}") String model) {
         this.chatClient = chatClient;
         this.model = model;

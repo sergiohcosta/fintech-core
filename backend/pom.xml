@@ -156,6 +156,15 @@
 			<artifactId>spring-ai-starter-model-ollama</artifactId>
 		</dependency>
 
+		<!-- Spring AI — starter do Gemini (Google AI Studio, tier free). Onda 2 do plano
+		     "extração Gemini primário / Ollama fallback": Gemini vira o provider PRIMÁRIO de
+		     visão, Ollama continua como fallback. Convivem no mesmo classpath — ver
+		     VisionAiConfig para a ressalva sobre ChatClient.Builder com dois ChatModel. -->
+		<dependency>
+			<groupId>org.springframework.ai</groupId>
+			<artifactId>spring-ai-starter-model-google-genai</artifactId>
+		</dependency>
+
 		<!-- Extração de texto de PDF (Fase 3) — Apache 2.0, puro Java, sem dependência
 			 nativa. Preferida a iText (AGPL/comercial, incompatível com SaaS fechado sem
 			 licença) e a Tika (mais pesado; internamente já delega para PDFBox no caso de
