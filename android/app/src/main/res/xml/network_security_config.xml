@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Libera cleartext (HTTP) só para o host do backend local via emulador (10.0.2.2) —
+     v1 aponta para localhost sem variantes dev/prod (ver Global Constraints do plano);
+     nenhum outro domínio ganha essa exceção. -->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>

@@ -135,6 +135,77 @@ val fixGeneratedEnumDefaults = tasks.register("fixGeneratedEnumDefaults") {
     }
 }
 
+// Mismatch de contrato descoberto em QA manual (Tarefa 14): TransactionResponseDTO.createdAt
+// é LocalDateTime no backend (sem offset, ex: "2026-07-28T22:32:56.732702"), mas o gerador
+// Kotlin mapeia campos date-time para OffsetDateTime, que exige offset e lança
+// DateTimeParseException ao desserializar — crash real no primeiro GET /api/transactions após
+// o login. Nenhum teste unitário pegou isso porque todos usam Response mockado (DTO já
+// construído em memória), nunca desserialização de JSON de verdade. Como não editamos o
+// contrato (api-spec/openapi.yaml, compartilhado com o frontend Angular) nem o código gerado
+// (recriado a cada build), o adapter é reescrito para tentar OffsetDateTime.parse primeiro e,
+// se faltar o offset, cair para LocalDateTime + assumir UTC (createdAt não é exibido nem usado
+// por nenhuma tela desta v1 — só precisa parsear sem derrubar o app).
+val fixGeneratedOffsetDateTimeAdapter = tasks.register("fixGeneratedOffsetDateTimeAdapter") {
+    dependsOn("openApiGenerate")
+    doLast {
+        val adapterFile = file(
+            "${layout.buildDirectory.get()}/generated/openapi/src/main/kotlin/com/fintech/mobile/api/infrastructure/OffsetDateTimeAdapter.kt"
+        )
+        if (adapterFile.exists()) {
+            val original = adapterFile.readText()
+            val target = "                return OffsetDateTime.parse(out.nextString(), formatter)"
+            val replacement = """                val raw = out.nextString()
+                return try {
+                    OffsetDateTime.parse(raw, formatter)
+                } catch (e: java.time.format.DateTimeParseException) {
+                    java.time.LocalDateTime.parse(raw).atOffset(java.time.ZoneOffset.UTC)
+                }"""
+            val patched = original.replace(target, replacement)
+            if (patched != original) {
+                adapterFile.writeText(patched)
+            }
+        }
+    }
+}
+
+// Mismatch descoberto em QA manual (Tarefa 14): o padrão `oneOf: [$ref] + nullable: true`
+// usado no spec para campos nullable (ex: CreditCardDetailsResponse.brand → CardBrand) gera
+// corretamente um wrapper quando o $ref aponta para um schema de objeto (ex: AccountResponse.
+// creditCardDetails → AccountResponseCreditCardDetails, com campos reais), mas quando o $ref
+// aponta para um ENUM (CardBrand), o gerador Kotlin produz uma classe vazia e inútil
+// (CreditCardDetailsResponseBrand, sem TypeAdapter/valores) em vez de usar o enum direto —
+// resultado: JsonSyntaxException ao desserializar "brand" (string) como objeto, crash real ao
+// abrir a lista de contas com cartão de crédito. O lado *Request* do mesmo padrão gera
+// corretamente "CardBrand?" (só o lado *Response* tem o bug), então a correção troca o tipo do
+// campo para o enum real nos 2 arquivos afetados. Não alteramos api-spec/openapi.yaml (o padrão
+// oneOf+nullable é usado deliberadamente em todo o contrato e funciona nos outros consumidores).
+val fixGeneratedCreditCardBrand = tasks.register("fixGeneratedCreditCardBrand") {
+    dependsOn("openApiGenerate")
+    doLast {
+        val modelDir = "${layout.buildDirectory.get()}/generated/openapi/src/main/kotlin/com/fintech/mobile/api/model"
+        listOf("AccountResponseCreditCardDetails.kt", "CreditCardDetailsResponse.kt").forEach { name ->
+            val f = file("$modelDir/$name")
+            if (f.exists()) {
+                val original = f.readText()
+                val patched = original
+                    .replace(
+                        "val brand: CreditCardDetailsResponseBrand? = null",
+                        "val brand: CardBrand? = null"
+                    )
+                    .replace(
+                        "import com.fintech.mobile.api.model.CreditCardDetailsResponseBrand",
+                        "import com.fintech.mobile.api.model.CardBrand"
+                    )
+                if (patched != original) {
+                    f.writeText(patched)
+                }
+            }
+        }
+    }
+}
+
 tasks.named("preBuild") {
     dependsOn(fixGeneratedEnumDefaults)
+    dependsOn(fixGeneratedOffsetDateTimeAdapter)
+    dependsOn(fixGeneratedCreditCardBrand)
 }
