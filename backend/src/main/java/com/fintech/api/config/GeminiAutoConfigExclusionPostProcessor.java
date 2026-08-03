@@ -38,6 +38,18 @@ import java.util.Map;
  *
  * <p>Com a chave presente, este post-processor não faz nada — a auto-configuration do Gemini
  * segue seu curso normal (autenticação por api-key, sem project-id/location — modo AI Studio).
+ *
+ * <p><b>Acoplamento deliberado com {@code GeminiVisionClient} e
+ * {@code VisionAiConfig.geminiVisionChatClient} (revisão pós-Onda 2):</b> os dois também leem
+ * {@code GEMINI_API_KEY} — a MESMA env var, não a property derivada
+ * {@code spring.ai.google.genai.api-key} — para decidir se existem. As três decisões
+ * PRECISAM concordar: se este post-processor excluir a auto-configuration mas o
+ * {@code GeminiVisionClient} achar que a chave está presente (por ler uma fonte diferente que
+ * divergiu), o resultado é {@code UnsatisfiedDependencyException} tentando resolver um
+ * {@code GoogleGenAiChatModel} que não existe — um erro de boot confuso, no lugar da degradação
+ * silenciosa que esta Onda pretende. Ao mexer em qualquer um dos três, mexer nos outros dois
+ * junto (ou extrair a leitura para um método compartilhado, se a duplicação incomodar antes
+ * disso).
  */
 public class GeminiAutoConfigExclusionPostProcessor implements EnvironmentPostProcessor, Ordered {
 
