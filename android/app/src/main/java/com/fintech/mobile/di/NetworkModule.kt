@@ -4,6 +4,7 @@ import com.fintech.mobile.api.AccountsApi
 import com.fintech.mobile.api.AuthApi
 import com.fintech.mobile.api.CategoriesApi
 import com.fintech.mobile.api.TransactionsApi
+import com.fintech.mobile.api.infrastructure.Serializer
 import com.fintech.mobile.session.AuthInterceptor
 import com.google.gson.Gson
 import dagger.Module
@@ -22,9 +23,13 @@ private const val BASE_URL = "http://10.0.2.2:8080/"
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
+    // O openapi-generator já gera `Serializer.gson` com TypeAdapters de LocalDate/LocalDateTime/
+    // OffsetDateTime (ISO-8601, sem reflexão). Um `Gson()` puro serializa java.time.* refletindo
+    // os campos internos (year/month/day) em vez de "2026-07-31" — quebra o contrato com o
+    // backend e, em JDK 17+, lança InaccessibleObjectException (módulo java.base fechado).
     @Provides
     @Singleton
-    fun provideGson(): Gson = Gson()
+    fun provideGson(): Gson = Serializer.gson
 
     @Provides
     @Singleton
