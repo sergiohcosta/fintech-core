@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -34,9 +35,18 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
         }
     }
 
+    // Snapshot ÚNICO no valor síncrono inicial do StateFlow (já reflete
+    // sessionManager.currentToken() != null). `startDestination` é chave de
+    // `remember` interno do NavHost do Compose Navigation: se ficasse reativo
+    // (lendo `isLoggedIn` direto), toda mudança de login/logout recriaria um
+    // NOVO NavGraph do zero, resetando a back stack — competindo com a
+    // navegação explícita já feita via `navigate()` abaixo. Congelando aqui,
+    // login/logout passam a depender só desses `navigate()` explícitos.
+    val startDestination = remember { if (isLoggedIn) Routes.TRANSACTION_LIST else Routes.LOGIN }
+
     NavHost(
         navController = navController,
-        startDestination = if (isLoggedIn) Routes.TRANSACTION_LIST else Routes.LOGIN
+        startDestination = startDestination
     ) {
         composable(Routes.LOGIN) {
             LoginScreen(onLoginSuccess = {
