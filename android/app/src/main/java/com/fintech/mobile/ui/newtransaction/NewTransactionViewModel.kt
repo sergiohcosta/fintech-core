@@ -51,6 +51,9 @@ class NewTransactionViewModel @Inject constructor(
 
     fun submit() {
         val state = _uiState.value
+        // Guarda de reentrância: duplo-toque não deve disparar uma segunda chamada de criação
+        // (lançamento duplicado é um bug sério num app financeiro).
+        if (state.isSubmitting) return
         when (
             val validation = NewTransactionFormValidator.validate(
                 description = state.description,

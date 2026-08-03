@@ -8,6 +8,7 @@ import com.fintech.mobile.data.repository.CategoryRepository
 import com.fintech.mobile.data.repository.CreateTransactionResult
 import com.fintech.mobile.data.repository.TransactionRepository
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -87,6 +88,30 @@ class NewTransactionViewModelTest {
         viewModel.submit()
         dispatcher.scheduler.advanceUntilIdle()
 
+        assertEquals(SubmitBanner.SAVED, viewModel.uiState.value.banner)
+    }
+
+    @Test
+    fun `double-tapping submit before it finishes only creates one transaction`() = runTest {
+        val checking = AccountResponse(
+            id = accountId, name = "Conta corrente", type = AccountType.CHECKING,
+            countInLiquidBalance = true, countInNetWorth = true, active = true, balance = 0.0
+        )
+        val transactionRepository = mockk<TransactionRepository>()
+        coEvery { transactionRepository.create(any()) } returns CreateTransactionResult.Saved
+        val viewModel = buildViewModel(accounts = listOf(checking), transactionRepository = transactionRepository)
+
+        viewModel.onDescriptionChange("Mercado")
+        viewModel.onAmountChange("150,00")
+        viewModel.onAccountChange(accountId)
+
+        // Primeiro submit() marca isSubmitting=true de forma síncrona (antes do viewModelScope.launch
+        // rodar); um segundo toque imediato, antes do dispatcher avançar, deve ser bloqueado pela guarda.
+        viewModel.submit()
+        viewModel.submit()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        coVerify(exactly = 1) { transactionRepository.create(any()) }
         assertEquals(SubmitBanner.SAVED, viewModel.uiState.value.banner)
     }
 }
