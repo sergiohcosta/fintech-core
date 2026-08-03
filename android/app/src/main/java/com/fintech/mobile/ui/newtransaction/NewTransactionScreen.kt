@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.OutlinedTextField
@@ -59,7 +60,11 @@ fun NewTransactionScreen(
                 label = { Text("Conta") },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountMenuExpanded) },
                 isError = uiState.fieldErrors.containsKey("accountId"),
-                modifier = Modifier.fillMaxWidth()
+                // menuAnchor() é obrigatório no Material3 atual: sem ele o ExposedDropdownMenuBox
+                // não sabe onde ancorar o popup e o menu nunca abre ao tocar no campo (bug real
+                // encontrado em QA manual, Tarefa 14 — nenhum teste unitário cobre abertura real
+                // de popup Compose).
+                modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
             )
             ExposedDropdownMenu(
                 expanded = accountMenuExpanded,

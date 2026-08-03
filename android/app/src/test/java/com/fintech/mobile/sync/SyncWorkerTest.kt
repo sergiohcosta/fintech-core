@@ -16,6 +16,9 @@ import com.fintech.mobile.data.local.PendingTransactionEntity
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runTest
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody
@@ -100,5 +103,34 @@ class SyncWorkerTest {
         val result = buildWorker(api, dao).doWork()
 
         assertEquals(ListenableWorker.Result.retry(), result)
+    }
+
+    @Test
+    fun `two concurrent runs never send the same pending item twice`() = runTest {
+        // Reproduz o bug real achado em QA manual (Tarefa 14): MobileApp agenda sync
+        // periódico + sync de startup como work requests independentes — WorkManager pode
+        // rodar os dois ao mesmo tempo. Sem o Mutex do companion object, ambos leem a mesma
+        // lista PENDING antes que qualquer um apague o item, duplicando o POST ao backend.
+        val pendingItems = mutableListOf(
+            PendingTransactionEntity(localId = 1, payloadJson = gson.toJson(sampleDto), createdAt = 1L)
+        )
+        val api = mockk<TransactionsApi>()
+        coEvery { api.createTransaction(sampleDto) } coAnswers {
+            delay(50) // simula latência de rede — dá tempo do outro doWork() correr em paralelo se não houver o Mutex
+            Response.success(emptyList())
+        }
+        val dao = mockk<PendingTransactionDao>()
+        coEvery { dao.getByStatus(PendingTransactionEntity.STATUS_PENDING) } coAnswers { pendingItems.toList() }
+        coEvery { dao.delete(1L) } coAnswers { pendingItems.removeAll { it.localId == 1L }; Unit }
+
+        val workerA = buildWorker(api, dao)
+        val workerB = buildWorker(api, dao)
+        val results = listOf(
+            async { workerA.doWork() },
+            async { workerB.doWork() }
+        ).awaitAll()
+
+        assertEquals(listOf(ListenableWorker.Result.success(), ListenableWorker.Result.success()), results)
+        coVerify(exactly = 1) { api.createTransaction(sampleDto) }
     }
 }
