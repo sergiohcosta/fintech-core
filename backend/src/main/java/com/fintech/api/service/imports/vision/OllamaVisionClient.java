@@ -10,6 +10,8 @@ import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.MimeType;
+import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.ResourceAccessException;
 
 /**
  * Implementação de {@link VisionModelClient} sobre o {@code ChatClient} do Spring AI, adaptador
@@ -54,9 +56,36 @@ public class OllamaVisionClient implements VisionModelClient {
                     .call()
                     .entity(LlmReceiptExtractionDTO.class);
         } catch (Exception e) {
-            // Qualquer falha do provider/parse vira ExtractionException → batch FAILED (fallback manual).
+            // Onda 4: mesma política do GeminiVisionClient (classificação vive no cliente, não
+            // aqui reaproveitado de outro provider — cada um desembrulha a exceção do SEU SDK).
+            // Falha de DISPONIBILIDADE aqui é a exceção nativa do RestClient que o Spring AI usa
+            // para falar com o servidor Ollama: HttpStatusCodeException (4xx/5xx) e
+            // ResourceAccessException (timeout, conexão recusada — sem resposta HTTP nenhuma).
+            String reasonCode = classifyAvailability(e);
+            if (reasonCode != null) {
+                // Mensagem redigida por NÓS — nunca o texto cru do provider nem a chave (Ollama
+                // não usa chave, mas a regra é a mesma dos dois clients por consistência).
+                throw new VisionProviderUnavailableException(
+                        reasonCode,
+                        "Ollama indisponível (" + VisionProviderErrorClassifier.friendlyReason(reasonCode) + ").",
+                        e);
+            }
             throw new ExtractionException("Falha ao extrair dados da imagem via modelo de visão.", e);
         }
+    }
+
+    /**
+     * @return a classificação de disponibilidade, ou {@code null} se a falha não é de
+     *         disponibilidade (o chamador trata como falha de conteúdo).
+     */
+    private String classifyAvailability(Exception e) {
+        if (e instanceof HttpStatusCodeException httpError) {
+            return VisionProviderErrorClassifier.reasonForHttpStatus(httpError.getStatusCode().value());
+        }
+        if (e instanceof ResourceAccessException) {
+            return VisionProviderErrorClassifier.REASON_UNAVAILABLE;
+        }
+        return null;
     }
 
     @Override

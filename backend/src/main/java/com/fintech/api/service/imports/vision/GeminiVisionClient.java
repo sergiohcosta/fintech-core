@@ -2,6 +2,8 @@ package com.fintech.api.service.imports.vision;
 
 import com.fintech.api.service.imports.ExtractionException;
 import com.fintech.api.service.imports.LlmReceiptExtractionDTO;
+import com.google.genai.errors.ApiException;
+import com.google.genai.errors.GenAiIOException;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,10 +16,9 @@ import org.springframework.util.MimeType;
 /**
  * Implementação de {@link VisionModelClient} sobre o Gemini (Google AI Studio, tier free) —
  * provider PRIMÁRIO de extração por visão a partir da Onda 2 do plano "extração Gemini primário
- * / Ollama fallback" ({@code @Order(10)}, abaixo do Ollama em 20 — a ORDEM de tentativa entre
- * providers é decidida pelo {@code VisionExtractor}/spec, ainda não implementada nesta Onda:
- * hoje o extrator usa "primeiro da lista", e a lista ordenada por {@code @Order} já entrega o
- * Gemini primeiro quando ele existe).
+ * / Ollama fallback" ({@code @Order(10)}, abaixo do Ollama em 20). A partir da Onda 4, o
+ * {@code VisionExtractor} tenta os clients NESSA ordem e cai para o próximo só quando este lança
+ * {@link VisionProviderUnavailableException} (ver {@link #classifyAvailability}).
  *
  * <p><b>Gate de disponibilidade (§ "Gemini sem chave: bean não existe"):</b> a anotação óbvia
  * seria {@code @ConditionalOnProperty(name = "spring.ai.google.genai.api-key")} — mas ela NÃO
@@ -74,12 +75,42 @@ public class GeminiVisionClient implements VisionModelClient {
                     .call()
                     .entity(LlmReceiptExtractionDTO.class);
         } catch (Exception e) {
-            // Qualquer falha do provider/parse vira ExtractionException → hoje isso ainda derruba
-            // o batch (FAILED); a política de "cair pro Ollama só em falha de DISPONIBILIDADE"
-            // (429/5xx/timeout/401/403/400) é da Onda 4 — aqui a porta só devolve o dado cru ou
-            // propaga a falha, sem decidir fallback (spec: guarda-corpo fica no VisionExtractor).
+            // Onda 4: classifica ANTES de decidir a exceção. Falha de DISPONIBILIDADE (cota, 5xx,
+            // timeout, auth) vira VisionProviderUnavailableException — só essa dispara fallback pro
+            // próximo provider da lista (VisionExtractor). Qualquer outra falha (parse do schema,
+            // erro inesperado) continua ExtractionException — falha de conteúdo, sem fallback.
+            String reasonCode = classifyAvailability(e);
+            if (reasonCode != null) {
+                // Mensagem redigida por NÓS — nunca o texto cru do provider (pode ecoar detalhe
+                // interno da API) nem a chave (que nem aparece nestas exceções, mas não arriscamos:
+                // só repassamos o código de status + classificação, nunca e.getMessage()).
+                throw new VisionProviderUnavailableException(
+                        reasonCode,
+                        "Gemini indisponível (" + VisionProviderErrorClassifier.friendlyReason(reasonCode) + ").",
+                        e);
+            }
             throw new ExtractionException("Falha ao extrair dados da imagem via modelo de visão (Gemini).", e);
         }
+    }
+
+    /**
+     * Desembrulha a exceção nativa do SDK do Gemini ({@code com.google.genai.errors}) e devolve a
+     * classificação de disponibilidade, ou {@code null} se não for uma falha de disponibilidade
+     * (nesse caso o chamador trata como falha de conteúdo).
+     *
+     * <p>{@link ApiException#code()} é o status HTTP devolvido pela API do Gemini — cobre tanto
+     * {@code ClientException} (4xx) quanto {@code ServerException} (5xx), então basta checar o
+     * supertipo. {@link GenAiIOException} embrulha falha de TRANSPORTE (timeout, conexão recusada)
+     * — sem status HTTP nenhum, mas é indisponibilidade de qualquer forma.
+     */
+    private String classifyAvailability(Exception e) {
+        if (e instanceof ApiException apiException) {
+            return VisionProviderErrorClassifier.reasonForHttpStatus(apiException.code());
+        }
+        if (e instanceof GenAiIOException) {
+            return VisionProviderErrorClassifier.REASON_UNAVAILABLE;
+        }
+        return null;
     }
 
     @Override
