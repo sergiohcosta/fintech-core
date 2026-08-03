@@ -12,6 +12,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.fintech.mobile.ui.login.LoginScreen
 import com.fintech.mobile.ui.newtransaction.NewTransactionScreen
+import com.fintech.mobile.ui.newtransaction.SubmitBanner
 import com.fintech.mobile.ui.transactionlist.TransactionListScreen
 
 object Routes {
@@ -19,6 +20,15 @@ object Routes {
     const val TRANSACTION_LIST = "transaction_list"
     const val NEW_TRANSACTION = "new_transaction"
 }
+
+// Chave do "resultado de navegação" (padrão oficial do Navigation Compose): o formulário
+// escreve aqui no savedStateHandle da entry ANTERIOR (a lista) antes de voltar; a lista
+// observa via getStateFlow na PRÓPRIA entry (currentBackStackEntry) — são o mesmo
+// SavedStateHandle, só visto de dois pontos da back stack. Resolve dois findings do review
+// final juntos: (1) a lista não atualizava sozinha após salvar (só via refresh manual) e
+// (3) o banner SAVED/QUEUED nunca era visível (o LaunchedEffect antigo navegava embora no
+// mesmo instante em que o setava, sem o usuário nunca ver a tela).
+const val SUBMIT_BANNER_KEY = "submit_banner"
 
 @Composable
 fun AppNavHost(navController: NavHostController = rememberNavController()) {
@@ -55,11 +65,25 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
                 }
             })
         }
-        composable(Routes.TRANSACTION_LIST) {
-            TransactionListScreen(onAddTransaction = { navController.navigate(Routes.NEW_TRANSACTION) })
+        composable(Routes.TRANSACTION_LIST) { backStackEntry ->
+            val bannerName by backStackEntry.savedStateHandle
+                .getStateFlow<String?>(SUBMIT_BANNER_KEY, null)
+                .collectAsState()
+            TransactionListScreen(
+                onAddTransaction = { navController.navigate(Routes.NEW_TRANSACTION) },
+                pendingBanner = bannerName?.let { SubmitBanner.valueOf(it) },
+                onBannerConsumed = { backStackEntry.savedStateHandle[SUBMIT_BANNER_KEY] = null }
+            )
         }
         composable(Routes.NEW_TRANSACTION) {
-            NewTransactionScreen(onSaved = { navController.popBackStack() })
+            NewTransactionScreen(
+                onSaved = { banner ->
+                    navController.previousBackStackEntry
+                        ?.savedStateHandle
+                        ?.set(SUBMIT_BANNER_KEY, banner.name)
+                    navController.popBackStack()
+                }
+            )
         }
     }
 }

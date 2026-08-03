@@ -25,13 +25,17 @@ import androidx.hilt.navigation.compose.hiltViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewTransactionScreen(
-    onSaved: () -> Unit,
+    onSaved: (SubmitBanner) -> Unit,
     viewModel: NewTransactionViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    // uiState.banner é setado no instante em que a criação termina (SAVED/QUEUED). Repassamos
+    // o valor pra quem monta o NavHost em vez de decidir a UI de sucesso aqui — esta tela
+    // desaparece da composição (popBackStack) antes de qualquer Snackbar/mensagem própria ter
+    // chance de aparecer, então quem exibe o feedback é a tela de destino (ver AppNavHost).
     LaunchedEffect(uiState.banner) {
-        if (uiState.banner != null) onSaved()
+        uiState.banner?.let { onSaved(it) }
     }
 
     Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
