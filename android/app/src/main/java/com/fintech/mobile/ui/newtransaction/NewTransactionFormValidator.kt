@@ -29,7 +29,11 @@ object NewTransactionFormValidator {
         if (description.isBlank()) errors["description"] = "Informe uma descrição"
 
         val amount = AmountParser.parse(amountText)
-        if (amount == null || amount < 0.01) errors["amount"] = "Informe um valor válido"
+        // AmountParser delega a toDoubleOrNull(), que aceita "NaN"/"Infinity" (IEEE754 válidos
+        // como Double). `amount < 0.01` é sempre false para NaN (toda comparação com NaN é
+        // false), então esses valores passavam a validação e só quebravam depois, no Gson
+        // (IllegalArgumentException fora do apiCall, crash não tratado da coroutine).
+        if (amount == null || !amount.isFinite() || amount < 0.01) errors["amount"] = "Informe um valor válido"
 
         if (accountId == null) errors["accountId"] = "Selecione uma conta"
 
