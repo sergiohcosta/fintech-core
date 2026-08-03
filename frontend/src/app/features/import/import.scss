@@ -42,7 +42,9 @@
   border: 2px dashed var(--mat-sys-outline, #b0b0b0);
   border-radius: 12px;
   text-align: center;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 
   &.dragging {
     border-color: var(--mat-sys-primary, #3f51b5);
@@ -136,6 +138,11 @@
 
 // --- Revisão em lote (Fase 2 metade B) ---
 
+.selection-bar {
+  display: flex;
+  margin-bottom: 0.25rem;
+}
+
 .bulk-toolbar {
   display: flex;
   align-items: center;
@@ -166,12 +173,6 @@
 
   .desc-cell {
     max-width: 260px;
-
-    .direction-hint {
-      display: block;
-      color: var(--mat-sys-on-surface-variant, rgba(0, 0, 0, 0.6));
-      font-size: 0.72rem;
-    }
   }
 
   .actions-cell {

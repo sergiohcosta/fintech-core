@@ -25,9 +25,10 @@
       <mat-card appearance="outlined" class="upload-card">
         <mat-card-content>
           <p class="hint">
-            Envie a foto de um comprovante (recibo, PIX, nota), um extrato CSV ou um arquivo OFX do
-            seu banco. Vamos extrair valor, data e descrição automaticamente — você confere antes de
-            lançar.
+            Envie a foto de um comprovante (recibo, PIX, nota), um extrato CSV, um arquivo OFX do
+            seu banco ou um PDF com texto (fatura/extrato gerado digitalmente — PDF escaneado ainda
+            não é suportado). Vamos extrair valor, data e descrição automaticamente — você confere
+            antes de lançar.
           </p>
 
           <div
@@ -48,7 +49,7 @@
               <label class="file-input-label">
                 <input
                   type="file"
-                  accept=".csv,.ofx,image/*"
+                  accept=".csv,.ofx,.pdf,image/*"
                   hidden
                   (change)="onFileSelected($event)"
                 />
@@ -109,7 +110,15 @@
       lançar podem ser descartadas.
     </p>
 
-    <!-- Ações em massa: só existem quando há seleção. Conta/categoria são LOCAIS (nenhuma
+    <!-- Selecionar todas (todas as páginas, não só a visível) — atalho pra aplicar conta/
+         categoria/tipo ao lote inteiro sem precisar paginar marcando linha por linha. -->
+    <div class="selection-bar">
+      <button mat-button type="button" (click)="selectAllRows()">
+        <mat-icon>done_all</mat-icon> Selecionar todas ({{ rows().length }})
+      </button>
+    </div>
+
+    <!-- Ações em massa: só existem quando há seleção. Conta/categoria/tipo são LOCAIS (nenhuma
          chamada HTTP); descartar é a única que fala com o backend. -->
     @if (hasSelection()) {
       <div class="bulk-toolbar" data-testid="bulk-toolbar">
@@ -131,6 +140,14 @@
             @for (cat of categoryOptions(); track cat.id) {
               <mat-option [value]="cat.id">{{ cat.name }}</mat-option>
             }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="bulk-field">
+          <mat-label>Definir tipo</mat-label>
+          <mat-select [value]="null" (selectionChange)="applyDirectionToSelected($event.value)">
+            <mat-option value="debit">Saída (despesa)</mat-option>
+            <mat-option value="credit">Entrada (receita)</mat-option>
           </mat-select>
         </mat-form-field>
 
@@ -186,13 +203,21 @@
               content_copy
             </mat-icon>
           }
+          @if (isBlockedFromCommit(row)) {
+            <mat-icon
+              color="warn"
+              matTooltip="Valor ou data inválidos — esta linha não será lançada até corrigir"
+            >
+              error_outline
+            </mat-icon>
+          }
         </td>
       </ng-container>
 
       <ng-container matColumnDef="amount">
         <th mat-header-cell *matHeaderCellDef>Valor</th>
         <td mat-cell *matCellDef="let row">
-          {{ row.amount || '—' }}
+          {{ amountText(row) }}
           <span class="conf-badge" [class]="confClass(row, 'amount')">{{
             confPct(row, 'amount')
           }}</span>
@@ -202,7 +227,7 @@
       <ng-container matColumnDef="transaction_date">
         <th mat-header-cell *matHeaderCellDef>Data</th>
         <td mat-cell *matCellDef="let row">
-          {{ row.transaction_date || '—' }}
+          {{ dateText(row) }}
           <span class="conf-badge" [class]="confClass(row, 'transaction_date')">
             {{ confPct(row, 'transaction_date') }}
           </span>
@@ -213,7 +238,22 @@
         <th mat-header-cell *matHeaderCellDef>Descrição</th>
         <td mat-cell *matCellDef="let row" class="desc-cell">
           {{ row.description || '—' }}
-          <small class="direction-hint">{{ directionText(row.direction) }}</small>
+        </td>
+      </ng-container>
+
+      <!-- Tipo (entrada/saída) — select sempre visível, com bulk-apply na toolbar acima -->
+      <ng-container matColumnDef="direction">
+        <th mat-header-cell *matHeaderCellDef>Tipo</th>
+        <td mat-cell *matCellDef="let row">
+          <mat-form-field appearance="outline" class="cell-field" subscriptSizing="dynamic">
+            <mat-select
+              [value]="row.direction"
+              (selectionChange)="updateField(row.stagedId, 'direction', $event.value)"
+            >
+              <mat-option value="debit">Saída (despesa)</mat-option>
+              <mat-option value="credit">Entrada (receita)</mat-option>
+            </mat-select>
+          </mat-form-field>
         </td>
       </ng-container>
 
@@ -284,12 +324,15 @@
             <div class="field-grid detail-grid">
               <mat-form-field appearance="outline">
                 <mat-label>Valor</mat-label>
+                <span matTextPrefix>R$&nbsp;</span>
                 <input
                   matInput
                   type="text"
                   inputmode="decimal"
-                  [value]="row.amount"
-                  (input)="onInput(row.stagedId, 'amount', $event)"
+                  [value]="row.amountDisplay"
+                  (input)="onAmountInputRow(row.stagedId, $event)"
+                  (blur)="onAmountBlurRow(row.stagedId, $event)"
+                  (focus)="onAmountFocusRow(row.stagedId, $event)"
                 />
                 <span
                   matSuffix
@@ -304,12 +347,15 @@
                 <mat-label>Data</mat-label>
                 <input
                   matInput
-                  type="date"
-                  [value]="row.transaction_date"
-                  (input)="onInput(row.stagedId, 'transaction_date', $event)"
+                  [matDatepicker]="importDatePicker"
+                  [value]="dateValue(row)"
+                  (dateChange)="onDateChange(row.stagedId, $event.value)"
+                  placeholder="dd/mm/aaaa"
                 />
+                <mat-datepicker-toggle matIconSuffix [for]="importDatePicker" />
+                <mat-datepicker #importDatePicker />
                 <span
-                  matSuffix
+                  matTextSuffix
                   class="conf-badge"
                   [class]="confClass(row, 'transaction_date')"
                   matTooltip="Confiança neste campo"
@@ -332,17 +378,6 @@
                   matTooltip="Confiança neste campo"
                   >{{ confPct(row, 'description') }}</span
                 >
-              </mat-form-field>
-
-              <mat-form-field appearance="outline">
-                <mat-label>Tipo</mat-label>
-                <mat-select
-                  [value]="row.direction"
-                  (selectionChange)="updateField(row.stagedId, 'direction', $event.value)"
-                >
-                  <mat-option value="debit">Saída (despesa)</mat-option>
-                  <mat-option value="credit">Entrada (receita)</mat-option>
-                </mat-select>
               </mat-form-field>
 
               <mat-form-field appearance="outline">
