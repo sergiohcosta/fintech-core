@@ -37,6 +37,13 @@ android {
     }
 }
 
+// exportSchema = true (AppDatabase.kt) precisa deste diretório de saída para o KSP do Room
+// gravar o schema JSON versionado. Commitado (não é build output) — é o histórico de
+// migração, exigido no primeiro bump de versão do banco.
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2025.01.00")
     implementation(composeBom)
@@ -122,16 +129,37 @@ val fixGeneratedEnumDefaults = tasks.register("fixGeneratedEnumDefaults") {
         val transactionsApiFile = file(
             "${layout.buildDirectory.get()}/generated/openapi/src/main/kotlin/com/fintech/mobile/api/TransactionsApi.kt"
         )
-        if (transactionsApiFile.exists()) {
-            val original = transactionsApiFile.readText()
-            val patched = original.replace(
-                "scope: DeleteInstallmentScope? = SINGLE",
-                "scope: DeleteInstallmentScope? = DeleteInstallmentScope.SINGLE"
+        if (!transactionsApiFile.exists()) {
+            throw org.gradle.api.GradleException(
+                "fixGeneratedEnumDefaults: TransactionsApi.kt não existe mais no output do " +
+                    "openapi-generator (${transactionsApiFile.path}). O patch do default de enum " +
+                    "sem qualificação (bug OpenAPITools/openapi-generator #12531/#21437) não foi " +
+                    "aplicado — se o gerador não emite mais esse bug, remova esta task; se só " +
+                    "mudou o caminho do arquivo, atualize-o aqui."
             )
-            if (patched != original) {
-                transactionsApiFile.writeText(patched)
-            }
         }
+        val original = transactionsApiFile.readText()
+        val fixedMarker = "scope: DeleteInstallmentScope? = DeleteInstallmentScope.SINGLE"
+        if (original.contains(fixedMarker)) {
+            // Já patchado (ex: openApiGenerate ficou UP-TO-DATE e reusou o output de um build
+            // anterior desta mesma sessão) — nada a fazer, não é uma falha do patch.
+            return@doLast
+        }
+        val patched = original.replace(
+            "scope: DeleteInstallmentScope? = SINGLE",
+            fixedMarker
+        )
+        if (patched == original) {
+            throw org.gradle.api.GradleException(
+                "fixGeneratedEnumDefaults: padrão-alvo \"scope: DeleteInstallmentScope? = SINGLE\" " +
+                    "não foi encontrado em TransactionsApi.kt. Provável bump do openapi-generator " +
+                    "(bug corrigido upstream) ou mudança no api-spec/openapi.yaml — sem falhar aqui " +
+                    "o build passaria verde e o Kotlin gerado voltaria a não compilar (ou, se o " +
+                    "código mudou de outro jeito, o bug de enum sem qualificação voltaria em " +
+                    "silêncio). Confira o arquivo gerado e ajuste o patch ou remova a task."
+            )
+        }
+        transactionsApiFile.writeText(patched)
     }
 }
 
@@ -151,20 +179,39 @@ val fixGeneratedOffsetDateTimeAdapter = tasks.register("fixGeneratedOffsetDateTi
         val adapterFile = file(
             "${layout.buildDirectory.get()}/generated/openapi/src/main/kotlin/com/fintech/mobile/api/infrastructure/OffsetDateTimeAdapter.kt"
         )
-        if (adapterFile.exists()) {
-            val original = adapterFile.readText()
-            val target = "                return OffsetDateTime.parse(out.nextString(), formatter)"
-            val replacement = """                val raw = out.nextString()
+        if (!adapterFile.exists()) {
+            throw org.gradle.api.GradleException(
+                "fixGeneratedOffsetDateTimeAdapter: OffsetDateTimeAdapter.kt não existe mais no " +
+                    "output do openapi-generator (${adapterFile.path}). O patch que evita " +
+                    "DateTimeParseException ao desserializar createdAt (LocalDateTime sem offset " +
+                    "no backend vs. OffsetDateTime esperado pelo gerador) não foi aplicado — o " +
+                    "crash do primeiro GET /api/transactions após login pode voltar em silêncio. " +
+                    "Atualize o caminho do arquivo ou remova a task se o gerador não precisar mais dele."
+            )
+        }
+        val original = adapterFile.readText()
+        val target = "                return OffsetDateTime.parse(out.nextString(), formatter)"
+        val replacement = """                val raw = out.nextString()
                 return try {
                     OffsetDateTime.parse(raw, formatter)
                 } catch (e: java.time.format.DateTimeParseException) {
                     java.time.LocalDateTime.parse(raw).atOffset(java.time.ZoneOffset.UTC)
                 }"""
-            val patched = original.replace(target, replacement)
-            if (patched != original) {
-                adapterFile.writeText(patched)
-            }
+        if (original.contains(replacement)) {
+            // Já patchado nesta sessão (openApiGenerate UP-TO-DATE reusando output anterior).
+            return@doLast
         }
+        val patched = original.replace(target, replacement)
+        if (patched == original) {
+            throw org.gradle.api.GradleException(
+                "fixGeneratedOffsetDateTimeAdapter: padrão-alvo do parse de OffsetDateTime não foi " +
+                    "encontrado em OffsetDateTimeAdapter.kt. Provável bump do openapi-generator " +
+                    "mudou o código emitido — sem falhar aqui o patch simplesmente para de agir e o " +
+                    "DateTimeParseException (crash real, achado em QA manual) volta sem sinal. " +
+                    "Confira o arquivo gerado e ajuste o alvo do replace ou remova a task."
+            )
+        }
+        adapterFile.writeText(patched)
     }
 }
 
@@ -185,21 +232,41 @@ val fixGeneratedCreditCardBrand = tasks.register("fixGeneratedCreditCardBrand") 
         val modelDir = "${layout.buildDirectory.get()}/generated/openapi/src/main/kotlin/com/fintech/mobile/api/model"
         listOf("AccountResponseCreditCardDetails.kt", "CreditCardDetailsResponse.kt").forEach { name ->
             val f = file("$modelDir/$name")
-            if (f.exists()) {
-                val original = f.readText()
-                val patched = original
-                    .replace(
-                        "val brand: CreditCardDetailsResponseBrand? = null",
-                        "val brand: CardBrand? = null"
-                    )
-                    .replace(
-                        "import com.fintech.mobile.api.model.CreditCardDetailsResponseBrand",
-                        "import com.fintech.mobile.api.model.CardBrand"
-                    )
-                if (patched != original) {
-                    f.writeText(patched)
-                }
+            if (!f.exists()) {
+                throw org.gradle.api.GradleException(
+                    "fixGeneratedCreditCardBrand: $name não existe mais no output do " +
+                        "openapi-generator (${f.path}). O patch que troca o wrapper vazio " +
+                        "(oneOf+nullable sobre um \$ref de ENUM) pelo CardBrand real não foi " +
+                        "aplicado — a JsonSyntaxException ao desserializar contas com cartão de " +
+                        "crédito (crash real, achado em QA manual) pode voltar em silêncio. " +
+                        "Atualize o caminho do arquivo ou remova a task se o gerador corrigiu o bug."
+                )
             }
+            val original = f.readText()
+            if (original.contains("val brand: CardBrand? = null")) {
+                // Já patchado nesta sessão (openApiGenerate UP-TO-DATE reusando output anterior).
+                return@forEach
+            }
+            val patched = original
+                .replace(
+                    "val brand: CreditCardDetailsResponseBrand? = null",
+                    "val brand: CardBrand? = null"
+                )
+                .replace(
+                    "import com.fintech.mobile.api.model.CreditCardDetailsResponseBrand",
+                    "import com.fintech.mobile.api.model.CardBrand"
+                )
+            if (patched == original) {
+                throw org.gradle.api.GradleException(
+                    "fixGeneratedCreditCardBrand: nenhum dos padrões-alvo (declaração de " +
+                        "CreditCardDetailsResponseBrand ou seu import) foi encontrado em $name. " +
+                        "Provável bump do openapi-generator mudou o código emitido para o padrão " +
+                        "oneOf+nullable sobre enum — sem falhar aqui o patch para de agir e a " +
+                        "JsonSyntaxException volta sem sinal. Confira o arquivo gerado e ajuste o " +
+                        "patch ou remova a task se o bug upstream foi corrigido."
+                )
+            }
+            f.writeText(patched)
         }
     }
 }
