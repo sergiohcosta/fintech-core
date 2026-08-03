@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -58,7 +59,12 @@ fun TransactionListScreen(
             items(uiState.pending) { pending ->
                 ListItem(
                     headlineContent = { Text("Pendente de envio") },
-                    supportingContent = { pending.errorMessage?.let { Text(it) } }
+                    supportingContent = { pending.errorMessage?.let { Text(it) } },
+                    trailingContent = {
+                        IconButton(onClick = { viewModel.discardPending(pending.localId) }) {
+                            Icon(Icons.Filled.Delete, contentDescription = "Descartar pendente")
+                        }
+                    }
                 )
             }
             items(uiState.transactions) { transaction ->
