@@ -19,8 +19,13 @@ import kotlinx.coroutines.sync.withLock
 // Drena a fila offline (outbox) criada na Tarefa 6: cada item PENDING é reenviado pela
 // mesma API usada no lançamento manual (Tarefa 9). Falha de validação/HTTP marca o item
 // como FAILED em vez de tentar de novo pra sempre — reenviar um payload já rejeitado
-// pelo backend só reproduziria o mesmo erro. Só NetworkError pede retry do WorkManager,
-// que já tem backoff embutido — falha de conectividade é a única transitória de verdade.
+// pelo backend só reproduziria o mesmo erro. NetworkError e 401 pedem retry do WorkManager
+// (backoff embutido): NetworkError é falha de conectividade, transitória por natureza; 401
+// é sessão expirada — achado no review final da Tarefa 14/15: sem esse tratamento, um item
+// lançado offline que só sincroniza depois do token expirar virava FAILED permanente e o
+// usuário perdia o lançamento (só recuperável via descarte manual + redigitação). Marcar
+// como PENDING de novo (não mexer no status) deixa o item pronto para reenviar assim que
+// a sessão for restabelecida (login de novo dispara sync no boot do app).
 @HiltWorker
 class SyncWorker @AssistedInject constructor(
     @Assisted context: Context,
@@ -39,7 +44,13 @@ class SyncWorker @AssistedInject constructor(
                 is ApiResult.ValidationError ->
                     pendingDao.updateStatus(item.localId, PendingTransactionEntity.STATUS_FAILED, result.message)
                 is ApiResult.HttpError ->
-                    pendingDao.updateStatus(item.localId, PendingTransactionEntity.STATUS_FAILED, result.message)
+                    if (result.code == 401) {
+                        // Sessão expirada: item continua PENDING (nada a atualizar no outbox)
+                        // e a work request tenta de novo depois, quando o usuário fizer login.
+                        return@withLock Result.retry()
+                    } else {
+                        pendingDao.updateStatus(item.localId, PendingTransactionEntity.STATUS_FAILED, result.message)
+                    }
                 is ApiResult.NetworkError -> return@withLock Result.retry()
             }
         }

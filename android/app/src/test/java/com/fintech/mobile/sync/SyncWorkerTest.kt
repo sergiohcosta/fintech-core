@@ -93,6 +93,26 @@ class SyncWorkerTest {
     }
 
     @Test
+    fun `requests a retry instead of failing when the session expired (401)`() = runTest {
+        // Reproduz o cenário do finding do review final: lançamento offline cuja sincronização
+        // só roda depois do token expirar. Tratar 401 como FAILED perderia o dado do usuário
+        // (só recuperável via descarte manual + redigitação) — o correto é manter PENDING e
+        // deixar o WorkManager tentar de novo quando a sessão for restabelecida.
+        val pending = PendingTransactionEntity(localId = 1, payloadJson = gson.toJson(sampleDto), createdAt = 1L)
+        val api = mockk<TransactionsApi>()
+        val body = """{"message":"token expirado"}""".toResponseBody("application/json".toMediaType())
+        coEvery { api.createTransaction(sampleDto) } returns Response.error(401, body)
+        val dao = mockk<PendingTransactionDao>()
+        coEvery { dao.getByStatus(PendingTransactionEntity.STATUS_PENDING) } returns listOf(pending)
+
+        val result = buildWorker(api, dao).doWork()
+
+        assertEquals(ListenableWorker.Result.retry(), result)
+        coVerify(exactly = 0) { dao.updateStatus(any(), any(), any()) }
+        coVerify(exactly = 0) { dao.delete(any()) }
+    }
+
+    @Test
     fun `requests a retry when a network error happens`() = runTest {
         val pending = PendingTransactionEntity(localId = 1, payloadJson = gson.toJson(sampleDto), createdAt = 1L)
         val api = mockk<TransactionsApi>()
