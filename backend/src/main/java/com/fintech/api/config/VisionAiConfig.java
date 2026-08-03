@@ -1,30 +1,60 @@
 package com.fintech.api.config;
 
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.google.genai.GoogleGenAiChatModel;
+import org.springframework.ai.ollama.OllamaChatModel;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Provê o {@link ChatClient} usado pelo {@code OllamaVisionClient} (implementação da porta
- * {@code VisionModelClient} sobre o Ollama do homelab).
+ * Provê os {@link ChatClient} usados pelos {@code VisionModelClient} (Ollama e, a partir da
+ * Onda 2, Gemini).
  *
- * <p>O Spring AI auto-configura um {@code ChatClient.Builder} (escopo prototype) a partir do
- * {@code ChatModel} do starter ativo (Ollama). Aqui só o materializamos num {@link ChatClient}
- * pronto — um bean singleton que o client injeta.
+ * <p><b>Onda 1 → Onda 2, mudança de forma (verificado empiricamente, plano "Onda 2" passo 2.2):
+ * </b> com um único starter Spring AI no classpath, o próprio Spring AI auto-configurava um
+ * {@code ChatClient.Builder} (a partir do único {@code ChatModel} candidato) e esta classe só
+ * precisava materializá-lo num {@link ChatClient} singleton. Ao somar o starter do Gemini, essa
+ * auto-configuração QUEBRA: ela é condicional a um candidato ÚNICO de {@code ChatModel}, e agora
+ * há dois ({@code OllamaChatModel} e {@code GoogleGenAiChatModel} — nenhum starter cede essa
+ * ambiguidade sozinho, os dois convivem "always-on" nos respectivos autoconfigure). Confirmado
+ * subindo o contexto: {@code NoUniqueBeanDefinitionException} — "found 2: googleGenAiChatModel,
+ * ollamaChatModel".
  *
- * <p><b>Nuance introduzida na Onda 1</b> (plano "extração Gemini primário / Ollama fallback"):
- * o javadoc original desta classe dizia que "trocar de provider é trocar o starter Maven, sem
- * tocar no código" — isso era verdade enquanto só existia UM client. A partir de agora, um
- * provider gerenciado (ex.: Gemini) NÃO troca este bean nem o starter Ollama — ele SOMA um novo
- * {@code VisionModelClient} (com sua própria configuração), e os dois convivem via
- * {@code @Order}. "Trocar provider" continua trivial para quem só quer o Ollama; "adicionar um
- * segundo provider" é aditivo, não substitutivo.
+ * <p>Solução (plano B do brief): construir o {@link ChatClient} de cada provider explicitamente
+ * A PARTIR do {@code ChatModel} concreto (não do {@code ChatClient.Builder} agnóstico), com um
+ * bean NOMEADO por provider. Cada {@code VisionModelClient} injeta o seu por
+ * {@code @Qualifier} — não há mais um {@code ChatClient} "genérico" no contexto.
+ *
+ * <p><b>Por que NÃO leva {@code @ConditionalOnBean}</b> (tentado e descartado nesta Onda): esta
+ * classe é um {@code @Configuration} comum, não um {@code @AutoConfiguration} — o container
+ * processa {@code @Configuration}s de usuário ANTES de aplicar as auto-configurations importadas
+ * (Ollama/Gemini), então {@code @ConditionalOnBean(OllamaChatModel.class)} aqui vê ZERO beans
+ * daquele tipo ainda registrados e nunca casa — confirmado subindo o contexto (o bean
+ * simplesmente não existia, nem em modo degradado, mesmo para o Ollama que sempre está presente).
+ *
+ * <p><b>{@code @ConditionalOnExpression} no bean do Gemini — achado mais grave que a ambiguidade
+ * prevista (ver {@link com.fintech.api.service.imports.vision.GeminiVisionClient} para o
+ * detalhe completo):</b> a auto-configuration do Gemini pré-instancia
+ * {@code GoogleGenAiChatModel} (e sua dependência {@code googleGenAiClient}) como singleton
+ * comum, incondicional a chave — ela FALHA já na criação quando não há {@code api-key} nem
+ * {@code project-id} ("project-id must be set!"). Isso é neutralizado no
+ * {@code GeminiAutoConfigExclusionPostProcessor} (exclui a auto-configuration inteira quando
+ * falta {@code GEMINI_API_KEY}); a mesma expressão aqui garante que, MESMO SE algum dia a
+ * exclusão for removida ou o comportamento do autoconfigure mudar, este bean nunca tenta
+ * resolver um {@code GoogleGenAiChatModel} sem chave — dupla proteção, não redundância inútil.
  */
 @Configuration
 public class VisionAiConfig {
 
-    @Bean
-    public ChatClient visionChatClient(ChatClient.Builder builder) {
-        return builder.build();
+    @Bean("ollamaVisionChatClient")
+    public ChatClient ollamaVisionChatClient(OllamaChatModel chatModel) {
+        return ChatClient.builder(chatModel).build();
+    }
+
+    @Bean("geminiVisionChatClient")
+    @ConditionalOnExpression("!'${spring.ai.google.genai.api-key:}'.isBlank()")
+    public ChatClient geminiVisionChatClient(GoogleGenAiChatModel chatModel) {
+        return ChatClient.builder(chatModel).build();
     }
 }

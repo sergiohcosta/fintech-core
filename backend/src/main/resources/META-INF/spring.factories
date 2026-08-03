@@ -1,1 +1,2 @@
-org.springframework.boot.EnvironmentPostProcessor=com.fintech.api.config.NeonFallbackEnvironmentPostProcessor
+org.springframework.boot.EnvironmentPostProcessor=com.fintech.api.config.NeonFallbackEnvironmentPostProcessor,\
+com.fintech.api.config.GeminiAutoConfigExclusionPostProcessor
