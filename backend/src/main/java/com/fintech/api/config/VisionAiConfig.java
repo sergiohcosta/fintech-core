@@ -43,6 +43,20 @@ import org.springframework.context.annotation.Configuration;
  * falta {@code GEMINI_API_KEY}); a mesma expressão aqui garante que, MESMO SE algum dia a
  * exclusão for removida ou o comportamento do autoconfigure mudar, este bean nunca tenta
  * resolver um {@code GoogleGenAiChatModel} sem chave — dupla proteção, não redundância inútil.
+ *
+ * <p><b>Fonte ÚNICA da decisão "tem chave?" (revisão pós-Onda 2):</b> a expressão lê
+ * {@code ${GEMINI_API_KEY:}} — a env var CRUA, a MESMA que
+ * {@code GeminiAutoConfigExclusionPostProcessor} lê via {@code System.getenv}/{@code Environment}
+ * — e não {@code spring.ai.google.genai.api-key} (a property derivada dela). Na primeira versão
+ * desta Onda os dois liam fontes diferentes que hoje coincidem só porque a property É definida
+ * como {@code ${GEMINI_API_KEY:}} em {@code application.properties}; se algo um dia popular
+ * {@code spring.ai.google.genai.api-key} por outra via (um profile de teste, um
+ * {@code @TestPropertySource}) sem tocar a env var, as duas decisões divergiam: o post-processor
+ * excluiria a auto-configuration (sem `GoogleGenAiChatModel`) enquanto este bean tentaria criá-lo
+ * mesmo assim — `UnsatisfiedDependencyException` confuso no lugar da mensagem clara que a Onda
+ * pretende. Ler a MESMA env var nos dois lugares elimina a divergência pela raiz, em vez de só
+ * documentá-la. Se este bean e o {@code GeminiAutoConfigExclusionPostProcessor} algum dia
+ * precisarem decidir de fontes diferentes, os dois PRECISAM mudar juntos.
  */
 @Configuration
 public class VisionAiConfig {
@@ -53,7 +67,7 @@ public class VisionAiConfig {
     }
 
     @Bean("geminiVisionChatClient")
-    @ConditionalOnExpression("!'${spring.ai.google.genai.api-key:}'.isBlank()")
+    @ConditionalOnExpression("!'${GEMINI_API_KEY:}'.isBlank()")
     public ChatClient geminiVisionChatClient(GoogleGenAiChatModel chatModel) {
         return ChatClient.builder(chatModel).build();
     }
