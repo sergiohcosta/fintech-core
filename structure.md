@@ -44,6 +44,19 @@ fintech-core/
 │           ├── planning/
 │           ├── team/
 │           └── transaction/
+├── android/                     # App Android (Kotlin + Jetpack Compose)
+│   ├── app/
+│   │   ├── build.gradle.kts     # Codegen OpenAPI (openapi-generator, kotlin/jvm-retrofit2) + deps
+│   │   └── src/
+│   │       ├── main/java/com/fintech/mobile/
+│   │       │   ├── core/        # ApiResult/apiCall, AmountParser — lógica pura, sem import Android
+│   │       │   ├── data/        # local/ (Room outbox), repository/
+│   │       │   ├── di/          # módulos Hilt (rede, sessão, banco)
+│   │       │   ├── session/     # SessionManager, TokenProvider, AuthInterceptor
+│   │       │   ├── sync/        # SyncWorker (WorkManager)
+│   │       │   └── ui/          # Compose screens + ViewModels (login, transactionlist, newtransaction, navigation)
+│   │       └── test/             # unit tests JVM (JUnit4, MockK, Robolectric)
+│   └── settings.gradle.kts
 ├── scripts/                     # Dev utility scripts (DB sync, reset, env template)
 ├── docker-compose.yml           # PostgreSQL 16 + pgAdmin
 └── docs/
