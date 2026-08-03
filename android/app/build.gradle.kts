@@ -138,12 +138,3 @@ val fixGeneratedEnumDefaults = tasks.register("fixGeneratedEnumDefaults") {
 tasks.named("preBuild") {
     dependsOn(fixGeneratedEnumDefaults)
 }
-
-// Gson serializa java.time.LocalDate por reflexão quando não há TypeAdapter registrado
-// (ex: testes que instanciam Gson() puro, como o TransactionRepositoryTest). A partir do
-// JDK 17, o module system nega esse acesso reflexivo a java.base por padrão
-// (InaccessibleObjectException) — só afeta a JVM host dos testes; no runtime Android (ART)
-// não existe essa restrição.
-tasks.withType<Test> {
-    jvmArgs("--add-opens=java.base/java.time=ALL-UNNAMED")
-}
