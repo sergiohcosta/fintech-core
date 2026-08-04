@@ -9,6 +9,7 @@ import com.fintech.api.domain.enums.ImportSourceType;
 import com.fintech.api.domain.enums.StagedTransactionStatus;
 import com.fintech.api.domain.enums.TransactionType;
 import com.fintech.api.domain.enums.UserRole;
+import com.fintech.api.domain.imports.ImportBatch;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.imports.ImportBatchResponseDTO;
@@ -25,6 +26,7 @@ import com.fintech.api.exception.DuplicateImportException;
 import com.fintech.api.exception.EntityNotFoundException;
 import com.fintech.api.repository.AccountRepository;
 import com.fintech.api.repository.CategoryRepository;
+import com.fintech.api.repository.ImportBatchRepository;
 import com.fintech.api.repository.TenantRepository;
 import com.fintech.api.repository.UserRepository;
 import com.fintech.api.service.TransactionService;
@@ -68,6 +70,7 @@ class ImportServiceTest {
     @Autowired AccountRepository accountRepository;
     @Autowired CategoryRepository categoryRepository;
     @Autowired TransactionService transactionService;
+    @Autowired ImportBatchRepository importBatchRepository;
 
     private Tenant persistTenant(String name) {
         Tenant t = new Tenant();
@@ -194,6 +197,32 @@ class ImportServiceTest {
         List<StagedTransactionResponseDTO> staged = importService.listStaged(created.id(), user);
         assertThat(staged).hasSize(2);
         assertThat(staged).allSatisfy(s -> assertThat(s.fields()).containsKey("amount"));
+    }
+
+    /**
+     * Proveniência estruturada (V28, Onda 3): o que o EXTRATOR mediu (provider/modelo/latência/
+     * fallback) no {@code NormalizedBatchDTO} tem que sobreviver ao round-trip até a entidade —
+     * não é exposto no {@code ImportBatchResponseDTO} (spec §5.1.1, sem mudança de contrato), por
+     * isso a asserção lê a entidade direto do repository, não a resposta do service.
+     */
+    @Test
+    void createBatchPersisteProveniênciaEstruturadaDoNormalizedBatch() {
+        Tenant tenant = persistTenant("Tenant Import Provenance");
+        User user = persistUser(tenant, "provenance@import.test");
+
+        NormalizedBatchDTO comProveniencia = new NormalizedBatchDTO(
+                ImportMode.NEW_TRANSACTIONS, ImportSourceType.IMAGE,
+                "vision_gemini_gemini-2.5-flash", "2026-07-29", List.of(highConfidence()),
+                "gemini", "gemini-2.5-flash", 1800, "ollama", "unavailable: timeout no homelab");
+
+        ImportBatchResponseDTO created = importService.createBatch(comProveniencia, user);
+
+        ImportBatch persisted = importBatchRepository.findById(created.id()).orElseThrow();
+        assertThat(persisted.getExtractorProvider()).isEqualTo("gemini");
+        assertThat(persisted.getExtractorModel()).isEqualTo("gemini-2.5-flash");
+        assertThat(persisted.getExtractionLatencyMs()).isEqualTo(1800);
+        assertThat(persisted.getFallbackFrom()).isEqualTo("ollama");
+        assertThat(persisted.getFallbackReason()).isEqualTo("unavailable: timeout no homelab");
     }
 
     @Test
