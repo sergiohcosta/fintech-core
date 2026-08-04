@@ -5,13 +5,12 @@ import com.fintech.api.service.imports.LlmReceiptExtractionDTO;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.retry.NonTransientAiException;
+import org.springframework.ai.retry.TransientAiException;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
-import org.springframework.http.HttpStatus;
 import org.springframework.util.MimeType;
 import org.springframework.util.MimeTypeUtils;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
 
 import java.math.BigDecimal;
@@ -101,13 +100,16 @@ class OllamaVisionClientTest {
                 .isInstanceOf(ExtractionException.class);
     }
 
-    // --- Onda 4 — mesma classificação de disponibilidade do GeminiVisionClient, mas a partir das
-    // exceções nativas do RestClient (transporte do Spring AI com o Ollama local) ---
+    // --- Revisão final de branch: o OllamaApi.Builder do Spring AI instala por padrão o
+    // RetryUtils.DEFAULT_RESPONSE_ERROR_HANDLER, que converte 4xx/5xx do Ollama em
+    // TransientAiException/NonTransientAiException ANTES de chegar ao client — o
+    // HttpStatusCodeException que os testes anteriores injetavam nunca é lançado na prática.
+    // Estes testes injetam as exceções REAIS que o Spring AI produz. ---
 
     @Test
-    void classifica5xxDoOllamaComoIndisponibilidade() {
+    void classificaTransientAiExceptionDoOllamaComoIndisponibilidade() {
         ChatClient chatClient = chatClientThrowing(
-                HttpServerErrorException.create(HttpStatus.SERVICE_UNAVAILABLE, "Service Unavailable", null, null, null));
+                new TransientAiException("Service Unavailable"));
         OllamaVisionClient client = new OllamaVisionClient(chatClient, "qwen2.5vl");
 
         assertThatThrownBy(() -> client.extract(
@@ -131,11 +133,16 @@ class OllamaVisionClientTest {
                 .isEqualTo("unavailable");
     }
 
-    /** 404 (ex.: modelo não puxado no Ollama local) não está na lista da spec — falha de conteúdo, sem fallback. */
+    /**
+     * NonTransientAiException (4xx não-retryável, ex.: modelo não puxado no Ollama local) é falha
+     * de CONTEÚDO da requisição, não de disponibilidade do provedor — sem status code embutido não
+     * dá para diferenciar "rejeitado" de "não encontrado", mas repetir com outro provider não
+     * resolveria nenhum dos dois. Ver comentário de {@code classifyAvailability}.
+     */
     @Test
-    void status404DoOllamaContinuaExtractionException() {
+    void classificaNonTransientAiExceptionDoOllamaComoFalhaDeConteudo() {
         ChatClient chatClient = chatClientThrowing(
-                HttpClientErrorException.create(HttpStatus.NOT_FOUND, "Not Found", null, null, null));
+                new NonTransientAiException("Not Found"));
         OllamaVisionClient client = new OllamaVisionClient(chatClient, "qwen2.5vl");
 
         assertThatThrownBy(() -> client.extract(
