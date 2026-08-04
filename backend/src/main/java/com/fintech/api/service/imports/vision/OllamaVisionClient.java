@@ -6,6 +6,8 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
+import org.springframework.ai.retry.NonTransientAiException;
+import org.springframework.ai.retry.TransientAiException;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
@@ -85,6 +87,21 @@ public class OllamaVisionClient implements VisionModelClient {
         if (e instanceof ResourceAccessException) {
             return VisionProviderErrorClassifier.REASON_UNAVAILABLE;
         }
+        // Achado da revisão final de branch: o OllamaApi.Builder do Spring AI instala por padrão
+        // o RetryUtils.DEFAULT_RESPONSE_ERROR_HANDLER, que converte a resposta HTTP do Ollama em
+        // TransientAiException/NonTransientAiException ANTES de chegar aqui — o
+        // HttpStatusCodeException abaixo nunca é lançado na prática (o teste que o exercitava
+        // testava um caminho que a produção não percorre). TransientAiException só nasce, por
+        // definição do handler, de 429/5xx (falha transitória do servidor) — sempre indisponibilidade.
+        if (e instanceof TransientAiException) {
+            return VisionProviderErrorClassifier.REASON_UNAVAILABLE;
+        }
+        // NonTransientAiException nasce de 4xx não-retryáveis (ex.: 400/404 — requisição malformada
+        // ou recurso inexistente no Ollama, como modelo não puxado). Sem o status code embutido não
+        // dá para diferenciar "requisição rejeitada" de "recurso não encontrado" — mas em ambos os
+        // casos o problema é o CONTEÚDO da requisição, não a disponibilidade do provedor (repetir
+        // com outro provider não resolveria). Tratamos como falha de conteúdo (null), na mesma
+        // linha do 404 hoje testado.
         return null;
     }
 

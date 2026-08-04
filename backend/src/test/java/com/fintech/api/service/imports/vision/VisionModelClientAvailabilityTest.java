@@ -1,6 +1,7 @@
 package com.fintech.api.service.imports.vision;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
@@ -26,8 +27,18 @@ import static org.assertj.core.api.Assertions.assertThat;
  * property de teste sem reiniciar a JVM. O caso "com chave" é coberto pelos testes unitários do
  * {@link GeminiVisionClient} (mecânica do client) e pela verificação manual documentada no
  * relatório da Onda (contexto sobe com {@code GEMINI_API_KEY} setada).
+ *
+ * <p><b>Achado da revisão final de branch:</b> a asserção abaixo é sobre o AMBIENTE de execução
+ * (só vale quando {@code GEMINI_API_KEY} está de fato ausente), não sobre o código. Se um humano
+ * rodar a suíte com uma {@code GEMINI_API_KEY} real exportada no shell (validação manual dos itens
+ * 5.1/5.2 do plano), o Gemini entra na lista e este teste quebraria acusando falsa regressão. Em
+ * vez de reescrever a asserção para os dois cenários (perderia a garantia específica "clone novo
+ * funciona só com Ollama"), desabilitamos a classe inteira quando a env var está presente — o
+ * cenário "com chave" já tem cobertura própria (unitários do {@link GeminiVisionClient} +
+ * verificação manual), então nada fica sem teste.
  */
 @SpringBootTest
+@DisabledIfEnvironmentVariable(named = "GEMINI_API_KEY", matches = ".+")
 class VisionModelClientAvailabilityTest {
 
     @Autowired
