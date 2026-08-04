@@ -71,4 +71,22 @@ class EnvironmentUrlResolverTest {
         val tailscale = EnvironmentUrlResolver.resolveBaseUrl(Environment.LOCAL, NetworkRoute.TAILSCALE, "192.168.1.50:8080")
         assertEquals(lan, tailscale)
     }
+
+    @Test
+    fun `local with only a scheme falls back to the emulator alias`() {
+        val result = EnvironmentUrlResolver.resolveBaseUrl(Environment.LOCAL, NetworkRoute.LAN, "http://")
+        assertEquals("http://10.0.2.2:8080/", result)
+    }
+
+    @Test
+    fun `local with a space in the host falls back to the emulator alias`() {
+        val result = EnvironmentUrlResolver.resolveBaseUrl(Environment.LOCAL, NetworkRoute.LAN, "abc def")
+        assertEquals("http://10.0.2.2:8080/", result)
+    }
+
+    @Test
+    fun `local with a port out of range falls back to the emulator alias`() {
+        val result = EnvironmentUrlResolver.resolveBaseUrl(Environment.LOCAL, NetworkRoute.LAN, "10.0.2.2:99999")
+        assertEquals("http://10.0.2.2:8080/", result)
+    }
 }
