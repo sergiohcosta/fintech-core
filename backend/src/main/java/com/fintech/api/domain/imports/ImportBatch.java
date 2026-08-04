@@ -73,6 +73,30 @@ public class ImportBatch {
     @Column(name = "source_filename")
     private String sourceFilename;
 
+    // Proveniência ESTRUTURADA (V28) — ao lado de extractorUsed (que continua sendo a string
+    // legível para humano). Estas colunas são a forma CONSULTÁVEL do mesmo fato: permitem
+    // GROUP BY provider e "quantos batches caíram em fallback" sem LIKE frágil em extractorUsed.
+    @Column(name = "extractor_provider", length = 30)
+    private String extractorProvider;
+
+    // NULL para parser determinístico (CSV/OFX/PDF texto) — não existe "modelo" nesse caminho.
+    @Column(name = "extractor_model", length = 100)
+    private String extractorModel;
+
+    // Provider tentado ANTES e que falhou por indisponibilidade. NULL = não houve fallback —
+    // é este campo, sozinho, que responde "houve fallback?" (spec §5.1: NULL já é a resposta).
+    @Column(name = "fallback_from", length = 30)
+    private String fallbackFrom;
+
+    // Motivo curto do fallback (quota, unavailable, auth, rejected_input). Só populado quando
+    // fallbackFrom não é NULL. Onda 4 (política de fallback) é quem grava; esta Onda só abre a coluna.
+    @Column(name = "fallback_reason", length = 200)
+    private String fallbackReason;
+
+    // Latência (ms) da chamada ao provider que VENCEU (não soma tentativas de fallback anteriores).
+    @Column(name = "extraction_latency_ms")
+    private Integer extractionLatencyMs;
+
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;

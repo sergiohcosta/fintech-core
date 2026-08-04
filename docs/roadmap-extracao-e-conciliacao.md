@@ -202,6 +202,7 @@ Princípio de ordenação: **construir de dentro pra fora** — cada fase é us�
 - Extrator de texto de PDF (heurística de linha, sem registry) — **entregue, fatia 1** (#205)
 - Extração via visão para PDF escaneado — fatia futura
 - **IA como camada universal**: qualquer PDF/CSV que não case com template nem parser genérico vai para extração via IA, transparente para o usuário (mapeamento manual vira opcional, não último recurso)
+- **Camada de IA agora tem provider gerenciado primário** (plano "extração Gemini primário / Ollama fallback", entregue): a `VisionExtractor` tenta Gemini (Google AI Studio, tier free) antes do Ollama do homelab, caindo pro Ollama só por falha de disponibilidade (cota/5xx/timeout/auth). Relevante para o dimensionamento desta fase: se PDF/CSV desconhecidos passarem a rotear para extração via IA em volume, é a **cota gratuita do Gemini** que absorve a maior parte do tráfego primeiro — dimensionar/monitorar essa cota (não só a capacidade da GPU do homelab) vira parte do critério de saída da fase quando o volume via IA crescer
 - Registry de templates para os 2–3 bancos principais (definidos pelos dados da Fase 2) — cabeça da curva apenas
 - **Validações de sanidade pós-extração** (guarda-corpo comum a template e IA): soma × total declarado, datas × período do extrato, ranges plausíveis
 - **Telemetria por formato**: volume, custo em tokens, taxa de casamento de template por banco — a base tanto do alerta de drift quanto da decisão de quais templates criar/promover
