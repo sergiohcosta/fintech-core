@@ -6,6 +6,7 @@ import com.fintech.mobile.api.CategoriesApi
 import com.fintech.mobile.api.TransactionsApi
 import com.fintech.mobile.api.infrastructure.Serializer
 import com.fintech.mobile.session.AuthInterceptor
+import com.fintech.mobile.session.EnvironmentInterceptor
 import com.google.gson.Gson
 import dagger.Module
 import dagger.Provides
@@ -17,7 +18,10 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import javax.inject.Singleton
 
-private const val BASE_URL = "http://10.0.2.2:8080/"
+// Nunca usada de fato — o EnvironmentInterceptor reescreve scheme/host/porta de toda
+// requisição antes dela sair (ver EnvironmentInterceptor, Tarefa 3 do plano do seletor de
+// ambiente). Só precisa ser sintaticamente uma URL válida para o Retrofit aceitar no build.
+private const val PLACEHOLDER_BASE_URL = "http://placeholder.invalid/"
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -33,10 +37,14 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(authInterceptor: AuthInterceptor): OkHttpClient {
+    fun provideOkHttpClient(
+        environmentInterceptor: EnvironmentInterceptor,
+        authInterceptor: AuthInterceptor
+    ): OkHttpClient {
         // Level.BASIC nunca loga headers/body — evita vazar o JWT ou a senha no logcat.
         val logging = HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BASIC }
         return OkHttpClient.Builder()
+            .addInterceptor(environmentInterceptor)
             .addInterceptor(authInterceptor)
             .addInterceptor(logging)
             .build()
@@ -46,7 +54,7 @@ object NetworkModule {
     @Singleton
     fun provideRetrofit(client: OkHttpClient, gson: Gson): Retrofit =
         Retrofit.Builder()
-            .baseUrl(BASE_URL)
+            .baseUrl(PLACEHOLDER_BASE_URL)
             .client(client)
             .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
