@@ -77,4 +77,14 @@ class PendingTransactionDaoTest {
 
         assertTrue(dao.observeAll().first().isEmpty())
     }
+
+    @Test
+    fun `deleteAll removes every pending item`() = runTest {
+        dao.insert(PendingTransactionEntity(payloadJson = "{}", createdAt = 1L))
+        dao.insert(PendingTransactionEntity(payloadJson = "{}", createdAt = 2L))
+
+        dao.deleteAll()
+
+        assertTrue(dao.observeAll().first().isEmpty())
+    }
 }
