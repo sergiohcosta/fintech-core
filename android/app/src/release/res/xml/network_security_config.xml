@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Build release: sem cleartextTrafficPermitted. Config vazia = comportamento padrão do
+     Android (bloqueia HTTP puro, targetSdk 28+). O cleartext liberado globalmente em
+     src/debug/res/xml/network_security_config.xml é só para uso pessoal/dev (ambiente
+     Local/LAN); a variante release não deve herdar essa permissão. O AndroidManifest.xml
+     referencia @xml/network_security_config sem qualificador de build type — o AGP resolve
+     para o resource do source set certo (debug vs release) automaticamente. -->
+<network-security-config />
