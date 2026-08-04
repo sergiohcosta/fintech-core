@@ -222,6 +222,12 @@ latência real, que é da Onda 5.
 
 **Commit:** `docs: atualiza referências pós-integração Gemini na extração por visão`
 
+> **5.1 e 5.2 pendentes de execução manual pelo humano antes do merge** — requerem
+> `GEMINI_API_KEY` real e comprovantes de teste (incluindo derrubar o Gemini de propósito para
+> confirmar o fallback real), coisa que só o dev tem/pode fazer pessoalmente. O agente que
+> executou 5.3–5.6 não tentou nem fabricou esses resultados. Ver `task-5-report.md` no diretório
+> desta SDD.
+
 ---
 
 ## Riscos e o que fazer
