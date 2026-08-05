@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -33,7 +34,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 class PdfTextExtractorTest {
 
-    private final PdfTextExtractor extractor = new PdfTextExtractor("v1-test");
+    private final PdfTextExtractor extractor = new PdfTextExtractor("v1-test", List.of());
 
     private static ExtractionInput input(byte[] content) {
         return new ExtractionInput(content, "extrato.pdf", "application/pdf", ImportMode.NEW_TRANSACTIONS);

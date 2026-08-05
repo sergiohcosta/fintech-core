@@ -4,6 +4,7 @@ import com.fintech.api.domain.enums.ImportSourceType;
 import com.fintech.api.dto.imports.NormalizedBatchDTO;
 import com.fintech.api.dto.imports.NormalizedTransactionDTO;
 import com.fintech.api.dto.imports.StagedFieldValueDTO;
+import com.fintech.api.service.imports.templates.PdfBankTemplate;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -81,9 +82,13 @@ public class PdfTextExtractor implements TransactionExtractor {
     private static final DateTimeFormatter BR_DATE_SHORT = DateTimeFormatter.ofPattern("dd/MM/uu");
 
     private final String extractorVersion;
+    private final List<PdfBankTemplate> templates;
 
-    public PdfTextExtractor(@Value("${import.pdf-text.extractor-version:v1}") String extractorVersion) {
+    public PdfTextExtractor(
+            @Value("${import.pdf-text.extractor-version:v1}") String extractorVersion,
+            List<PdfBankTemplate> templates) {
         this.extractorVersion = extractorVersion;
+        this.templates = templates;
     }
 
     @Override
@@ -125,11 +130,17 @@ public class PdfTextExtractor implements TransactionExtractor {
                             + "envie como imagem.");
         }
 
-        // Linhas sem os dois padrões (data + valor) simplesmente não viram transação — não é erro
-        // de linha, é ausência de sinal (cabeçalho, rodapé, linha de saldo). Se NENHUMA linha do
-        // documento gerar transação, o batch fica vazio e é o guard-rail já existente no
-        // ImportService ("zero transações aproveitáveis" → FAILED) que lida com isso, sem
-        // duplicar essa checagem aqui.
+        for (PdfBankTemplate template : templates) {
+            if (template.matches(text)) {
+                return new NormalizedBatchDTO(
+                        input.mode(), ImportSourceType.PDF_TEXT, template.templateId(), extractorVersion,
+                        template.parse(text));
+            }
+        }
+
+        // Nenhum template bateu — heurística genérica de linha (fatia 1, comportamento
+        // inalterado). Linha sem data+valor não vira transação (ausência de sinal, não erro);
+        // batch vazio cai no guard-rail já existente do ImportService.
         List<NormalizedTransactionDTO> transactions = parseLines(text);
 
         return new NormalizedBatchDTO(input.mode(), ImportSourceType.PDF_TEXT, EXTRACTOR_USED, extractorVersion, transactions);
@@ -138,7 +149,9 @@ public class PdfTextExtractor implements TransactionExtractor {
     /** Extrai o texto bruto do documento inteiro. Falha do PDFBox (corrompido/senha) vira {@link ExtractionException}. */
     private String extractText(byte[] content) {
         try (PDDocument document = Loader.loadPDF(content)) {
-            return new PDFTextStripper().getText(document);
+            PDFTextStripper stripper = new PDFTextStripper();
+            stripper.setSortByPosition(true);
+            return stripper.getText(document);
         } catch (IOException e) {
             // Nenhuma exceção de infra (mensagem/stacktrace do PDFBox) cruza a borda da API —
             // mesma regra do restante do pipeline (ImportService.failureReasonFor).
