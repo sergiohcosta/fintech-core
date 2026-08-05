@@ -56,7 +56,11 @@ public class NubankExtratoTemplate implements PdfBankTemplate {
         String direcaoCorrente = null;
         StringBuilder acumulador = new StringBuilder();
 
-        for (String linhaBruta : fullText.lines().toList()) {
+        // Escopa a leitura à seção "Movimentações" — linha após a última transação real (ex.
+        // rodapé de página, bloco de totais) fora dessa seção não deve herdar data/direção
+        // corrente e virar transação fantasma.
+        String textoASerLido = fullText.substring(fullText.indexOf(HEADER_MOVIMENTACOES));
+        for (String linhaBruta : textoASerLido.lines().toList()) {
             String linha = linhaBruta.trim();
             if (linha.isEmpty()) {
                 continue;
