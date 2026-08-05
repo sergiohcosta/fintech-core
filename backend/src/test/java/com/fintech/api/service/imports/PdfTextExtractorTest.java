@@ -4,6 +4,8 @@ import com.fintech.api.domain.enums.ImportMode;
 import com.fintech.api.domain.enums.ImportSourceType;
 import com.fintech.api.dto.imports.NormalizedBatchDTO;
 import com.fintech.api.dto.imports.NormalizedTransactionDTO;
+import com.fintech.api.dto.imports.StagedFieldValueDTO;
+import com.fintech.api.service.imports.templates.PdfBankTemplate;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -16,7 +18,9 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -195,5 +199,130 @@ class PdfTextExtractorTest {
     void sourceTypeEExtractorVersionSaoExpostosParaOCaminhoDeFalha() {
         assertThat(extractor.sourceType()).isEqualTo(ImportSourceType.PDF_TEXT);
         assertThat(extractor.extractorVersion()).isEqualTo("v1-test");
+    }
+
+    @Test
+    void templateQueDescasoUsadoSeTiverMatch() {
+        // Stub de template que sempre casa (matches=true) e retorna uma lista fixa
+        var matchingTemplate = new PdfBankTemplate() {
+            @Override
+            public boolean matches(String fullText) {
+                return true;
+            }
+
+            @Override
+            public List<NormalizedTransactionDTO> parse(String fullText) {
+                var fields = new LinkedHashMap<String, StagedFieldValueDTO>();
+                fields.put("amount", new StagedFieldValueDTO(new BigDecimal("99.99"), BigDecimal.ONE));
+                fields.put("transaction_date", new StagedFieldValueDTO("2026-08-01", BigDecimal.ONE));
+                fields.put("direction", new StagedFieldValueDTO("debit", new BigDecimal("0.7")));
+                fields.put("description", new StagedFieldValueDTO("TEMPLATE MATCH", new BigDecimal("0.7")));
+                return List.of(new NormalizedTransactionDTO(null, fields, null, null, BigDecimal.ONE, null, null));
+            }
+
+            @Override
+            public String templateId() {
+                return "test_template_v1";
+            }
+        };
+
+        var extractorComTemplate = new PdfTextExtractor("v1-test", List.of(matchingTemplate));
+        // Usar um PDF com texto suficiente para passar do limiar de MIN_TEXT_CHARS
+        NormalizedBatchDTO batch = extractorComTemplate.extract(input(pdfComTexto(
+                "EXTRATO DE CONTA CORRENTE",
+                "Banco XYZ - Conta Corrente")));
+
+        // Template que casa retorna sua lista fixa
+        assertThat(batch.transactions()).hasSize(1);
+        assertThat(batch.transactions().get(0).fields().get("description").value()).isEqualTo("TEMPLATE MATCH");
+        // extractorUsed usa templateId(), não a constante genérica
+        assertThat(batch.extractorUsed()).isEqualTo("test_template_v1");
+    }
+
+    @Test
+    void templateQueNaoCasaCaiNaHeuristicaGenerica() {
+        // Stub de template que NUNCA casa (matches=false)
+        var nonMatchingTemplate = new PdfBankTemplate() {
+            @Override
+            public boolean matches(String fullText) {
+                return false;
+            }
+
+            @Override
+            public List<NormalizedTransactionDTO> parse(String fullText) {
+                // Nunca deve ser chamado
+                throw new RuntimeException("parse() não deve ser chamado se matches() retorna false");
+            }
+
+            @Override
+            public String templateId() {
+                return "test_template_never_used";
+            }
+        };
+
+        var extractorComTemplate = new PdfTextExtractor("v1-test", List.of(nonMatchingTemplate));
+        // PDF com uma linha reconhecível pela heurística genérica
+        NormalizedBatchDTO batch = extractorComTemplate.extract(input(pdfComTexto("01/07/2026 PADARIA 55,90")));
+
+        // Template não casou, caiu na heurística genérica
+        assertThat(batch.transactions()).hasSize(1);
+        assertThat(batch.transactions().get(0).fields().get("description").value()).isEqualTo("PADARIA");
+        // extractorUsed é a constante genérica, não o templateId
+        assertThat(batch.extractorUsed()).isEqualTo("pdf_text_v1");
+    }
+
+    @Test
+    void primeiroTemplateQueCasaVenceSobreOsProximos() {
+        // Primeiro template — casa e retorna lista fixa
+        var firstTemplate = new PdfBankTemplate() {
+            @Override
+            public boolean matches(String fullText) {
+                return true;
+            }
+
+            @Override
+            public List<NormalizedTransactionDTO> parse(String fullText) {
+                var fields = new LinkedHashMap<String, StagedFieldValueDTO>();
+                fields.put("amount", new StagedFieldValueDTO(new BigDecimal("111.11"), BigDecimal.ONE));
+                fields.put("transaction_date", new StagedFieldValueDTO("2026-08-01", BigDecimal.ONE));
+                fields.put("direction", new StagedFieldValueDTO("credit", new BigDecimal("0.7")));
+                fields.put("description", new StagedFieldValueDTO("PRIMEIRO TEMPLATE", new BigDecimal("0.7")));
+                return List.of(new NormalizedTransactionDTO(null, fields, null, null, BigDecimal.ONE, null, null));
+            }
+
+            @Override
+            public String templateId() {
+                return "first_template";
+            }
+        };
+
+        // Segundo template — também casaria, mas nunca deve ser tentado
+        var secondTemplate = new PdfBankTemplate() {
+            @Override
+            public boolean matches(String fullText) {
+                return true;
+            }
+
+            @Override
+            public List<NormalizedTransactionDTO> parse(String fullText) {
+                throw new RuntimeException("Segundo template não deve ser testado");
+            }
+
+            @Override
+            public String templateId() {
+                return "second_template_never_reached";
+            }
+        };
+
+        var extractorComDoisTemplates = new PdfTextExtractor("v1-test", List.of(firstTemplate, secondTemplate));
+        // Usar um PDF com texto suficiente para passar do limiar de MIN_TEXT_CHARS
+        NormalizedBatchDTO batch = extractorComDoisTemplates.extract(input(pdfComTexto(
+                "EXTRATO DE CONTA CORRENTE",
+                "Banco ABC - Historico de transacoes")));
+
+        // Primeiro template vence, segundo nunca é tentado
+        assertThat(batch.transactions()).hasSize(1);
+        assertThat(batch.transactions().get(0).fields().get("description").value()).isEqualTo("PRIMEIRO TEMPLATE");
+        assertThat(batch.extractorUsed()).isEqualTo("first_template");
     }
 }
