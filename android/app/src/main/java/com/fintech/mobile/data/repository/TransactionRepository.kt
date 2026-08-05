@@ -42,4 +42,10 @@ class TransactionRepository @Inject constructor(
     fun observePending(): Flow<List<PendingTransactionEntity>> = pendingDao.observeAll()
 
     suspend fun discardPending(localId: Long) = pendingDao.delete(localId)
+
+    // Troca de ambiente: itens pendentes foram criados apontando (indiretamente, via
+    // apiCall/SyncWorker) para o backend do ambiente anterior. Decisão do produto: não
+    // preservar entre ambientes — reenviar ao ambiente novo poderia gravar dado no tenant
+    // errado, e não há hoje um jeito de marcar "de qual ambiente veio" no payload.
+    suspend fun discardAllPending() = pendingDao.deleteAll()
 }
