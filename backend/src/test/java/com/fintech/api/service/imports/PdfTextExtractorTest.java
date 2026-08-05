@@ -5,6 +5,8 @@ import com.fintech.api.domain.enums.ImportSourceType;
 import com.fintech.api.dto.imports.NormalizedBatchDTO;
 import com.fintech.api.dto.imports.NormalizedTransactionDTO;
 import com.fintech.api.dto.imports.StagedFieldValueDTO;
+import com.fintech.api.service.imports.templates.ItauFaturaTemplate;
+import com.fintech.api.service.imports.templates.NubankExtratoTemplate;
 import com.fintech.api.service.imports.templates.PdfBankTemplate;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -324,5 +326,51 @@ class PdfTextExtractorTest {
         assertThat(batch.transactions()).hasSize(1);
         assertThat(batch.transactions().get(0).fields().get("description").value()).isEqualTo("PRIMEIRO TEMPLATE");
         assertThat(batch.extractorUsed()).isEqualTo("first_template");
+    }
+
+    @Test
+    void extractUsaTemplateItauQuandoConteudoBateAssinatura() {
+        PdfTextExtractor comTemplates =
+                new PdfTextExtractor("v1-test", List.of(new ItauFaturaTemplate(), new NubankExtratoTemplate()));
+        String textoFatura = "SERGIO HENRIQUE COSTA\nVencimento 10/03/2025\n"
+                + "60.872.504/0001-23\n"
+                + "Lançamentos: compras e saques\n"
+                + "03/02 SUBWAY FAZENDINHA 49,00\n"
+                + "Limites de crédito\n";
+
+        NormalizedBatchDTO batch = comTemplates.extract(input(pdfComTexto(textoFatura.split("\n"))));
+
+        assertThat(batch.extractorUsed()).isEqualTo("itau_fatura_v1");
+        assertThat(batch.transactions()).hasSize(1);
+    }
+
+    @Test
+    void extractUsaTemplateNubankQuandoConteudoBateAssinatura() {
+        PdfTextExtractor comTemplates =
+                new PdfTextExtractor("v1-test", List.of(new ItauFaturaTemplate(), new NubankExtratoTemplate()));
+        String textoExtrato = "Sergio Henrique Costa\n"
+                + "18.236.120/0001-58\n"
+                + "Movimentações\n"
+                + "05 JUL 2026 Total de entradas + 4.708,35\n"
+                + "Resgate RDB 4.708,35\n"
+                + "Total de saídas - 0,00\n";
+
+        NormalizedBatchDTO batch = comTemplates.extract(input(pdfComTexto(textoExtrato.split("\n"))));
+
+        assertThat(batch.extractorUsed()).isEqualTo("nubank_extrato_v1");
+        assertThat(batch.transactions()).hasSize(1);
+    }
+
+    @Test
+    void extractCaiNaHeuristicaGenericaQuandoNenhumTemplateBate() {
+        PdfTextExtractor comTemplates =
+                new PdfTextExtractor("v1-test", List.of(new ItauFaturaTemplate(), new NubankExtratoTemplate()));
+
+        NormalizedBatchDTO batch = comTemplates.extract(input(pdfComTexto("01/07/2026 PADARIA TESTE 55,90")));
+
+        // Nenhum dos dois templates bate (sem CNPJ nem header conhecido) — cai na heurística
+        // genérica, mesmo comportamento da fatia 1 (extractor_used = "pdf_text_v1").
+        assertThat(batch.extractorUsed()).isEqualTo("pdf_text_v1");
+        assertThat(batch.transactions()).hasSize(1);
     }
 }
