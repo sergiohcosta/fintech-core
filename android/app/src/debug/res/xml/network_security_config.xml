@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Cleartext (HTTP) liberado globalmente. Antes da Tarefa 5 do seletor de ambiente, só o
+     host do emulador (10.0.2.2) tinha exceção; agora os hosts LAN (*.kafofao, ver
+     EnvironmentUrlResolver) também são HTTP puro, e a URL customizável do ambiente Local em
+     dispositivo físico não pode ser whitelisted em compile-time (o usuário digita o IP na
+     hora). O app não tem build de release/distribuição nesta v1 — é ferramenta de uso
+     pessoal/dev, então liberar globalmente é aceitável aqui (ver design doc
+     docs/superpowers/specs/2026-08-04-android-seletor-de-ambiente-design.md, decisão d). -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

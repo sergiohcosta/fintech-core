@@ -37,6 +37,8 @@ fun LoginScreen(
         modifier = Modifier.fillMaxSize().padding(24.dp),
         verticalArrangement = Arrangement.Center
     ) {
+        EnvironmentSelector()
+
         OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("E-mail") })
         OutlinedTextField(
             value = password,
