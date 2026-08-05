@@ -65,22 +65,35 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
         int mesVencimento = Integer.parseInt(dueDateMatcher.group(2));
         int anoVencimento = Integer.parseInt(dueDateMatcher.group(3));
 
-        int start = fullText.indexOf(HEADER_LANCAMENTOS) + HEADER_LANCAMENTOS.length();
-        int stop = fullText.length();
-        for (String marker : STOP_MARKERS) {
-            int idx = fullText.indexOf(marker, start);
-            if (idx >= 0 && idx < stop) {
-                stop = idx;
-            }
-        }
-        String secao = fullText.substring(start, stop);
-
         List<NormalizedTransactionDTO> transacoes = new ArrayList<>();
-        for (String linha : secao.lines().toList()) {
-            TransacaoItau transacao = parseLinha(linha.trim(), mesVencimento, anoVencimento);
-            if (transacao != null) {
-                transacoes.add(toDto(transacao));
+        // O cabeçalho pode repetir — um bloco por titular adicional no mesmo cartão. Cada
+        // ocorrência delimita seu PRÓPRIO bloco até o marcador de parada mais próximo (ou fim
+        // do texto, na última) — nunca até o marcador global, senão blocos posteriores ao
+        // primeiro seriam perdidos silenciosamente.
+        int headerIdx = fullText.indexOf(HEADER_LANCAMENTOS);
+        while (headerIdx >= 0) {
+            int start = headerIdx + HEADER_LANCAMENTOS.length();
+            int stop = fullText.length();
+            for (String marker : STOP_MARKERS) {
+                int idx = fullText.indexOf(marker, start);
+                if (idx >= 0 && idx < stop) {
+                    stop = idx;
+                }
             }
+            // Também capa no próximo header (se houver) — senão o bloco do titular corrente
+            // engoliria o header e as linhas do próximo titular, contando-as duas vezes.
+            int nextHeaderIdx = fullText.indexOf(HEADER_LANCAMENTOS, start);
+            if (nextHeaderIdx >= 0 && nextHeaderIdx < stop) {
+                stop = nextHeaderIdx;
+            }
+            String bloco = fullText.substring(start, stop);
+            for (String linha : bloco.lines().toList()) {
+                TransacaoItau transacao = parseLinha(linha.trim(), mesVencimento, anoVencimento);
+                if (transacao != null) {
+                    transacoes.add(toDto(transacao));
+                }
+            }
+            headerIdx = fullText.indexOf(HEADER_LANCAMENTOS, start);
         }
         return transacoes;
     }

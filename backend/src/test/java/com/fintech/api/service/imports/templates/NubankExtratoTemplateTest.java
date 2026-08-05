@@ -98,4 +98,27 @@ class NubankExtratoTemplateTest {
         // 2 transações reais (1 entrada, 1 saída) — as 2 linhas "Total de X" não contam.
         assertThat(transacoes).hasSize(2);
     }
+
+    @Test
+    void parseIgnoraLinhaDeRodapeAntesDaSecaoDeMovimentacoesQueHerdariaEstadoDeUmResumo() {
+        // PDFs reais de extrato Nubank trazem uma página de "Resumo" ANTES da seção detalhada
+        // "Movimentações" — com seu próprio bloco de data + "Total de saídas" + valor (para
+        // ilustrar o saldo do período). Sem escopar a leitura ao que vem depois do header
+        // "Movimentações", esse resumo é lido pela MESMA state machine, seta data/direção
+        // correntes, e uma linha de rodapé com padrão monetário ("Saldo em conta") vira
+        // transação fantasma — mesmo a real seção "Movimentações" nunca tendo começado ainda.
+        String texto = "05 JUL 2026 Total de saídas - 999,99\n"
+                + "Saldo em conta 12.345,67\n"
+                + "Movimentações\n"
+                + "05 JUL 2026 Total de entradas + 4.708,35\n"
+                + "Resgate RDB 4.708,35\n"
+                + "Total de saídas - 0,00\n";
+
+        List<NormalizedTransactionDTO> transacoes = template.parse(texto);
+
+        // Só a transação real, dentro da seção "Movimentações" — o resumo anterior (e a
+        // fantasma "Saldo em conta" que ele geraria sem o escopo) não deve aparecer.
+        assertThat(transacoes).hasSize(1);
+        assertThat(transacoes.get(0).fields().get("description").value()).isEqualTo("Resgate RDB");
+    }
 }

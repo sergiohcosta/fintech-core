@@ -95,4 +95,24 @@ class ItauFaturaTemplateTest {
         assertThat(tx.fields().get("direction").value()).isEqualTo("credit");
         assertThat(tx.fields().get("description").value()).isEqualTo("ESTORNO DE ANUIDADE DIF");
     }
+
+    @Test
+    void parseReconheceTransacoesDeTodosOsBlocosDeLancamentosComTitularAdicional() {
+        // O header "Lançamentos: compras e saques" repete uma vez por titular adicional no
+        // mesmo cartão — cada ocorrência é seu próprio bloco, delimitado até o marcador de
+        // parada mais próximo (ou fim do texto, na última).
+        String texto = CABECALHO_VENCIMENTO
+                + "Lançamentos: compras e saques\n"
+                + "03/02 SUBWAY FAZENDINHA 49,00\n"
+                + "Lançamentos: compras e saques\n"
+                + "05/02 FARMACIA SAO JOAO 30,00\n"
+                + "Limites de crédito\n";
+
+        List<NormalizedTransactionDTO> transacoes = template.parse(texto);
+
+        assertThat(transacoes).hasSize(2);
+        assertThat(transacoes)
+                .extracting(tx2 -> tx2.fields().get("description").value())
+                .containsExactlyInAnyOrder("SUBWAY FAZENDINHA", "FARMACIA SAO JOAO");
+    }
 }
