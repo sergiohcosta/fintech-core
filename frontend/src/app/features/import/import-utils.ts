@@ -284,3 +284,62 @@ export function flattenCategories(
   }
   return out;
 }
+
+// --- Agrupamento avulsa/parcelada (Onda 2 do Itau Parcelamento) ---
+
+export interface InstallmentInfo {
+  number: number;
+  total: number;
+}
+
+/**
+ * Lê installment_number/installment_total do fields — ausentes (Nubank/genérico) → null.
+ * Importações geradas a partir de extratos do Itaú trazem o número e total da parcela;
+ * outras fontes (Nubank, CSV genérico) deixam esses campos fora.
+ */
+export function installmentInfo(staged: StagedTransactionResponseDTO): InstallmentInfo | null {
+  const number = fieldValue(staged, 'installment_number');
+  const total = fieldValue(staged, 'installment_total');
+  if (typeof number !== 'number' || typeof total !== 'number') {
+    return null;
+  }
+  return { number, total };
+}
+
+/**
+ * Aviso só pra parcela > 1 (a 1 já é anunciada pelo rótulo da seção "vai criar parcelamento").
+ * Frontend exibe o texto num badge de atenção; null significa nenhum aviso a exibir.
+ */
+export function installmentBadgeText(info: InstallmentInfo): string | null {
+  if (info.number === 1) {
+    return null;
+  }
+  return `Parcela ${info.number} de ${info.total} — parcelas anteriores não importadas, confira antes de lançar`;
+}
+
+export interface RowGroup<T> {
+  kind: 'avulsas' | 'parceladas';
+  label: string;
+  rows: T[];
+}
+
+/**
+ * Particiona linhas em Avulsas/Parceladas preservando a ordem original dentro de cada grupo.
+ * Grupo vazio não aparece na saída — a UI não precisa checar tamanho antes de renderizar.
+ * Tipado de forma genérica sobre `T` para servir qualquer tipo de linha que tenha `installmentNumber`,
+ * permitindo reutilização tanto na lista de staged quanto em outros contextos futuros.
+ */
+export function groupRowsByInstallment<T extends { installmentNumber: number | null }>(
+  rows: T[],
+): RowGroup<T>[] {
+  const avulsas = rows.filter((r) => r.installmentNumber === null);
+  const parceladas = rows.filter((r) => r.installmentNumber !== null);
+  const groups: RowGroup<T>[] = [];
+  if (avulsas.length > 0) {
+    groups.push({ kind: 'avulsas', label: 'Avulsas', rows: avulsas });
+  }
+  if (parceladas.length > 0) {
+    groups.push({ kind: 'parceladas', label: 'Parceladas', rows: parceladas });
+  }
+  return groups;
+}

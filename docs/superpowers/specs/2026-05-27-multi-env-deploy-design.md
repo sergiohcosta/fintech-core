@@ -2,7 +2,7 @@
 
 **Data:** 2026-05-27  
 **Status:** aprovado  
-**Autor:** Sergio Henrique Costa
+**Autor:** Fulano de Tal
 
 ---
 

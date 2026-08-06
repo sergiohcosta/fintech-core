@@ -12,6 +12,7 @@
 | Validation | Jakarta Bean Validation (spring-boot-starter-validation) |
 | API Docs | springdoc-openapi 2.8.9 (Swagger UI) |
 | Code Generation | openapi-generator-maven-plugin 7.4.0 (interfaceOnly=true) |
+| AI (extração por visão) | Spring AI 2.0.0-M2 — `spring-ai-starter-model-google-genai` (Gemini, Google AI Studio, tier free, provider primário) + `spring-ai-starter-model-ollama` (homelab, fallback por indisponibilidade) |
 | Utilities | Lombok |
 | Testing | JUnit 5, Mockito, AssertJ, Spring MockMvc, spring-security-test |
 | Build Tool | Maven (wrapper: `./mvnw`) |

@@ -202,12 +202,69 @@ Princípio de ordenação: **construir de dentro pra fora** — cada fase é us�
 - Extrator de texto de PDF (heurística de linha, sem registry) — **entregue, fatia 1** (#205)
 - Extração via visão para PDF escaneado — fatia futura
 - **IA como camada universal**: qualquer PDF/CSV que não case com template nem parser genérico vai para extração via IA, transparente para o usuário (mapeamento manual vira opcional, não último recurso)
-- Registry de templates para os 2–3 bancos principais (definidos pelos dados da Fase 2) — cabeça da curva apenas
+- **Camada de IA agora tem provider gerenciado primário** (plano "extração Gemini primário / Ollama fallback", entregue): a `VisionExtractor` tenta Gemini (Google AI Studio, tier free) antes do Ollama do homelab, caindo pro Ollama só por falha de disponibilidade (cota/5xx/timeout/auth). Relevante para o dimensionamento desta fase: se PDF/CSV desconhecidos passarem a rotear para extração via IA em volume, é a **cota gratuita do Gemini** que absorve a maior parte do tráfego primeiro — dimensionar/monitorar essa cota (não só a capacidade da GPU do homelab) vira parte do critério de saída da fase quando o volume via IA crescer
+- Registry de templates para os 2–3 bancos principais (definidos pelos dados da Fase 2) — cabeça da curva apenas — **entregue, fatia 2**: Itaú (fatura PDF) e Nubank (extrato PDF). Nubank CSV não precisou de template — os headers reais já batem os sinônimos genéricos do `CsvExtractor` (Fase 2). CEF fica fora (só existe como print de imagem no caso avaliado — pertence a #194, não a registry de PDF/CSV)
 - **Validações de sanidade pós-extração** (guarda-corpo comum a template e IA): soma × total declarado, datas × período do extrato, ranges plausíveis
 - **Telemetria por formato**: volume, custo em tokens, taxa de casamento de template por banco — a base tanto do alerta de drift quanto da decisão de quais templates criar/promover
 - **Extração multi-transação por imagem única** (print de extrato completo, não PDF): generalização do `TransactionExtractor`/`VisionExtractor` da Fase 1 (schema plano → lista), reaproveitando o mesmo caminho de visão que o PDF escaneado desta fase já implementa e as validações de sanidade acima (soma × total declarado). Spec própria antes de implementar — #194 (guarda-corpo de curto prazo em #193)
 
 **Fatia 1 entregue** (spec `docs/superpowers/specs/2026-07-31-extracao-fase3-pdf-texto-design.md`, #205, sub-issue do épico #176): `PdfTextExtractor` (Apache PDFBox) reconhece PDF com camada de texto pelo magic number, extrai o texto via `PDFTextStripper` e reconhece transação por heurística de linha (data + valor na mesma linha) — sem registry de templates, sem validação soma × total, sem suporte a PDF escaneado (falha explícita, encaminhando para o formulário manual ou envio como imagem). Reaproveita 100% do pipeline genérico existente (`ExtractionRouter`, guard-rails de sanidade do `ImportService`, dedup por trio data+valor+descrição) — nenhuma mudança no núcleo.
+
+**Fatia 2 entregue** (spec `docs/superpowers/specs/2026-08-05-extracao-fase3-registry-templates-design.md`):
+`PdfBankTemplate` (interface + lista de beans ordenada, mesmo padrão do `VisionModelClient`)
+tentado antes da heurística genérica dentro do `PdfTextExtractor`; nenhum template bate →
+heurística genérica inalterada. Dois templates: Itaú fatura (delimitação de seção +
+inferência de ano pela data de vencimento) e Nubank extrato PDF (state machine, direção
+pela seção "Total de entradas"/"Total de saídas" corrente). Fallback para IA em PDF não
+reconhecido por template nem heurística segue fora de escopo — depende de PDF→imagem,
+mesma pendência de "PDF escaneado via visão".
+
+**Correção pós-entrega (fatia 2):** validação contra os PDFs reais que motivaram a fatia
+revelou dado financeiro errado nos dois templates — Itaú fundia duas colunas de
+lançamentos na mesma linha de texto (PDFBox agrupa por proximidade Y, não por coluna),
+misturando data de uma transação com valor de outra; Nubank assumia ordem de valor
+invertida da real (acumulador multilinha nunca fechava certo contra dado real). Corrigido
+via extração posicional por coluna (`PDFTextStripperByArea`) no Itaú e remoção do
+acumulador no Nubank (valor sempre está na própria linha do rótulo, evidência real 23/23).
+Spec: `docs/superpowers/specs/2026-08-06-fix-templates-pdf-ordem-real-design.md`.
+Revalidado depois contra os mesmos dois arquivos reais: Nubank bate **exato** com os totais
+impressos no extrato (entradas/saídas); Itaú com valores corretos e distintos por
+transação (o defeito original — mistura de data/valor — não reaparece), soma líquida
+abaixo do total impresso só pela seção "produtos e serviços" (já fora de escopo por
+design, não é bug). Lição pro processo: fixture sintética de uma linha não expõe bug de
+ordem real de múltiplas linhas/colunas — próximos templates de PDF devem validar contra
+pelo menos um documento real antes de considerar a fatia fechada, não só depois.
+
+**Nota sobre um achado que não era bug:** durante a correção acima, uma checagem manual
+apontou "Foco Aluguel de Ca 112,67" duplicado no resultado — investigação levou a um
+commit corrigindo suposta sobreposição de blocos quando o cabeçalho "Lançamentos: compras
+e saques" repete por continuação de página (`git log` do commit `f33b494`). Prova
+algébrica posterior (subagente, ~350k combinações) mostrou que essa mudança é
+matematicamente um no-op para a função em questão — a duplicata observada era artefato de
+uma corrida de build (`mvnw compile` do controller concorrente com `mvnw test` de um
+subagente escrevendo no mesmo `target/classes`), não um defeito de código. Revalidado com
+build limpo e sem processos concorrentes: zero duplicata real. O commit `f33b494` foi
+mantido (correto e inofensivo — trata um caso real de continuação de página, mesmo não
+sendo a causa do que foi observado), mas a mensagem daquele commit afirma "bug real
+confirmado" de forma tecnicamente imprecisa — registrado aqui para o histórico ficar
+honesto. Lição: um resultado inesperado durante debug sob pressão de tempo pode vir do
+ambiente de execução (builds concorrentes), não do código — vale descartar essa hipótese
+antes de commitar uma correção "confirmada".
+
+**Fatia 3 entregue — reconhecimento de parcelamento na importação Itaú** (spec
+`docs/superpowers/specs/2026-08-06-import-itau-parcelamento-design.md`, PR #214): validação
+manual em dev contra fatura real revelou que compra parcelada em andamento (linha
+`ESTABELECIMENTO NN/MM valor`, ex. `09/10`) virava transação avulsa na importação, perdendo
+o vínculo de parcelamento que o sistema já modela nativamente. `ItauFaturaTemplate` passa a
+preservar `installment_number`/`installment_total` no `fields` JSONB; `ImportService.commit`
+reconhece parcela `1/N` e cria o `InstallmentGroup` completo via `TransactionService.create`
+(total aproximado por `parcela × N`, mesma regra de resíduo do #136 — zero código de domínio
+novo). Parcela `>1/N` sem grupo correspondente no sistema fica avulsa com aviso — casar
+contra um `InstallmentGroup` já existente (de mês anterior ou lançamento manual) é
+reconciliação de verdade, mesmo motor de matching que a Fase 4/5 já reserva; dívida técnica
+registrada, não resolvida aqui. Teto de sanidade `installmentTotal <= 36` protege contra
+falso positivo do marcador. Frontend particiona a revisão em lote em seções
+"Avulsas"/"Parceladas". SemVer PATCH (sem mudança de contrato, sem migration).
 
 **Critérios de saída**
 - [ ] **Taxa de reconhecimento de template ≥90%** para os bancos cobertos
