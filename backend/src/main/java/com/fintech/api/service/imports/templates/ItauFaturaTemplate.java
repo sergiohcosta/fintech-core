@@ -3,9 +3,17 @@ package com.fintech.api.service.imports.templates;
 import com.fintech.api.dto.imports.NormalizedTransactionDTO;
 import com.fintech.api.dto.imports.StagedFieldValueDTO;
 import com.fintech.api.service.imports.ExtractionException;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.text.PDFTextStripperByArea;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
+import java.awt.geom.Rectangle2D;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -21,6 +29,7 @@ import java.util.regex.Pattern;
  * (DD/MM); o ano é inferido da data de vencimento, que aparece uma vez no documento com ano
  * completo.
  */
+@Slf4j
 @Component
 @Order(10)
 public class ItauFaturaTemplate implements PdfBankTemplate {
@@ -45,6 +54,12 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
             Pattern.compile("(-?)\\s*(\\d{1,3}(?:\\.\\d{3})*,\\d{2})\\s*$");
     private static final Pattern TRAILING_INSTALLMENT_MARKER = Pattern.compile("\\d{2}/\\d{2}\\s*$");
 
+    // Gap real entre as duas colunas de lançamentos da fatura, medido por coordenada X
+    // (TextPosition) contra o PDF real que motivou este fix — página A4 (595.28×841.89pt).
+    // Fixo por ora (spec: decisão d) — não há segundo exemplar de fatura pra validar se
+    // varia entre documentos.
+    private static final float COLUMN_SPLIT_X = 365f;
+
     @Override
     public boolean matches(String fullText) {
         return fullText.contains(CNPJ_ITAU) && fullText.contains(HEADER_LANCAMENTOS);
@@ -56,7 +71,7 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
     }
 
     @Override
-    public List<NormalizedTransactionDTO> parse(String fullText) {
+    public List<NormalizedTransactionDTO> parse(String fullText, byte[] content) {
         Matcher dueDateMatcher = DUE_DATE.matcher(fullText);
         if (!dueDateMatcher.find()) {
             throw new ExtractionException(
@@ -65,35 +80,88 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
         int mesVencimento = Integer.parseInt(dueDateMatcher.group(2));
         int anoVencimento = Integer.parseInt(dueDateMatcher.group(3));
 
+        StringBuilder colunaEsquerda = new StringBuilder();
+        StringBuilder colunaDireita = new StringBuilder();
+        // A fatura renderiza duas colunas de lançamentos lado a lado — o PDFBox funde texto
+        // da mesma altura Y numa única linha (mesmo com sortByPosition), misturando data e
+        // valor de transações DIFERENTES. Reabrir o documento e extrair por REGIÃO
+        // RETANGULAR (posição X) separa as colunas antes de qualquer parsing de linha.
+        try (PDDocument document = Loader.loadPDF(content)) {
+            PDFTextStripperByArea stripper = new PDFTextStripperByArea();
+            stripper.setSortByPosition(true);
+            // A região (coordenada X/Y da coluna) não muda por página — só precisa ser
+            // definida uma vez. Todas as páginas desta fatura compartilham o mesmo tamanho
+            // A4 (confirmado contra o PDF real que motivou este fix).
+            PDRectangle box = document.getPage(0).getMediaBox();
+            stripper.addRegion("esquerda", new Rectangle2D.Float(0, 0, COLUMN_SPLIT_X, box.getHeight()));
+            stripper.addRegion("direita",
+                    new Rectangle2D.Float(COLUMN_SPLIT_X, 0, box.getWidth() - COLUMN_SPLIT_X, box.getHeight()));
+            for (PDPage page : document.getPages()) {
+                stripper.extractRegions(page);
+                colunaEsquerda.append(stripper.getTextForRegion("esquerda")).append('\n');
+                colunaDireita.append(stripper.getTextForRegion("direita")).append('\n');
+            }
+        } catch (IOException e) {
+            throw new ExtractionException(
+                    "Não foi possível reabrir o PDF da fatura Itaú para separar as colunas.", e);
+        }
+
         List<NormalizedTransactionDTO> transacoes = new ArrayList<>();
-        // O cabeçalho pode repetir — um bloco por titular adicional no mesmo cartão. Cada
-        // ocorrência delimita seu PRÓPRIO bloco até o marcador de parada mais próximo (ou fim
-        // do texto, na última) — nunca até o marcador global, senão blocos posteriores ao
-        // primeiro seriam perdidos silenciosamente.
-        int headerIdx = fullText.indexOf(HEADER_LANCAMENTOS);
-        while (headerIdx >= 0) {
+        transacoes.addAll(extrairTransacoesDoStream(colunaEsquerda.toString(), mesVencimento, anoVencimento));
+        transacoes.addAll(extrairTransacoesDoStream(colunaDireita.toString(), mesVencimento, anoVencimento));
+        return transacoes;
+    }
+
+    /**
+     * Localiza TODOS os blocos "Lançamentos: compras e saques" dentro de UM stream já
+     * separado por coluna (esquerda ou direita) e reconhece as transações de cada um — a
+     * mesma lógica de delimitação de seção de antes, agora rodando sobre texto limpo (sem
+     * fusão de coluna), o que a torna correta: cada coluna tem seus próprios cabeçalhos e
+     * marcadores de parada na ordem certa.
+     */
+    private List<NormalizedTransactionDTO> extrairTransacoesDoStream(
+            String stream, int mesVencimento, int anoVencimento) {
+        List<NormalizedTransactionDTO> transacoes = new ArrayList<>();
+        int cursor = 0;
+        while (true) {
+            int headerIdx = stream.indexOf(HEADER_LANCAMENTOS, cursor);
+            if (headerIdx < 0) {
+                break;
+            }
             int start = headerIdx + HEADER_LANCAMENTOS.length();
-            int stop = fullText.length();
+            int stop = stream.length();
             for (String marker : STOP_MARKERS) {
-                int idx = fullText.indexOf(marker, start);
+                int idx = stream.indexOf(marker, start);
                 if (idx >= 0 && idx < stop) {
                     stop = idx;
                 }
             }
-            // Também capa no próximo header (se houver) — senão o bloco do titular corrente
-            // engoliria o header e as linhas do próximo titular, contando-as duas vezes.
-            int nextHeaderIdx = fullText.indexOf(HEADER_LANCAMENTOS, start);
-            if (nextHeaderIdx >= 0 && nextHeaderIdx < stop) {
-                stop = nextHeaderIdx;
-            }
-            String bloco = fullText.substring(start, stop);
+            // Header re-impresso por continuação de página não deve abrir um bloco novo —
+            // é o MESMO bloco lógico continuando. Avançar o cursor pro fim do bloco atual
+            // (não pro início do header) é matematicamente equivalente ao capping anterior
+            // para este algoritmo (verificado), mas é a leitura mais fiel do layout
+            // paginado real e evita reabrir blocos sobre header repetido por continuação.
+            String bloco = stream.substring(start, stop);
             for (String linha : bloco.lines().toList()) {
                 TransacaoItau transacao = parseLinha(linha.trim(), mesVencimento, anoVencimento);
                 if (transacao != null) {
                     transacoes.add(toDto(transacao));
                 }
             }
-            headerIdx = fullText.indexOf(HEADER_LANCAMENTOS, start);
+            // Avança o cursor pro FIM deste bloco (não pro início do header atual) — qualquer
+            // header re-impresso DENTRO deste intervalo já foi incluído (como texto inerte) e
+            // não deve reabrir um bloco novo sobreposto.
+            cursor = stop;
+        }
+        // Observabilidade: coluna com conteúdo que PARECE transação (linha "DD/MM ...") mas
+        // zero transações reconhecidas é sinal de header ausente/quebrado nesta coluna — sem
+        // isso o resultado só fica menor que o esperado, em silêncio (exatamente a classe de
+        // erro "plausível mas errado" que este fix existe pra evitar).
+        if (transacoes.isEmpty() && !stream.isBlank()
+                && stream.lines().anyMatch(linha -> LINE_START_DATE.matcher(linha.trim()).matches())) {
+            log.warn("ItauFaturaTemplate: coluna com linhas no formato de transação mas nenhuma "
+                    + "transação reconhecida — possível header \"{}\" ausente ou quebrado nesta coluna.",
+                    HEADER_LANCAMENTOS);
         }
         return transacoes;
     }

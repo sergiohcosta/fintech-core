@@ -219,6 +219,38 @@ pela seção "Total de entradas"/"Total de saídas" corrente). Fallback para IA 
 reconhecido por template nem heurística segue fora de escopo — depende de PDF→imagem,
 mesma pendência de "PDF escaneado via visão".
 
+**Correção pós-entrega (fatia 2):** validação contra os PDFs reais que motivaram a fatia
+revelou dado financeiro errado nos dois templates — Itaú fundia duas colunas de
+lançamentos na mesma linha de texto (PDFBox agrupa por proximidade Y, não por coluna),
+misturando data de uma transação com valor de outra; Nubank assumia ordem de valor
+invertida da real (acumulador multilinha nunca fechava certo contra dado real). Corrigido
+via extração posicional por coluna (`PDFTextStripperByArea`) no Itaú e remoção do
+acumulador no Nubank (valor sempre está na própria linha do rótulo, evidência real 23/23).
+Spec: `docs/superpowers/specs/2026-08-06-fix-templates-pdf-ordem-real-design.md`.
+Revalidado depois contra os mesmos dois arquivos reais: Nubank bate **exato** com os totais
+impressos no extrato (entradas/saídas); Itaú com valores corretos e distintos por
+transação (o defeito original — mistura de data/valor — não reaparece), soma líquida
+abaixo do total impresso só pela seção "produtos e serviços" (já fora de escopo por
+design, não é bug). Lição pro processo: fixture sintética de uma linha não expõe bug de
+ordem real de múltiplas linhas/colunas — próximos templates de PDF devem validar contra
+pelo menos um documento real antes de considerar a fatia fechada, não só depois.
+
+**Nota sobre um achado que não era bug:** durante a correção acima, uma checagem manual
+apontou "Foco Aluguel de Ca 112,67" duplicado no resultado — investigação levou a um
+commit corrigindo suposta sobreposição de blocos quando o cabeçalho "Lançamentos: compras
+e saques" repete por continuação de página (`git log` do commit `f33b494`). Prova
+algébrica posterior (subagente, ~350k combinações) mostrou que essa mudança é
+matematicamente um no-op para a função em questão — a duplicata observada era artefato de
+uma corrida de build (`mvnw compile` do controller concorrente com `mvnw test` de um
+subagente escrevendo no mesmo `target/classes`), não um defeito de código. Revalidado com
+build limpo e sem processos concorrentes: zero duplicata real. O commit `f33b494` foi
+mantido (correto e inofensivo — trata um caso real de continuação de página, mesmo não
+sendo a causa do que foi observado), mas a mensagem daquele commit afirma "bug real
+confirmado" de forma tecnicamente imprecisa — registrado aqui para o histórico ficar
+honesto. Lição: um resultado inesperado durante debug sob pressão de tempo pode vir do
+ambiente de execução (builds concorrentes), não do código — vale descartar essa hipótese
+antes de commitar uma correção "confirmada".
+
 **Critérios de saída**
 - [ ] **Taxa de reconhecimento de template ≥90%** para os bancos cobertos
 - [ ] **Zero bloqueio por formato desconhecido**: documento de banco nunca visto é extraído via IA sem intervenção

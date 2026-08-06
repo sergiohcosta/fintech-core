@@ -36,7 +36,7 @@ class NubankExtratoTemplateTest {
                 + "Resgate RDB 4.708,35\n"
                 + "Total de saídas - 0,00\n";
 
-        List<NormalizedTransactionDTO> transacoes = template.parse(texto);
+        List<NormalizedTransactionDTO> transacoes = template.parse(texto, new byte[0]);
 
         assertThat(transacoes).hasSize(1);
         NormalizedTransactionDTO tx = transacoes.get(0);
@@ -44,28 +44,6 @@ class NubankExtratoTemplateTest {
         assertThat((BigDecimal) tx.fields().get("amount").value()).isEqualByComparingTo(new BigDecimal("4708.35"));
         assertThat(tx.fields().get("description").value()).isEqualTo("Resgate RDB");
         assertThat(tx.fields().get("direction").value()).isEqualTo("credit");
-    }
-
-    @Test
-    void parseReconheceSaidaComContraparteMultilinha() {
-        String texto = "Movimentações\n"
-                + "10 JUL 2026 Total de entradas + 0,00\n"
-                + "Total de saídas - 593,21\n"
-                + "Transferência enviada pelo Pix MERCADO PAGO INSTITUICAO DE PAGAMENTO\n"
-                + "LTDA - 10.573.521/0001-91 - MERCADO PAGO IP\n"
-                + "LTDA. (0323) Agência: 1 Conta: 1488917887-3\n"
-                + "593,21\n";
-
-        List<NormalizedTransactionDTO> transacoes = template.parse(texto);
-
-        assertThat(transacoes).hasSize(1);
-        NormalizedTransactionDTO tx = transacoes.get(0);
-        assertThat((BigDecimal) tx.fields().get("amount").value()).isEqualByComparingTo(new BigDecimal("593.21"));
-        assertThat(tx.fields().get("direction").value()).isEqualTo("debit");
-        assertThat(tx.fields().get("description").value())
-                .isEqualTo("Transferência enviada pelo Pix MERCADO PAGO INSTITUICAO DE PAGAMENTO "
-                        + "LTDA - 10.573.521/0001-91 - MERCADO PAGO IP "
-                        + "LTDA. (0323) Agência: 1 Conta: 1488917887-3");
     }
 
     @Test
@@ -78,7 +56,7 @@ class NubankExtratoTemplateTest {
                 + "Total de saídas - 250,00\n"
                 + "Aplicação RDB 250,00\n";
 
-        List<NormalizedTransactionDTO> transacoes = template.parse(texto);
+        List<NormalizedTransactionDTO> transacoes = template.parse(texto, new byte[0]);
 
         assertThat(transacoes).hasSize(2);
         assertThat(transacoes.get(0).fields().get("direction").value()).isEqualTo("credit");
@@ -93,10 +71,54 @@ class NubankExtratoTemplateTest {
                 + "Total de saídas - 4.708,35\n"
                 + "Transferência enviada pelo Pix FULANO DE TAL (Transferência enviada) 4.708,35\n";
 
-        List<NormalizedTransactionDTO> transacoes = template.parse(texto);
+        List<NormalizedTransactionDTO> transacoes = template.parse(texto, new byte[0]);
 
         // 2 transações reais (1 entrada, 1 saída) — as 2 linhas "Total de X" não contam.
         assertThat(transacoes).hasSize(2);
+    }
+
+    @Test
+    void parseDescartaLinhaDeDecoracaoSemAcumularNaProximaTransacao() {
+        String texto = "Movimentações\n"
+                + "10 JUL 2026 Total de entradas + 151,91\n"
+                + "Transferência recebida pelo Pix FULANO DE TAL - CAIXA 151,91\n"
+                + "ECONOMICA FEDERAL (0104) Agência: 0001 Conta:\n"
+                + "12345-6\n"
+                + "Total de saídas - 0,00\n";
+
+        List<NormalizedTransactionDTO> transacoes = template.parse(texto, new byte[0]);
+
+        assertThat(transacoes).hasSize(1);
+        NormalizedTransactionDTO tx = transacoes.get(0);
+        assertThat((BigDecimal) tx.fields().get("amount").value()).isEqualByComparingTo(new BigDecimal("151.91"));
+        // Descrição NÃO carrega as linhas de decoração seguintes (agência/conta) — elas
+        // vêm DEPOIS da linha que já fechou a transação, e são descartadas.
+        assertThat(tx.fields().get("description").value())
+                .isEqualTo("Transferência recebida pelo Pix FULANO DE TAL - CAIXA");
+    }
+
+    @Test
+    void parseNaoDeixaRodapeDePaginaVazarParaTransacaoSeguinte() {
+        String texto = "Movimentações\n"
+                + "17 JUL 2026 Total de entradas + 450,00\n"
+                + "Transferência recebida pelo Pix CICLANO DA SILVA - ITAÚ 450,00\n"
+                + "Tem alguma dúvida? Mande uma mensagem para nosso time de atendimento pelo chat do app.\n"
+                + "Extrato gerado dia 29 de julho de 2026 às 17:11 3 de 4\n"
+                + "Fulano de Tal\n"
+                + "UNIBANCO S.A. (0341) Agência: 0002 Conta: 65432-1\n"
+                + "Total de saídas - 450,00\n"
+                + "Resgate RDB 1.400,00\n";
+
+        List<NormalizedTransactionDTO> transacoes = template.parse(texto, new byte[0]);
+
+        assertThat(transacoes).hasSize(2);
+        // A primeira transação fecha na própria linha, sem absorver o rodapé de página que
+        // vem depois. A segunda ("Resgate RDB") tem descrição limpa, sem lixo de rodapé.
+        assertThat(transacoes.get(0).fields().get("description").value())
+                .isEqualTo("Transferência recebida pelo Pix CICLANO DA SILVA - ITAÚ");
+        assertThat(transacoes.get(1).fields().get("description").value()).isEqualTo("Resgate RDB");
+        assertThat((BigDecimal) transacoes.get(1).fields().get("amount").value())
+                .isEqualByComparingTo(new BigDecimal("1400.00"));
     }
 
     @Test
@@ -114,7 +136,7 @@ class NubankExtratoTemplateTest {
                 + "Resgate RDB 4.708,35\n"
                 + "Total de saídas - 0,00\n";
 
-        List<NormalizedTransactionDTO> transacoes = template.parse(texto);
+        List<NormalizedTransactionDTO> transacoes = template.parse(texto, new byte[0]);
 
         // Só a transação real, dentro da seção "Movimentações" — o resumo anterior (e a
         // fantasma "Saldo em conta" que ele geraria sem o escopo) não deve aparecer.

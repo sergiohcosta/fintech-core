@@ -134,7 +134,7 @@ public class PdfTextExtractor implements TransactionExtractor {
             if (template.matches(text)) {
                 return new NormalizedBatchDTO(
                         input.mode(), ImportSourceType.PDF_TEXT, template.templateId(), extractorVersion,
-                        template.parse(text));
+                        template.parse(text, input.content()));
             }
         }
 
