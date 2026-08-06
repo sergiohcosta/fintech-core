@@ -164,6 +164,16 @@
       </div>
     }
 
+    @if (rowGroups().length > 1) {
+      <div class="installment-groups-summary">
+        @for (group of rowGroups(); track group.kind) {
+          <span class="group-chip" [class.group-chip--parceladas]="group.kind === 'parceladas'">
+            {{ group.label }} ({{ group.rows.length }})
+          </span>
+        }
+      </div>
+    }
+
     <table
       mat-table
       class="review-table"
@@ -209,6 +219,16 @@
               matTooltip="Valor ou data inválidos — esta linha não será lançada até corrigir"
             >
               error_outline
+            </mat-icon>
+          }
+          @if (installmentWarning(row)) {
+            <mat-icon color="warn" [matTooltip]="installmentWarning(row)!">
+              repeat
+            </mat-icon>
+          }
+          @if (isFirstInstallment(row)) {
+            <mat-icon color="primary" [matTooltip]="'Vai criar parcelamento completo (' + row.installmentTotal + ' parcelas)'">
+              repeat
             </mat-icon>
           }
         </td>
