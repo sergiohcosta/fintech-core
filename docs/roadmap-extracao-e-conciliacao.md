@@ -251,6 +251,21 @@ honesto. Lição: um resultado inesperado durante debug sob pressão de tempo po
 ambiente de execução (builds concorrentes), não do código — vale descartar essa hipótese
 antes de commitar uma correção "confirmada".
 
+**Fatia 3 entregue — reconhecimento de parcelamento na importação Itaú** (spec
+`docs/superpowers/specs/2026-08-06-import-itau-parcelamento-design.md`, PR #214): validação
+manual em dev contra fatura real revelou que compra parcelada em andamento (linha
+`ESTABELECIMENTO NN/MM valor`, ex. `09/10`) virava transação avulsa na importação, perdendo
+o vínculo de parcelamento que o sistema já modela nativamente. `ItauFaturaTemplate` passa a
+preservar `installment_number`/`installment_total` no `fields` JSONB; `ImportService.commit`
+reconhece parcela `1/N` e cria o `InstallmentGroup` completo via `TransactionService.create`
+(total aproximado por `parcela × N`, mesma regra de resíduo do #136 — zero código de domínio
+novo). Parcela `>1/N` sem grupo correspondente no sistema fica avulsa com aviso — casar
+contra um `InstallmentGroup` já existente (de mês anterior ou lançamento manual) é
+reconciliação de verdade, mesmo motor de matching que a Fase 4/5 já reserva; dívida técnica
+registrada, não resolvida aqui. Teto de sanidade `installmentTotal <= 36` protege contra
+falso positivo do marcador. Frontend particiona a revisão em lote em seções
+"Avulsas"/"Parceladas". SemVer PATCH (sem mudança de contrato, sem migration).
+
 **Critérios de saída**
 - [ ] **Taxa de reconhecimento de template ≥90%** para os bancos cobertos
 - [ ] **Zero bloqueio por formato desconhecido**: documento de banco nunca visto é extraído via IA sem intervenção
