@@ -16,11 +16,12 @@ import java.util.regex.Pattern;
 
 /**
  * Template Nubank extrato PDF — reconhece transações da seção "Movimentações" (spec:
- * registry de templates, decisão f). Datas ficam em linha própria; valor pode estar na
- * mesma linha do rótulo (entrada simples) ou sozinho na última linha de um bloco
- * multilinha (rótulo + contraparte longa). Direção vem da seção corrente ("Total de
- * entradas"/"Total de saídas"), não de palavra-chave por linha — rótulos como "Resgate RDB"
- * se repetem nos dois lados.
+ * registry de templates, decisão f). Datas ficam em linha própria; o valor SEMPRE vem
+ * grudado na própria linha do rótulo (evidência real: 23/23 transações do extrato que
+ * motivou o template) — linhas seguintes sem valor reconhecível são decoração (agência/
+ * conta, rodapé de página) e são descartadas, nunca acumuladas na descrição. Direção vem
+ * da seção corrente ("Total de entradas"/"Total de saídas"), não de palavra-chave por
+ * linha — rótulos como "Resgate RDB" se repetem nos dois lados.
  */
 @Component
 @Order(20)
@@ -50,15 +51,13 @@ public class NubankExtratoTemplate implements PdfBankTemplate {
     }
 
     @Override
-    public List<NormalizedTransactionDTO> parse(String fullText) {
+    public List<NormalizedTransactionDTO> parse(String fullText, byte[] content) {
         List<NormalizedTransactionDTO> transacoes = new ArrayList<>();
         LocalDate dataCorrente = null;
         String direcaoCorrente = null;
-        StringBuilder acumulador = new StringBuilder();
 
-        // Escopa a leitura à seção "Movimentações" — linha após a última transação real (ex.
-        // rodapé de página, bloco de totais) fora dessa seção não deve herdar data/direção
-        // corrente e virar transação fantasma.
+        // Escopa a leitura à seção "Movimentações" — linha antes dela (resumo do topo) não
+        // deve virar transação por engano.
         String textoASerLido = fullText.substring(fullText.indexOf(HEADER_MOVIMENTACOES));
         for (String linhaBruta : textoASerLido.lines().toList()) {
             String linha = linhaBruta.trim();
@@ -72,7 +71,6 @@ public class NubankExtratoTemplate implements PdfBankTemplate {
                         Integer.parseInt(dateMatcher.group(3)),
                         MESES.get(dateMatcher.group(2)),
                         Integer.parseInt(dateMatcher.group(1)));
-                acumulador.setLength(0);
                 linha = dateMatcher.group(4).trim();
                 if (linha.isEmpty()) {
                     continue;
@@ -81,29 +79,26 @@ public class NubankExtratoTemplate implements PdfBankTemplate {
 
             if (linha.startsWith("Total de entradas")) {
                 direcaoCorrente = "credit";
-                acumulador.setLength(0);
                 continue;
             }
             if (linha.startsWith("Total de saídas")) {
                 direcaoCorrente = "debit";
-                acumulador.setLength(0);
                 continue;
             }
 
+            // Evidência real (23/23 transações do extrato que motivou este template): o
+            // valor SEMPRE vem grudado na própria linha do rótulo — nunca isolado depois de
+            // várias linhas de contraparte. Linha sem valor reconhecível é decoração
+            // (complemento de agência/conta, rodapé de página) e é sempre descartada, nunca
+            // acumulada — isso elimina por construção o vazamento de rodapé pra descrição
+            // da transação seguinte.
             Matcher amountMatcher = TRAILING_AMOUNT.matcher(linha);
             if (amountMatcher.find() && amountMatcher.end() == linha.length()) {
-                String prefixo = linha.substring(0, amountMatcher.start()).trim();
-                String descricao = (acumulador + " " + prefixo).trim().replaceAll("\\s+", " ");
+                String descricao = linha.substring(0, amountMatcher.start()).trim();
                 if (dataCorrente != null && direcaoCorrente != null && !descricao.isEmpty()) {
                     BigDecimal valor = parseValorBr(amountMatcher.group(1));
                     transacoes.add(toDto(dataCorrente, descricao, direcaoCorrente, valor));
                 }
-                acumulador.setLength(0);
-            } else {
-                if (!acumulador.isEmpty()) {
-                    acumulador.append(' ');
-                }
-                acumulador.append(linha);
             }
         }
         return transacoes;

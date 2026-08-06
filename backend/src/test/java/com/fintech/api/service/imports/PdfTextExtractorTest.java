@@ -213,7 +213,7 @@ class PdfTextExtractorTest {
             }
 
             @Override
-            public List<NormalizedTransactionDTO> parse(String fullText) {
+            public List<NormalizedTransactionDTO> parse(String fullText, byte[] content) {
                 var fields = new LinkedHashMap<String, StagedFieldValueDTO>();
                 fields.put("amount", new StagedFieldValueDTO(new BigDecimal("99.99"), BigDecimal.ONE));
                 fields.put("transaction_date", new StagedFieldValueDTO("2026-08-01", BigDecimal.ONE));
@@ -251,7 +251,7 @@ class PdfTextExtractorTest {
             }
 
             @Override
-            public List<NormalizedTransactionDTO> parse(String fullText) {
+            public List<NormalizedTransactionDTO> parse(String fullText, byte[] content) {
                 // Nunca deve ser chamado
                 throw new RuntimeException("parse() não deve ser chamado se matches() retorna false");
             }
@@ -283,7 +283,7 @@ class PdfTextExtractorTest {
             }
 
             @Override
-            public List<NormalizedTransactionDTO> parse(String fullText) {
+            public List<NormalizedTransactionDTO> parse(String fullText, byte[] content) {
                 var fields = new LinkedHashMap<String, StagedFieldValueDTO>();
                 fields.put("amount", new StagedFieldValueDTO(new BigDecimal("111.11"), BigDecimal.ONE));
                 fields.put("transaction_date", new StagedFieldValueDTO("2026-08-01", BigDecimal.ONE));
@@ -306,7 +306,7 @@ class PdfTextExtractorTest {
             }
 
             @Override
-            public List<NormalizedTransactionDTO> parse(String fullText) {
+            public List<NormalizedTransactionDTO> parse(String fullText, byte[] content) {
                 throw new RuntimeException("Segundo template não deve ser testado");
             }
 
