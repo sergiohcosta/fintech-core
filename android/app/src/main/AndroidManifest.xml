@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <application
+        android:name=".MobileApp"
+        android:allowBackup="false"
+        android:icon="@android:drawable/sym_def_app_icon"
+        android:label="@string/app_name"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:theme="@style/Theme.FintechMobile">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:theme="@style/Theme.FintechMobile">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Desabilita a inicialização automática do WorkManager (androidx.startup). Sem isso,
+             o ContentProvider padrão inicializa o WorkManager ANTES de MobileApp.onCreate()
+             (ContentProviders sempre rodam antes de Application.onCreate() no Android), correndo
+             o risco de vencer a corrida com a injeção Hilt do HiltWorkerFactory e deixar o
+             WorkManager singleton preso com a WorkerFactory padrão (baseada em reflexão, sem
+             suporte a @AssistedInject) pelo resto do processo — exatamente o que causava
+             "NoSuchMethodException: SyncWorker.<init>" descoberto em QA manual (Tarefa 14): o
+             worker nunca era instanciado de verdade, a fila offline nunca sincronizava sozinha.
+             Com a inicialização sob demanda, o primeiro WorkManager.getInstance(this) real
+             acontece dentro de scheduleSync() (MobileApp.onCreate(), já com workerFactory
+             injetado), eliminando a corrida. -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
+    </application>
+</manifest>

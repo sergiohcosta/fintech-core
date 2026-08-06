@@ -50,6 +50,10 @@ import {
   type CategoryOption,
   type DuplicateConflict,
   type ReviewFieldKey,
+  type RowGroup,
+  groupRowsByInstallment,
+  installmentBadgeText,
+  installmentInfo,
 } from './import-utils';
 
 /** Linha editável da revisão — o que o usuário confere/corrige antes de lançar. */
@@ -69,6 +73,8 @@ interface ReviewRow {
   accountId: string | null;
   categoryId: string | null;
   duplicateCandidateOf: string | null;
+  installmentNumber: number | null;
+  installmentTotal: number | null;
   confidences: Record<ReviewFieldKey, number | null>;
 }
 
@@ -177,10 +183,32 @@ export class ImportComponent implements OnInit {
   readonly pageSize = signal(25);
   readonly expandedId = signal<string | null>(null);
 
+  /** Avulsas/Parceladas, na ordem — usado só pra exibir os rótulos de seção no template
+   *  (não muda o array que alimenta a tabela; ver `orderedRows` pra como os dois se conectam). */
+  readonly rowGroups = computed<RowGroup<ReviewRow>[]>(() => groupRowsByInstallment(this.rows()));
+
+  /** Texto do badge de aviso (só quando > parcela 1) — null pra linha sem parcela ou parcela 1. */
+  installmentWarning(row: ReviewRow): string | null {
+    if (row.installmentNumber === null || row.installmentTotal === null) {
+      return null;
+    }
+    return installmentBadgeText({ number: row.installmentNumber, total: row.installmentTotal });
+  }
+
+  /** true só pra parcela 1 — mostra "vai criar parcelamento completo" na coluna de flags. */
+  isFirstInstallment(row: ReviewRow): boolean {
+    return row.installmentNumber === 1;
+  }
+
+  /** Lista reordenada: todas as avulsas primeiro, depois todas as parceladas — mesma ordem
+   *  relativa dentro de cada grupo. `rowGroups` descreve os MESMOS dados pros rótulos
+   *  de seção; aqui só achatamos de volta pra um array plano na ordem de exibição. */
+  private readonly orderedRows = computed(() => this.rowGroups().flatMap((g) => g.rows));
+
   /** Fatia visível da página atual — paginação é 100% client-side sobre o array já carregado. */
   readonly pagedRows = computed(() => {
     const start = this.pageIndex() * this.pageSize();
-    return this.rows().slice(start, start + this.pageSize());
+    return this.orderedRows().slice(start, start + this.pageSize());
   });
 
   readonly showPaginator = computed(() => this.rows().length > ImportComponent.MIN_PAGE_SIZE);
@@ -325,6 +353,8 @@ export class ImportComponent implements OnInit {
       accountId: null,
       categoryId: null,
       duplicateCandidateOf: s.duplicateCandidateOf ?? null,
+      installmentNumber: installmentInfo(s)?.number ?? null,
+      installmentTotal: installmentInfo(s)?.total ?? null,
       confidences: {
         amount: fieldConfidence(s, 'amount'),
         transaction_date: fieldConfidence(s, 'transaction_date'),

@@ -19,12 +19,17 @@ import {
   formatConfidence,
   formatConflictDate,
   formatDatePtBr,
+  groupRowsByInstallment,
+  installmentBadgeText,
+  installmentInfo,
   isAmountReady,
   isDateReady,
   isLowConfidence,
   isReadyToCommit,
   parseDuplicateConflict,
   type CommitRow,
+  type InstallmentInfo,
+  type RowGroup,
 } from './import-utils';
 
 /** Fixture base de `CommitRow` já "pronta" — os testes sobrescrevem só o campo que importa. */
@@ -360,5 +365,61 @@ describe('formatDatePtBr', () => {
   it('vazio vira travessão; string não parseável é devolvida como está', () => {
     expect(formatDatePtBr('')).toBe('—');
     expect(formatDatePtBr('não-é-data')).toBe('não-é-data');
+  });
+});
+
+describe('installmentInfo', () => {
+  it('lê installment_number/installment_total quando presentes', () => {
+    const staged = {
+      fields: {
+        installment_number: { value: 4, confidence: 1 },
+        installment_total: { value: 6, confidence: 1 },
+      },
+    } as unknown as StagedTransactionResponseDTO;
+
+    expect(installmentInfo(staged)).toEqual({ number: 4, total: 6 });
+  });
+
+  it('devolve null quando os campos não existem', () => {
+    const staged = { fields: {} } as unknown as StagedTransactionResponseDTO;
+    expect(installmentInfo(staged)).toBeNull();
+  });
+});
+
+describe('installmentBadgeText', () => {
+  it('null pra parcela 1 (sem aviso — o rótulo de seção já basta)', () => {
+    expect(installmentBadgeText({ number: 1, total: 6 })).toBeNull();
+  });
+
+  it('aviso pra parcela > 1', () => {
+    expect(installmentBadgeText({ number: 4, total: 6 })).toBe(
+      'Parcela 4 de 6 — parcelas anteriores não importadas, confira antes de lançar',
+    );
+  });
+});
+
+describe('groupRowsByInstallment', () => {
+  it('separa avulsas de parceladas preservando a ordem original dentro de cada grupo', () => {
+    const rows = [
+      { stagedId: 'a', installmentNumber: null },
+      { stagedId: 'b', installmentNumber: 1 },
+      { stagedId: 'c', installmentNumber: null },
+      { stagedId: 'd', installmentNumber: 3 },
+    ];
+
+    const groups = groupRowsByInstallment(rows);
+
+    expect(groups).toHaveLength(2);
+    expect(groups[0].kind).toBe('avulsas');
+    expect(groups[0].rows.map((r) => r.stagedId)).toEqual(['a', 'c']);
+    expect(groups[1].kind).toBe('parceladas');
+    expect(groups[1].rows.map((r) => r.stagedId)).toEqual(['b', 'd']);
+  });
+
+  it('omite um grupo vazio (todas avulsas → só 1 grupo na saída)', () => {
+    const rows = [{ stagedId: 'a', installmentNumber: null }];
+    const groups = groupRowsByInstallment(rows);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].kind).toBe('avulsas');
   });
 });
