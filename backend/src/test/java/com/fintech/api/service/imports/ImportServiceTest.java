@@ -1,6 +1,7 @@
 package com.fintech.api.service.imports;
 
 import com.fintech.api.domain.account.Account;
+import com.fintech.api.domain.account.CreditCardDetails;
 import com.fintech.api.domain.category.Category;
 import com.fintech.api.domain.enums.AccountType;
 import com.fintech.api.domain.enums.ImportBatchStatus;
@@ -26,6 +27,7 @@ import com.fintech.api.exception.DuplicateImportException;
 import com.fintech.api.exception.EntityNotFoundException;
 import com.fintech.api.repository.AccountRepository;
 import com.fintech.api.repository.CategoryRepository;
+import com.fintech.api.repository.CreditCardDetailsRepository;
 import com.fintech.api.repository.ImportBatchRepository;
 import com.fintech.api.repository.TenantRepository;
 import com.fintech.api.repository.UserRepository;
@@ -38,6 +40,8 @@ import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayOutputStream;
@@ -71,6 +75,8 @@ class ImportServiceTest {
     @Autowired CategoryRepository categoryRepository;
     @Autowired TransactionService transactionService;
     @Autowired ImportBatchRepository importBatchRepository;
+    @Autowired CreditCardDetailsRepository creditCardDetailsRepository;
+    @Autowired JdbcTemplate jdbc;
 
     private Tenant persistTenant(String name) {
         Tenant t = new Tenant();
@@ -88,6 +94,24 @@ class ImportServiceTest {
                 .tenant(tenant)
                 .createdBy(user)
                 .build());
+    }
+
+    private Account persistCreditCardAccount(Tenant tenant, User user) {
+        Account account = accountRepository.save(Account.builder()
+                .name("Cartão Itaú")
+                .type(AccountType.CREDIT_CARD)
+                .countInLiquidBalance(false)
+                .countInNetWorth(true)
+                .active(true)
+                .tenant(tenant)
+                .createdBy(user)
+                .build());
+        creditCardDetailsRepository.save(CreditCardDetails.builder()
+                .account(account)
+                .closingDay(5)
+                .dueDay(15)
+                .build());
+        return account;
     }
 
     private Category persistCategory(Tenant tenant) {
@@ -156,6 +180,34 @@ class ImportServiceTest {
                         "description", fieldValue("ESTORNO LOJA", "0.90")),
                 null, null,
                 new BigDecimal("0.95"),
+                null, null);
+    }
+
+    /** Parcela 1 de 3, alta confiança — deve virar InstallmentGroup completo no commit. */
+    private NormalizedTransactionDTO primeiraParcelaDeTres() {
+        return new NormalizedTransactionDTO(
+                null,
+                Map.of("amount", fieldValue(100.00, "1.0"),
+                        "transaction_date", fieldValue("2026-06-10", "1.0"),
+                        "description", fieldValue("LOJA PARCELADA", "0.9"),
+                        "installment_number", fieldValue(1, "1.0"),
+                        "installment_total", fieldValue(3, "1.0")),
+                null, null,
+                new BigDecimal("0.98"),
+                null, null);
+    }
+
+    /** Parcela 3 de 3 — NÃO é a primeira, deve comitar como avulsa (comportamento inalterado). */
+    private NormalizedTransactionDTO parcelaNaoInicial() {
+        return new NormalizedTransactionDTO(
+                null,
+                Map.of("amount", fieldValue(50.00, "1.0"),
+                        "transaction_date", fieldValue("2026-06-10", "1.0"),
+                        "description", fieldValue("OUTRA LOJA", "0.9"),
+                        "installment_number", fieldValue(3, "1.0"),
+                        "installment_total", fieldValue(3, "1.0")),
+                null, null,
+                new BigDecimal("0.98"),
                 null, null);
     }
 
@@ -312,6 +364,93 @@ class ImportServiceTest {
         TransactionResponseDTO tx = transactionService.findById(afterStaged.promotedTransactionId(), user);
         assertThat(tx.type()).isEqualTo(TransactionType.INCOME);
         assertThat(tx.amount()).isEqualByComparingTo("500.00");
+    }
+
+    /**
+     * Limpeza manual (padrão de {@code InvoiceServicePaymentConcurrencyTest}): remove tudo que
+     * pertence ao tenant, na ordem inversa das FKs.
+     */
+    private void cleanupTenant(UUID tenantId) {
+        if (tenantId == null) return;
+        jdbc.update("DELETE FROM staged_transactions WHERE tenant_id = ?", tenantId);
+        jdbc.update("DELETE FROM import_batches WHERE tenant_id = ?", tenantId);
+        jdbc.update("DELETE FROM transactions WHERE tenant_id = ?", tenantId);
+        jdbc.update("DELETE FROM installment_groups WHERE tenant_id = ?", tenantId);
+        jdbc.update("DELETE FROM invoices WHERE tenant_id = ?", tenantId);
+        jdbc.update("DELETE FROM credit_card_details WHERE account_id IN (SELECT id FROM accounts WHERE tenant_id = ?)", tenantId);
+        jdbc.update("DELETE FROM accounts WHERE tenant_id = ?", tenantId);
+        jdbc.update("DELETE FROM users WHERE tenant_id = ?", tenantId);
+        jdbc.update("DELETE FROM tenants WHERE id = ?", tenantId);
+    }
+
+    // As duas exceções abaixo NÃO usam o rollback padrão da classe (@Transactional): a criação
+    // da fatura de cartão (InvoiceService.createNewInvoice) roda em @Transactional(REQUIRES_NEW)
+    // — suspende a transação de teste (ainda não commitada) e abre outra conexão, que não enxerga
+    // o CreditCardDetails recém-persistido (isolamento entre transações, mesmo caso documentado em
+    // InvoiceServicePaymentConcurrencyTest). Por isso: NOT_SUPPORTED (grava de verdade no Postgres
+    // dev) + limpeza manual no finally.
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void commitDaParcela1CriaInstallmentGroupCompleto() {
+        Tenant tenant = persistTenant("Tenant Parcelamento");
+        try {
+            User user = persistUser(tenant, "parcela1@import.test");
+            Account account = persistCreditCardAccount(tenant, user);
+
+            ImportBatchResponseDTO batch = importService.createBatch(batchOf(primeiraParcelaDeTres()), user);
+            UUID stagedId = importService.listStaged(batch.id(), user).get(0).id();
+
+            ImportCommitRequestDTO req = new ImportCommitRequestDTO(
+                    List.of(new StagedCommitItemDTO(stagedId, account.getId(), null)));
+            importService.commit(batch.id(), req, user);
+
+            StagedTransactionResponseDTO afterStaged = importService.listStaged(batch.id(), user).get(0);
+            TransactionResponseDTO primeira = transactionService.findById(afterStaged.promotedTransactionId(), user);
+
+            // amount = 100.00 (parcela) × 3 = 300.00 dividido de volta em 3 pelo TransactionService —
+            // cada parcela 100.00 exato (sem resíduo neste caso).
+            assertThat(primeira.amount()).isEqualByComparingTo("100.00");
+            assertThat(primeira.installmentNumber()).isEqualTo(1);
+            assertThat(primeira.totalInstallments()).isEqualTo(3);
+
+            // As outras 2 parcelas do grupo existem no sistema, mesmo sem staged própria — prova
+            // que o InstallmentGroup completo foi criado, não só a transação da parcela 1.
+            // Assinatura real: findAll(User, invoiceId, accountIds, status, type, startDate, endDate).
+            List<TransactionResponseDTO> doGrupo = transactionService.findAll(
+                    user, null, List.of(account.getId()), null, null, null, null);
+            long parcelasDoGrupo = doGrupo.stream()
+                    .filter(t -> "LOJA PARCELADA".equals(t.description()))
+                    .count();
+            assertThat(parcelasDoGrupo).isEqualTo(3);
+        } finally {
+            cleanupTenant(tenant.getId());
+        }
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void commitDeParcelaNaoInicialComitaComoAvulsa() {
+        Tenant tenant = persistTenant("Tenant Parcela Avulsa");
+        try {
+            User user = persistUser(tenant, "parcelanaoinicial@import.test");
+            Account account = persistCreditCardAccount(tenant, user);
+
+            ImportBatchResponseDTO batch = importService.createBatch(batchOf(parcelaNaoInicial()), user);
+            UUID stagedId = importService.listStaged(batch.id(), user).get(0).id();
+
+            ImportCommitRequestDTO req = new ImportCommitRequestDTO(
+                    List.of(new StagedCommitItemDTO(stagedId, account.getId(), null)));
+            importService.commit(batch.id(), req, user);
+
+            StagedTransactionResponseDTO afterStaged = importService.listStaged(batch.id(), user).get(0);
+            TransactionResponseDTO tx = transactionService.findById(afterStaged.promotedTransactionId(), user);
+
+            // Avulsa: valor da parcela tal como veio (50.00), sem multiplicar, sem parcelamento.
+            assertThat(tx.amount()).isEqualByComparingTo("50.00");
+            assertThat(tx.totalInstallments()).isEqualTo(1);
+        } finally {
+            cleanupTenant(tenant.getId());
+        }
     }
 
     @Test

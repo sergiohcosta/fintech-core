@@ -443,9 +443,26 @@ public class ImportService {
                 description = "Importado de comprovante";
             }
 
+            // Parcela 1 de um parcelamento reconhecido (hoje só o ItauFaturaTemplate preenche
+            // esses campos): reusa o MESMO caminho de criação parcelada do lançamento manual —
+            // o valor aproximado (parcela × N) é dividido de volta pela mesma regra de resíduo,
+            // então a soma bate. Parcela > 1 sem grupo correspondente no sistema seria
+            // reconciliação de verdade (fora de escopo — spec import-itau-parcelamento §7); cai
+            // no caminho avulso de sempre.
+            Integer installmentNumber = fieldValue(staged, "installment_number", this::toInteger);
+            Integer installmentTotal = fieldValue(staged, "installment_total", this::toInteger);
+            BigDecimal requestAmount = amount;
+            Integer totalInstallments = null;
+            if (installmentNumber != null && installmentNumber == 1
+                    && installmentTotal != null && installmentTotal > 1) {
+                requestAmount = amount.multiply(BigDecimal.valueOf(installmentTotal));
+                totalInstallments = installmentTotal;
+            }
+
             // status = null → create() aplica o default (PENDING), mesma semântica de um lançamento manual.
             TransactionRequestDTO dto = new TransactionRequestDTO(
-                    description, amount, date, type, (TransactionStatus) null, null, item.categoryId(), item.accountId());
+                    description, requestAmount, date, type, (TransactionStatus) null, totalInstallments,
+                    item.categoryId(), item.accountId());
             List<TransactionResponseDTO> created = transactionService.create(dto, user);
             TransactionResponseDTO tx = created.get(0);
 
@@ -566,5 +583,10 @@ public class ImportService {
 
     private String toStr(Object v) {
         return v == null ? null : v.toString();
+    }
+
+    private Integer toInteger(Object v) {
+        BigDecimal b = toBigDecimal(v);
+        return b == null ? null : b.intValue();
     }
 }
