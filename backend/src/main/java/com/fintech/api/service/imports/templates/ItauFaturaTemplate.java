@@ -52,7 +52,7 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
     private static final Pattern LINE_START_DATE = Pattern.compile("^(\\d{2})/(\\d{2})\\s+(.*)$");
     private static final Pattern TRAILING_AMOUNT =
             Pattern.compile("(-?)\\s*(\\d{1,3}(?:\\.\\d{3})*,\\d{2})\\s*$");
-    private static final Pattern TRAILING_INSTALLMENT_MARKER = Pattern.compile("\\d{2}/\\d{2}\\s*$");
+    private static final Pattern TRAILING_INSTALLMENT_MARKER = Pattern.compile("(\\d{2})/(\\d{2})\\s*$");
 
     // Gap real entre as duas colunas de lançamentos da fatura, medido por coordenada X
     // (TextPosition) contra o PDF real que motivou este fix — página A4 (595.28×841.89pt).
@@ -187,8 +187,20 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
 
         // Marcador de parcela (ex. "04/06") pode vir colado ao nome do estabelecimento, sem
         // espaço ("Foco Aluguel de Ca04/06") — removido da descrição, não é uma segunda data.
+        // Capturado ANTES de remover — usado pelo ImportService.commit() pra reconhecer a
+        // parcela 1 e criar o parcelamento completo (spec: import-itau-parcelamento).
         String antesDoValor = resto.substring(0, amountMatcher.start()).trim();
-        String descricao = TRAILING_INSTALLMENT_MARKER.matcher(antesDoValor).replaceFirst("").trim();
+        Matcher installmentMatcher = TRAILING_INSTALLMENT_MARKER.matcher(antesDoValor);
+        Integer installmentNumber = null;
+        Integer installmentTotal = null;
+        String descricao;
+        if (installmentMatcher.find()) {
+            installmentNumber = Integer.parseInt(installmentMatcher.group(1));
+            installmentTotal = Integer.parseInt(installmentMatcher.group(2));
+            descricao = antesDoValor.substring(0, installmentMatcher.start()).trim();
+        } else {
+            descricao = antesDoValor;
+        }
         if (descricao.isEmpty()) {
             return null;
         }
@@ -198,7 +210,7 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
         // é 28/11/2024).
         int ano = mes > mesVencimento ? anoVencimento - 1 : anoVencimento;
         LocalDate data = LocalDate.of(ano, mes, dia);
-        return new TransacaoItau(data, descricao, valor);
+        return new TransacaoItau(data, descricao, valor, installmentNumber, installmentTotal);
     }
 
     private BigDecimal parseValorBr(String raw) {
@@ -215,9 +227,18 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
         fields.put("direction",
                 new StagedFieldValueDTO(t.valor().signum() < 0 ? "credit" : "debit", BigDecimal.ONE));
         fields.put("description", new StagedFieldValueDTO(t.descricao(), new BigDecimal("0.9")));
+        // Metadado de parcela — só presente quando a linha trazia o marcador "NN/MM". Confiança
+        // 1.0: veio de um padrão regex casado, não de inferência. O ImportService.commit() usa
+        // isso pra decidir se a parcela 1 vira um InstallmentGroup completo.
+        if (t.installmentNumber() != null) {
+            fields.put("installment_number", new StagedFieldValueDTO(t.installmentNumber(), BigDecimal.ONE));
+            fields.put("installment_total", new StagedFieldValueDTO(t.installmentTotal(), BigDecimal.ONE));
+        }
         BigDecimal overallConfidence = fields.get("amount").confidence().min(fields.get("transaction_date").confidence());
         return new NormalizedTransactionDTO(null, fields, null, null, overallConfidence, null, null);
     }
 
-    private record TransacaoItau(LocalDate data, String descricao, BigDecimal valor) {}
+    private record TransacaoItau(
+            LocalDate data, String descricao, BigDecimal valor,
+            Integer installmentNumber, Integer installmentTotal) {}
 }

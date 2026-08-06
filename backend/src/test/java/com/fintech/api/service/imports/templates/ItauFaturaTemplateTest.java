@@ -60,6 +60,17 @@ class ItauFaturaTemplateTest {
     }
 
     /**
+     * Variante com varargs: converte Strings em listas para simplicidade em testes que
+     * usam poucas linhas. Strings vazias viram listas vazias. O header "Lançamentos: compras e saques"
+     * é adicionado automaticamente antes de cada linha para permitir ao parser localizar o bloco.
+     */
+    private static byte[] pdfComDuasColunas(String esquerda, String direita) {
+        List<String> linhasEsquerda = esquerda.isEmpty() ? List.of() : List.of("Lançamentos: compras e saques", esquerda);
+        List<String> linhasDireita = direita.isEmpty() ? List.of() : List.of("Lançamentos: compras e saques", direita);
+        return pdfComDuasColunas(linhasEsquerda, linhasDireita);
+    }
+
+    /**
      * Variante multi-página: uma entrada por página em {@code paginasEsquerda}/
      * {@code paginasDireita} (mesmo índice = mesma página). Usada para o teste de
      * regressão do bug de duplicação — {@code addRegion} chamado dentro do loop de
@@ -335,5 +346,39 @@ class ItauFaturaTemplateTest {
                 .findFirst().orElseThrow();
         assertThat((BigDecimal) segunda.fields().get("amount").value())
                 .isEqualByComparingTo(new BigDecimal("36.00"));
+    }
+
+    @Test
+    void parseCapturaNumeroETotalDeParcelaQuandoLinhaTemMarcador() {
+        byte[] pdfBytes = pdfComDuasColunas("28/11 Foco Aluguel de Ca04/06 112,67", "");
+        String texto = CABECALHO_VENCIMENTO
+                + "Lançamentos: compras e saques\n"
+                + "28/11 Foco Aluguel de Ca04/06 112,67\n"
+                + "Limites de crédito\n";
+
+        List<NormalizedTransactionDTO> transacoes = template.parse(texto, pdfBytes);
+
+        assertThat(transacoes).hasSize(1);
+        NormalizedTransactionDTO tx = transacoes.get(0);
+        assertThat(tx.fields().get("installment_number").value()).isEqualTo(4);
+        assertThat(tx.fields().get("installment_total").value()).isEqualTo(6);
+        assertThat(tx.fields().get("installment_number").confidence()).isEqualByComparingTo("1.0");
+        // Descrição continua limpa — o marcador não sobra nela (comportamento já existente).
+        assertThat(tx.fields().get("description").value()).isEqualTo("Foco Aluguel de Ca");
+    }
+
+    @Test
+    void parseNaoGravaCamposDeParcelaQuandoLinhaNaoTemMarcador() {
+        byte[] pdfBytes = pdfComDuasColunas("03/02 SUBWAY FAZENDINHA 49,00", "");
+        String texto = CABECALHO_VENCIMENTO
+                + "Lançamentos: compras e saques\n"
+                + "03/02 SUBWAY FAZENDINHA 49,00\n"
+                + "Limites de crédito\n";
+
+        List<NormalizedTransactionDTO> transacoes = template.parse(texto, pdfBytes);
+
+        assertThat(transacoes).hasSize(1);
+        assertThat(transacoes.get(0).fields()).doesNotContainKey("installment_number");
+        assertThat(transacoes.get(0).fields()).doesNotContainKey("installment_total");
     }
 }
