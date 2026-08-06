@@ -453,8 +453,11 @@ public class ImportService {
             Integer installmentTotal = fieldValue(staged, "installment_total", this::toInteger);
             BigDecimal requestAmount = amount;
             Integer totalInstallments = null;
+            // Teto de sanidade: nenhuma fatura real parcela em mais de 36x. Sem ele, um falso
+            // positivo do marcador de parcela (ex. um código de produto que termina em "01/87")
+            // multiplicaria o valor por 87 e criaria 87 transações/faturas silenciosamente.
             if (installmentNumber != null && installmentNumber == 1
-                    && installmentTotal != null && installmentTotal > 1) {
+                    && installmentTotal != null && installmentTotal > 1 && installmentTotal <= 36) {
                 requestAmount = amount.multiply(BigDecimal.valueOf(installmentTotal));
                 totalInstallments = installmentTotal;
             }
