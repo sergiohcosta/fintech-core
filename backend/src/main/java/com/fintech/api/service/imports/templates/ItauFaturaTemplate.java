@@ -78,29 +78,17 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
 
     // Massa mínima do 2º cluster para a página ser considerada de duas colunas. Medido: limiar
     // 1, 2, 3 e 5 produzem resultado IDÊNTICO nas 45 faturas reais — coluna de verdade tem massa
-    // 15–36, nunca fica perto do limiar. Fica no valor mais BAIXO porque é o único que cobre a
-    // coluna direita esparsa (última página com 1–2 lançamentos); o risco oposto — uma data
-    // solta virando "coluna" e deslocando o corte — é barrado por splitAtravessaLancamento(),
-    // não por este limiar. Que o guard é mesmo quem sustenta isso está provado por teste:
-    // parseNaoPerdeColunaUnicaQuandoHaDataSoltaADireita devolve 0 transações (página inteira
-    // perdida, em silêncio) quando o guard é desativado, e 3 com ele ativo.
+    // 15–36, nunca fica perto do limiar. Fica no mínimo porque é o único valor que cobre a
+    // coluna direita esparsa (última página com 1–2 lançamentos). O risco oposto — uma data
+    // solta virando "coluna" — não é barrado por limiar de massa nenhum, e sim pela checagem de
+    // faixa vazia em fimDoConteudoAEsquerda(): se o conteúdo da esquerda alcança a suposta
+    // coluna direita, a página vira coluna única em vez de ser cortada ao meio.
     private static final int MIN_CLUSTER_MASS = 1;
-
-    // Recuo do corte em relação ao início da coluna direita. A folga real entre o fim do
-    // conteúdo da coluna esquerda e o início da direita foi de 20,9pt a 29,2pt em 121 páginas
-    // medidas — 10pt fica dentro dessa folga com margem, em todos os casos observados.
-    private static final float SPLIT_MARGIN = 10f;
 
     // Distância mínima entre os dois clusters para serem colunas de verdade, e não uma coluna
     // real mais um punhado de datas dispersas. Medido: as duas colunas ficam a 215,6–218,3pt
     // uma da outra em todas as 121 páginas do levantamento. O limiar é menos da metade disso.
-    // NÃO garante, sozinho, que o corte não atravesse conteúdo — quem garante isso é
-    // splitAtravessaLancamento(), verificando o texto de verdade da página.
     private static final float MIN_COLUMN_SEPARATION = 100f;
-
-    // Menos âncoras que isto na página inteira: não dá nem pra formar dois clusters, então não
-    // há duas colunas a separar (capa, resumo, página de encargos).
-    private static final int MIN_ANCHORS = 2 * MIN_CLUSTER_MASS;
 
     @Override
     public boolean matches(String fullText) {
@@ -179,10 +167,6 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
         float pageWidth = page.getMediaBox().getWidth();
         Map<Integer, List<Token>> tokensByRow = collectTokensByRow(document, pageNumberOneBased);
         List<Float> anchors = dateAnchors(tokensByRow);
-        if (anchors.size() < MIN_ANCHORS) {
-            return pageWidth;
-        }
-
         List<float[]> clusters = clusterByProximity(anchors);
         // Por MASSA, não por posição: há ruído legítimo à DIREITA da coluna direita (datas na
         // seção de limites de crédito), que venceria um critério de "cluster mais à direita".
@@ -197,45 +181,55 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
             return pageWidth;
         }
 
-        float candidate = rightColumnX - SPLIT_MARGIN;
-        if (splitAtravessaLancamento(tokensByRow, candidate)) {
-            // Rede de segurança final, verificada contra o texto REAL da página: se o corte
-            // partiria alguma linha de lançamento ao meio, não cortar é estritamente melhor.
-            // Sem corte, o pior caso é uma página de coluna dupla vir fundida (defeito
-            // conhecido, visível); com corte errado, cada linha vira metade-data e
-            // metade-valor e a página inteira desaparece da extração, em silêncio.
-            log.warn("ItauFaturaTemplate: corte candidato ({}pt) atravessaria uma linha de "
-                    + "lançamento na página {} — página tratada como coluna única.",
-                    candidate, pageNumberOneBased);
+        // Onde o conteúdo da coluna esquerda REALMENTE termina. Não basta recuar uma margem
+        // fixa do início da coluna direita: se as duas "colunas" na verdade se sobrepõem, o
+        // recuo cai no meio de uma linha de lançamento e a parte em metade-data e metade-valor.
+        float leftContentEnd = fimDoConteudoAEsquerda(tokensByRow, rightColumnX);
+        if (leftContentEnd >= rightColumnX) {
+            // O conteúdo da esquerda invade a faixa da suposta coluna direita — não são duas
+            // colunas, é uma coluna só mais alguma data dispersa. Qualquer corte aqui partiria
+            // linhas ao meio e a página inteira sumiria da extração, em silêncio.
+            log.warn("ItauFaturaTemplate: conteúdo à esquerda termina em {}pt, além do início da "
+                    + "suposta coluna direita ({}pt) na página {} — tratada como coluna única.",
+                    leftContentEnd, rightColumnX, pageNumberOneBased);
             return pageWidth;
         }
-        return candidate;
+        // Meio da faixa vertical comprovadamente vazia entre as duas colunas.
+        return (leftContentEnd + rightColumnX) / 2f;
     }
 
     /**
-     * {@code true} se o corte cairia DENTRO do conteúdo de alguma linha de lançamento — isto é,
-     * se alguma linha que começa com data à esquerda do corte se estende para além dele.
+     * X em que termina o conteúdo das LINHAS DE LANÇAMENTO à esquerda de {@code rightColumnX}.
      *
      * <p>Só linhas de lançamento contam: rodapé, endereço e cabeçalho atravessam a calha com
-     * frequência em página real e não são conteúdo que se possa partir. Nas 121 páginas
-     * medidas, a linha da coluna esquerda sempre termina 20,9pt ou mais antes do início da
-     * coluna direita, então este guard nunca dispara no layout conhecido — ele existe para o
-     * layout que ainda não vimos.
+     * frequência em página real e não são conteúdo que se possa partir — considerá-los faria a
+     * página degradar por causa de um texto que ninguém precisa preservar intacto.
+     *
+     * <p>Devolve {@code 0} quando não há nenhuma linha de lançamento à esquerda (o corte então
+     * fica no meio do caminho até a coluna direita, sem nada a preservar).
      */
-    private boolean splitAtravessaLancamento(Map<Integer, List<Token>> tokensByRow, float split) {
+    private float fimDoConteudoAEsquerda(Map<Integer, List<Token>> tokensByRow, float rightColumnX) {
+        // `rightColumnX` é o CENTROIDE do cluster, uma média — cerca de metade dos tokens que
+        // iniciam a coluna direita caem alguns centésimos ABAIXO dele. Comparar direto com o
+        // centroide classificaria esses tokens como "conteúdo da esquerda" e o fim da coluna
+        // esquerda saltaria para o fim da linha da DIREITA, disparando o guard em toda fatura
+        // real. Descontar a tolerância de cluster resolve pela mesma régua que formou o cluster.
+        float limiteEsquerda = rightColumnX - CLUSTER_TOLERANCE;
+        float leftEnd = 0f;
         for (List<Token> row : tokensByRow.values()) {
             boolean lancamentoAEsquerda = row.stream()
-                    .anyMatch(t -> t.xStart() < split && DATE_TOKEN_PREFIX.matcher(t.text()).find());
+                    .anyMatch(t -> t.xStart() < limiteEsquerda
+                            && DATE_TOKEN_PREFIX.matcher(t.text()).find());
             if (!lancamentoAEsquerda) {
                 continue;
             }
             for (Token t : row) {
-                if (t.xStart() < split && t.xEnd() > split) {
-                    return true;
+                if (t.xStart() < limiteEsquerda) {
+                    leftEnd = Math.max(leftEnd, t.xEnd());
                 }
             }
         }
-        return false;
+        return leftEnd;
     }
 
     /** Um pedaço de texto posicionado, como o PDFBox o entrega. */
