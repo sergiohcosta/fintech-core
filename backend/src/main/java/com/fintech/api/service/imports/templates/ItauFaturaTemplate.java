@@ -155,18 +155,19 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
         }
         extents.sort(Comparator.comparingDouble(e -> e[0]));
 
+        float cursor = extents.get(0)[1];  // Inicializa com o fim do primeiro extent, não 0 (evita margem esquerda)
         float bestGapStart = -1f;
         float bestGapSize = 0f;
-        // Procura o maior vão entre elementos de texto consecutivos — não conta o vão
-        // anterior ao primeiro texto (margem esquerda), apenas gaps que SEPARAM colunas.
         for (int i = 1; i < extents.size(); i++) {
-            float prevEnd = extents.get(i - 1)[1];
-            float currStart = extents.get(i)[0];
-            float gap = currStart - prevEnd;
-            if (gap > 0 && gap > bestGapSize) {
-                bestGapSize = gap;
-                bestGapStart = prevEnd;
+            float[] extent = extents.get(i);
+            if (extent[0] > cursor) {  // Só há vão se o início deste extent for APÓS o alcance máximo visto até agora
+                float gap = extent[0] - cursor;
+                if (gap > bestGapSize) {
+                    bestGapSize = gap;
+                    bestGapStart = cursor;
+                }
             }
+            cursor = Math.max(cursor, extent[1]);  // Atualiza cursor para o MAIOR fim visto (running-max)
         }
 
         if (bestGapSize < MIN_GAP_WIDTH) {

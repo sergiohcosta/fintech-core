@@ -469,12 +469,12 @@ class ItauFaturaTemplateTest {
     void parseFuncionaComVaoEmPosicaoBemDiferenteDaCalibracaoOriginal() {
         // Prova que não há mais dependência de nenhuma constante fixa: vão bem mais à
         // esquerda do que qualquer valor já usado neste arquivo (a calibração original era
-        // 365f; o bug real caiu em ~351-358; aqui o vão fica em ~150 — posição arbitrária,
+        // 365f; o bug real caiu em ~351-358; aqui o vão fica em ~200 — posição arbitrária,
         // só pra provar generalização).
         byte[] pdfBytes = pdfComDuasColunas(
                 List.of("Lançamentos: compras e saques", "28/11 Foco Aluguel de Ca04/06 112,67"),
                 List.of("Lançamentos: compras e saques", "07/02 BeneficiarioTeste 36,00"),
-                50f, 150f);
+                50f, 250f);
         String fullTextFake = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques";
 
         List<NormalizedTransactionDTO> resultado = template.parse(fullTextFake, pdfBytes);
@@ -483,5 +483,34 @@ class ItauFaturaTemplateTest {
         assertThat(resultado)
                 .extracting(t -> t.fields().get("amount").value())
                 .containsExactlyInAnyOrder(new BigDecimal("112.67"), new BigDecimal("36.00"));
+    }
+
+    @Test
+    void parseNaoCortaDentroDeTextoQuandoLinhaLargaVemAntesDeLinhaEstreita() {
+        // Regressão da mudança do algoritmo para running-max: uma linha larga (descrição
+        // longa) seguida por uma linha estreita (descrição curta) na mesma coluna, antes da
+        // transição para a coluna direita. Sem running-max, o cursor usaria o maxX da linha
+        // estreita (não a larga), calcularia um vão falso e retornaria split dentro do
+        // texto real da linha larga (bug de corte reintroduzido). Running-max garante que o
+        // cursor rastreia o MÁXIMO alcance visto até ali — a split fica DEPOIS de qualquer
+        // texto já processado.
+        byte[] pdfBytes = pdfComDuasColunas(
+                List.of("Lançamentos: compras e saques",
+                        "28/11 Uma Descricao Bem Longa De Compra Parcelada 999,99",
+                        "29/11 Curta 1,00"),
+                List.of("Lançamentos: compras e saques", "07/02 BeneficiarioTeste 36,00"),
+                50f, 400f);
+        String fullTextFake = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques";
+
+        List<NormalizedTransactionDTO> resultado = template.parse(fullTextFake, pdfBytes);
+
+        // Com o running-max correto, todas as três transações são reconhecidas
+        assertThat(resultado).hasSize(3);
+        assertThat(resultado)
+                .extracting(t -> t.fields().get("amount").value())
+                .containsExactlyInAnyOrder(
+                        new BigDecimal("999.99"),  // Linha larga da esquerda
+                        new BigDecimal("1.00"),    // Linha estreita da esquerda
+                        new BigDecimal("36.00"));  // Coluna direita
     }
 }
