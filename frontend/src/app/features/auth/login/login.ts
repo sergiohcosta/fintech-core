@@ -8,7 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth';
 import { environment } from '../../../../environments/environment';
-import { formatVersionLabel, readAppEnv } from '../../../core/app-env';
+import { formatVersionLabel, formatVersionTooltip, readAppEnv } from '../../../core/app-env';
 
 @Component({
   selector: 'app-login',
@@ -41,7 +41,10 @@ export class LoginComponent implements OnInit {
   errorMessage = signal('');
 
   // Versão/ambiente exibidos de forma evidente na tela de login.
-  readonly versionLabel = formatVersionLabel(readAppEnv());
+  private readonly appEnv = readAppEnv();
+  readonly versionLabel = formatVersionLabel(this.appEnv);
+  // Data/hora do commit só no tooltip — mesmo padrão do rodapé global.
+  readonly versionTooltip = formatVersionTooltip(this.appEnv);
 
   form = this.fb.group({
     email: [environment.devCredentials?.email ?? '', [Validators.required, Validators.email]],

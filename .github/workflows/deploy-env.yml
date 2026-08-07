@@ -61,22 +61,30 @@ jobs:
             $REGISTRY/fintech-core-frontend=$REGISTRY/fintech-core-frontend:$SHA_TAG
           kubectl apply -k .
 
-          # 1b) Injeta a marca d'água do frontend (ambiente + versão SemVer).
-          # O manifesto do frontend NÃO declara `env:` de propósito → `kubectl
-          # apply` não gerencia a lista de env, então este `set env` sobrevive
+          # 1b) Injeta a marca d'água do frontend (ambiente + versão SemVer + data/hora
+          # do commit). O manifesto do frontend NÃO declara `env:` de propósito →
+          # `kubectl apply` não gerencia a lista de env, então este `set env` sobrevive
           # entre applies. namespace == nome do ambiente (dev/hmg/prod).
           # SemVer só existe quando alguma tag aponta pro commit desta run
           # (ADR-005: hmg/prod carregam vX.Y.Z quando SHA rodando == commit taggado);
           # senão fica vazio e o frontend exibe só o SHA. Degrada se faltar jq.
           APP_VERSION=""
+          APP_COMMIT_TIME=""
           if command -v jq >/dev/null 2>&1; then
             APP_VERSION=$(curl -fsS -H "Authorization: Bearer ${GITHUB_TOKEN}" \
               "https://api.github.com/repos/${GH_REPO}/tags?per_page=100" \
               | jq -r --arg sha "${GH_SHA}" 'map(select(.commit.sha == $sha)) | .[0].name // ""')
+            # Data do commit (não do deploy) — estável entre redeploys do mesmo SHA,
+            # ao contrário de "agora" no runner. committer.date (não author.date):
+            # é quando o commit entrou na branch, não quando foi originalmente escrito
+            # (relevante pros commits-snapshot de sync develop→main desta sessão).
+            APP_COMMIT_TIME=$(curl -fsS -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+              "https://api.github.com/repos/${GH_REPO}/commits/${GH_SHA}" \
+              | jq -r '.commit.committer.date // ""')
           fi
-          echo "Marca d'água: APP_ENVIRONMENT=$NS APP_VERSION=${APP_VERSION:-<none>}"
+          echo "Marca d'água: APP_ENVIRONMENT=$NS APP_VERSION=${APP_VERSION:-<none>} APP_COMMIT_TIME=${APP_COMMIT_TIME:-<none>}"
           kubectl set env deployment/fintech-core-frontend -n "$NS" \
-            APP_ENVIRONMENT="$NS" APP_VERSION="$APP_VERSION"
+            APP_ENVIRONMENT="$NS" APP_VERSION="$APP_VERSION" APP_COMMIT_TIME="$APP_COMMIT_TIME"
 
           kubectl rollout restart deployment/fintech-core-backend deployment/fintech-core-frontend -n "$NS"
 
