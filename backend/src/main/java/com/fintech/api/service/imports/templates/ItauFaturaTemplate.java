@@ -8,7 +8,9 @@ import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.pdfbox.text.PDFTextStripperByArea;
+import org.apache.pdfbox.text.TextPosition;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
@@ -17,6 +19,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,7 +30,8 @@ import java.util.regex.Pattern;
  * Template Itaú fatura de cartão — reconhece transações da seção "Lançamentos: compras e
  * saques" (spec: registry de templates, decisões c/e). Datas de lançamento vêm sem ano
  * (DD/MM); o ano é inferido da data de vencimento, que aparece uma vez no documento com ano
- * completo.
+ * completo. Colunas de lançamento são separadas por detecção dinâmica de vão horizontal,
+ * por página (spec: fix-itau-split-coluna-dinamico) — não há constante fixa de corte.
  */
 @Slf4j
 @Component
@@ -54,11 +58,11 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
             Pattern.compile("(-?)\\s*(\\d{1,3}(?:\\.\\d{3})*,\\d{2})\\s*$");
     private static final Pattern TRAILING_INSTALLMENT_MARKER = Pattern.compile("(\\d{2})/(\\d{2})\\s*$");
 
-    // Gap real entre as duas colunas de lançamentos da fatura, medido por coordenada X
-    // (TextPosition) contra o PDF real que motivou este fix — página A4 (595.28×841.89pt).
-    // Fixo por ora (spec: decisão d) — não há segundo exemplar de fatura pra validar se
-    // varia entre documentos.
-    private static final float COLUMN_SPLIT_X = 365f;
+    // Vão mínimo (pt) pra considerar uma quebra de coluna real, não espaço normal entre
+    // palavras/blocos de texto — folga generosa: o vão real medido no documento que
+    // motivou este fix era ~77pt; espaçamento intra-linha em fonte 10pt não passa de
+    // poucos pontos. Abaixo disso, a página é tratada como coluna única (spec §4.1).
+    private static final float MIN_GAP_WIDTH = 20f;
 
     @Override
     public boolean matches(String fullText) {
@@ -87,16 +91,19 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
         // valor de transações DIFERENTES. Reabrir o documento e extrair por REGIÃO
         // RETANGULAR (posição X) separa as colunas antes de qualquer parsing de linha.
         try (PDDocument document = Loader.loadPDF(content)) {
-            PDFTextStripperByArea stripper = new PDFTextStripperByArea();
-            stripper.setSortByPosition(true);
-            // A região (coordenada X/Y da coluna) não muda por página — só precisa ser
-            // definida uma vez. Todas as páginas desta fatura compartilham o mesmo tamanho
-            // A4 (confirmado contra o PDF real que motivou este fix).
-            PDRectangle box = document.getPage(0).getMediaBox();
-            stripper.addRegion("esquerda", new Rectangle2D.Float(0, 0, COLUMN_SPLIT_X, box.getHeight()));
-            stripper.addRegion("direita",
-                    new Rectangle2D.Float(COLUMN_SPLIT_X, 0, box.getWidth() - COLUMN_SPLIT_X, box.getHeight()));
+            int pageNumber = 0;
             for (PDPage page : document.getPages()) {
+                pageNumber++;
+                float split = detectColumnSplit(document, page, pageNumber);
+                PDRectangle box = page.getMediaBox();
+                // Instância nova por página — não reusar uma stripper com addRegion fora
+                // do loop de páginas (histórico deste template, PR #213: estado vazando entre
+                // páginas já causou bug de duplicação aqui antes).
+                PDFTextStripperByArea stripper = new PDFTextStripperByArea();
+                stripper.setSortByPosition(true);
+                stripper.addRegion("esquerda", new Rectangle2D.Float(0, 0, split, box.getHeight()));
+                stripper.addRegion("direita",
+                        new Rectangle2D.Float(split, 0, box.getWidth() - split, box.getHeight()));
                 stripper.extractRegions(page);
                 colunaEsquerda.append(stripper.getTextForRegion("esquerda")).append('\n');
                 colunaDireita.append(stripper.getTextForRegion("direita")).append('\n');
@@ -110,6 +117,62 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
         transacoes.addAll(extrairTransacoesDoStream(colunaEsquerda.toString(), mesVencimento, anoVencimento));
         transacoes.addAll(extrairTransacoesDoStream(colunaDireita.toString(), mesVencimento, anoVencimento));
         return transacoes;
+    }
+
+    /**
+     * Acha o corte de coluna da página pelo maior vão horizontal entre trechos de texto
+     * renderizados — substitui a constante fixa antiga (spec: fix-itau-split-coluna-
+     * dinamico). Sem vão significativo (≥ {@link #MIN_GAP_WIDTH}) na página inteira,
+     * devolve a largura da página inteira: a região "direita" fica vazia e a página é
+     * tratada como coluna única (mesmo efeito de uma página de resumo/capa sem
+     * lançamentos, que já não quebra o loop de blocos hoje).
+     */
+    private float detectColumnSplit(PDDocument document, PDPage page, int pageNumberOneBased)
+            throws IOException {
+        List<float[]> extents = new ArrayList<>();
+        PDFTextStripper detector = new PDFTextStripper() {
+            @Override
+            protected void writeString(String text, List<TextPosition> textPositions) {
+                float minX = Float.MAX_VALUE;
+                float maxX = -Float.MAX_VALUE;
+                for (TextPosition tp : textPositions) {
+                    minX = Math.min(minX, tp.getX());
+                    maxX = Math.max(maxX, tp.getX() + tp.getWidth());
+                }
+                if (minX <= maxX) {
+                    extents.add(new float[] {minX, maxX});
+                }
+            }
+        };
+        detector.setSortByPosition(true);
+        detector.setStartPage(pageNumberOneBased);
+        detector.setEndPage(pageNumberOneBased);
+        detector.getText(document);
+
+        float pageWidth = page.getMediaBox().getWidth();
+        if (extents.isEmpty()) {
+            return pageWidth;
+        }
+        extents.sort(Comparator.comparingDouble(e -> e[0]));
+
+        float bestGapStart = -1f;
+        float bestGapSize = 0f;
+        // Procura o maior vão entre elementos de texto consecutivos — não conta o vão
+        // anterior ao primeiro texto (margem esquerda), apenas gaps que SEPARAM colunas.
+        for (int i = 1; i < extents.size(); i++) {
+            float prevEnd = extents.get(i - 1)[1];
+            float currStart = extents.get(i)[0];
+            float gap = currStart - prevEnd;
+            if (gap > 0 && gap > bestGapSize) {
+                bestGapSize = gap;
+                bestGapStart = prevEnd;
+            }
+        }
+
+        if (bestGapSize < MIN_GAP_WIDTH) {
+            return pageWidth;
+        }
+        return bestGapStart + bestGapSize / 2f;
     }
 
     /**
