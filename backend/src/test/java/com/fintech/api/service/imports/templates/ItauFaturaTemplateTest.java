@@ -22,41 +22,14 @@ class ItauFaturaTemplateTest {
 
     /**
      * PDF sintético com DUAS "colunas" de texto — reproduz a fusão real de coluna do Itaú
-     * (spec: fix-templates-pdf-ordem-real, §1.1). Cada linha em {@code linhasEsquerda}/
-     * {@code linhasDireita} vira uma chamada {@code showText} própria, separada por
-     * {@code newLineAtOffset} — PDFBox não quebra linha sozinho dentro de uma única
-     * {@code showText}. Linhas na mesma posição de índice das duas listas caem na MESMA
-     * altura Y — é isso que reproduz a fusão de coluna do PDFBox no teste central deste
-     * arquivo.
+     * (spec: fix-templates-pdf-ordem-real, §1.1). Linhas na mesma posição de índice das duas
+     * listas caem na MESMA altura Y, que é o que reproduz a fusão do PDFBox.
+     *
+     * <p>Escreve palavra a palavra, como todas as fixtures deste arquivo — ver
+     * {@link #escreveLinhasPalavraAPalavra}.
      */
     private static byte[] pdfComDuasColunas(List<String> linhasEsquerda, List<String> linhasDireita) {
-        try (PDDocument document = new PDDocument()) {
-            PDPage page = new PDPage();
-            document.addPage(page);
-            try (PDPageContentStream cs = new PDPageContentStream(document, page)) {
-                cs.beginText();
-                cs.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 10);
-                cs.newLineAtOffset(50, 700);
-                for (String linha : linhasEsquerda) {
-                    cs.showText(linha);
-                    cs.newLineAtOffset(0, -15);
-                }
-                cs.endText();
-                cs.beginText();
-                cs.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 10);
-                cs.newLineAtOffset(400, 700);
-                for (String linha : linhasDireita) {
-                    cs.showText(linha);
-                    cs.newLineAtOffset(0, -15);
-                }
-                cs.endText();
-            }
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            document.save(out);
-            return out.toByteArray();
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+        return pdfComDuasColunas(linhasEsquerda, linhasDireita, 50f, 400f);
     }
 
     /**
@@ -741,6 +714,104 @@ class ItauFaturaTemplateTest {
                 .extracting(t -> t.fields().get("amount").value())
                 .containsExactlyInAnyOrder(
                         new BigDecimal("112.67"), new BigDecimal("50.00"), new BigDecimal("25.00"));
+    }
+
+    /**
+     * Última página típica: coluna esquerda cheia, coluna direita com POUCOS lançamentos, e
+     * datas de ruído ainda mais à direita (seção de limites de crédito). Se a segunda coluna
+     * fosse escolhida por MASSA, o ruído (massa maior que a coluna esparsa) venceria e o corte
+     * cairia depois da coluna direita real, partindo-a ao meio.
+     */
+    private static byte[] pdfColunaDireitaEsparsaComRuidoMaisADireita() throws IOException {
+        try (PDDocument document = new PDDocument()) {
+            PDPage page = new PDPage();
+            document.addPage(page);
+            try (PDPageContentStream cs = new PDPageContentStream(document, page)) {
+                escreveLinhasPalavraAPalavra(cs, List.of(
+                        "Lançamentos: compras e saques",
+                        "28/11 Primeira Esquerda 10,00",
+                        "29/11 Segunda Esquerda 20,00",
+                        "30/11 Terceira Esquerda 30,00",
+                        "01/12 Quarta Esquerda 40,00"), 143f, 700f);
+                // Coluna direita real, esparsa: 2 lançamentos.
+                escreveLinhasPalavraAPalavra(cs, List.of(
+                        "Lançamentos: compras e saques",
+                        "02/12 Primeira Direita 50,00",
+                        "03/12 Segunda Direita 60,00"), 358f, 700f);
+                // Ruído mais à direita, com massa MAIOR que a coluna direita real (3 > 2),
+                // em outra altura — não são lançamentos.
+                escreveLinhasPalavraAPalavra(cs,
+                        List.of("10/12", "11/12", "12/12"), 500f, 300f);
+            }
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            document.save(out);
+            return out.toByteArray();
+        }
+    }
+
+    /**
+     * Coluna única cujos marcadores de parcela estão ALINHADOS em X — formam um cluster com
+     * massa igual à da própria coluna. É o único arranjo que exercita {@link
+     * ItauFaturaTemplate} no ponto do filtro de "início de bloco": sem ele, esse cluster vira
+     * "coluna direita" e o corte cai no meio das linhas. Marcadores em X variável (o que
+     * acontece quando as descrições têm larguras diferentes) NÃO testam nada — viram clusters
+     * de massa 1 e perdem para a coluna real por qualquer critério.
+     */
+    private static byte[] pdfMarcadoresDeParcelaAlinhados() throws IOException {
+        try (PDDocument document = new PDDocument()) {
+            PDPage page = new PDPage();
+            document.addPage(page);
+            try (PDPageContentStream cs = new PDPageContentStream(document, page)) {
+                escreveLinhasPalavraAPalavra(cs, List.of("Lançamentos: compras e saques"), 143f, 700f);
+                // Descrições de MESMA largura → os marcadores caem todos no mesmo X.
+                String[] datas = {"28/11", "29/11", "30/11", "01/12"};
+                String[] valores = {"10,00", "20,00", "30,00", "40,00"};
+                float y = 685f;
+                for (int i = 0; i < datas.length; i++) {
+                    escreveLinhasPalavraAPalavra(cs, List.of(datas[i] + " LojaParceladaAqui"), 143f, y);
+                    // Marcador de parcela colado à descrição, sempre no MESMO X.
+                    escreveLinhasPalavraAPalavra(cs, List.of("0" + (i + 1) + "/06"), 255f, y);
+                    escreveLinhasPalavraAPalavra(cs, List.of(valores[i]), 300f, y);
+                    y -= 15f;
+                }
+            }
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            document.save(out);
+            return out.toByteArray();
+        }
+    }
+
+    @Test
+    void parseNaoTomaMarcadoresDeParcelaAlinhadosComoColuna() throws IOException {
+        // Os 4 marcadores alinhados em X=255 formam um cluster de massa 4 — mesma massa da
+        // coluna real e a 112pt dela, ou seja, passariam por todos os limiares. Só o filtro de
+        // "início de bloco" (MIN_BLOCK_GAP) os descarta, porque estão colados à descrição.
+        byte[] pdfBytes = pdfMarcadoresDeParcelaAlinhados();
+        String fullTextFake = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques";
+
+        List<NormalizedTransactionDTO> resultado = template.parse(fullTextFake, pdfBytes);
+
+        assertThat(resultado).hasSize(4);
+        assertThat(resultado)
+                .extracting(t -> t.fields().get("amount").value())
+                .containsExactlyInAnyOrder(
+                        new BigDecimal("10.00"), new BigDecimal("20.00"),
+                        new BigDecimal("30.00"), new BigDecimal("40.00"));
+    }
+
+    @Test
+    void parseEscolheColunaDireitaRealEmVezDoRuidoMaisMassivoADireita() throws IOException {
+        byte[] pdfBytes = pdfColunaDireitaEsparsaComRuidoMaisADireita();
+        String fullTextFake = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques";
+
+        List<NormalizedTransactionDTO> resultado = template.parse(fullTextFake, pdfBytes);
+
+        assertThat(resultado).hasSize(6);
+        assertThat(resultado)
+                .extracting(t -> t.fields().get("amount").value())
+                .containsExactlyInAnyOrder(
+                        new BigDecimal("10.00"), new BigDecimal("20.00"), new BigDecimal("30.00"),
+                        new BigDecimal("40.00"), new BigDecimal("50.00"), new BigDecimal("60.00"));
     }
 
     @Test

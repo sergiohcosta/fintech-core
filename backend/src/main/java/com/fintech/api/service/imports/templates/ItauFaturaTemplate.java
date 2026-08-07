@@ -168,18 +168,37 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
         Map<Integer, List<Token>> tokensByRow = collectTokensByRow(document, pageNumberOneBased);
         List<Float> anchors = dateAnchors(tokensByRow);
         List<float[]> clusters = clusterByProximity(anchors);
-        // Por MASSA, não por posição: há ruído legítimo à DIREITA da coluna direita (datas na
-        // seção de limites de crédito), que venceria um critério de "cluster mais à direita".
+        if (clusters.size() < 2) {
+            return pageWidth;
+        }
+        // O cluster de MAIOR massa é seguramente uma coluna real (medido: 15–36 lançamentos,
+        // contra 1–3 do ruído). É a âncora a partir da qual a outra coluna é procurada.
         clusters.sort((a, b) -> Float.compare(b[1], a[1]));
-        if (clusters.size() < 2 || clusters.get(1)[1] < MIN_CLUSTER_MASS) {
+        float[] dominante = clusters.get(0);
+
+        // A outra coluna é a candidata MAIS PRÓXIMA da dominante, entre as suficientemente
+        // separadas — não a de maior massa. Numa página em que a coluna direita é esparsa
+        // (última página, 1–2 lançamentos) e há ruído mais à direita (datas na seção de limites
+        // de crédito), o critério de massa escolheria o ruído e o corte cairia depois da coluna
+        // real, partindo-a ao meio. As duas colunas são adjacentes por construção: qualquer
+        // cluster mais à direita que a segunda coluna está fora do bloco de lançamentos.
+        float[] parceira = null;
+        for (int i = 1; i < clusters.size(); i++) {
+            float[] candidata = clusters.get(i);
+            if (candidata[1] < MIN_CLUSTER_MASS
+                    || Math.abs(candidata[0] - dominante[0]) < MIN_COLUMN_SEPARATION) {
+                continue;
+            }
+            if (parceira == null
+                    || Math.abs(candidata[0] - dominante[0]) < Math.abs(parceira[0] - dominante[0])) {
+                parceira = candidata;
+            }
+        }
+        if (parceira == null) {
             return pageWidth;
         }
 
-        float rightColumnX = Math.max(clusters.get(0)[0], clusters.get(1)[0]);
-        float leftColumnX = Math.min(clusters.get(0)[0], clusters.get(1)[0]);
-        if (rightColumnX - leftColumnX < MIN_COLUMN_SEPARATION) {
-            return pageWidth;
-        }
+        float rightColumnX = Math.max(dominante[0], parceira[0]);
 
         // Onde o conteúdo da coluna esquerda REALMENTE termina. Não basta recuar uma margem
         // fixa do início da coluna direita: se as duas "colunas" na verdade se sobrepõem, o
