@@ -486,6 +486,81 @@ class ItauFaturaTemplateTest {
     }
 
     @Test
+    void parseNaoFundeColunasQuandoLinhaAvulsaCruzaOVao() throws IOException {
+        // Regressão do C1 do review final (fix-itau-split-coluna-dinamico): uma única linha
+        // fora das duas colunas de lançamento (rodapé de central de atendimento, endereço,
+        // numeração de página) cujo texto atravessa a faixa X da calha real é o suficiente
+        // pra "fechar" o vão inteiro na página — detectColumnSplit rodava um PDFTextStripper
+        // sobre a página TODA, sem filtrar por seção. Antes deste fix, o fallback devolvia
+        // pageWidth, a região "direita" ficava vazia e as duas colunas eram fundidas no
+        // MESMO stream (data de uma transação com o valor da outra) — exatamente o modo de
+        // falha do PR #213 reaberto por outro caminho. O fix devolve o corte histórico
+        // (365f) como último recurso: aqui isso continua separando as colunas 50/340
+        // corretamente, então o resultado tem que ser 2 transações DISTINTAS e corretas.
+        byte[] pdfBytes = pdfComDuasColunasComLinhaAvulsaNaCalha();
+        String fullTextFake = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques";
+
+        List<NormalizedTransactionDTO> resultado = template.parse(fullTextFake, pdfBytes);
+
+        assertThat(resultado).hasSize(2);
+        NormalizedTransactionDTO primeira = resultado.stream()
+                .filter(t -> "112.67".equals(t.fields().get("amount").value().toString()))
+                .findFirst().orElseThrow();
+        assertThat(primeira.fields().get("description").value()).isEqualTo("Foco Aluguel de Ca");
+        assertThat(primeira.fields().get("transaction_date").value()).isEqualTo("2024-11-28");
+        NormalizedTransactionDTO segunda = resultado.stream()
+                .filter(t -> "36.00".equals(t.fields().get("amount").value().toString()))
+                .findFirst().orElseThrow();
+        assertThat(segunda.fields().get("description").value()).isEqualTo("BeneficiarioTeste");
+        assertThat(segunda.fields().get("transaction_date").value()).isEqualTo("2025-02-07");
+    }
+
+    /**
+     * Duas colunas na mesma posição da fixture padrão deste arquivo (esquerda X=50, direita
+     * X=400 — a mesma calibração do corte histórico {@code FALLBACK_SPLIT_X}) mais UMA linha
+     * de rodapé, fora da área de lançamentos (Y bem abaixo das linhas de transação), cujo
+     * texto começa dentro do vão real entre as colunas e se estende além dele — reproduz a
+     * prova empírica do C1 do review final: uma palavra qualquer cruzando a calha anula a
+     * detecção dinâmica do vão (nenhuma faixa X fica 100% vazia na página inteira). O corte
+     * fixo de fallback (365f) continua separando as colunas corretamente aqui — X=400 > 365 —
+     * é exatamente o cenário em que o corte histórico é um default seguro.
+     */
+    private static byte[] pdfComDuasColunasComLinhaAvulsaNaCalha() throws IOException {
+        try (PDDocument document = new PDDocument()) {
+            PDPage page = new PDPage();
+            document.addPage(page);
+            try (PDPageContentStream cs = new PDPageContentStream(document, page)) {
+                cs.beginText();
+                cs.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 10);
+                cs.newLineAtOffset(50, 700);
+                cs.showText("Lançamentos: compras e saques");
+                cs.newLineAtOffset(0, -15);
+                cs.showText("28/11 Foco Aluguel de Ca04/06 112,67");
+                cs.endText();
+
+                cs.beginText();
+                cs.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 10);
+                cs.newLineAtOffset(400, 700);
+                cs.showText("Lançamentos: compras e saques");
+                cs.newLineAtOffset(0, -15);
+                cs.showText("07/02 BeneficiarioTeste 36,00");
+                cs.endText();
+
+                // Rodapé isolado, em outra altura Y, cruzando a calha entre as duas colunas
+                // (começa antes de 400 e se estende além, fechando o vão real).
+                cs.beginText();
+                cs.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 10);
+                cs.newLineAtOffset(200, 100);
+                cs.showText("Central de atendimento SAC 0800 728 0728");
+                cs.endText();
+            }
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            document.save(out);
+            return out.toByteArray();
+        }
+    }
+
+    @Test
     void parseNaoCortaDentroDeTextoQuandoLinhaLargaVemAntesDeLinhaEstreita() {
         // Regressão da mudança do algoritmo para running-max: uma linha larga (descrição
         // longa) seguida por uma linha estreita (descrição curta) na mesma coluna, antes da

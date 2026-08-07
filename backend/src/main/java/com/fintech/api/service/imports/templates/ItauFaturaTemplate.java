@@ -64,6 +64,16 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
     // poucos pontos. Abaixo disso, a página é tratada como coluna única (spec §4.1).
     private static final float MIN_GAP_WIDTH = 20f;
 
+    // Valor histórico do antigo COLUMN_SPLIT_X (corte fixo, calibrado manualmente contra uma
+    // fatura Itaú real antes deste fix). Usado APENAS como último recurso, quando a detecção
+    // dinâmica da página não encontra nenhum vão confiável — nunca como mecanismo primário
+    // (isso reintroduziria o bug original: 365f sempre, mesmo quando o layout real diverge).
+    // Ver final-review.md (C1): devolver pageWidth nesse caminho funde as duas colunas no
+    // mesmo stream (dado corrompido); devolver este default degrada, na pior hipótese, para
+    // o comportamento antigo conhecido (perde a coluna direita) — pior que sem dado, nunca
+    // pior que dado errado.
+    private static final float FALLBACK_SPLIT_X = 365f;
+
     @Override
     public boolean matches(String fullText) {
         return fullText.contains(CNPJ_ITAU) && fullText.contains(HEADER_LANCAMENTOS);
@@ -121,11 +131,14 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
 
     /**
      * Acha o corte de coluna da página pelo maior vão horizontal entre trechos de texto
-     * renderizados — substitui a constante fixa antiga (spec: fix-itau-split-coluna-
-     * dinamico). Sem vão significativo (≥ {@link #MIN_GAP_WIDTH}) na página inteira,
-     * devolve a largura da página inteira: a região "direita" fica vazia e a página é
-     * tratada como coluna única (mesmo efeito de uma página de resumo/capa sem
-     * lançamentos, que já não quebra o loop de blocos hoje).
+     * renderizados — substitui a constante fixa antiga como MECANISMO PRIMÁRIO (spec:
+     * fix-itau-split-coluna-dinamico). Sem vão significativo (≥ {@link #MIN_GAP_WIDTH}) na
+     * página inteira, devolve {@link #FALLBACK_SPLIT_X} (não a largura da página inteira):
+     * uma única palavra fora das colunas de lançamento (rodapé, endereço, numeração de
+     * página) cai na faixa X da calha com frequência em páginas reais — devolver
+     * {@code pageWidth} nesse caso funde as duas colunas no mesmo stream e produz
+     * transações com data de uma coluna e valor da outra, em silêncio (C1 do review final).
+     * O corte fixo histórico é um default seguro, não a ausência de corte.
      */
     private float detectColumnSplit(PDDocument document, PDPage page, int pageNumberOneBased)
             throws IOException {
@@ -171,7 +184,14 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
         }
 
         if (bestGapSize < MIN_GAP_WIDTH) {
-            return pageWidth;
+            // Nenhum vão confiável nesta página — quase sempre porque uma única palavra fora
+            // das colunas de lançamento (rodapé/endereço/numeração) caiu na faixa X da calha
+            // e "fechou" o vão real (C1 do review final). Cair para pageWidth aqui fundiria
+            // as duas colunas; o corte histórico calibrado é o default seguro.
+            log.warn("ItauFaturaTemplate: detecção dinâmica de coluna não achou vão >= {}pt na "
+                    + "página {} — usando corte histórico ({}pt) como fallback.",
+                    MIN_GAP_WIDTH, pageNumberOneBased, FALLBACK_SPLIT_X);
+            return FALLBACK_SPLIT_X;
         }
         return bestGapStart + bestGapSize / 2f;
     }
