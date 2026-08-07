@@ -78,11 +78,12 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
 
     // Massa mínima do 2º cluster para a página ser considerada de duas colunas. Medido: limiar
     // 1, 2, 3 e 5 produzem resultado IDÊNTICO nas 45 faturas reais — coluna de verdade tem massa
-    // 15–36, então nunca fica perto do limiar. Fica no valor mais BAIXO de propósito: a última
-    // página de uma fatura pode ter uma coluna direita com 1–2 lançamentos, e tratá-la como
-    // coluna única fundiria as duas (dado errado). O risco oposto é inofensivo: se um token
-    // solto virar "coluna", o corte apenas divide uma página de coluna única em duas regiões —
-    // ambas são processadas e concatenadas, então nada se perde.
+    // 15–36, nunca fica perto do limiar. Fica no valor mais BAIXO porque é o único que cobre a
+    // coluna direita esparsa (última página com 1–2 lançamentos); o risco oposto — uma data
+    // solta virando "coluna" e deslocando o corte — é barrado por splitAtravessaLancamento(),
+    // não por este limiar. Que o guard é mesmo quem sustenta isso está provado por teste:
+    // parseNaoPerdeColunaUnicaQuandoHaDataSoltaADireita devolve 0 transações (página inteira
+    // perdida, em silêncio) quando o guard é desativado, e 3 com ele ativo.
     private static final int MIN_CLUSTER_MASS = 1;
 
     // Recuo do corte em relação ao início da coluna direita. A folga real entre o fim do
@@ -92,10 +93,9 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
 
     // Distância mínima entre os dois clusters para serem colunas de verdade, e não uma coluna
     // real mais um punhado de datas dispersas. Medido: as duas colunas ficam a 215,6–218,3pt
-    // uma da outra em todas as 121 páginas do levantamento. O limiar é menos da metade disso —
-    // largo o bastante pra não brigar com variação de layout, apertado o bastante pra rejeitar
-    // ruído próximo. Esse guard é o que impede o corte de cair DENTRO do conteúdo da coluna
-    // esquerda, que seria pior que não cortar (parte a linha de lançamento ao meio).
+    // uma da outra em todas as 121 páginas do levantamento. O limiar é menos da metade disso.
+    // NÃO garante, sozinho, que o corte não atravesse conteúdo — quem garante isso é
+    // splitAtravessaLancamento(), verificando o texto de verdade da página.
     private static final float MIN_COLUMN_SEPARATION = 100f;
 
     // Menos âncoras que isto na página inteira: não dá nem pra formar dois clusters, então não
@@ -177,7 +177,8 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
     private float detectColumnSplit(PDDocument document, PDPage page, int pageNumberOneBased)
             throws IOException {
         float pageWidth = page.getMediaBox().getWidth();
-        List<Float> anchors = collectDateAnchors(document, pageNumberOneBased);
+        Map<Integer, List<Token>> tokensByRow = collectTokensByRow(document, pageNumberOneBased);
+        List<Float> anchors = dateAnchors(tokensByRow);
         if (anchors.size() < MIN_ANCHORS) {
             return pageWidth;
         }
@@ -195,20 +196,55 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
         if (rightColumnX - leftColumnX < MIN_COLUMN_SEPARATION) {
             return pageWidth;
         }
-        return rightColumnX - SPLIT_MARGIN;
+
+        float candidate = rightColumnX - SPLIT_MARGIN;
+        if (splitAtravessaLancamento(tokensByRow, candidate)) {
+            // Rede de segurança final, verificada contra o texto REAL da página: se o corte
+            // partiria alguma linha de lançamento ao meio, não cortar é estritamente melhor.
+            // Sem corte, o pior caso é uma página de coluna dupla vir fundida (defeito
+            // conhecido, visível); com corte errado, cada linha vira metade-data e
+            // metade-valor e a página inteira desaparece da extração, em silêncio.
+            log.warn("ItauFaturaTemplate: corte candidato ({}pt) atravessaria uma linha de "
+                    + "lançamento na página {} — página tratada como coluna única.",
+                    candidate, pageNumberOneBased);
+            return pageWidth;
+        }
+        return candidate;
     }
 
     /**
-     * Posições X dos tokens {@code DD/MM} que INICIAM uma linha de lançamento — primeiro token
-     * da linha, ou precedido por um espaço vazio de pelo menos {@link #MIN_BLOCK_GAP}. O filtro
-     * descarta o marcador de parcela, que tem o mesmo formato mas aparece colado ao meio da
-     * descrição.
+     * {@code true} se o corte cairia DENTRO do conteúdo de alguma linha de lançamento — isto é,
+     * se alguma linha que começa com data à esquerda do corte se estende para além dele.
+     *
+     * <p>Só linhas de lançamento contam: rodapé, endereço e cabeçalho atravessam a calha com
+     * frequência em página real e não são conteúdo que se possa partir. Nas 121 páginas
+     * medidas, a linha da coluna esquerda sempre termina 20,9pt ou mais antes do início da
+     * coluna direita, então este guard nunca dispara no layout conhecido — ele existe para o
+     * layout que ainda não vimos.
      */
-    private List<Float> collectDateAnchors(PDDocument document, int pageNumberOneBased)
+    private boolean splitAtravessaLancamento(Map<Integer, List<Token>> tokensByRow, float split) {
+        for (List<Token> row : tokensByRow.values()) {
+            boolean lancamentoAEsquerda = row.stream()
+                    .anyMatch(t -> t.xStart() < split && DATE_TOKEN_PREFIX.matcher(t.text()).find());
+            if (!lancamentoAEsquerda) {
+                continue;
+            }
+            for (Token t : row) {
+                if (t.xStart() < split && t.xEnd() > split) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /** Um pedaço de texto posicionado, como o PDFBox o entrega. */
+    private record Token(String text, float xStart, float xEnd) {}
+
+    /** Tokens da página agrupados por linha visual (Y arredondado), cada linha ordenada por X. */
+    private Map<Integer, List<Token>> collectTokensByRow(PDDocument document, int pageNumberOneBased)
             throws IOException {
-        // Chave: Y arredondado (a linha visual). Valor: tokens dessa linha, cada um como
-        // {texto, xInicio, xFim} — precisamos do texto pra testar o formato de data.
-        Map<Integer, List<Object[]>> tokensByRow = new TreeMap<>();
+        Map<Integer, List<Token>> tokensByRow = new TreeMap<>();
         PDFTextStripper collector = new PDFTextStripper() {
             @Override
             protected void writeString(String text, List<TextPosition> textPositions) {
@@ -223,26 +259,35 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
                 }
                 int row = Math.round(textPositions.get(0).getY());
                 tokensByRow.computeIfAbsent(row, k -> new ArrayList<>())
-                        .add(new Object[] {text.trim(), minX, maxX});
+                        .add(new Token(text.trim(), minX, maxX));
             }
         };
         collector.setSortByPosition(true);
         collector.setStartPage(pageNumberOneBased);
         collector.setEndPage(pageNumberOneBased);
         collector.getText(document);
+        tokensByRow.values().forEach(row -> row.sort(Comparator.comparingDouble(Token::xStart)));
+        return tokensByRow;
+    }
 
+    /**
+     * Posições X dos tokens {@code DD/MM} que INICIAM uma linha de lançamento — primeiro token
+     * da linha, ou precedido por um espaço vazio de pelo menos {@link #MIN_BLOCK_GAP}. O filtro
+     * descarta o marcador de parcela, que tem o mesmo formato mas aparece colado ao meio da
+     * descrição.
+     */
+    private List<Float> dateAnchors(Map<Integer, List<Token>> tokensByRow) {
         List<Float> anchors = new ArrayList<>();
-        for (List<Object[]> row : tokensByRow.values()) {
-            row.sort(Comparator.comparingDouble(t -> (Float) t[1]));
+        for (List<Token> row : tokensByRow.values()) {
             for (int i = 0; i < row.size(); i++) {
-                String text = (String) row.get(i)[0];
-                if (!DATE_TOKEN_PREFIX.matcher(text).find()) {
+                Token token = row.get(i);
+                if (!DATE_TOKEN_PREFIX.matcher(token.text()).find()) {
                     continue;
                 }
-                float x = (Float) row.get(i)[1];
-                boolean startsBlock = i == 0 || x - (Float) row.get(i - 1)[2] > MIN_BLOCK_GAP;
+                boolean startsBlock =
+                        i == 0 || token.xStart() - row.get(i - 1).xEnd() > MIN_BLOCK_GAP;
                 if (startsBlock) {
-                    anchors.add(x);
+                    anchors.add(token.xStart());
                 }
             }
         }
@@ -250,7 +295,12 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
         return anchors;
     }
 
-    /** Agrupa posições X próximas. Cada item devolvido é {@code {centroide, massa}}. */
+    /**
+     * Agrupa posições X próximas — cada item devolvido é {@code {centroide, massa}}. Compara
+     * cada valor com o PRIMEIRO do grupo (não com o centroide corrente), então um grupo nunca
+     * fica mais largo que {@link #CLUSTER_TOLERANCE}: suficiente aqui, onde a variância medida
+     * dentro de uma coluna real é ~0,01pt e as colunas distam ~216pt uma da outra.
+     */
     private List<float[]> clusterByProximity(List<Float> sortedX) {
         List<float[]> clusters = new ArrayList<>();
         int i = 0;

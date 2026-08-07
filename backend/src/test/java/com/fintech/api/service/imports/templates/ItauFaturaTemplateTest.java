@@ -112,9 +112,14 @@ class ItauFaturaTemplateTest {
 
     /**
      * Variante com offsets X configuráveis — usada pelos testes de detecção dinâmica de
-     * coluna, que precisam controlar exatamente onde cada coluna começa (diferente das
-     * demais fixtures deste arquivo, que sempre usam 50/400, posições seguras em relação ao
-     * corte fixo antigo).
+     * coluna, que precisam controlar exatamente onde cada coluna começa.
+     *
+     * <p><b>Escreve PALAVRA A PALAVRA, cada uma posicionada por métrica de fonte</b>, e não a
+     * linha inteira numa operação só. Isso importa: o PDFBox entrega a uma
+     * {@code PDFTextStripper} exatamente os pedaços que foram escritos — uma fatura real (que
+     * posiciona cada palavra) chega token a token, enquanto uma fixture que escreve a linha
+     * inteira chega num token só. Fixture com granularidade errada testa um caminho de código
+     * que não existe em produção; foi assim que defeitos reais passaram pelos testes antes.
      */
     private static byte[] pdfComDuasColunas(
             List<String> linhasEsquerda, List<String> linhasDireita, float xEsquerda, float xDireita) {
@@ -122,30 +127,49 @@ class ItauFaturaTemplateTest {
             PDPage page = new PDPage();
             document.addPage(page);
             try (PDPageContentStream cs = new PDPageContentStream(document, page)) {
-                cs.beginText();
-                cs.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 10);
-                cs.newLineAtOffset(xEsquerda, 700);
-                for (String linha : linhasEsquerda) {
-                    cs.showText(linha);
-                    cs.newLineAtOffset(0, -15);
-                }
-                cs.endText();
-                if (!linhasDireita.isEmpty()) {
-                    cs.beginText();
-                    cs.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 10);
-                    cs.newLineAtOffset(xDireita, 700);
-                    for (String linha : linhasDireita) {
-                        cs.showText(linha);
-                        cs.newLineAtOffset(0, -15);
-                    }
-                    cs.endText();
-                }
+                escreveLinhasPalavraAPalavra(cs, linhasEsquerda, xEsquerda, 700);
+                escreveLinhasPalavraAPalavra(cs, linhasDireita, xDireita, 700);
             }
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             document.save(out);
             return out.toByteArray();
         } catch (IOException e) {
             throw new UncheckedIOException(e);
+        }
+    }
+
+    private static final PDType1Font FONTE_FIXTURE =
+            new PDType1Font(Standard14Fonts.FontName.HELVETICA);
+    private static final float TAMANHO_FONTE_FIXTURE = 10f;
+
+    /** Largura do texto na fonte da fixture, em pontos. */
+    private static float larguraDe(String texto) throws IOException {
+        return FONTE_FIXTURE.getStringWidth(texto) / 1000f * TAMANHO_FONTE_FIXTURE;
+    }
+
+    /**
+     * Escreve cada linha com uma operação de escrita POR PALAVRA, avançando X pela largura
+     * real da palavra mais um espaço — reproduz a granularidade de token de um PDF de verdade.
+     */
+    private static void escreveLinhasPalavraAPalavra(
+            PDPageContentStream cs, List<String> linhas, float x0, float y0) throws IOException {
+        float espaco = larguraDe(" ");
+        float y = y0;
+        for (String linha : linhas) {
+            float x = x0;
+            for (String palavra : linha.split(" ")) {
+                if (palavra.isEmpty()) {
+                    x += espaco;
+                    continue;
+                }
+                cs.beginText();
+                cs.setFont(FONTE_FIXTURE, TAMANHO_FONTE_FIXTURE);
+                cs.newLineAtOffset(x, y);
+                cs.showText(palavra);
+                cs.endText();
+                x += larguraDe(palavra) + espaco;
+            }
+            y -= 15f;
         }
     }
 
@@ -672,6 +696,51 @@ class ItauFaturaTemplateTest {
         assertThat(resultado)
                 .extracting(t -> t.fields().get("description").value())
                 .containsExactlyInAnyOrder("Foco Aluguel de Ca", "BeneficiarioTeste");
+    }
+
+    /**
+     * Página de coluna ÚNICA mais um token de data solto bem à direita (ex.: uma data isolada
+     * numa caixa de resumo). Sem proteção, esse token vira "coluna direita" e o corte cai DENTRO
+     * das linhas de lançamento, partindo cada uma em metade-data e metade-valor — a página
+     * inteira some da extração, em silêncio. É o cenário que o review final provou com PDFBox.
+     */
+    private static byte[] pdfColunaUnicaComDataSoltaADireita() throws IOException {
+        try (PDDocument document = new PDDocument()) {
+            PDPage page = new PDPage();
+            document.addPage(page);
+            try (PDPageContentStream cs = new PDPageContentStream(document, page)) {
+                escreveLinhasPalavraAPalavra(cs, List.of(
+                        "Lançamentos: compras e saques",
+                        "28/11 Foco Aluguel de Cavalos Premium Ltda 112,67",
+                        "29/11 Outra Compra Qualquer Bem Comprida 50,00",
+                        "30/11 Terceira Compra Aqui Tambem Longa 25,00"), 50f, 700f);
+                // Data solta em outra altura, longe o bastante pra passar no guard de separação
+                // (>100pt) mas perto o bastante pra que o corte resultante caia DENTRO das
+                // linhas de lançamento acima — é essa combinação que produz o defeito.
+                escreveLinhasPalavraAPalavra(cs, List.of("15/12"), 180f, 300f);
+            }
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            document.save(out);
+            return out.toByteArray();
+        }
+    }
+
+    @Test
+    void parseNaoPerdeColunaUnicaQuandoHaDataSoltaADireita() throws IOException {
+        // Guard de "o corte não pode atravessar linha de lançamento": mesmo que a data solta
+        // forme um cluster e passe pelos limiares de massa e separação, o corte resultante
+        // partiria as três linhas ao meio — então a página é tratada como coluna única e as
+        // três transações continuam sendo extraídas.
+        byte[] pdfBytes = pdfColunaUnicaComDataSoltaADireita();
+        String fullTextFake = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques";
+
+        List<NormalizedTransactionDTO> resultado = template.parse(fullTextFake, pdfBytes);
+
+        assertThat(resultado).hasSize(3);
+        assertThat(resultado)
+                .extracting(t -> t.fields().get("amount").value())
+                .containsExactlyInAnyOrder(
+                        new BigDecimal("112.67"), new BigDecimal("50.00"), new BigDecimal("25.00"));
     }
 
     @Test
