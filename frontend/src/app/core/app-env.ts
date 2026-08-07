@@ -17,6 +17,8 @@ export interface AppEnv {
   version: string;
   /** Git SHA do build (completo; encurtado só na exibição). */
   sha: string;
+  /** Data/hora ISO 8601 do commit rodando — injetada no deploy, mesmo mecanismo da versão. */
+  commitTime: string;
 }
 
 interface AppEnvCarrier {
@@ -31,7 +33,7 @@ declare global {
   }
 }
 
-const DEFAULTS: AppEnv = { environment: 'local', version: '', sha: 'dev' };
+const DEFAULTS: AppEnv = { environment: 'local', version: '', sha: 'dev', commitTime: '' };
 
 /** Lê `window.__APP_ENV` com defaults graciosos (campo ausente/vazio → default). */
 export function readAppEnv(source: AppEnvCarrier = window): AppEnv {
@@ -40,6 +42,7 @@ export function readAppEnv(source: AppEnvCarrier = window): AppEnv {
     environment: raw.environment || DEFAULTS.environment,
     version: raw.version || DEFAULTS.version,
     sha: raw.sha || DEFAULTS.sha,
+    commitTime: raw.commitTime || DEFAULTS.commitTime,
   };
 }
 
@@ -58,4 +61,36 @@ export function formatVersionLabel(env: AppEnv): string {
   const sha = shortSha(env.sha);
   const versionPart = env.version ? `${env.version} (${sha})` : sha;
   return `${env.environment} · ${versionPart}`;
+}
+
+/** 'DD/MM/YYYY HH:mm' em horário de Brasília, a partir de um ISO 8601. Inválido/vazio → ''. */
+function formatCommitTime(commitTime: string): string {
+  if (!commitTime) {
+    return '';
+  }
+  const date = new Date(commitTime);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+  return date.toLocaleString('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+/**
+ * Texto do tooltip da marca d'água — mesmo rótulo compacto de {@link formatVersionLabel}
+ * mais a data/hora do commit, quando disponível. Separado do rótulo visível de propósito:
+ * o rodapé global é discreto (git-operator.md), a data só aparece ao passar o mouse — não
+ * polui a exibição compacta em nenhum dos dois lugares que mostram a marca d'água (rodapé
+ * global e tela de login).
+ */
+export function formatVersionTooltip(env: AppEnv): string {
+  const label = formatVersionLabel(env);
+  const formattedTime = formatCommitTime(env.commitTime);
+  return formattedTime ? `${label} · ${formattedTime}` : label;
 }
