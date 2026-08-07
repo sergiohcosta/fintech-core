@@ -19,10 +19,12 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -30,8 +32,9 @@ import java.util.regex.Pattern;
  * Template Itaú fatura de cartão — reconhece transações da seção "Lançamentos: compras e
  * saques" (spec: registry de templates, decisões c/e). Datas de lançamento vêm sem ano
  * (DD/MM); o ano é inferido da data de vencimento, que aparece uma vez no documento com ano
- * completo. Colunas de lançamento são separadas por detecção dinâmica de vão horizontal,
- * por página (spec: fix-itau-split-coluna-dinamico) — não há constante fixa de corte.
+ * completo. Colunas de lançamento são separadas por página, ancorando na posição X dos tokens
+ * de data que iniciam cada lançamento (spec: itau-ancora-coluna-por-data) — não há nenhuma
+ * coordenada de corte assada no código.
  */
 @Slf4j
 @Component
@@ -57,22 +60,47 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
     private static final Pattern TRAILING_AMOUNT =
             Pattern.compile("(-?)\\s*(\\d{1,3}(?:\\.\\d{3})*,\\d{2})\\s*$");
     private static final Pattern TRAILING_INSTALLMENT_MARKER = Pattern.compile("(\\d{2})/(\\d{2})\\s*$");
+    // Token que INICIA com data. Precisa aceitar as duas granularidades com que o PDFBox
+    // entrega texto: nas faturas reais cada palavra vira um token ("28/11" sozinho), mas em
+    // PDF gerado com uma única operação de escrita a linha inteira vem num token só
+    // ("28/11 Estabelecimento 112,67"). Casar só o token exato funcionaria no primeiro caso e
+    // falharia silenciosamente no segundo.
+    private static final Pattern DATE_TOKEN_PREFIX = Pattern.compile("^\\d{2}/\\d{2}(\\s|$)");
 
-    // Vão mínimo (pt) pra considerar uma quebra de coluna real, não espaço normal entre
-    // palavras/blocos de texto — folga generosa: o vão real medido no documento que
-    // motivou este fix era ~77pt; espaçamento intra-linha em fonte 10pt não passa de
-    // poucos pontos. Abaixo disso, a página é tratada como coluna única (spec §4.1).
-    private static final float MIN_GAP_WIDTH = 20f;
+    // Um token "DD/MM" só conta como início de linha de lançamento se tiver este tanto de
+    // espaço vazio à esquerda. Sem isso, o marcador de parcela ("04/06", mesmo formato) viraria
+    // âncora: no levantamento de 45 faturas reais, 87% do ruído de cluster vinha daí.
+    private static final float MIN_BLOCK_GAP = 15f;
 
-    // Valor histórico do antigo COLUMN_SPLIT_X (corte fixo, calibrado manualmente contra uma
-    // fatura Itaú real antes deste fix). Usado APENAS como último recurso, quando a detecção
-    // dinâmica da página não encontra nenhum vão confiável — nunca como mecanismo primário
-    // (isso reintroduziria o bug original: 365f sempre, mesmo quando o layout real diverge).
-    // Ver final-review.md (C1): devolver pageWidth nesse caminho funde as duas colunas no
-    // mesmo stream (dado corrompido); devolver este default degrada, na pior hipótese, para
-    // o comportamento antigo conhecido (perde a coluna direita) — pior que sem dado, nunca
-    // pior que dado errado.
-    private static final float FALLBACK_SPLIT_X = 365f;
+    // Tolerância para dois tokens de data pertencerem à mesma coluna. As colunas reais medidas
+    // têm variância interna ~0,01pt e ficam a ~216pt uma da outra — 5pt separa com folga larga.
+    private static final float CLUSTER_TOLERANCE = 5f;
+
+    // Massa mínima do 2º cluster para a página ser considerada de duas colunas. Medido: limiar
+    // 1, 2, 3 e 5 produzem resultado IDÊNTICO nas 45 faturas reais — coluna de verdade tem massa
+    // 15–36, então nunca fica perto do limiar. Fica no valor mais BAIXO de propósito: a última
+    // página de uma fatura pode ter uma coluna direita com 1–2 lançamentos, e tratá-la como
+    // coluna única fundiria as duas (dado errado). O risco oposto é inofensivo: se um token
+    // solto virar "coluna", o corte apenas divide uma página de coluna única em duas regiões —
+    // ambas são processadas e concatenadas, então nada se perde.
+    private static final int MIN_CLUSTER_MASS = 1;
+
+    // Recuo do corte em relação ao início da coluna direita. A folga real entre o fim do
+    // conteúdo da coluna esquerda e o início da direita foi de 20,9pt a 29,2pt em 121 páginas
+    // medidas — 10pt fica dentro dessa folga com margem, em todos os casos observados.
+    private static final float SPLIT_MARGIN = 10f;
+
+    // Distância mínima entre os dois clusters para serem colunas de verdade, e não uma coluna
+    // real mais um punhado de datas dispersas. Medido: as duas colunas ficam a 215,6–218,3pt
+    // uma da outra em todas as 121 páginas do levantamento. O limiar é menos da metade disso —
+    // largo o bastante pra não brigar com variação de layout, apertado o bastante pra rejeitar
+    // ruído próximo. Esse guard é o que impede o corte de cair DENTRO do conteúdo da coluna
+    // esquerda, que seria pior que não cortar (parte a linha de lançamento ao meio).
+    private static final float MIN_COLUMN_SEPARATION = 100f;
+
+    // Menos âncoras que isto na página inteira: não dá nem pra formar dois clusters, então não
+    // há duas colunas a separar (capa, resumo, página de encargos).
+    private static final int MIN_ANCHORS = 2 * MIN_CLUSTER_MASS;
 
     @Override
     public boolean matches(String fullText) {
@@ -130,70 +158,114 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
     }
 
     /**
-     * Acha o corte de coluna da página pelo maior vão horizontal entre trechos de texto
-     * renderizados — substitui a constante fixa antiga como MECANISMO PRIMÁRIO (spec:
-     * fix-itau-split-coluna-dinamico). Sem vão significativo (≥ {@link #MIN_GAP_WIDTH}) na
-     * página inteira, devolve {@link #FALLBACK_SPLIT_X} (não a largura da página inteira):
-     * uma única palavra fora das colunas de lançamento (rodapé, endereço, numeração de
-     * página) cai na faixa X da calha com frequência em páginas reais — devolver
-     * {@code pageWidth} nesse caso funde as duas colunas no mesmo stream e produz
-     * transações com data de uma coluna e valor da outra, em silêncio (C1 do review final).
-     * O corte fixo histórico é um default seguro, não a ausência de corte.
+     * Acha o corte entre as duas colunas de lançamento da página pela posição X dos tokens de
+     * DATA que iniciam uma linha de lançamento.
+     *
+     * <p>Por que a data e não o "maior vão de texto" (que era a estratégia anterior): o vão
+     * some assim que QUALQUER texto cai perto da calha — rodapé, endereço, rótulo de subtotal —
+     * e a página inteira degrada em silêncio. Já o token de data só existe onde há lançamento,
+     * então é imune a esse ruído. Medição sobre 45 faturas reais (2022–2026): as datas formam
+     * dois clusters com variância interna ~0,01pt, nas posições exatas das duas colunas, e
+     * ZERO clusters espúrios em 141 páginas. Racional completo: spec
+     * itau-ancora-coluna-por-data §1.3.
+     *
+     * <p>Sem duas colunas detectáveis, devolve a largura da página: tudo cai numa região só e é
+     * processado normalmente (correto em página de coluna única — capa, resumo). Note que NÃO
+     * há mais fallback para coordenada fixa: a medição mostrou que o antigo corte fixo cai dentro da
+     * faixa onde a coluna direita começa (351–367pt), ou seja, corta conteúdo real.
      */
     private float detectColumnSplit(PDDocument document, PDPage page, int pageNumberOneBased)
             throws IOException {
-        List<float[]> extents = new ArrayList<>();
-        PDFTextStripper detector = new PDFTextStripper() {
+        float pageWidth = page.getMediaBox().getWidth();
+        List<Float> anchors = collectDateAnchors(document, pageNumberOneBased);
+        if (anchors.size() < MIN_ANCHORS) {
+            return pageWidth;
+        }
+
+        List<float[]> clusters = clusterByProximity(anchors);
+        // Por MASSA, não por posição: há ruído legítimo à DIREITA da coluna direita (datas na
+        // seção de limites de crédito), que venceria um critério de "cluster mais à direita".
+        clusters.sort((a, b) -> Float.compare(b[1], a[1]));
+        if (clusters.size() < 2 || clusters.get(1)[1] < MIN_CLUSTER_MASS) {
+            return pageWidth;
+        }
+
+        float rightColumnX = Math.max(clusters.get(0)[0], clusters.get(1)[0]);
+        float leftColumnX = Math.min(clusters.get(0)[0], clusters.get(1)[0]);
+        if (rightColumnX - leftColumnX < MIN_COLUMN_SEPARATION) {
+            return pageWidth;
+        }
+        return rightColumnX - SPLIT_MARGIN;
+    }
+
+    /**
+     * Posições X dos tokens {@code DD/MM} que INICIAM uma linha de lançamento — primeiro token
+     * da linha, ou precedido por um espaço vazio de pelo menos {@link #MIN_BLOCK_GAP}. O filtro
+     * descarta o marcador de parcela, que tem o mesmo formato mas aparece colado ao meio da
+     * descrição.
+     */
+    private List<Float> collectDateAnchors(PDDocument document, int pageNumberOneBased)
+            throws IOException {
+        // Chave: Y arredondado (a linha visual). Valor: tokens dessa linha, cada um como
+        // {texto, xInicio, xFim} — precisamos do texto pra testar o formato de data.
+        Map<Integer, List<Object[]>> tokensByRow = new TreeMap<>();
+        PDFTextStripper collector = new PDFTextStripper() {
             @Override
             protected void writeString(String text, List<TextPosition> textPositions) {
+                if (textPositions.isEmpty()) {
+                    return;
+                }
                 float minX = Float.MAX_VALUE;
                 float maxX = -Float.MAX_VALUE;
                 for (TextPosition tp : textPositions) {
                     minX = Math.min(minX, tp.getX());
                     maxX = Math.max(maxX, tp.getX() + tp.getWidth());
                 }
-                if (minX <= maxX) {
-                    extents.add(new float[] {minX, maxX});
-                }
+                int row = Math.round(textPositions.get(0).getY());
+                tokensByRow.computeIfAbsent(row, k -> new ArrayList<>())
+                        .add(new Object[] {text.trim(), minX, maxX});
             }
         };
-        detector.setSortByPosition(true);
-        detector.setStartPage(pageNumberOneBased);
-        detector.setEndPage(pageNumberOneBased);
-        detector.getText(document);
+        collector.setSortByPosition(true);
+        collector.setStartPage(pageNumberOneBased);
+        collector.setEndPage(pageNumberOneBased);
+        collector.getText(document);
 
-        float pageWidth = page.getMediaBox().getWidth();
-        if (extents.isEmpty()) {
-            return pageWidth;
-        }
-        extents.sort(Comparator.comparingDouble(e -> e[0]));
-
-        float cursor = extents.get(0)[1];  // Inicializa com o fim do primeiro extent, não 0 (evita margem esquerda)
-        float bestGapStart = -1f;
-        float bestGapSize = 0f;
-        for (int i = 1; i < extents.size(); i++) {
-            float[] extent = extents.get(i);
-            if (extent[0] > cursor) {  // Só há vão se o início deste extent for APÓS o alcance máximo visto até agora
-                float gap = extent[0] - cursor;
-                if (gap > bestGapSize) {
-                    bestGapSize = gap;
-                    bestGapStart = cursor;
+        List<Float> anchors = new ArrayList<>();
+        for (List<Object[]> row : tokensByRow.values()) {
+            row.sort(Comparator.comparingDouble(t -> (Float) t[1]));
+            for (int i = 0; i < row.size(); i++) {
+                String text = (String) row.get(i)[0];
+                if (!DATE_TOKEN_PREFIX.matcher(text).find()) {
+                    continue;
+                }
+                float x = (Float) row.get(i)[1];
+                boolean startsBlock = i == 0 || x - (Float) row.get(i - 1)[2] > MIN_BLOCK_GAP;
+                if (startsBlock) {
+                    anchors.add(x);
                 }
             }
-            cursor = Math.max(cursor, extent[1]);  // Atualiza cursor para o MAIOR fim visto (running-max)
         }
+        Collections.sort(anchors);
+        return anchors;
+    }
 
-        if (bestGapSize < MIN_GAP_WIDTH) {
-            // Nenhum vão confiável nesta página — quase sempre porque uma única palavra fora
-            // das colunas de lançamento (rodapé/endereço/numeração) caiu na faixa X da calha
-            // e "fechou" o vão real (C1 do review final). Cair para pageWidth aqui fundiria
-            // as duas colunas; o corte histórico calibrado é o default seguro.
-            log.warn("ItauFaturaTemplate: detecção dinâmica de coluna não achou vão >= {}pt na "
-                    + "página {} — usando corte histórico ({}pt) como fallback.",
-                    MIN_GAP_WIDTH, pageNumberOneBased, FALLBACK_SPLIT_X);
-            return FALLBACK_SPLIT_X;
+    /** Agrupa posições X próximas. Cada item devolvido é {@code {centroide, massa}}. */
+    private List<float[]> clusterByProximity(List<Float> sortedX) {
+        List<float[]> clusters = new ArrayList<>();
+        int i = 0;
+        while (i < sortedX.size()) {
+            float start = sortedX.get(i);
+            float sum = 0f;
+            int count = 0;
+            while (i < sortedX.size() && sortedX.get(i) - start <= CLUSTER_TOLERANCE) {
+                sum += sortedX.get(i);
+                count++;
+                i++;
+            }
+            clusters.add(new float[] {sum / count, count});
         }
-        return bestGapStart + bestGapSize / 2f;
+        return clusters;
     }
 
     /**

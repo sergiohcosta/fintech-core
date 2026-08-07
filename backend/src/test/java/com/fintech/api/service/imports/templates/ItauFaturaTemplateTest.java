@@ -516,14 +516,12 @@ class ItauFaturaTemplateTest {
     }
 
     /**
-     * Duas colunas na mesma posição da fixture padrão deste arquivo (esquerda X=50, direita
-     * X=400 — a mesma calibração do corte histórico {@code FALLBACK_SPLIT_X}) mais UMA linha
-     * de rodapé, fora da área de lançamentos (Y bem abaixo das linhas de transação), cujo
-     * texto começa dentro do vão real entre as colunas e se estende além dele — reproduz a
-     * prova empírica do C1 do review final: uma palavra qualquer cruzando a calha anula a
-     * detecção dinâmica do vão (nenhuma faixa X fica 100% vazia na página inteira). O corte
-     * fixo de fallback (365f) continua separando as colunas corretamente aqui — X=400 > 365 —
-     * é exatamente o cenário em que o corte histórico é um default seguro.
+     * Duas colunas na posição padrão deste arquivo (esquerda X=50, direita X=400) mais UMA
+     * linha de rodapé, fora da área de lançamentos (Y bem abaixo das linhas de transação),
+     * cujo texto começa dentro do vão real entre as colunas e se estende além dele — uma
+     * palavra qualquer cruzando a calha anula qualquer detecção baseada em "faixa X vazia".
+     * A âncora de data ignora esse ruído por construção: o rodapé não tem token {@code DD/MM}
+     * iniciando bloco, então não entra em nenhum cluster.
      */
     private static byte[] pdfComDuasColunasComLinhaAvulsaNaCalha() throws IOException {
         try (PDDocument document = new PDDocument()) {
@@ -587,5 +585,118 @@ class ItauFaturaTemplateTest {
                         new BigDecimal("999.99"),  // Linha larga da esquerda
                         new BigDecimal("1.00"),    // Linha estreita da esquerda
                         new BigDecimal("36.00"));  // Coluna direita
+    }
+
+    @Test
+    void parseReconheceColunasNaGeometriaRealMedidaMaisComum() {
+        // Coordenadas medidas em fatura real: coluna esquerda X=151.2, direita X=367.2 —
+        // o par mais frequente no levantamento de 45 faturas (spec §1.3).
+        byte[] pdfBytes = pdfComDuasColunas(
+                List.of("Lançamentos: compras e saques", "28/11 Foco Aluguel de Ca04/06 112,67"),
+                List.of("Lançamentos: compras e saques", "07/02 BeneficiarioTeste 36,00"),
+                151.2f, 367.2f);
+        String fullTextFake = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques";
+
+        List<NormalizedTransactionDTO> resultado = template.parse(fullTextFake, pdfBytes);
+
+        assertThat(resultado).hasSize(2);
+        assertThat(resultado)
+                .extracting(t -> t.fields().get("amount").value())
+                .containsExactlyInAnyOrder(new BigDecimal("112.67"), new BigDecimal("36.00"));
+        assertThat(resultado)
+                .extracting(t -> t.fields().get("description").value())
+                .containsExactlyInAnyOrder("Foco Aluguel de Ca", "BeneficiarioTeste");
+    }
+
+    /**
+     * Reproduz o modo de falha REAL medido em fatura de produção, que exige DOIS fatores
+     * simultâneos — nenhum deles sozinho quebra, e é por isso que as fixtures anteriores
+     * deste arquivo não pegaram o defeito:
+     *
+     * <ol>
+     *   <li>uma linha avulsa cruzando a calha (rodapé/endereço), que anula a detecção por
+     *       maior vão — nenhuma faixa X da página fica 100% vazia;
+     *   <li>coluna direita começando ANTES de 365pt (aqui 351,3 — extremo real medido no
+     *       levantamento de 45 faturas), de modo que o corte histórico de fallback cai
+     *       DENTRO da coluna direita e a corrompe.
+     * </ol>
+     */
+    private static byte[] pdfCalhaCruzadaComColunaDireitaAntesDe365() throws IOException {
+        try (PDDocument document = new PDDocument()) {
+            PDPage page = new PDPage();
+            document.addPage(page);
+            try (PDPageContentStream cs = new PDPageContentStream(document, page)) {
+                cs.beginText();
+                cs.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 10);
+                cs.newLineAtOffset(133.0f, 700);
+                cs.showText("Lançamentos: compras e saques");
+                cs.newLineAtOffset(0, -15);
+                cs.showText("28/11 Foco Aluguel de Ca04/06 112,67");
+                cs.endText();
+
+                cs.beginText();
+                cs.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 10);
+                cs.newLineAtOffset(351.3f, 700);
+                cs.showText("Lançamentos: compras e saques");
+                cs.newLineAtOffset(0, -15);
+                cs.showText("07/02 BeneficiarioTeste 36,00");
+                cs.endText();
+
+                // Rodapé isolado cruzando a calha entre as colunas (fator 1).
+                cs.beginText();
+                cs.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 10);
+                cs.newLineAtOffset(280, 100);
+                cs.showText("Central de atendimento SAC 0800 728 0728");
+                cs.endText();
+            }
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            document.save(out);
+            return out.toByteArray();
+        }
+    }
+
+    @Test
+    void parseReconheceColunasNoOutroExtremoDaGeometriaMedida() throws IOException {
+        // Extremo real medido no corpus: esquerda X=133.0, direita X=351.3, com linha avulsa
+        // na calha. Falha contra qualquer implementação que caia num corte fixo de 365pt —
+        // esse valor cai dentro da coluna direita aqui e a funde com a esquerda.
+        byte[] pdfBytes = pdfCalhaCruzadaComColunaDireitaAntesDe365();
+        String fullTextFake = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques";
+
+        List<NormalizedTransactionDTO> resultado = template.parse(fullTextFake, pdfBytes);
+
+        assertThat(resultado).hasSize(2);
+        assertThat(resultado)
+                .extracting(t -> t.fields().get("amount").value())
+                .containsExactlyInAnyOrder(new BigDecimal("112.67"), new BigDecimal("36.00"));
+        assertThat(resultado)
+                .extracting(t -> t.fields().get("description").value())
+                .containsExactlyInAnyOrder("Foco Aluguel de Ca", "BeneficiarioTeste");
+    }
+
+    @Test
+    void parseIgnoraMarcadorDeParcelaComoAncoraDeColuna() {
+        // "04/06" no meio da descrição tem o MESMO formato de uma data de lançamento. Se contasse
+        // como âncora, criaria um cluster espúrio no meio da página e deslocaria o corte. O filtro
+        // de "início de bloco" (>15pt de espaço à esquerda) existe exatamente para isso: no
+        // levantamento, 87% do ruído de cluster vinha de marcador de parcela.
+        byte[] pdfBytes = pdfComDuasColunas(
+                List.of("Lançamentos: compras e saques",
+                        "28/11 Foco Aluguel de Ca 04/06 112,67",
+                        "29/11 Outra Compra 02/03 50,00"),
+                List.of("Lançamentos: compras e saques",
+                        "07/02 BeneficiarioTeste 36,00",
+                        "08/02 Segunda Direita 21,00"),
+                151.2f, 367.2f);
+        String fullTextFake = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques";
+
+        List<NormalizedTransactionDTO> resultado = template.parse(fullTextFake, pdfBytes);
+
+        assertThat(resultado).hasSize(4);
+        assertThat(resultado)
+                .extracting(t -> t.fields().get("amount").value())
+                .containsExactlyInAnyOrder(
+                        new BigDecimal("112.67"), new BigDecimal("50.00"),
+                        new BigDecimal("36.00"), new BigDecimal("21.00"));
     }
 }
