@@ -110,6 +110,45 @@ class ItauFaturaTemplateTest {
         }
     }
 
+    /**
+     * Variante com offsets X configuráveis — usada pelos testes de detecção dinâmica de
+     * coluna, que precisam controlar exatamente onde cada coluna começa (diferente das
+     * demais fixtures deste arquivo, que sempre usam 50/400, posições seguras em relação ao
+     * corte fixo antigo).
+     */
+    private static byte[] pdfComDuasColunas(
+            List<String> linhasEsquerda, List<String> linhasDireita, float xEsquerda, float xDireita) {
+        try (PDDocument document = new PDDocument()) {
+            PDPage page = new PDPage();
+            document.addPage(page);
+            try (PDPageContentStream cs = new PDPageContentStream(document, page)) {
+                cs.beginText();
+                cs.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 10);
+                cs.newLineAtOffset(xEsquerda, 700);
+                for (String linha : linhasEsquerda) {
+                    cs.showText(linha);
+                    cs.newLineAtOffset(0, -15);
+                }
+                cs.endText();
+                if (!linhasDireita.isEmpty()) {
+                    cs.beginText();
+                    cs.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 10);
+                    cs.newLineAtOffset(xDireita, 700);
+                    for (String linha : linhasDireita) {
+                        cs.showText(linha);
+                        cs.newLineAtOffset(0, -15);
+                    }
+                    cs.endText();
+                }
+            }
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            document.save(out);
+            return out.toByteArray();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
     @Test
     void matchesReconheceCnpjItauEHeaderDeLancamentos() {
         String texto = "algum texto\n60.872.504/0001-23\nLançamentos: compras e saques\nfim";
@@ -380,5 +419,173 @@ class ItauFaturaTemplateTest {
         assertThat(transacoes).hasSize(1);
         assertThat(transacoes.get(0).fields()).doesNotContainKey("installment_number");
         assertThat(transacoes.get(0).fields()).doesNotContainKey("installment_total");
+    }
+
+    @Test
+    void parseReconheceColunasQuandoDireitaComecaAntesDoCorteFixoAntigo() {
+        // Reproduz o bug real: a fatura que motivou este fix tinha o cabeçalho da coluna
+        // direita começando em X≈351-358 — ANTES do corte fixo antigo (365f). Aqui a coluna
+        // direita começa em X=340: com o corte fixo antigo, cairia inteira na região
+        // "esquerda" e se fundiria com a coluna esquerda na mesma altura Y (mesmo bug de
+        // fusão de coluna do PR #213, agora causado pelo corte errado em vez de ausência de
+        // corte). Com detecção dinâmica, o vão real entre as colunas é achado e as duas
+        // transações saem distintas e corretas.
+        byte[] pdfBytes = pdfComDuasColunas(
+                List.of("Lançamentos: compras e saques", "28/11 Foco Aluguel de Ca04/06 112,67"),
+                List.of("Lançamentos: compras e saques", "07/02 BeneficiarioTeste 36,00"),
+                50f, 340f);
+        String fullTextFake = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques";
+
+        List<NormalizedTransactionDTO> resultado = template.parse(fullTextFake, pdfBytes);
+
+        assertThat(resultado).hasSize(2);
+        assertThat(resultado)
+                .extracting(t -> t.fields().get("amount").value())
+                .containsExactlyInAnyOrder(new BigDecimal("112.67"), new BigDecimal("36.00"));
+        assertThat(resultado)
+                .extracting(t -> t.fields().get("description").value())
+                .containsExactlyInAnyOrder("Foco Aluguel de Ca", "BeneficiarioTeste");
+    }
+
+    @Test
+    void parseNaoQuebraQuandoPaginaTemColunaUnica() {
+        // Página sem vão significativo (todo o texto numa faixa X contínua) — layout de
+        // coluna única (ex.: folha de resumo/capa). Não deve lançar exceção; a coluna única
+        // ainda é reconhecida normalmente (o parser sempre trata "esquerda"/"direita" como
+        // dois streams independentes — aqui a "direita" simplesmente fica vazia).
+        byte[] pdfBytes = pdfComDuasColunas(
+                List.of("Lançamentos: compras e saques", "28/11 Foco Aluguel de Ca04/06 112,67"),
+                List.of(),
+                50f, 50f);
+        String fullTextFake = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques";
+
+        List<NormalizedTransactionDTO> resultado = template.parse(fullTextFake, pdfBytes);
+
+        assertThat(resultado).hasSize(1);
+        assertThat(resultado.get(0).fields().get("amount").value()).isEqualTo(new BigDecimal("112.67"));
+    }
+
+    @Test
+    void parseFuncionaComVaoEmPosicaoBemDiferenteDaCalibracaoOriginal() {
+        // Prova que não há mais dependência de nenhuma constante fixa: vão bem mais à
+        // esquerda do que qualquer valor já usado neste arquivo (a calibração original era
+        // 365f; o bug real caiu em ~351-358; aqui o vão fica em ~200 — posição arbitrária,
+        // só pra provar generalização).
+        byte[] pdfBytes = pdfComDuasColunas(
+                List.of("Lançamentos: compras e saques", "28/11 Foco Aluguel de Ca04/06 112,67"),
+                List.of("Lançamentos: compras e saques", "07/02 BeneficiarioTeste 36,00"),
+                50f, 250f);
+        String fullTextFake = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques";
+
+        List<NormalizedTransactionDTO> resultado = template.parse(fullTextFake, pdfBytes);
+
+        assertThat(resultado).hasSize(2);
+        assertThat(resultado)
+                .extracting(t -> t.fields().get("amount").value())
+                .containsExactlyInAnyOrder(new BigDecimal("112.67"), new BigDecimal("36.00"));
+    }
+
+    @Test
+    void parseNaoFundeColunasQuandoLinhaAvulsaCruzaOVao() throws IOException {
+        // Regressão do C1 do review final (fix-itau-split-coluna-dinamico): uma única linha
+        // fora das duas colunas de lançamento (rodapé de central de atendimento, endereço,
+        // numeração de página) cujo texto atravessa a faixa X da calha real é o suficiente
+        // pra "fechar" o vão inteiro na página — detectColumnSplit rodava um PDFTextStripper
+        // sobre a página TODA, sem filtrar por seção. Antes deste fix, o fallback devolvia
+        // pageWidth, a região "direita" ficava vazia e as duas colunas eram fundidas no
+        // MESMO stream (data de uma transação com o valor da outra) — exatamente o modo de
+        // falha do PR #213 reaberto por outro caminho. O fix devolve o corte histórico
+        // (365f) como último recurso: aqui isso continua separando as colunas 50/340
+        // corretamente, então o resultado tem que ser 2 transações DISTINTAS e corretas.
+        byte[] pdfBytes = pdfComDuasColunasComLinhaAvulsaNaCalha();
+        String fullTextFake = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques";
+
+        List<NormalizedTransactionDTO> resultado = template.parse(fullTextFake, pdfBytes);
+
+        assertThat(resultado).hasSize(2);
+        NormalizedTransactionDTO primeira = resultado.stream()
+                .filter(t -> "112.67".equals(t.fields().get("amount").value().toString()))
+                .findFirst().orElseThrow();
+        assertThat(primeira.fields().get("description").value()).isEqualTo("Foco Aluguel de Ca");
+        assertThat(primeira.fields().get("transaction_date").value()).isEqualTo("2024-11-28");
+        NormalizedTransactionDTO segunda = resultado.stream()
+                .filter(t -> "36.00".equals(t.fields().get("amount").value().toString()))
+                .findFirst().orElseThrow();
+        assertThat(segunda.fields().get("description").value()).isEqualTo("BeneficiarioTeste");
+        assertThat(segunda.fields().get("transaction_date").value()).isEqualTo("2025-02-07");
+    }
+
+    /**
+     * Duas colunas na mesma posição da fixture padrão deste arquivo (esquerda X=50, direita
+     * X=400 — a mesma calibração do corte histórico {@code FALLBACK_SPLIT_X}) mais UMA linha
+     * de rodapé, fora da área de lançamentos (Y bem abaixo das linhas de transação), cujo
+     * texto começa dentro do vão real entre as colunas e se estende além dele — reproduz a
+     * prova empírica do C1 do review final: uma palavra qualquer cruzando a calha anula a
+     * detecção dinâmica do vão (nenhuma faixa X fica 100% vazia na página inteira). O corte
+     * fixo de fallback (365f) continua separando as colunas corretamente aqui — X=400 > 365 —
+     * é exatamente o cenário em que o corte histórico é um default seguro.
+     */
+    private static byte[] pdfComDuasColunasComLinhaAvulsaNaCalha() throws IOException {
+        try (PDDocument document = new PDDocument()) {
+            PDPage page = new PDPage();
+            document.addPage(page);
+            try (PDPageContentStream cs = new PDPageContentStream(document, page)) {
+                cs.beginText();
+                cs.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 10);
+                cs.newLineAtOffset(50, 700);
+                cs.showText("Lançamentos: compras e saques");
+                cs.newLineAtOffset(0, -15);
+                cs.showText("28/11 Foco Aluguel de Ca04/06 112,67");
+                cs.endText();
+
+                cs.beginText();
+                cs.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 10);
+                cs.newLineAtOffset(400, 700);
+                cs.showText("Lançamentos: compras e saques");
+                cs.newLineAtOffset(0, -15);
+                cs.showText("07/02 BeneficiarioTeste 36,00");
+                cs.endText();
+
+                // Rodapé isolado, em outra altura Y, cruzando a calha entre as duas colunas
+                // (começa antes de 400 e se estende além, fechando o vão real).
+                cs.beginText();
+                cs.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 10);
+                cs.newLineAtOffset(200, 100);
+                cs.showText("Central de atendimento SAC 0800 728 0728");
+                cs.endText();
+            }
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            document.save(out);
+            return out.toByteArray();
+        }
+    }
+
+    @Test
+    void parseNaoCortaDentroDeTextoQuandoLinhaLargaVemAntesDeLinhaEstreita() {
+        // Regressão da mudança do algoritmo para running-max: uma linha larga (descrição
+        // longa) seguida por uma linha estreita (descrição curta) na mesma coluna, antes da
+        // transição para a coluna direita. Sem running-max, o cursor usaria o maxX da linha
+        // estreita (não a larga), calcularia um vão falso e retornaria split dentro do
+        // texto real da linha larga (bug de corte reintroduzido). Running-max garante que o
+        // cursor rastreia o MÁXIMO alcance visto até ali — a split fica DEPOIS de qualquer
+        // texto já processado.
+        byte[] pdfBytes = pdfComDuasColunas(
+                List.of("Lançamentos: compras e saques",
+                        "28/11 Uma Descricao Bem Longa De Compra Parcelada 999,99",
+                        "29/11 Curta 1,00"),
+                List.of("Lançamentos: compras e saques", "07/02 BeneficiarioTeste 36,00"),
+                50f, 400f);
+        String fullTextFake = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques";
+
+        List<NormalizedTransactionDTO> resultado = template.parse(fullTextFake, pdfBytes);
+
+        // Com o running-max correto, todas as três transações são reconhecidas
+        assertThat(resultado).hasSize(3);
+        assertThat(resultado)
+                .extracting(t -> t.fields().get("amount").value())
+                .containsExactlyInAnyOrder(
+                        new BigDecimal("999.99"),  // Linha larga da esquerda
+                        new BigDecimal("1.00"),    // Linha estreita da esquerda
+                        new BigDecimal("36.00"));  // Coluna direita
     }
 }
