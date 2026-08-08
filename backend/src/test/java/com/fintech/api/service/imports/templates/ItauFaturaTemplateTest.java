@@ -799,6 +799,53 @@ class ItauFaturaTemplateTest {
                         new BigDecimal("30.00"), new BigDecimal("40.00"));
     }
 
+    /**
+     * Duas colunas normais mais UMA data solta ENTRE elas. A intrusa é mais próxima da coluna
+     * esquerda que a coluna direita real, então um critério de pura proximidade a escolheria e
+     * o corte cairia dentro das linhas da esquerda — data de uma compra com valor de outra.
+     */
+    private static byte[] pdfComDataSoltaEntreAsColunas() throws IOException {
+        try (PDDocument document = new PDDocument()) {
+            PDPage page = new PDPage();
+            document.addPage(page);
+            try (PDPageContentStream cs = new PDPageContentStream(document, page)) {
+                escreveLinhasPalavraAPalavra(cs, List.of(
+                        "Lançamentos: compras e saques",
+                        "28/11 Primeira Esquerda 10,00",
+                        "29/11 Segunda Esquerda 20,00",
+                        "30/11 Terceira Esquerda 30,00",
+                        "01/12 Quarta Esquerda 40,00"), 143f, 700f);
+                escreveLinhasPalavraAPalavra(cs, List.of(
+                        "Lançamentos: compras e saques",
+                        "02/12 Primeira Direita 50,00",
+                        "03/12 Segunda Direita 60,00"), 358f, 700f);
+                // Intrusa: entre as colunas, mais perto da esquerda que a coluna direita real.
+                escreveLinhasPalavraAPalavra(cs, List.of("10/12"), 250f, 300f);
+            }
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            document.save(out);
+            return out.toByteArray();
+        }
+    }
+
+    @Test
+    void parseIgnoraDataSoltaEntreAsColunasEAchaAColunaDireitaReal() throws IOException {
+        // A intrusa em X=250 é a candidata mais próxima, mas o conteúdo da coluna esquerda a
+        // alcança — não há faixa vazia até ela. A busca então segue para a próxima candidata,
+        // que é a coluna direita real, e as 6 transações saem corretas.
+        byte[] pdfBytes = pdfComDataSoltaEntreAsColunas();
+        String fullTextFake = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques";
+
+        List<NormalizedTransactionDTO> resultado = template.parse(fullTextFake, pdfBytes);
+
+        assertThat(resultado).hasSize(6);
+        assertThat(resultado)
+                .extracting(t -> t.fields().get("amount").value())
+                .containsExactlyInAnyOrder(
+                        new BigDecimal("10.00"), new BigDecimal("20.00"), new BigDecimal("30.00"),
+                        new BigDecimal("40.00"), new BigDecimal("50.00"), new BigDecimal("60.00"));
+    }
+
     @Test
     void parseEscolheColunaDireitaRealEmVezDoRuidoMaisMassivoADireita() throws IOException {
         byte[] pdfBytes = pdfColunaDireitaEsparsaComRuidoMaisADireita();

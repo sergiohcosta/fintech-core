@@ -176,45 +176,42 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
         clusters.sort((a, b) -> Float.compare(b[1], a[1]));
         float[] dominante = clusters.get(0);
 
-        // A outra coluna é a candidata MAIS PRÓXIMA da dominante, entre as suficientemente
-        // separadas — não a de maior massa. Numa página em que a coluna direita é esparsa
-        // (última página, 1–2 lançamentos) e há ruído mais à direita (datas na seção de limites
-        // de crédito), o critério de massa escolheria o ruído e o corte cairia depois da coluna
-        // real, partindo-a ao meio. As duas colunas são adjacentes por construção: qualquer
-        // cluster mais à direita que a segunda coluna está fora do bloco de lançamentos.
-        float[] parceira = null;
+        // Candidatas a "outra coluna", da MAIS PRÓXIMA à mais distante da dominante. Ordenar por
+        // proximidade e não por massa importa: numa última página, a coluna direita pode ter 1–2
+        // lançamentos e haver ruído mais massivo à direita dela (datas da seção de limites) — por
+        // massa, o ruído venceria e o corte cairia depois da coluna real, partindo-a ao meio.
+        List<float[]> candidatas = new ArrayList<>();
         for (int i = 1; i < clusters.size(); i++) {
             float[] candidata = clusters.get(i);
-            if (candidata[1] < MIN_CLUSTER_MASS
-                    || Math.abs(candidata[0] - dominante[0]) < MIN_COLUMN_SEPARATION) {
-                continue;
-            }
-            if (parceira == null
-                    || Math.abs(candidata[0] - dominante[0]) < Math.abs(parceira[0] - dominante[0])) {
-                parceira = candidata;
+            if (candidata[1] >= MIN_CLUSTER_MASS
+                    && Math.abs(candidata[0] - dominante[0]) >= MIN_COLUMN_SEPARATION) {
+                candidatas.add(candidata);
             }
         }
-        if (parceira == null) {
-            return pageWidth;
+        candidatas.sort(Comparator.comparingDouble(c -> Math.abs(c[0] - dominante[0])));
+
+        // Fica com a PRIMEIRA candidata que deixa uma faixa vertical de fato vazia até ela.
+        // Só proximidade não basta: uma data solta ENTRE as duas colunas é mais próxima que a
+        // coluna direita real e sequestraria a escolha. Exigir a faixa vazia descarta a
+        // intrusa — o conteúdo da esquerda a alcança — e a busca segue para a coluna seguinte.
+        for (float[] candidata : candidatas) {
+            float rightColumnX = Math.max(dominante[0], candidata[0]);
+            float leftContentEnd = fimDoConteudoAEsquerda(tokensByRow, rightColumnX);
+            if (leftContentEnd < rightColumnX) {
+                // Meio da faixa vertical comprovadamente vazia entre as duas colunas.
+                return (leftContentEnd + rightColumnX) / 2f;
+            }
         }
 
-        float rightColumnX = Math.max(dominante[0], parceira[0]);
-
-        // Onde o conteúdo da coluna esquerda REALMENTE termina. Não basta recuar uma margem
-        // fixa do início da coluna direita: se as duas "colunas" na verdade se sobrepõem, o
-        // recuo cai no meio de uma linha de lançamento e a parte em metade-data e metade-valor.
-        float leftContentEnd = fimDoConteudoAEsquerda(tokensByRow, rightColumnX);
-        if (leftContentEnd >= rightColumnX) {
-            // O conteúdo da esquerda invade a faixa da suposta coluna direita — não são duas
-            // colunas, é uma coluna só mais alguma data dispersa. Qualquer corte aqui partiria
-            // linhas ao meio e a página inteira sumiria da extração, em silêncio.
-            log.warn("ItauFaturaTemplate: conteúdo à esquerda termina em {}pt, além do início da "
-                    + "suposta coluna direita ({}pt) na página {} — tratada como coluna única.",
-                    leftContentEnd, rightColumnX, pageNumberOneBased);
-            return pageWidth;
+        if (!candidatas.isEmpty()) {
+            // Havia candidata plausível, mas nenhuma com faixa vazia: o conteúdo da esquerda
+            // alcança todas. Não são duas colunas — cortar em qualquer ponto partiria linhas ao
+            // meio e a página inteira sumiria da extração, em silêncio.
+            log.warn("ItauFaturaTemplate: nenhuma das {} candidatas a segunda coluna deixa faixa "
+                    + "vazia na página {} — tratada como coluna única.",
+                    candidatas.size(), pageNumberOneBased);
         }
-        // Meio da faixa vertical comprovadamente vazia entre as duas colunas.
-        return (leftContentEnd + rightColumnX) / 2f;
+        return pageWidth;
     }
 
     /**
@@ -229,10 +226,14 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
      */
     private float fimDoConteudoAEsquerda(Map<Integer, List<Token>> tokensByRow, float rightColumnX) {
         // `rightColumnX` é o CENTROIDE do cluster, uma média — cerca de metade dos tokens que
-        // iniciam a coluna direita caem alguns centésimos ABAIXO dele. Comparar direto com o
-        // centroide classificaria esses tokens como "conteúdo da esquerda" e o fim da coluna
-        // esquerda saltaria para o fim da linha da DIREITA, disparando o guard em toda fatura
-        // real. Descontar a tolerância de cluster resolve pela mesma régua que formou o cluster.
+        // iniciam a coluna direita cai alguns centésimos ABAIXO dele. Sem o desconto, esses
+        // tokens contam como conteúdo da esquerda, `leftEnd` salta pro fim da linha da DIREITA e
+        // a página inteira degrada.
+        //
+        // NÃO simplifique isto guardando o menor X do cluster e comparando direto: parece
+        // equivalente e é mais limpo, mas foi medido contra as 45 faturas reais e QUEBRA —
+        // a fatura de referência sai com R$ 29.869,71 no lugar de R$ 15.739,87. A forma abaixo
+        // é a única das duas que reproduz os totais impressos.
         float limiteEsquerda = rightColumnX - CLUSTER_TOLERANCE;
         float leftEnd = 0f;
         for (List<Token> row : tokensByRow.values()) {
@@ -309,10 +310,16 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
     }
 
     /**
-     * Agrupa posições X próximas — cada item devolvido é {@code {centroide, massa}}. Compara
-     * cada valor com o PRIMEIRO do grupo (não com o centroide corrente), então um grupo nunca
-     * fica mais largo que {@link #CLUSTER_TOLERANCE}: suficiente aqui, onde a variância medida
-     * dentro de uma coluna real é ~0,01pt e as colunas distam ~216pt uma da outra.
+     * Agrupa posições X próximas — cada item devolvido é {@code {centroide, massa}}.
+     *
+     * <p>Cada valor é comparado com o primeiro do grupo, então um grupo nunca fica mais largo
+     * que {@link #CLUSTER_TOLERANCE} — suficiente aqui, onde a variância medida dentro de uma
+     * coluna real é ~0,01pt e as colunas distam ~216pt uma da outra.
+     *
+     * <p>Quem consome o centroide precisa descontar {@link #CLUSTER_TOLERANCE} ao usá-lo como
+     * fronteira de coluna, porque metade dos membros do grupo fica abaixo da média — ver
+     * {@link #fimDoConteudoAEsquerda}, que documenta por que a alternativa "guardar o menor X"
+     * foi medida e rejeitada.
      */
     private List<float[]> clusterByProximity(List<Float> sortedX) {
         List<float[]> clusters = new ArrayList<>();
