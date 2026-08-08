@@ -886,4 +886,52 @@ class ItauFaturaTemplateTest {
                         new BigDecimal("112.67"), new BigDecimal("50.00"),
                         new BigDecimal("36.00"), new BigDecimal("21.00"));
     }
+    /**
+     * Última página de lançamentos, como ela é de verdade: lançamentos SÓ na coluna esquerda e,
+     * do lado direito, as caixas de resumo da fatura. Os títulos dessas caixas ("Limites de
+     * crédito", "Encargos cobrados") são exatamente os marcadores de fim de bloco — se a página
+     * não for cortada, eles entram no mesmo fluxo dos lançamentos e encerram o bloco logo no
+     * começo, levando a página inteira embora.
+     */
+    private static byte[] pdfUltimaPaginaComCaixasADireita() throws IOException {
+        try (PDDocument document = new PDDocument()) {
+            PDPage page = new PDPage();
+            document.addPage(page);
+            try (PDPageContentStream cs = new PDPageContentStream(document, page)) {
+                escreveLinhasPalavraAPalavra(cs, List.of(
+                        "Lançamentos: compras e saques",
+                        "28/11 Primeira Compra 10,00",
+                        "29/11 Segunda Compra 20,00",
+                        "30/11 Terceira Compra 30,00",
+                        "01/12 Quarta Compra 40,00"), 151.2f, 700f);
+                // Caixas de resumo à direita, na mesma faixa vertical das linhas de lançamento.
+                escreveLinhasPalavraAPalavra(cs, List.of(
+                        "Limites de crédito",
+                        "Limite total 10.000,00",
+                        "Encargos cobrados",
+                        "Juros do rotativo 0,00"), 367.2f, 700f);
+            }
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            document.save(out);
+            return out.toByteArray();
+        }
+    }
+
+    @Test
+    void parseNaoPerdeUltimaPaginaQuandoLancamentosSaoSoNaEsquerda() throws IOException {
+        // Sem corte, "Limites de crédito" cai logo depois do header e encerra o bloco com ZERO
+        // transações. Cortando na posição onde a coluna direita estaria, as caixas ficam de fora
+        // e os 4 lançamentos sobrevivem.
+        byte[] pdfBytes = pdfUltimaPaginaComCaixasADireita();
+        String fullTextFake = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques";
+
+        List<NormalizedTransactionDTO> resultado = template.parse(fullTextFake, pdfBytes);
+
+        assertThat(resultado).hasSize(4);
+        assertThat(resultado)
+                .extracting(t -> t.fields().get("amount").value())
+                .containsExactlyInAnyOrder(
+                        new BigDecimal("10.00"), new BigDecimal("20.00"),
+                        new BigDecimal("30.00"), new BigDecimal("40.00"));
+    }
 }

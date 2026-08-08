@@ -90,6 +90,14 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
     // uma da outra em todas as 121 páginas do levantamento. O limiar é menos da metade disso.
     private static final float MIN_COLUMN_SEPARATION = 100f;
 
+    // Afastamento entre as duas colunas de lançamento — usado para posicionar a coluna direita
+    // "virtual" quando a página tem lançamentos só à esquerda (última página), de modo a isolar
+    // as caixas de resumo do lado direito. Medido em 215,6–218,3pt; aqui fica um pouco abaixo,
+    // pra cair na FAIXA VAZIA antes da coluna, não em cima dela. Varredura de sensibilidade
+    // sobre as 45 faturas: 190 a 214 dão resultado idêntico (23 faturas exatas), 220 degrada —
+    // ou seja, é um platô largo, não um valor de sorte.
+    private static final float COLUMN_OFFSET = 206f;
+
     @Override
     public boolean matches(String fullText) {
         return fullText.contains(CNPJ_ITAU) && fullText.contains(HEADER_LANCAMENTOS);
@@ -168,7 +176,7 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
         Map<Integer, List<Token>> tokensByRow = collectTokensByRow(document, pageNumberOneBased);
         List<Float> anchors = dateAnchors(tokensByRow);
         List<float[]> clusters = clusterByProximity(anchors);
-        if (clusters.size() < 2) {
+        if (clusters.isEmpty()) {
             return pageWidth;
         }
         // O cluster de MAIOR massa é seguramente uma coluna real (medido: 15–36 lançamentos,
@@ -196,17 +204,34 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
         // intrusa — o conteúdo da esquerda a alcança — e a busca segue para a coluna seguinte.
         for (float[] candidata : candidatas) {
             float rightColumnX = Math.max(dominante[0], candidata[0]);
-            float leftContentEnd = fimDoConteudoAEsquerda(tokensByRow, rightColumnX);
+            float leftContentEnd =
+                    fimDoConteudoAEsquerda(tokensByRow, rightColumnX - CLUSTER_TOLERANCE);
             if (leftContentEnd < rightColumnX) {
                 // Meio da faixa vertical comprovadamente vazia entre as duas colunas.
                 return (leftContentEnd + rightColumnX) / 2f;
             }
         }
 
+        // Nenhuma segunda COLUNA DE LANÇAMENTOS. Isso não quer dizer que o lado direito esteja
+        // vazio: a última página de lançamentos costuma ter lançamentos só à esquerda e caixas
+        // de resumo à direita ("Limites de crédito", "Encargos cobrados"). Sem corte, o texto
+        // dessas caixas entra no mesmo fluxo — e como os títulos delas são justamente os
+        // marcadores de fim de bloco, o bloco é cortado logo no começo e a página inteira se
+        // perde (medido: R$ 602,12 e R$ 162,74 sumindo de duas faturas reais).
+        //
+        // Por isso cortamos assim mesmo, na posição onde a coluna direita ESTARIA. O afastamento
+        // entre colunas é a medida mais estável do layout: 215,6–218,3pt em 121 páginas de 45
+        // faturas ao longo de 4 anos. Não é a posição absoluta de uma coluna (isso variou e
+        // causou os defeitos anteriores) — é a distância entre elas.
+        float colunaVirtualX = dominante[0] + COLUMN_OFFSET;
+        if (colunaVirtualX < pageWidth) {
+            float leftContentEnd = fimDoConteudoAEsquerda(tokensByRow, colunaVirtualX);
+            if (leftContentEnd < colunaVirtualX) {
+                return (leftContentEnd + colunaVirtualX) / 2f;
+            }
+        }
+
         if (!candidatas.isEmpty()) {
-            // Havia candidata plausível, mas nenhuma com faixa vazia: o conteúdo da esquerda
-            // alcança todas. Não são duas colunas — cortar em qualquer ponto partiria linhas ao
-            // meio e a página inteira sumiria da extração, em silêncio.
             log.warn("ItauFaturaTemplate: nenhuma das {} candidatas a segunda coluna deixa faixa "
                     + "vazia na página {} — tratada como coluna única.",
                     candidatas.size(), pageNumberOneBased);
@@ -215,7 +240,7 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
     }
 
     /**
-     * X em que termina o conteúdo das LINHAS DE LANÇAMENTO à esquerda de {@code rightColumnX}.
+     * X em que termina o conteúdo das LINHAS DE LANÇAMENTO à esquerda de {@code limiteEsquerda}.
      *
      * <p>Só linhas de lançamento contam: rodapé, endereço e cabeçalho atravessam a calha com
      * frequência em página real e não são conteúdo que se possa partir — considerá-los faria a
@@ -223,18 +248,14 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
      *
      * <p>Devolve {@code 0} quando não há nenhuma linha de lançamento à esquerda (o corte então
      * fica no meio do caminho até a coluna direita, sem nada a preservar).
+     *
+     * <p>O limite é passado pronto pelo chamador porque as duas origens pedem correções
+     * diferentes: vindo de um cluster real, é preciso descontar a tolerância (o representante é
+     * o centroide, uma média, e metade dos tokens da coluna cai abaixo dele); vindo da coluna
+     * virtual, não há cluster nenhum e descontar criaria um ponto cego — tokens entre o limite
+     * descontado e o corte ficariam de fora da conta e o corte partiria a linha ali.
      */
-    private float fimDoConteudoAEsquerda(Map<Integer, List<Token>> tokensByRow, float rightColumnX) {
-        // `rightColumnX` é o CENTROIDE do cluster, uma média — cerca de metade dos tokens que
-        // iniciam a coluna direita cai alguns centésimos ABAIXO dele. Sem o desconto, esses
-        // tokens contam como conteúdo da esquerda, `leftEnd` salta pro fim da linha da DIREITA e
-        // a página inteira degrada.
-        //
-        // NÃO simplifique isto guardando o menor X do cluster e comparando direto: parece
-        // equivalente e é mais limpo, mas foi medido contra as 45 faturas reais e QUEBRA —
-        // a fatura de referência sai com R$ 29.869,71 no lugar de R$ 15.739,87. A forma abaixo
-        // é a única das duas que reproduz os totais impressos.
-        float limiteEsquerda = rightColumnX - CLUSTER_TOLERANCE;
+    private float fimDoConteudoAEsquerda(Map<Integer, List<Token>> tokensByRow, float limiteEsquerda) {
         float leftEnd = 0f;
         for (List<Token> row : tokensByRow.values()) {
             boolean lancamentoAEsquerda = row.stream()
