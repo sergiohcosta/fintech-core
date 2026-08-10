@@ -35,6 +35,7 @@ import java.math.BigDecimal;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -422,6 +423,14 @@ public class ImportService {
     public ImportBatchResponseDTO commit(UUID batchId, ImportCommitRequestDTO request, User user) {
         ImportBatch batch = findBatch(batchId, user);
 
+        // Fatura que O DOCUMENTO IMPORTADO representa (vencimento impresso, spec 2026-08-09) —
+        // quando presente, TODA linha do batch ancora nela, em vez de recalculada por
+        // resolveInvoiceMonth (que erra em parcela em andamento com data de compra antiga).
+        YearMonth targetInvoiceMonth =
+                (batch.getTargetInvoiceReferenceYear() != null && batch.getTargetInvoiceReferenceMonth() != null)
+                        ? YearMonth.of(batch.getTargetInvoiceReferenceYear(), batch.getTargetInvoiceReferenceMonth())
+                        : null;
+
         for (StagedCommitItemDTO item : request.items()) {
             StagedTransaction staged = findStaged(item.stagedId(), batchId, user);
             if (staged.getStatus() != StagedTransactionStatus.PENDING) {
@@ -468,7 +477,7 @@ public class ImportService {
             TransactionRequestDTO dto = new TransactionRequestDTO(
                     description, requestAmount, date, type, (TransactionStatus) null, totalInstallments,
                     item.categoryId(), item.accountId());
-            List<TransactionResponseDTO> created = transactionService.create(dto, user);
+            List<TransactionResponseDTO> created = transactionService.create(dto, user, targetInvoiceMonth);
             TransactionResponseDTO tx = created.get(0);
 
             staged.setPromotedTransactionId(tx.id());

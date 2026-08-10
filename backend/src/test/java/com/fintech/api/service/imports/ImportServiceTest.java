@@ -490,6 +490,55 @@ class ImportServiceTest {
         }
     }
 
+    /** Parcela EM ANDAMENTO (não é a 1ª), com data de compra ANTIGA — o caso que motivou a spec. */
+    private NormalizedTransactionDTO parcelaEmAndamentoComDataAntiga() {
+        return new NormalizedTransactionDTO(
+                null,
+                Map.of("amount", fieldValue(74.87, "1.0"),
+                        "transaction_date", fieldValue("2026-07-03", "1.0"), // dia 3 <= closingDay 5 → sem âncora iria pra fatura de junho
+                        "description", fieldValue("PAYPAL PARCELA ANTIGA", "0.9"),
+                        "installment_number", fieldValue(2, "1.0"),
+                        "installment_total", fieldValue(8, "1.0")),
+                null, null,
+                new BigDecimal("0.98"),
+                null, null);
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void commitUsaFaturaAlvoDoDocumentoParaParcelaEmAndamento() {
+        Tenant tenant = persistTenant("Tenant Fatura Alvo Commit");
+        try {
+            User user = persistUser(tenant, "faturaalvo@import.test");
+            Account account = persistCreditCardAccount(tenant, user); // closingDay=5, dueDay=15
+
+            // Batch com fatura-alvo = agosto/2026 (é isso que o ItauFaturaTemplate teria calculado
+            // pro vencimento impresso do documento) — mesmo que a data de compra (03/07) fosse cair
+            // em junho/2026 por resolveInvoiceMonth se não houvesse âncora.
+            NormalizedBatchDTO batch = new NormalizedBatchDTO(
+                    ImportMode.NEW_TRANSACTIONS, ImportSourceType.PDF_TEXT,
+                    "itau_fatura_v1", "v1", List.of(parcelaEmAndamentoComDataAntiga()),
+                    null, null, null, null, null,
+                    2026, 8);
+
+            ImportBatchResponseDTO created = importService.createBatch(batch, user);
+            UUID stagedId = importService.listStaged(created.id(), user).get(0).id();
+
+            ImportCommitRequestDTO req = new ImportCommitRequestDTO(
+                    List.of(new StagedCommitItemDTO(stagedId, account.getId(), null)));
+            importService.commit(created.id(), req, user);
+
+            StagedTransactionResponseDTO afterStaged = importService.listStaged(created.id(), user).get(0);
+            TransactionResponseDTO tx = transactionService.findById(afterStaged.promotedTransactionId(), user);
+
+            // Sem a âncora, resolveInvoiceMonth(03/07, closingDay=5) mandaria pra fatura de junho
+            // (dueDate 15/07). COM a âncora (referenceMonth=agosto), a fatura é a de setembro.
+            assertThat(tx.invoiceDueDate()).isEqualTo(LocalDate.of(2026, 9, 15));
+        } finally {
+            cleanupTenant(tenant.getId());
+        }
+    }
+
     @Test
     void patchEditaCampoComConfiancaMaximaEReDerivaReview() {
         Tenant tenant = persistTenant("Tenant Patch");
