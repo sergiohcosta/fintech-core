@@ -909,6 +909,21 @@ class ItauFaturaTemplateTest {
         assertThatThrownBy(() -> template.targetInvoiceReferenceMonth("texto sem vencimento nenhum"))
                 .isInstanceOf(ExtractionException.class);
     }
+
+    @Test
+    void targetInvoiceReferenceMonthLancaExtractionExceptionQuandoDiaInvalidoParaOMes() {
+        // Achado da revisão final do branch: "31/02/2026" bate o regex DUE_DATE (dígitos), mas
+        // fevereiro não tem dia 31 — LocalDate.of lançaria DateTimeException não tratada (500
+        // genérico) sem o catch em extrairVencimento(). Precisa virar ExtractionException, o
+        // mesmo tipo usado quando o vencimento está ausente, para o batch virar FAILED com
+        // motivo legível em vez de 500.
+        ItauFaturaTemplate template = new ItauFaturaTemplate();
+        String texto = "FULANO DE TAL\nVencimento 31/02/2026\n60.872.504/0001-23\n";
+
+        assertThatThrownBy(() -> template.targetInvoiceReferenceMonth(texto))
+                .isInstanceOf(ExtractionException.class)
+                .isNotInstanceOf(java.time.DateTimeException.class);
+    }
     /**
      * Última página de lançamentos, como ela é de verdade: lançamentos SÓ na coluna esquerda e,
      * do lado direito, as caixas de resumo da fatura. Os títulos dessas caixas ("Limites de

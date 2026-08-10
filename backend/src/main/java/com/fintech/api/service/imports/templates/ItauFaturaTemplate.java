@@ -17,6 +17,7 @@ import org.springframework.stereotype.Component;
 import java.awt.geom.Rectangle2D;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
@@ -171,7 +172,14 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
         int dia = Integer.parseInt(dueDateMatcher.group(1));
         int mes = Integer.parseInt(dueDateMatcher.group(2));
         int ano = Integer.parseInt(dueDateMatcher.group(3));
-        return LocalDate.of(ano, mes, dia);
+        try {
+            return LocalDate.of(ano, mes, dia);
+        } catch (DateTimeException e) {
+            // Dia inválido pro mês (ex.: "31/02/2026", vencimento impresso corrompido) —
+            // sem este catch, DateTimeException não tratada vira 500 genérico em vez de
+            // FAILED com motivo legível (mesmo tratamento do vencimento ausente, acima).
+            throw new ExtractionException("Data de vencimento inválida na fatura Itaú.", e);
+        }
     }
 
     /**

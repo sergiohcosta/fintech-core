@@ -84,9 +84,13 @@ popula. Não exposto em `ImportBatchResponseDTO` nesta entrega — dado operacio
 mesmo tratamento dado à proveniência estruturada do V28.
 
 **Seed:** `V24__seed_dev_import.sql` (batch de imagem) e `V27__seed_dev_import_csv.sql` (batch
-CSV) recebem as 2 colunas explicitamente `NULL` — nenhum dos dois é fatura Itaú, então não se
-aplica, mas a regra do dataset (`dataset.md`) é inviolável: coluna nova em tabela existente
-sempre atualiza os INSERTs do seed.
+CSV) NÃO são tocados — são migrations imutáveis (regra inviolável do projeto), e o conceito de
+fatura-alvo genuinamente não se aplica a nenhum dos dois. As 2 colunas ficam `NULL`
+IMPLICITAMENTE nesses batches (nullable sem default — nenhum `INSERT` precisa mencioná-las), o
+mesmo precedente do `V28` (coluna nova onde o conceito não se aplica fica `NULL`, sem `UPDATE`
+retroativo forçado). A regra do dataset (`dataset.md`) continua satisfeita: não há INSERT novo
+nem coluna de negócio nova para popular em cima de dado existente, só uma coluna aditiva que
+não se aplica a esses 2 batches.
 
 ## 4. Fluxo
 
@@ -156,3 +160,12 @@ andamento. Limpar a conta de teste antes/depois, como já vem sendo feito.
   normal do Itaú (confirmado nas 45 faturas medidas), mas não é universal — um cartão com
   `dueDay < closingDay` (fatura vence ANTES do fechamento seguinte, incomum) quebraria essa
   relação. Sem evidência no corpus de que isso ocorra; revisitar se aparecer um caso real.
+- **Duplicata de parcela `>1/N` concentrada, não eliminada (achado da revisão final do
+  branch):** casar contra um `InstallmentGroup` já existente segue fora de escopo (item acima)
+  — esta entrega não piora a CONTAGEM de duplicatas, mas muda ONDE o efeito aparece. Antes,
+  uma parcela `>1/N` duplicada (reimportação de uma fatura já commitada) caía numa fatura
+  ANTIGA aleatória via `resolveInvoiceMonth` — o usuário via a duplicata espalhada por várias
+  faturas passadas, mais fácil de não notar. Com a âncora, a duplicata cai SEMPRE na mesma
+  fatura que já tem a parcela real do grupo — o total daquela fatura fica inflado pela
+  duplicata, concentrada exatamente onde o usuário está olhando. Efeito colateral do fix, não
+  bug novo; revisitar junto com a reconciliação de verdade (Fase 4/5).

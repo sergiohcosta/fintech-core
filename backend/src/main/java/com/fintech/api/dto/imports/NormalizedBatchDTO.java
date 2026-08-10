@@ -3,6 +3,8 @@ package com.fintech.api.dto.imports;
 import com.fintech.api.domain.enums.ImportMode;
 import com.fintech.api.domain.enums.ImportSourceType;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
@@ -39,8 +41,8 @@ public record NormalizedBatchDTO(
         Integer extractionLatencyMs,
         String fallbackFrom,
         String fallbackReason,
-        Integer targetInvoiceReferenceYear,
-        Integer targetInvoiceReferenceMonth) {
+        @Min(1900) Integer targetInvoiceReferenceYear,
+        @Min(1) @Max(12) Integer targetInvoiceReferenceMonth) {
 
     /**
      * Construtor de compatibilidade para os extratores/testes que ainda não informam proveniência

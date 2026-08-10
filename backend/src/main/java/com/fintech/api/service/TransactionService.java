@@ -160,6 +160,10 @@ public class TransactionService {
         boolean isCreditCard = AccountType.CREDIT_CARD.equals(account.getType());
         int closingDay = 0;
         if (isCreditCard) {
+            // Buscado mesmo com anchorInvoiceMonth != null: closingDay só entra na conta no
+            // ternário abaixo quando NÃO há âncora, mas esta busca também valida que a conta
+            // TEM CreditCardDetails (senão lança EntityNotFoundException) — checagem que vale
+            // nos dois caminhos, com ou sem âncora.
             closingDay = creditCardDetailsRepository.findByAccount(account)
                     .orElseThrow(() -> new EntityNotFoundException(
                             "Detalhes do cartão não encontrados para a conta."))
