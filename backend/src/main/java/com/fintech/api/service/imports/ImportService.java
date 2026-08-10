@@ -224,6 +224,8 @@ public class ImportService {
                 .extractionLatencyMs(batch.extractionLatencyMs())
                 .fallbackFrom(batch.fallbackFrom())
                 .fallbackReason(batch.fallbackReason())
+                .targetInvoiceReferenceYear(batch.targetInvoiceReferenceYear())
+                .targetInvoiceReferenceMonth(batch.targetInvoiceReferenceMonth())
                 // O batch chega "extraído". Aqui vira EXTRACTED; FAILED é o caminho de exceção acima.
                 .status(ImportBatchStatus.EXTRACTED)
                 .build());

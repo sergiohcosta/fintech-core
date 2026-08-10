@@ -277,6 +277,43 @@ class ImportServiceTest {
         assertThat(persisted.getFallbackReason()).isEqualTo("unavailable: timeout no homelab");
     }
 
+    /**
+     * Fatura-alvo do documento (spec 2026-08-09): o mês de referência que o EXTRATOR já sabe
+     * (vencimento impresso na fatura Itaú) tem que sobreviver ao round-trip até a entidade —
+     * mesmo padrão da proveniência do V28, mesma razão (não exposto no DTO de resposta ainda).
+     */
+    @Test
+    void createBatchPersisteFaturaAlvoDoDocumento() {
+        Tenant tenant = persistTenant("Tenant Target Invoice");
+        User user = persistUser(tenant, "target@import.test");
+
+        NormalizedBatchDTO comFaturaAlvo = new NormalizedBatchDTO(
+                ImportMode.NEW_TRANSACTIONS, ImportSourceType.PDF_TEXT,
+                "itau_fatura_v1", "v1", List.of(highConfidence()),
+                null, null, null, null, null,
+                2026, 7);
+
+        ImportBatchResponseDTO created = importService.createBatch(comFaturaAlvo, user);
+
+        ImportBatch persisted = importBatchRepository.findById(created.id()).orElseThrow();
+        assertThat(persisted.getTargetInvoiceReferenceYear()).isEqualTo(2026);
+        assertThat(persisted.getTargetInvoiceReferenceMonth()).isEqualTo(7);
+    }
+
+    /** Sem fatura-alvo (CSV/OFX/imagem/heurística) → NULL persistido, comportamento inalterado. */
+    @Test
+    void createBatchSemFaturaAlvoPersisteNull() {
+        Tenant tenant = persistTenant("Tenant No Target Invoice");
+        User user = persistUser(tenant, "notarget@import.test");
+
+        ImportBatchResponseDTO created = importService.createBatch(batchOf(highConfidence()), user);
+
+        ImportBatch persisted = importBatchRepository.findById(created.id()).orElseThrow();
+        assertThat(persisted.getTargetInvoiceReferenceYear()).isNull();
+        assertThat(persisted.getTargetInvoiceReferenceMonth()).isNull();
+    }
+
+
     @Test
     void derivaRequiresReviewPorThresholdNoCodigo() {
         Tenant tenant = persistTenant("Tenant Import B");

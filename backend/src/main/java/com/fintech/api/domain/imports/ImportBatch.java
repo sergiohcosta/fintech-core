@@ -97,6 +97,15 @@ public class ImportBatch {
     @Column(name = "extraction_latency_ms")
     private Integer extractionLatencyMs;
 
+    // Fatura que O DOCUMENTO IMPORTADO representa (vencimento impresso, não recalculado por
+    // closingDay) — só ItauFaturaTemplate popula (V30, spec 2026-08-09). NULL = extrator sem
+    // esse conceito (CSV/OFX/imagem/heurística genérica); commit() cai no caminho existente.
+    @Column(name = "target_invoice_reference_year")
+    private Integer targetInvoiceReferenceYear;
+
+    @Column(name = "target_invoice_reference_month")
+    private Integer targetInvoiceReferenceMonth;
+
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;
