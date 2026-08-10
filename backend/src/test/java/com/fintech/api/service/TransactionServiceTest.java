@@ -34,6 +34,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -514,6 +515,72 @@ class TransactionServiceTest {
         assertThat(saved.get(1).getDate()).isEqualTo(LocalDate.of(2026, 7, 1));
         assertThat(saved.get(2).getDate()).isEqualTo(LocalDate.of(2026, 8, 1));
         saved.forEach(t -> assertThat(t.getInvoice()).isNull());
+    }
+
+    @Test
+    @DisplayName("Âncora explícita de fatura ignora resolveInvoiceMonth (parcela em andamento com data antiga)")
+    void anchorInvoiceMonthOverridesResolveInvoiceMonth() {
+        User user = buildUser();
+        Account account = buildCreditCardAccount(user);
+        CreditCardDetails details = new CreditCardDetails();
+        details.setClosingDay(5);
+        details.setDueDay(15);
+
+        // Dia 13, closingDay=5 → dia > closingDay → SEM âncora, resolveInvoiceMonth mandaria
+        // pra referenceMonth=março (mês da própria compra). Com âncora, deve ignorar isso.
+        TransactionRequestDTO dto = new TransactionRequestDTO(
+                "Parcela em andamento", new BigDecimal("50.00"), LocalDate.of(2026, 3, 13),
+                TransactionType.EXPENSE, null, null, null, account.getId());
+
+        when(accountRepository.findByIdAndTenant(account.getId(), user.getTenant()))
+                .thenReturn(Optional.of(account));
+        when(creditCardDetailsRepository.findByAccount(account)).thenReturn(Optional.of(details));
+        when(invoiceService.getOrCreate(any(), anyInt(), anyInt()))
+                .thenReturn(Invoice.builder().id(UUID.randomUUID()).account(account)
+                        .referenceYear(2026).referenceMonth(7)
+                        .closingDate(LocalDate.of(2026, 8, 5))
+                        .dueDate(LocalDate.of(2026, 8, 15))
+                        .status(InvoiceStatus.OPEN).build());
+        when(repository.save(any(Transaction.class))).thenAnswer(i -> i.getArgument(0));
+
+        service.create(dto, user, YearMonth.of(2026, 7));
+
+        verify(invoiceService).getOrCreate(account, 2026, 7);
+        verify(invoiceService, never()).getOrCreate(account, 2026, 3);
+    }
+
+    @Test
+    @DisplayName("Parcelas futuras cascateiam a partir da âncora, não da data de compra")
+    void installmentsWithAnchorCascadeFromAnchorMonth() {
+        User user = buildUser();
+        Account account = buildCreditCardAccount(user);
+        CreditCardDetails details = new CreditCardDetails();
+        details.setClosingDay(5);
+        details.setDueDay(15);
+
+        TransactionRequestDTO dto = new TransactionRequestDTO(
+                "Notebook parcelado", new BigDecimal("3000.00"), LocalDate.of(2026, 3, 13),
+                TransactionType.EXPENSE, null, 3, null, account.getId());
+
+        when(accountRepository.findByIdAndTenant(account.getId(), user.getTenant()))
+                .thenReturn(Optional.of(account));
+        when(creditCardDetailsRepository.findByAccount(account)).thenReturn(Optional.of(details));
+        when(installmentGroupRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(invoiceService.getOrCreate(any(), anyInt(), anyInt()))
+                .thenAnswer(i -> Invoice.builder()
+                        .id(UUID.randomUUID()).account(account)
+                        .referenceYear(i.getArgument(1))
+                        .referenceMonth(i.getArgument(2))
+                        .closingDate(LocalDate.of(i.<Integer>getArgument(1), i.<Integer>getArgument(2), 5))
+                        .dueDate(LocalDate.of(i.<Integer>getArgument(1), i.<Integer>getArgument(2), 15))
+                        .status(InvoiceStatus.OPEN).build());
+        when(repository.save(any(Transaction.class))).thenAnswer(i -> i.getArgument(0));
+
+        service.create(dto, user, YearMonth.of(2026, 7));
+
+        verify(invoiceService).getOrCreate(account, 2026, 7);
+        verify(invoiceService).getOrCreate(account, 2026, 8);
+        verify(invoiceService).getOrCreate(account, 2026, 9);
     }
 
     private User buildUser() {

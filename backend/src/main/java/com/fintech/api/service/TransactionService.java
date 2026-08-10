@@ -129,6 +129,21 @@ public class TransactionService {
 
     @Transactional
     public List<TransactionResponseDTO> create(TransactionRequestDTO dto, User user) {
+        return create(dto, user, null);
+    }
+
+    /**
+     * Overload usado SÓ pelo commit de importação ({@code ImportService}): quando a fatura de
+     * origem já é conhecida (documento com vencimento único impresso, ex. fatura Itaú), a
+     * parcela-âncora (i=0) ignora {@code resolveInvoiceMonth} e usa {@code anchorInvoiceMonth}
+     * diretamente — o documento já decidiu em que fatura a linha caiu; recalcular pela data de
+     * compra reintroduz a mesma fragilidade que causou o roteamento errado de parcelas em
+     * andamento (spec 2026-08-09-itau-fatura-ancora-por-documento). Parcelas futuras de um
+     * parcelamento novo (i=1..N-1) seguem cascata normal a partir da âncora.
+     */
+    @Transactional
+    public List<TransactionResponseDTO> create(
+            TransactionRequestDTO dto, User user, YearMonth anchorInvoiceMonth) {
         Category category = resolveCategory(dto.categoryId(), user);
         Account account = resolveAccount(dto.accountId(), user);
 
@@ -171,7 +186,9 @@ public class TransactionService {
             LocalDate transactionDate;
 
             if (isCreditCard) {
-                YearMonth invoiceMonth = resolveInvoiceMonth(dto.date(), finalClosingDay).plusMonths(i);
+                YearMonth invoiceMonth = (anchorInvoiceMonth != null
+                        ? anchorInvoiceMonth
+                        : resolveInvoiceMonth(dto.date(), finalClosingDay)).plusMonths(i);
                 invoice = invoiceService.getOrCreate(account, invoiceMonth.getYear(), invoiceMonth.getMonthValue());
                 transactionDate = dto.date(); // data de compra igual em todas as parcelas
             } else {
