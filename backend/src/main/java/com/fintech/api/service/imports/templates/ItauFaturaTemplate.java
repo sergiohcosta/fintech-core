@@ -18,6 +18,7 @@ import java.awt.geom.Rectangle2D;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -110,13 +111,9 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
 
     @Override
     public List<NormalizedTransactionDTO> parse(String fullText, byte[] content) {
-        Matcher dueDateMatcher = DUE_DATE.matcher(fullText);
-        if (!dueDateMatcher.find()) {
-            throw new ExtractionException(
-                    "Não foi possível localizar a data de vencimento na fatura Itaú.");
-        }
-        int mesVencimento = Integer.parseInt(dueDateMatcher.group(2));
-        int anoVencimento = Integer.parseInt(dueDateMatcher.group(3));
+        LocalDate vencimento = extrairVencimento(fullText);
+        int mesVencimento = vencimento.getMonthValue();
+        int anoVencimento = vencimento.getYear();
 
         StringBuilder colunaEsquerda = new StringBuilder();
         StringBuilder colunaDireita = new StringBuilder();
@@ -151,6 +148,30 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
         transacoes.addAll(extrairTransacoesDoStream(colunaEsquerda.toString(), mesVencimento, anoVencimento));
         transacoes.addAll(extrairTransacoesDoStream(colunaDireita.toString(), mesVencimento, anoVencimento));
         return transacoes;
+    }
+
+    @Override
+    public YearMonth targetInvoiceReferenceMonth(String fullText) {
+        // dueDay >= closingDay é o caso normal do Itaú (confirmado nas 45 faturas medidas na
+        // spec de coluna: vencimento sempre dia 10) — nesse caso InvoiceService.createNewInvoice
+        // vence a fatura de referenceMonth no mês SEGUINTE. Recalcular pelo closingDay
+        // configurado na conta reintroduziria a mesma fragilidade que causou o sintoma original
+        // (spec 2026-08-09 §2.c) — o vencimento IMPRESSO já é o dado certo, independente de
+        // como a conta está configurada no sistema.
+        return YearMonth.from(extrairVencimento(fullText)).minusMonths(1);
+    }
+
+    /** Vencimento impresso no documento (único, aparece uma vez, com ano completo). */
+    private LocalDate extrairVencimento(String fullText) {
+        Matcher dueDateMatcher = DUE_DATE.matcher(fullText);
+        if (!dueDateMatcher.find()) {
+            throw new ExtractionException(
+                    "Não foi possível localizar a data de vencimento na fatura Itaú.");
+        }
+        int dia = Integer.parseInt(dueDateMatcher.group(1));
+        int mes = Integer.parseInt(dueDateMatcher.group(2));
+        int ano = Integer.parseInt(dueDateMatcher.group(3));
+        return LocalDate.of(ano, mes, dia);
     }
 
     /**

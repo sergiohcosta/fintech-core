@@ -27,4 +27,14 @@ public interface PdfBankTemplate {
 
     /** Identificador gravado em {@code extractor_used} quando este template processa. */
     String templateId();
+
+    /**
+     * Mês de referência da FATURA QUE ESTE DOCUMENTO REPRESENTA (não de uma transação
+     * individual) — só bancos cujo documento é "uma fatura com vencimento único" têm esse
+     * conceito (Itaú). {@code null} (default): extrator genérico decide por transação,
+     * comportamento inalterado (spec: 2026-08-09-itau-fatura-ancora-por-documento).
+     */
+    default java.time.YearMonth targetInvoiceReferenceMonth(String fullText) {
+        return null;
+    }
 }

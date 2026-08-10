@@ -1,6 +1,7 @@
 package com.fintech.api.service.imports.templates;
 
 import com.fintech.api.dto.imports.NormalizedTransactionDTO;
+import com.fintech.api.service.imports.ExtractionException;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -12,9 +13,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.math.BigDecimal;
+import java.time.YearMonth;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ItauFaturaTemplateTest {
 
@@ -885,6 +888,26 @@ class ItauFaturaTemplateTest {
                 .containsExactlyInAnyOrder(
                         new BigDecimal("112.67"), new BigDecimal("50.00"),
                         new BigDecimal("36.00"), new BigDecimal("21.00"));
+    }
+
+    @Test
+    void targetInvoiceReferenceMonthDerivaDoVencimentoImpresso() {
+        ItauFaturaTemplate template = new ItauFaturaTemplate();
+        String texto = "FULANO DE TAL\nVencimento 10/08/2026\n60.872.504/0001-23\n";
+
+        YearMonth alvo = template.targetInvoiceReferenceMonth(texto);
+
+        // Vencimento 10/08 → referenceMonth = mês anterior (mesma relação que InvoiceService já
+        // assume no caso dueDay >= closingDay — spec §2.c).
+        assertThat(alvo).isEqualTo(YearMonth.of(2026, 7));
+    }
+
+    @Test
+    void targetInvoiceReferenceMonthLancaQuandoVencimentoAusente() {
+        ItauFaturaTemplate template = new ItauFaturaTemplate();
+
+        assertThatThrownBy(() -> template.targetInvoiceReferenceMonth("texto sem vencimento nenhum"))
+                .isInstanceOf(ExtractionException.class);
     }
     /**
      * Última página de lançamentos, como ela é de verdade: lançamentos SÓ na coluna esquerda e,
