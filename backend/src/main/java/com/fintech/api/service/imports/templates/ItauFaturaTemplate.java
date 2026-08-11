@@ -389,45 +389,51 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
     }
 
     /**
-     * Localiza TODOS os blocos "Lançamentos: compras e saques" dentro de UM stream já
-     * separado por coluna (esquerda ou direita) e reconhece as transações de cada um — a
-     * mesma lógica de delimitação de seção de antes, agora rodando sobre texto limpo (sem
-     * fusão de coluna), o que a torna correta: cada coluna tem seus próprios cabeçalhos e
-     * marcadores de parada na ordem certa.
+     * Concatena todos os blocos de UM header dentro do stream — cobre continuação entre
+     * páginas (o mesmo header reaparece; o loop trata como um novo bloco lógico do MESMO
+     * conteúdo, encadenado). Devolve o texto entre o header e o próximo {@link #STOP_MARKERS},
+     * excluindo o PRÓPRIO header da lista de parada — sem essa exclusão, a repetição do header
+     * por continuação de página fecharia o bloco prematuramente (mesma armadilha já corrigida
+     * pra compras e saques, agora generalizada pra qualquer seção).
      */
-    private List<NormalizedTransactionDTO> extrairTransacoesDoStream(
-            String stream, int mesVencimento, int anoVencimento) {
-        List<NormalizedTransactionDTO> transacoes = new ArrayList<>();
+    private String extrairBlocosConcatenados(String stream, String header) {
+        StringBuilder blocos = new StringBuilder();
         int cursor = 0;
         while (true) {
-            int headerIdx = stream.indexOf(HEADER_LANCAMENTOS, cursor);
+            int headerIdx = stream.indexOf(header, cursor);
             if (headerIdx < 0) {
                 break;
             }
-            int start = headerIdx + HEADER_LANCAMENTOS.length();
+            int start = headerIdx + header.length();
             int stop = stream.length();
             for (String marker : STOP_MARKERS) {
+                if (marker.equals(header)) {
+                    continue;
+                }
                 int idx = stream.indexOf(marker, start);
                 if (idx >= 0 && idx < stop) {
                     stop = idx;
                 }
             }
-            // Header re-impresso por continuação de página não deve abrir um bloco novo —
-            // é o MESMO bloco lógico continuando. Avançar o cursor pro fim do bloco atual
-            // (não pro início do header) é matematicamente equivalente ao capping anterior
-            // para este algoritmo (verificado), mas é a leitura mais fiel do layout
-            // paginado real e evita reabrir blocos sobre header repetido por continuação.
-            String bloco = stream.substring(start, stop);
-            for (String linha : bloco.lines().toList()) {
-                TransacaoItau transacao = parseLinha(linha.trim(), mesVencimento, anoVencimento);
-                if (transacao != null) {
-                    transacoes.add(toDto(transacao));
-                }
-            }
-            // Avança o cursor pro FIM deste bloco (não pro início do header atual) — qualquer
-            // header re-impresso DENTRO deste intervalo já foi incluído (como texto inerte) e
-            // não deve reabrir um bloco novo sobreposto.
+            blocos.append(stream, start, stop).append('\n');
             cursor = stop;
+        }
+        return blocos.toString();
+    }
+
+    /**
+     * Localiza TODOS os blocos "Lançamentos: compras e saques" dentro de UM stream já
+     * separado por coluna (esquerda ou direita) e reconhece as transações de cada um.
+     */
+    private List<NormalizedTransactionDTO> extrairTransacoesDoStream(
+            String stream, int mesVencimento, int anoVencimento) {
+        List<NormalizedTransactionDTO> transacoes = new ArrayList<>();
+        String bloco = extrairBlocosConcatenados(stream, HEADER_LANCAMENTOS);
+        for (String linha : bloco.lines().toList()) {
+            TransacaoItau transacao = parseLinha(linha.trim(), mesVencimento, anoVencimento);
+            if (transacao != null) {
+                transacoes.add(toDto(transacao));
+            }
         }
         // Observabilidade: coluna com conteúdo que PARECE transação (linha "DD/MM ...") mas
         // zero transações reconhecidas é sinal de header ausente/quebrado nesta coluna — sem
