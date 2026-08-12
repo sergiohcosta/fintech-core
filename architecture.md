@@ -2,19 +2,7 @@
 
 ## Backend — Camadas
 
-`Controller → Service → Repository`. Entidade JPA nunca exposta — DTO em todas as bordas.
-
-```
-domain/      → account/, category/, installment/, invitation/, invoice/,
-               tenant/, transaction/, user/, budget/, enums/
-dto/         → account/, category/, dashboard/, installment/, invoice/,
-               transaction/, transfer/, budget/
-controller/  → um por domínio (thin — delega ao service)
-service/     → um por domínio (regras de negócio + @Transactional)
-repository/  → um por entidade (JPQL custom quando necessário)
-config/      → SecurityConfigurations, OpenApiConfig, RequestIdFilter, SecurityFilter
-exception/   → GlobalExceptionHandler, EntityNotFoundException
-```
+`Controller → Service → Repository`. Entidade JPA nunca exposta — DTO em todas as bordas. Pacotes sob `com.fintech.api/` (domain, dto, controller, service, repository, config, exception) — layout derivável via `ls`.
 
 **Regras:**
 - Controllers finos: delegam ao service imediatamente.
