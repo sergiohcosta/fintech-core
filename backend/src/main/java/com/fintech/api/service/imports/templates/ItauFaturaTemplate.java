@@ -56,7 +56,12 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
             "Limites de crédito",
             "Encargos cobrados",
             HEADER_INTERNACIONAL,
-            HEADER_PRODUTOS_SERVICOS);
+            HEADER_PRODUTOS_SERVICOS,
+            // Sem este marcador, um bloco de produtos/internacional que aparece ANTES de um
+            // segundo bloco "compras e saques" no mesmo stream (titular adicional) engole esse
+            // bloco inteiro — e extrairTransacoesDoStream o processa de novo, duplicando as
+            // transações (achado da revisão final do branch).
+            HEADER_LANCAMENTOS);
 
     private static final Pattern DUE_DATE =
             Pattern.compile("Vencimento\\D{0,20}(\\d{2})/(\\d{2})/(\\d{4})");
@@ -429,6 +434,10 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
                     stop = idx;
                 }
             }
+            // O '\n' extra não é cosmético: garante uma linha VAZIA na fronteira entre blocos,
+            // o que faz proxima.isEmpty() ser true em extrairProdutosEServicos() e impede o
+            // lookahead de descrição de "roubar" a primeira linha do PRÓXIMO bloco (header
+            // repetido, nome de titular) como se fosse a continuação da descrição atual.
             blocos.append(stream, start, stop).append('\n');
             cursor = stop;
         }
@@ -521,7 +530,14 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
         } catch (DateTimeException e) {
             return List.of();
         }
-        BigDecimal valor = parseValorBr(totalMatcher.group(1));
+        BigDecimal valor;
+        try {
+            valor = parseValorBr(totalMatcher.group(1));
+        } catch (NumberFormatException e) {
+            // Subtotal malformado (ex. "120," ou "1,2,3") ainda bate o regex frouxo do valor —
+            // mesma degradação graciosa já aplicada à data acima: lista vazia, sem exceção.
+            return List.of();
+        }
         TransacaoItau t = new TransacaoItau(
                 data, "Lançamentos internacionais (consolidado)", valor, null, null);
         return List.of(toDto(t));

@@ -1089,6 +1089,29 @@ class ItauFaturaTemplateTest {
     }
 
     @Test
+    void parseNaoDuplicaComprasQuandoBlocoDeComprasApareceDepoisDeProdutosServicos() {
+        // Regressão da revisão final do branch: STOP_MARKERS não incluía HEADER_LANCAMENTOS,
+        // então um segundo bloco "Lançamentos: compras e saques" (titular adicional) DEPOIS de
+        // um bloco de produtos/serviços no MESMO stream era engolido inteiro pelo bloco de
+        // produtos — e extrairTransacoesDoStream processava esse mesmo bloco de novo,
+        // duplicando a transação em dois caminhos distintos do parser.
+        byte[] pdfBytes = pdfComDuasColunas(
+                List.of("Lançamentos: compras e saques", "01/07 PRIMEIRA COMPRA 10,00",
+                        "Lançamentos: produtos e serviços", "04/07 ANUIDADE DIFER 03/12 62,00",
+                        "Lançamentos: compras e saques", "02/07 SEGUNDA COMPRA 20,00",
+                        "Limites de crédito"),
+                List.of(), 50f, 400f);
+        String texto = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques\n";
+
+        List<NormalizedTransactionDTO> transacoes = template.parse(texto, pdfBytes);
+
+        long qtdSegundaCompra = transacoes.stream()
+                .filter(t -> "20.00".equals(t.fields().get("amount").value().toString()))
+                .count();
+        assertThat(qtdSegundaCompra).isEqualTo(1);
+    }
+
+    @Test
     void parseNaoCriaTransacaoQuandoSubtotalInternacionalNaoReconhecido() {
         // Header presente, mas sem a linha de subtotal no formato esperado — degrada em
         // silêncio (ausência de sinal não é erro), não lança exceção.
