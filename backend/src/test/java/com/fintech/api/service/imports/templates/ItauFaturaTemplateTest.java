@@ -1044,4 +1044,65 @@ class ItauFaturaTemplateTest {
         assertThat(transacoes).hasSize(1);
         assertThat(transacoes.get(0).fields().get("description").value()).isEqualTo("SUBWAY FAZENDINHA");
     }
+
+    @Test
+    void parseCriaTransacaoSinteticaConsolidadaParaLancamentosInternacionais() {
+        byte[] pdfBytes = pdfComDuasColunas(
+                List.of("Lançamentos: compras e saques", "Limites de crédito",
+                        "Lançamentos internacionais",
+                        "DATA ESTABELECIMENTO US$ R$",
+                        "18/07 ANTHROPIC* CLAUDE SUBSA 116,58",
+                        "Total transações inter. em R$ 116,58",
+                        "Repasse de IOF em R$ 4,08",
+                        "Total lançamentos inter. em R$ 120,66",
+                        "Limites de crédito"),
+                List.of(), 50f, 400f);
+        String texto = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques\n";
+
+        List<NormalizedTransactionDTO> transacoes = template.parse(texto, pdfBytes);
+
+        NormalizedTransactionDTO t = transacoes.stream()
+                .filter(tx -> "120.66".equals(tx.fields().get("amount").value().toString()))
+                .findFirst().orElseThrow();
+        assertThat(t.fields().get("description").value())
+                .isEqualTo("Lançamentos internacionais (consolidado)");
+        // CABECALHO_VENCIMENTO = "Vencimento 10/03/2025" (mesVencimento=3, anoVencimento=2025).
+        // Transação em 18/07: mês(7) > mesVencimento(3) → pertence ao ano ANTERIOR (mesma regra
+        // já usada em parseLinha, ex. vencimento 10/03/2025 + lançamento 28/11 = 28/11/2024).
+        assertThat(t.fields().get("transaction_date").value()).isEqualTo("2024-07-18");
+        assertThat(t.fields()).doesNotContainKey("installment_number");
+    }
+
+    @Test
+    void parseNaoCriaTransacaoQuandoSecaoInternacionalAusente() {
+        byte[] pdfBytes = pdfComDuasColunas(
+                List.of("Lançamentos: compras e saques", "03/02 SUBWAY FAZENDINHA 49,00",
+                        "Limites de crédito"),
+                List.of(), 50f, 400f);
+        String texto = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques\n";
+
+        List<NormalizedTransactionDTO> transacoes = template.parse(texto, pdfBytes);
+
+        assertThat(transacoes)
+                .noneMatch(tx -> "Lançamentos internacionais (consolidado)"
+                        .equals(tx.fields().get("description").value()));
+    }
+
+    @Test
+    void parseNaoCriaTransacaoQuandoSubtotalInternacionalNaoReconhecido() {
+        // Header presente, mas sem a linha de subtotal no formato esperado — degrada em
+        // silêncio (ausência de sinal não é erro), não lança exceção.
+        byte[] pdfBytes = pdfComDuasColunas(
+                List.of("Lançamentos: compras e saques", "Limites de crédito",
+                        "Lançamentos internacionais", "algum texto sem o subtotal reconhecível",
+                        "Limites de crédito"),
+                List.of(), 50f, 400f);
+        String texto = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques\n";
+
+        List<NormalizedTransactionDTO> transacoes = template.parse(texto, pdfBytes);
+
+        assertThat(transacoes)
+                .noneMatch(tx -> "Lançamentos internacionais (consolidado)"
+                        .equals(tx.fields().get("description").value()));
+    }
 }

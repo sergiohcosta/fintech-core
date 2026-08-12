@@ -46,6 +46,7 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
     private static final String CNPJ_ITAU = "60.872.504/0001-23";
     private static final String HEADER_LANCAMENTOS = "Lançamentos: compras e saques";
     private static final String HEADER_PRODUTOS_SERVICOS = "Lançamentos: produtos e serviços";
+    private static final String HEADER_INTERNACIONAL = "Lançamentos internacionais";
 
     // Cabeçalhos de seção que fecham o bloco de lançamentos do ciclo corrente — em especial
     // "Compras parceladas - próximas faturas", que repete o MESMO formato de linha (data +
@@ -54,7 +55,7 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
             "Compras parceladas - próximas faturas",
             "Limites de crédito",
             "Encargos cobrados",
-            "Lançamentos internacionais",
+            HEADER_INTERNACIONAL,
             HEADER_PRODUTOS_SERVICOS);
 
     private static final Pattern DUE_DATE =
@@ -63,6 +64,14 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
     private static final Pattern TRAILING_AMOUNT =
             Pattern.compile("(-?)\\s*(\\d{1,3}(?:\\.\\d{3})*,\\d{2})\\s*$");
     private static final Pattern TRAILING_INSTALLMENT_MARKER = Pattern.compile("(\\d{2})/(\\d{2})\\s*$");
+    // Linha de subtotal do bloco internacional — já soma o valor em R$ de todos os
+    // lançamentos, incluindo IOF. Tolerante a espaço duplo entre "lançamentos" e "inter."
+    // (variante observada no corpus real).
+    private static final Pattern TOTAL_INTERNACIONAL =
+            Pattern.compile("Total lançamentos\\s+inter\\. em R\\$\\s*(\\d[\\d.,]*)");
+    // Primeira ocorrência de DD/MM dentro do bloco — usada como data representativa da
+    // transação sintética consolidada (spec: decisão a).
+    private static final Pattern PRIMEIRA_DATA_DO_BLOCO = Pattern.compile("(\\d{2})/(\\d{2})");
     // Token que INICIA com data. Precisa aceitar as duas granularidades com que o PDFBox
     // entrega texto: nas faturas reais cada palavra vira um token ("28/11" sozinho), mas em
     // PDF gerado com uma única operação de escrita a linha inteira vem num token só
@@ -151,6 +160,8 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
         transacoes.addAll(extrairTransacoesDoStream(colunaDireita.toString(), mesVencimento, anoVencimento));
         transacoes.addAll(extrairProdutosEServicos(colunaEsquerda.toString(), mesVencimento, anoVencimento));
         transacoes.addAll(extrairProdutosEServicos(colunaDireita.toString(), mesVencimento, anoVencimento));
+        transacoes.addAll(extrairInternacionalConsolidado(colunaEsquerda.toString(), mesVencimento, anoVencimento));
+        transacoes.addAll(extrairInternacionalConsolidado(colunaDireita.toString(), mesVencimento, anoVencimento));
         return transacoes;
     }
 
@@ -481,6 +492,39 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
             transacoes.add(toDto(new TransacaoItau(base.data(), descricao, base.valor(), null, null)));
         }
         return transacoes;
+    }
+
+    /**
+     * "Lançamentos internacionais" vira NO MÁXIMO 1 transação sintética por fatura — decisão
+     * (a) da spec: o valor em US$/conversão vem numa segunda linha sem mapeamento confiável
+     * (amostra pequena, 9/21 faturas no corpus), mas a linha de subtotal já soma tudo certo,
+     * incluindo IOF. Ausência da seção OU do subtotal reconhecível → lista vazia, sem erro
+     * (mesma filosofia do resto do template: ausência de sinal não é erro).
+     */
+    private List<NormalizedTransactionDTO> extrairInternacionalConsolidado(
+            String stream, int mesVencimento, int anoVencimento) {
+        String bloco = extrairBlocosConcatenados(stream, HEADER_INTERNACIONAL);
+        Matcher totalMatcher = TOTAL_INTERNACIONAL.matcher(bloco);
+        if (!totalMatcher.find()) {
+            return List.of();
+        }
+        Matcher dataMatcher = PRIMEIRA_DATA_DO_BLOCO.matcher(bloco.substring(0, totalMatcher.start()));
+        if (!dataMatcher.find()) {
+            return List.of();
+        }
+        int dia = Integer.parseInt(dataMatcher.group(1));
+        int mes = Integer.parseInt(dataMatcher.group(2));
+        int ano = mes > mesVencimento ? anoVencimento - 1 : anoVencimento;
+        LocalDate data;
+        try {
+            data = LocalDate.of(ano, mes, dia);
+        } catch (DateTimeException e) {
+            return List.of();
+        }
+        BigDecimal valor = parseValorBr(totalMatcher.group(1));
+        TransacaoItau t = new TransacaoItau(
+                data, "Lançamentos internacionais (consolidado)", valor, null, null);
+        return List.of(toDto(t));
     }
 
     /** {@code null} quando a linha não bate o formato "DD/MM estabelecimento [NN/NN] valor". */
