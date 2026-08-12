@@ -45,6 +45,7 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
 
     private static final String CNPJ_ITAU = "60.872.504/0001-23";
     private static final String HEADER_LANCAMENTOS = "Lançamentos: compras e saques";
+    private static final String HEADER_PRODUTOS_SERVICOS = "Lançamentos: produtos e serviços";
 
     // Cabeçalhos de seção que fecham o bloco de lançamentos do ciclo corrente — em especial
     // "Compras parceladas - próximas faturas", que repete o MESMO formato de linha (data +
@@ -54,7 +55,7 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
             "Limites de crédito",
             "Encargos cobrados",
             "Lançamentos internacionais",
-            "Lançamentos: produtos e serviços");
+            HEADER_PRODUTOS_SERVICOS);
 
     private static final Pattern DUE_DATE =
             Pattern.compile("Vencimento\\D{0,20}(\\d{2})/(\\d{2})/(\\d{4})");
@@ -148,6 +149,8 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
         List<NormalizedTransactionDTO> transacoes = new ArrayList<>();
         transacoes.addAll(extrairTransacoesDoStream(colunaEsquerda.toString(), mesVencimento, anoVencimento));
         transacoes.addAll(extrairTransacoesDoStream(colunaDireita.toString(), mesVencimento, anoVencimento));
+        transacoes.addAll(extrairProdutosEServicos(colunaEsquerda.toString(), mesVencimento, anoVencimento));
+        transacoes.addAll(extrairProdutosEServicos(colunaDireita.toString(), mesVencimento, anoVencimento));
         return transacoes;
     }
 
@@ -444,6 +447,38 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
             log.warn("ItauFaturaTemplate: coluna com linhas no formato de transação mas nenhuma "
                     + "transação reconhecida — possível header \"{}\" ausente ou quebrado nesta coluna.",
                     HEADER_LANCAMENTOS);
+        }
+        return transacoes;
+    }
+
+    /**
+     * Extrai "Lançamentos: produtos e serviços" por transação — reusa {@link #parseLinha}
+     * (mesmo formato de linha 1: DD/MM CÓDIGO [NN/NN] VALOR) mas com 2 diferenças: (1) espia a
+     * PRÓXIMA linha do bloco — se não for início de outra transação, é a descrição completa
+     * (o código da linha 1 costuma vir truncado, ex. "ANUIDADE DIFER" para "Anuidade
+     * Diferenciada"); (2) NUNCA populada installment_number/total — decisão (c) da spec:
+     * "Anuidade Diferenciada NN/12" é uma taxa recorrente que no corpus real é cobrada e
+     * estornada quase no mês seguinte, não uma compra parcelada — criar um InstallmentGroup de
+     * 12 parcelas projetaria cobranças futuras que o histórico mostra que não acontecem.
+     */
+    private List<NormalizedTransactionDTO> extrairProdutosEServicos(
+            String stream, int mesVencimento, int anoVencimento) {
+        List<NormalizedTransactionDTO> transacoes = new ArrayList<>();
+        String bloco = extrairBlocosConcatenados(stream, HEADER_PRODUTOS_SERVICOS);
+        List<String> linhas = bloco.lines().toList();
+        for (int i = 0; i < linhas.size(); i++) {
+            TransacaoItau base = parseLinha(linhas.get(i).trim(), mesVencimento, anoVencimento);
+            if (base == null) {
+                continue;
+            }
+            String descricao = base.descricao();
+            if (i + 1 < linhas.size()) {
+                String proxima = linhas.get(i + 1).trim();
+                if (!proxima.isEmpty() && !LINE_START_DATE.matcher(proxima).matches()) {
+                    descricao = proxima;
+                }
+            }
+            transacoes.add(toDto(new TransacaoItau(base.data(), descricao, base.valor(), null, null)));
         }
         return transacoes;
     }

@@ -972,4 +972,76 @@ class ItauFaturaTemplateTest {
                         new BigDecimal("10.00"), new BigDecimal("20.00"),
                         new BigDecimal("30.00"), new BigDecimal("40.00"));
     }
+
+    @Test
+    void parseReconheceProdutoServicoDeLinhaUnicaSemContinuacao() {
+        byte[] pdfBytes = pdfComDuasColunas(
+                List.of("Lançamentos: compras e saques", "Limites de crédito",
+                        "Lançamentos: produtos e serviços", "03/01 ENVIOMENS.AUTOMATICA 7,49",
+                        "Limites de crédito"),
+                List.of(), 50f, 400f);
+        String texto = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques\n";
+
+        List<NormalizedTransactionDTO> transacoes = template.parse(texto, pdfBytes);
+
+        NormalizedTransactionDTO t = transacoes.stream()
+                .filter(tx -> "7.49".equals(tx.fields().get("amount").value().toString()))
+                .findFirst().orElseThrow();
+        assertThat(t.fields().get("description").value()).isEqualTo("ENVIOMENS.AUTOMATICA");
+        assertThat(t.fields()).doesNotContainKey("installment_number");
+    }
+
+    @Test
+    void parseReconheceProdutoServicoComDescricaoDaLinhaDeContinuacao() {
+        byte[] pdfBytes = pdfComDuasColunas(
+                List.of("Lançamentos: compras e saques", "Limites de crédito",
+                        "Lançamentos: produtos e serviços", "04/07 ANUIDADE DIFER 03/12 62,00",
+                        "Anuidade Diferenciada", "Limites de crédito"),
+                List.of(), 50f, 400f);
+        String texto = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques\n";
+
+        List<NormalizedTransactionDTO> transacoes = template.parse(texto, pdfBytes);
+
+        NormalizedTransactionDTO t = transacoes.stream()
+                .filter(tx -> "62.00".equals(tx.fields().get("amount").value().toString()))
+                .findFirst().orElseThrow();
+        // Descrição vem da linha de CONTINUAÇÃO, não do código truncado da linha 1.
+        assertThat(t.fields().get("description").value()).isEqualTo("Anuidade Diferenciada");
+        // Marcador 03/12 estava presente na linha — mas produtos/serviços NUNCA vira parcela
+        // (decisão c da spec: taxa recorrente, não compra parcelada).
+        assertThat(t.fields()).doesNotContainKey("installment_number");
+        assertThat(t.fields()).doesNotContainKey("installment_total");
+    }
+
+    @Test
+    void parseReconheceEstornoDeProdutoServicoComoCredito() {
+        byte[] pdfBytes = pdfComDuasColunas(
+                List.of("Lançamentos: compras e saques", "Limites de crédito",
+                        "Lançamentos: produtos e serviços", "13/07 Redução Mensalidade do - 31,00",
+                        "Limites de crédito"),
+                List.of(), 50f, 400f);
+        String texto = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques\n";
+
+        List<NormalizedTransactionDTO> transacoes = template.parse(texto, pdfBytes);
+
+        NormalizedTransactionDTO t = transacoes.stream()
+                .filter(tx -> "31.00".equals(tx.fields().get("amount").value().toString()))
+                .findFirst().orElseThrow();
+        assertThat(t.fields().get("direction").value()).isEqualTo("credit");
+    }
+
+    @Test
+    void parseNaoQuebraQuandoSecaoDeProdutosEServicosAusente() {
+        byte[] pdfBytes = pdfComDuasColunas(
+                List.of("Lançamentos: compras e saques", "03/02 SUBWAY FAZENDINHA 49,00",
+                        "Limites de crédito"),
+                List.of(), 50f, 400f);
+        String texto = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques\n";
+
+        List<NormalizedTransactionDTO> transacoes = template.parse(texto, pdfBytes);
+
+        // Compras e saques inalterado (regressão) — nenhuma transação extra, sem exceção.
+        assertThat(transacoes).hasSize(1);
+        assertThat(transacoes.get(0).fields().get("description").value()).isEqualTo("SUBWAY FAZENDINHA");
+    }
 }
