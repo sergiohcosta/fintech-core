@@ -20,8 +20,13 @@ import java.util.UUID;
  * / {@code suggested_category_confidence} guardam na Fase 0. {@code source} (heurística) é
  * preocupação da Fase 4.
  *
- * <p>{@code requiresReview} aqui é informativo/ignorado no create: o backend DERIVA o valor por
- * threshold (spec §2.f), nunca confia no que veio de fora.
+ * <p>{@code requiresReview} aqui é um PISO, nunca um teto (#194): o backend sempre DERIVA um
+ * valor por threshold e faz o OR com o que chegou aqui — nunca confia CEGAMENTE no valor de
+ * fora, mas um extrator pode forçar {@code true} quando sabe que o dado precisa de revisão
+ * humana independente da confiança por campo (ex.: caminho de extrato do {@code VisionExtractor},
+ * staged rollout enquanto não há dado de produção sobre acurácia do modelo em listas).
+ * Extratores que não têm esse sinal (CSV, OFX, comprovante) mandam {@code null}, que nunca baixa
+ * o valor já derivado por threshold.
  */
 public record NormalizedTransactionDTO(
         UUID transactionId,

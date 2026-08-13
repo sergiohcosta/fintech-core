@@ -277,6 +277,43 @@ class ImportServiceTest {
         assertThat(persisted.getFallbackReason()).isEqualTo("unavailable: timeout no homelab");
     }
 
+    /**
+     * Fatura-alvo do documento (spec 2026-08-09): o mês de referência que o EXTRATOR já sabe
+     * (vencimento impresso na fatura Itaú) tem que sobreviver ao round-trip até a entidade —
+     * mesmo padrão da proveniência do V28, mesma razão (não exposto no DTO de resposta ainda).
+     */
+    @Test
+    void createBatchPersisteFaturaAlvoDoDocumento() {
+        Tenant tenant = persistTenant("Tenant Target Invoice");
+        User user = persistUser(tenant, "target@import.test");
+
+        NormalizedBatchDTO comFaturaAlvo = new NormalizedBatchDTO(
+                ImportMode.NEW_TRANSACTIONS, ImportSourceType.PDF_TEXT,
+                "itau_fatura_v1", "v1", List.of(highConfidence()),
+                null, null, null, null, null,
+                2026, 7);
+
+        ImportBatchResponseDTO created = importService.createBatch(comFaturaAlvo, user);
+
+        ImportBatch persisted = importBatchRepository.findById(created.id()).orElseThrow();
+        assertThat(persisted.getTargetInvoiceReferenceYear()).isEqualTo(2026);
+        assertThat(persisted.getTargetInvoiceReferenceMonth()).isEqualTo(7);
+    }
+
+    /** Sem fatura-alvo (CSV/OFX/imagem/heurística) → NULL persistido, comportamento inalterado. */
+    @Test
+    void createBatchSemFaturaAlvoPersisteNull() {
+        Tenant tenant = persistTenant("Tenant No Target Invoice");
+        User user = persistUser(tenant, "notarget@import.test");
+
+        ImportBatchResponseDTO created = importService.createBatch(batchOf(highConfidence()), user);
+
+        ImportBatch persisted = importBatchRepository.findById(created.id()).orElseThrow();
+        assertThat(persisted.getTargetInvoiceReferenceYear()).isNull();
+        assertThat(persisted.getTargetInvoiceReferenceMonth()).isNull();
+    }
+
+
     @Test
     void derivaRequiresReviewPorThresholdNoCodigo() {
         Tenant tenant = persistTenant("Tenant Import B");
@@ -292,6 +329,71 @@ class ImportServiceTest {
         assertThat(requiresReviewOf(staged, "0.95")).isFalse();  // alta confiança → não revisa
         assertThat(requiresReviewOf(staged, "0.85")).isTrue();   // overall < 0.90 → revisa
         assertThat(requiresReviewOf(staged, "0.99")).isTrue();   // amount conf < 0.95 → revisa
+    }
+
+    /** Alta confiança em tudo, mas o EXTRATOR manda requiresReview=true — mesma via do #194. */
+    private NormalizedTransactionDTO highConfidenceComRequiresReviewForcado() {
+        return new NormalizedTransactionDTO(
+                null,
+                Map.of("amount", fieldValue(50.00, "0.98"),
+                        "transaction_date", fieldValue("2026-06-01", "0.95"),
+                        "description", fieldValue("EXTRATO LINHA 1", "0.90")),
+                null, null,
+                new BigDecimal("0.95"),
+                true, null);
+    }
+
+    /**
+     * #194 — {@code tx.requiresReview()} é PISO, nunca teto: mesmo com confiança alta o bastante
+     * pra NÃO exigir revisão por threshold (prova disso é {@code derivaRequiresReviewPorThresholdNoCodigo}
+     * logo acima, mesmos números), o extrator pode forçar {@code true} e isso precisa persistir.
+     */
+    @Test
+    void requiresReviewDoExtratorEPisoNuncaTeto() {
+        Tenant tenant = persistTenant("Tenant Import Piso");
+        User user = persistUser(tenant, "piso@import.test");
+
+        ImportBatchResponseDTO created = importService.createBatch(
+                batchOf(highConfidenceComRequiresReviewForcado()), user);
+
+        List<StagedTransactionResponseDTO> staged = importService.listStaged(created.id(), user);
+        assertThat(staged).hasSize(1);
+        assertThat(staged.get(0).requiresReview()).isTrue();
+    }
+
+    /**
+     * Achado de code review sobre #194: {@code overallConfidence} da linha de extrato precisa
+     * vir do MODELO (baixa, ex. lista longa e incerta), não hardcoded alto — senão
+     * {@code patchStaged} re-deriva {@code requires_review} usando um overall artificialmente
+     * alto + confiança de amount alta, e um edit em campo NÃO relacionado (aqui, description)
+     * apaga o floor forçado sem que ninguém tenha verificado data/direção/valor de verdade.
+     */
+    @Test
+    void editarCampoNaoRelacionadoNaoApagaRequiresReviewForcadoQuandoOverallEBaixo() {
+        Tenant tenant = persistTenant("Tenant Import Piso Patch");
+        User user = persistUser(tenant, "piso-patch@import.test");
+
+        NormalizedTransactionDTO linhaDeExtrato = new NormalizedTransactionDTO(
+                null,
+                Map.of("amount", fieldValue(50.00, "0.99"),  // amount confidence ALTA de propósito
+                        "transaction_date", fieldValue("2026-06-01", "0.95"),
+                        "description", fieldValue("MERCADO X", "0.90")),
+                null, null,
+                new BigDecimal("0.50"),  // overallConfidence BAIXA — sinal real do modelo pra lista
+                true, null);
+
+        ImportBatchResponseDTO created = importService.createBatch(batchOf(linhaDeExtrato), user);
+        StagedTransactionResponseDTO before = importService.listStaged(created.id(), user).get(0);
+        assertThat(before.requiresReview()).isTrue();  // floor na criação
+
+        // Edita só a description — não toca amount, data nem direction.
+        StagedPatchDTO patch = new StagedPatchDTO(Map.of("description", "MERCADO X CORRIGIDO"), null);
+        StagedTransactionResponseDTO updated = importService.patchStaged(created.id(), before.id(), patch, user);
+
+        // overallConfidence=0.50 < threshold 0.90 → deriveRequiresReview continua true na
+        // re-derivação, mesmo com amount confidence alta. Se overallConfidence fosse hardcoded
+        // em 1.0 (bug corrigido), este assert falharia.
+        assertThat(updated.requiresReview()).isTrue();
     }
 
     @Test
@@ -448,6 +550,55 @@ class ImportServiceTest {
             // Avulsa: valor da parcela tal como veio (50.00), sem multiplicar, sem parcelamento.
             assertThat(tx.amount()).isEqualByComparingTo("50.00");
             assertThat(tx.totalInstallments()).isEqualTo(1);
+        } finally {
+            cleanupTenant(tenant.getId());
+        }
+    }
+
+    /** Parcela EM ANDAMENTO (não é a 1ª), com data de compra ANTIGA — o caso que motivou a spec. */
+    private NormalizedTransactionDTO parcelaEmAndamentoComDataAntiga() {
+        return new NormalizedTransactionDTO(
+                null,
+                Map.of("amount", fieldValue(74.87, "1.0"),
+                        "transaction_date", fieldValue("2026-07-03", "1.0"), // dia 3 <= closingDay 5 → sem âncora iria pra fatura de junho
+                        "description", fieldValue("PAYPAL PARCELA ANTIGA", "0.9"),
+                        "installment_number", fieldValue(2, "1.0"),
+                        "installment_total", fieldValue(8, "1.0")),
+                null, null,
+                new BigDecimal("0.98"),
+                null, null);
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void commitUsaFaturaAlvoDoDocumentoParaParcelaEmAndamento() {
+        Tenant tenant = persistTenant("Tenant Fatura Alvo Commit");
+        try {
+            User user = persistUser(tenant, "faturaalvo@import.test");
+            Account account = persistCreditCardAccount(tenant, user); // closingDay=5, dueDay=15
+
+            // Batch com fatura-alvo = agosto/2026 (é isso que o ItauFaturaTemplate teria calculado
+            // pro vencimento impresso do documento) — mesmo que a data de compra (03/07) fosse cair
+            // em junho/2026 por resolveInvoiceMonth se não houvesse âncora.
+            NormalizedBatchDTO batch = new NormalizedBatchDTO(
+                    ImportMode.NEW_TRANSACTIONS, ImportSourceType.PDF_TEXT,
+                    "itau_fatura_v1", "v1", List.of(parcelaEmAndamentoComDataAntiga()),
+                    null, null, null, null, null,
+                    2026, 8);
+
+            ImportBatchResponseDTO created = importService.createBatch(batch, user);
+            UUID stagedId = importService.listStaged(created.id(), user).get(0).id();
+
+            ImportCommitRequestDTO req = new ImportCommitRequestDTO(
+                    List.of(new StagedCommitItemDTO(stagedId, account.getId(), null)));
+            importService.commit(created.id(), req, user);
+
+            StagedTransactionResponseDTO afterStaged = importService.listStaged(created.id(), user).get(0);
+            TransactionResponseDTO tx = transactionService.findById(afterStaged.promotedTransactionId(), user);
+
+            // Sem a âncora, resolveInvoiceMonth(03/07, closingDay=5) mandaria pra fatura de junho
+            // (dueDate 15/07). COM a âncora (referenceMonth=agosto), a fatura é a de setembro.
+            assertThat(tx.invoiceDueDate()).isEqualTo(LocalDate.of(2026, 9, 15));
         } finally {
             cleanupTenant(tenant.getId());
         }

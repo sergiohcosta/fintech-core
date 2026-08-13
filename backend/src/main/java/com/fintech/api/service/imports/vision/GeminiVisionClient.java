@@ -1,10 +1,10 @@
 package com.fintech.api.service.imports.vision;
 
 import com.fintech.api.service.imports.ExtractionException;
-import com.fintech.api.service.imports.LlmReceiptExtractionDTO;
 import com.google.genai.errors.ApiException;
 import com.google.genai.errors.GenAiIOException;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.google.genai.GoogleGenAiChatOptions;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
@@ -64,16 +64,21 @@ public class GeminiVisionClient implements VisionModelClient {
     }
 
     @Override
-    public LlmReceiptExtractionDTO extract(String prompt, MimeType mimeType, Resource imageResource) {
+    public <T> T extract(
+            String prompt, MimeType mimeType, Resource imageResource, Class<T> responseType, Integer maxOutputTokens) {
         try {
             // Diferente do Ollama, o client do Gemini não precisa do truque de Resource com
             // getFilename() preenchido (isso é uma exigência específica do multipart do Ollama,
             // documentada no OllamaVisionClient) — o SDK do Gemini serializa mídia como base64
             // inline, sem depender de nome de arquivo.
-            return chatClient.prompt()
-                    .user(u -> u.text(prompt).media(mimeType, imageResource))
-                    .call()
-                    .entity(LlmReceiptExtractionDTO.class);
+            ChatClient.ChatClientRequestSpec spec = chatClient.prompt()
+                    .user(u -> u.text(prompt).media(mimeType, imageResource));
+            // maxOutputTokens=null preserva EXATAMENTE o comportamento de antes do #194 (nenhuma
+            // .options() chamada) — só o caminho novo de extrato passa um teto explícito.
+            if (maxOutputTokens != null) {
+                spec = spec.options(GoogleGenAiChatOptions.builder().maxOutputTokens(maxOutputTokens).build());
+            }
+            return spec.call().entity(responseType);
         } catch (Exception e) {
             // Onda 4: classifica ANTES de decidir a exceção. Falha de DISPONIBILIDADE (cota, 5xx,
             // timeout, auth) vira VisionProviderUnavailableException — só essa dispara fallback pro

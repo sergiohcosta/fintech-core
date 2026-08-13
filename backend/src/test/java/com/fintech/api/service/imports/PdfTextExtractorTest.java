@@ -342,6 +342,37 @@ class PdfTextExtractorTest {
 
         assertThat(batch.extractorUsed()).isEqualTo("itau_fatura_v1");
         assertThat(batch.transactions()).hasSize(1);
+        assertThat(batch.targetInvoiceReferenceYear()).isEqualTo(2025);
+        assertThat(batch.targetInvoiceReferenceMonth()).isEqualTo(2); // vencimento 10/03 → referenceMonth = fevereiro
+    }
+
+    @Test
+    void templateSemFaturaAlvoDeixaCamposNull() {
+        var templateGenerico = new PdfBankTemplate() {
+            @Override
+            public boolean matches(String fullText) {
+                return true;
+            }
+
+            @Override
+            public List<NormalizedTransactionDTO> parse(String fullText, byte[] content) {
+                var fields = new LinkedHashMap<String, StagedFieldValueDTO>();
+                fields.put("amount", new StagedFieldValueDTO(new BigDecimal("10.00"), BigDecimal.ONE));
+                return List.of(new NormalizedTransactionDTO(null, fields, null, null, BigDecimal.ONE, null, null));
+            }
+
+            @Override
+            public String templateId() {
+                return "generico_sem_target";
+            }
+        };
+
+        var extractorComTemplate = new PdfTextExtractor("v1-test", List.of(templateGenerico));
+        NormalizedBatchDTO batch = extractorComTemplate.extract(input(pdfComTexto(
+                "EXTRATO DE CONTA CORRENTE", "Banco XYZ")));
+
+        assertThat(batch.targetInvoiceReferenceYear()).isNull();
+        assertThat(batch.targetInvoiceReferenceMonth()).isNull();
     }
 
     @Test

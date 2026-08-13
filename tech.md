@@ -1,39 +1,6 @@
 # Tech Stack & Build
 
-## Backend
-
-| Component | Technology |
-|-----------|-----------|
-| Language | Java 21 |
-| Framework | Spring Boot 4.0.1 |
-| Security | Spring Security + JWT (Auth0 java-jwt 4.4.0) |
-| ORM | Spring Data JPA / Hibernate |
-| Migrations | Flyway (PostgreSQL dialect) |
-| Validation | Jakarta Bean Validation (spring-boot-starter-validation) |
-| API Docs | springdoc-openapi 2.8.9 (Swagger UI) |
-| Code Generation | openapi-generator-maven-plugin 7.4.0 (interfaceOnly=true) |
-| AI (extração por visão) | Spring AI 2.0.0-M2 — `spring-ai-starter-model-google-genai` (Gemini, Google AI Studio, tier free, provider primário) + `spring-ai-starter-model-ollama` (homelab, fallback por indisponibilidade) |
-| Utilities | Lombok |
-| Testing | JUnit 5, Mockito, AssertJ, Spring MockMvc, spring-security-test |
-| Build Tool | Maven (wrapper: `./mvnw`) |
-
-## Frontend
-
-| Component | Technology |
-|-----------|-----------|
-| Framework | Angular 21 (Zoneless, Signals-first) |
-| UI Library | Angular Material 3 |
-| State | Signals (`signal()`, `computed()`, `effect()`); RxJS only for HTTP/async streams |
-| API Client | Orval (generated from OpenAPI spec) |
-| Testing | Vitest 4.x |
-| Language | TypeScript 5.9 (strict mode, no `any`) |
-| Package Manager | npm 11.x |
-| Formatting | Prettier (100 col, single quotes, angular HTML parser) |
-
-## Database
-
-- PostgreSQL 16 (Docker: `postgres:16-alpine`)
-- Local admin: pgAdmin at `localhost:5050`
+Versões e dependências: ver `backend/pom.xml` e `frontend/package.json` (fonte de verdade, não replicado aqui). Stack: Java 21 + Spring Boot, Angular 21 Zoneless + Signals, PostgreSQL 16, Flyway, Orval/OpenAPI Generator.
 
 ## API Contract (Spec-First)
 

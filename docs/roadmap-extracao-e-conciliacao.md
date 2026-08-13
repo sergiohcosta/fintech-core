@@ -167,7 +167,7 @@ Princípio de ordenação: **construir de dentro pra fora** — cada fase é us�
 - [ ] Latência p95 upload→preview aceitável (poucos segundos, com feedback visual)
 - [ ] **Aprendizado:** custo real por extração (tokens/imagem) conhecido para precificação de planos
 
-**Fora de escopo (conhecido), com recusa explícita:** imagem contendo **múltiplas transações** (print do extrato completo, não um comprovante único). O extrator é 1:1 por desenho (schema plano — mais fácil pro modelo de visão preencher certo). O caso é **detectado e recusado** (#193, entregue): o modelo sinaliza a lista de lançamentos, a extração falha e o batch `FAILED` carrega o motivo exibível ao usuário — em vez de escolher uma linha arbitrária e descartar o resto calado. Suporte real a multi-transação por imagem é escopo da Fase 3 (#194).
+**Fora de escopo original, com recusa explícita — superado pelo #194 na Fase 3:** imagem contendo **múltiplas transações** (print do extrato completo, não um comprovante único). O extrator nasceu 1:1 por desenho (schema plano — mais fácil pro modelo de visão preencher certo). O caso foi **detectado e recusado** (#193, entregue nesta fase): o modelo sinalizava a lista de lançamentos, a extração falhava e o batch `FAILED` carregava o motivo exibível ao usuário — em vez de escolher uma linha arbitrária e descartar o resto calado. Suporte real a multi-transação por imagem entrou na Fase 3 (#194, entregue) — ver "Entregas" daquela fase.
 
 ---
 
@@ -206,7 +206,7 @@ Princípio de ordenação: **construir de dentro pra fora** — cada fase é us�
 - Registry de templates para os 2–3 bancos principais (definidos pelos dados da Fase 2) — cabeça da curva apenas — **entregue, fatia 2**: Itaú (fatura PDF) e Nubank (extrato PDF). Nubank CSV não precisou de template — os headers reais já batem os sinônimos genéricos do `CsvExtractor` (Fase 2). CEF fica fora (só existe como print de imagem no caso avaliado — pertence a #194, não a registry de PDF/CSV)
 - **Validações de sanidade pós-extração** (guarda-corpo comum a template e IA): soma × total declarado, datas × período do extrato, ranges plausíveis
 - **Telemetria por formato**: volume, custo em tokens, taxa de casamento de template por banco — a base tanto do alerta de drift quanto da decisão de quais templates criar/promover
-- **Extração multi-transação por imagem única** (print de extrato completo, não PDF): generalização do `TransactionExtractor`/`VisionExtractor` da Fase 1 (schema plano → lista), reaproveitando o mesmo caminho de visão que o PDF escaneado desta fase já implementa e as validações de sanidade acima (soma × total declarado). Spec própria antes de implementar — #194 (guarda-corpo de curto prazo em #193)
+- **Extração multi-transação por imagem única** (print de extrato completo, não PDF) — **entregue** (#194)
 
 **Fatia 1 entregue** (spec `docs/superpowers/specs/2026-07-31-extracao-fase3-pdf-texto-design.md`, #205, sub-issue do épico #176): `PdfTextExtractor` (Apache PDFBox) reconhece PDF com camada de texto pelo magic number, extrai o texto via `PDFTextStripper` e reconhece transação por heurística de linha (data + valor na mesma linha) — sem registry de templates, sem validação soma × total, sem suporte a PDF escaneado (falha explícita, encaminhando para o formulário manual ou envio como imagem). Reaproveita 100% do pipeline genérico existente (`ExtractionRouter`, guard-rails de sanidade do `ImportService`, dedup por trio data+valor+descrição) — nenhuma mudança no núcleo.
 
@@ -265,6 +265,19 @@ reconciliação de verdade, mesmo motor de matching que a Fase 4/5 já reserva; 
 registrada, não resolvida aqui. Teto de sanidade `installmentTotal <= 36` protege contra
 falso positivo do marcador. Frontend particiona a revisão em lote em seções
 "Avulsas"/"Parceladas". SemVer PATCH (sem mudança de contrato, sem migration).
+
+**Extração multi-transação por imagem única entregue** (spec
+`docs/superpowers/specs/2026-08-13-extracao-multi-transacao-imagem-design.md`, #194, substitui
+o guard-rail de recusa do #193): `VisionExtractor` passa a fazer até DUAS chamadas ao mesmo
+provider vencedor por imagem — a 1ª pede o schema de comprovante de sempre (Fase 1, inalterado,
+zero risco de regressão); se `multipleTransactionsDetected=true`, uma 2ª chamada pede
+`LlmStatementExtractionDTO` (lista de linhas + totais debit/credit opcionais). Reconciliação
+soma×total é sinal de log (nunca gate — issue exige não-destrutivo), `requires_review=true`
+incondicional em toda linha do caminho de extrato (staged rollout, sem dado de produção ainda
+sobre acurácia do modelo em lista), teto de `maxOutputTokens` isolado só nessa chamada nova
+(gap real que não existia — nenhum client de visão tinha teto de saída antes). Interface
+`VisionModelClient` generificada (`<T> T extract(..., Class<T>, Integer maxOutputTokens)`) para
+suportar os dois schemas sem duplicar a mecânica de fallback entre providers.
 
 **Critérios de saída**
 - [ ] **Taxa de reconhecimento de template ≥90%** para os bancos cobertos

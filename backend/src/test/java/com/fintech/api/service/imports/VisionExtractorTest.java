@@ -12,10 +12,12 @@ import org.springframework.util.MimeType;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -41,11 +43,13 @@ class VisionExtractorTest {
             implements VisionModelClient {
 
         @Override
-        public LlmReceiptExtractionDTO extract(String prompt, MimeType mimeType, Resource imageResource) {
+        @SuppressWarnings("unchecked")
+        public <T> T extract(
+                String prompt, MimeType mimeType, Resource imageResource, Class<T> responseType, Integer maxOutputTokens) {
             if (error != null) {
                 throw error;
             }
-            return fixture;
+            return (T) fixture;
         }
 
         @Override
@@ -60,11 +64,11 @@ class VisionExtractorTest {
     }
 
     private VisionExtractor visionReturning(LlmReceiptExtractionDTO fixture) {
-        return new VisionExtractor(List.of(new FakeVisionModelClient(fixture, null)), "2026-07-24");
+        return new VisionExtractor(List.of(new FakeVisionModelClient(fixture, null)), "2026-07-24", 60, 4096);
     }
 
     private VisionExtractor visionThrowing(RuntimeException error) {
-        return new VisionExtractor(List.of(new FakeVisionModelClient(null, error)), "2026-07-24");
+        return new VisionExtractor(List.of(new FakeVisionModelClient(null, error)), "2026-07-24", 60, 4096);
     }
 
     private LlmReceiptExtractionDTO fullReceipt() {
@@ -141,22 +145,186 @@ class VisionExtractorTest {
         assertThat(tx.fields()).doesNotContainKey("payment_method");
     }
 
-    /**
-     * #193 — print de extrato (vários lançamentos) é FORA DO ESCOPO da Fase 1 (1 imagem = 1
-     * transação). Antes desse guarda-corpo o modelo escolhia uma linha arbitrária, o valor passava
-     * no check de plausibilidade e as demais sumiam CALADAS. Recusa explícita > perda silenciosa.
-     */
-    @Test
-    void recusaImagemComMultiplasTransacoes() {
-        // Valor plausível de propósito: prova que a recusa NÃO depende do amount ser inválido —
-        // se a ordem das validações se inverter, este teste quebra.
-        LlmReceiptExtractionDTO extrato = new LlmReceiptExtractionDTO(
+    // --- #194 — caminho de EXTRATO: 2ª chamada ao MESMO winner quando a 1ª sinaliza
+    // multipleTransactionsDetected=true. #193 (recusa explícita) foi SUBSTITUÍDO por aceite com
+    // requires_review forçado (spec 2026-08-13, §2.d) — não convive em paralelo com a recusa.
+
+    private LlmReceiptExtractionDTO receiptSinalizandoExtrato() {
+        // Valor plausível de propósito: prova que o roteamento pro caminho de extrato NÃO
+        // depende do amount da 1ª chamada ser inválido.
+        return new LlmReceiptExtractionDTO(
                 new BigDecimal("89.90"), 0.95, "2026-06-28", 0.95, "MERCADO", 0.9,
                 "debit", 0.95, null, null, 0.93, true);
+    }
 
-        assertThatThrownBy(() -> visionReturning(extrato).extract(input(IMAGE, "image/jpeg")))
+    private LlmStatementExtractionDTO.Line linha(String amount, String data, String desc, String direction) {
+        return new LlmStatementExtractionDTO.Line(new BigDecimal(amount), 0.95, data, 0.95, desc, 0.9, direction, 0.95);
+    }
+
+    @Test
+    void aceitaExtratoEExtraiTodasAsLinhasComRequiresReviewForcado() {
+        VisionModelClient gemini = mockClient("gemini", "gemini-2.5-flash");
+        when(gemini.extract(any(), any(), any(), eq(LlmReceiptExtractionDTO.class), any()))
+                .thenReturn(receiptSinalizandoExtrato());
+        LlmStatementExtractionDTO statement = new LlmStatementExtractionDTO(
+                List.of(
+                        linha("50.00", "2026-06-01", "MERCADO A", "debit"),
+                        linha("30.00", "2026-06-02", "MERCADO B", "credit"),
+                        linha("10.00", "2026-06-03", "MERCADO C", "debit")),
+                null, null, 0.9);
+        when(gemini.extract(any(), any(), any(), eq(LlmStatementExtractionDTO.class), any()))
+                .thenReturn(statement);
+
+        NormalizedBatchDTO batch = new VisionExtractor(List.of(gemini), "2026-07-24", 60, 4096)
+                .extract(input(IMAGE, "image/jpeg"));
+
+        // Prova que o maxOutputTokens do CONSTRUTOR (4096) chega de fato na 2ª chamada — sem
+        // isso, um bug trocando statementMaxLines/statementMaxOutputTokens no construtor passaria
+        // despercebido (achado de code review).
+        verify(gemini).extract(any(), any(), any(), eq(LlmStatementExtractionDTO.class), eq(4096));
+
+        assertThat(batch.transactions()).hasSize(3);
+        // TODA linha do extrato sai marcada — staged rollout incondicional (spec §2.d), não
+        // depende de confiança.
+        assertThat(batch.transactions()).allSatisfy(tx -> assertThat(tx.requiresReview()).isTrue());
+        assertThat(batch.transactions().get(0).fields().get("amount").value()).isEqualTo(new BigDecimal("50.00"));
+        assertThat(batch.transactions().get(1).fields().get("direction").value()).isEqualTo("credit");
+        // extractorUsed sinaliza o caminho de extrato — permite medir volume/custo separado do
+        // comprovante e é o marcador usado pra revisitar o gate de confiança no futuro (spec §3).
+        assertThat(batch.extractorUsed()).isEqualTo("vision_statement_gemini_gemini-2.5-flash");
+        // overallConfidence da linha reflete a do MODELO (statement.overallConfidence()=0.9),
+        // nunca hardcoded — ImportService.patchStaged re-deriva requires_review usando esse valor
+        // (deriveRequiresReview: overallConfidence < 0.90 → true); hardcoded 1.0 desativaria essa
+        // via silenciosamente na hora de editar a staged.
+        assertThat(batch.transactions()).allSatisfy(tx -> assertThat(tx.overallConfidence()).isEqualByComparingTo("0.9"));
+    }
+
+    /**
+     * Achado de code review: `overallConfidence` da linha precisa vir do modelo, não de um valor
+     * fixo — senão o floor forçado (spec §2.d) fica inerte no momento em que o usuário edita a
+     * staged: `patchStaged` re-deriva `requires_review` só a partir de `overallConfidence` +
+     * confiança de `amount`, e um `overallConfidence` sempre alto mascara um extrato de baixa
+     * confiança agregada.
+     */
+    @Test
+    void overallConfidenceBaixaDoExtratoPersisteParaAlimentarReDerivacaoNoPatch() {
+        VisionModelClient gemini = mockClient("gemini", "gemini-2.5-flash");
+        when(gemini.extract(any(), any(), any(), eq(LlmReceiptExtractionDTO.class), any()))
+                .thenReturn(receiptSinalizandoExtrato());
+        when(gemini.extract(any(), any(), any(), eq(LlmStatementExtractionDTO.class), any()))
+                .thenReturn(new LlmStatementExtractionDTO(
+                        List.of(linha("50.00", "2026-06-01", "X", "debit")), null, null, 0.5));
+
+        NormalizedBatchDTO batch = new VisionExtractor(List.of(gemini), "2026-07-24", 60, 4096)
+                .extract(input(IMAGE, "image/jpeg"));
+
+        assertThat(batch.transactions().get(0).overallConfidence()).isEqualByComparingTo("0.5");
+    }
+
+    @Test
+    void segundaChamadaNaoTentaOutroProviderQuandoFalhaPorIndisponibilidade() {
+        VisionModelClient gemini = mockClient("gemini", "gemini-2.5-flash");
+        when(gemini.extract(any(), any(), any(), eq(LlmReceiptExtractionDTO.class), any()))
+                .thenReturn(receiptSinalizandoExtrato());
+        when(gemini.extract(any(), any(), any(), eq(LlmStatementExtractionDTO.class), any()))
+                .thenThrow(new VisionProviderUnavailableException("quota", "Gemini indisponível (limite de cota atingido).", null));
+
+        VisionModelClient ollama = mockClient("ollama", "qwen2.5vl");
+
+        VisionExtractor extractor = new VisionExtractor(List.of(gemini, ollama), "2026-07-24", 60, 4096);
+
+        // Troca de provider no meio da extração misturaria leituras de modelos diferentes da
+        // mesma imagem — a falha propaga, não tenta o Ollama (spec §6.3).
+        assertThatThrownBy(() -> extractor.extract(input(IMAGE, "image/jpeg")))
+                .isInstanceOf(ExtractionException.class);
+        verify(ollama, never()).extract(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void excedeLimiteDeLinhasLancaExtractionException() {
+        VisionModelClient gemini = mockClient("gemini", "gemini-2.5-flash");
+        when(gemini.extract(any(), any(), any(), eq(LlmReceiptExtractionDTO.class), any()))
+                .thenReturn(receiptSinalizandoExtrato());
+        List<LlmStatementExtractionDTO.Line> muitasLinhas = IntStream.range(0, 61)
+                .mapToObj(i -> linha("1.00", "2026-06-01", "X" + i, "debit"))
+                .toList();
+        when(gemini.extract(any(), any(), any(), eq(LlmStatementExtractionDTO.class), any()))
+                .thenReturn(new LlmStatementExtractionDTO(muitasLinhas, null, null, 0.9));
+
+        VisionExtractor extractor = new VisionExtractor(List.of(gemini), "2026-07-24", 60, 4096);
+
+        assertThatThrownBy(() -> extractor.extract(input(IMAGE, "image/jpeg")))
                 .isInstanceOf(ExtractionException.class)
-                .hasMessage(VisionExtractor.MULTIPLE_TRANSACTIONS_MESSAGE);
+                .hasMessageContaining("mais de 60 lançamentos");
+    }
+
+    @Test
+    void zeroLinhasNoExtratoLancaExtractionException() {
+        VisionModelClient gemini = mockClient("gemini", "gemini-2.5-flash");
+        when(gemini.extract(any(), any(), any(), eq(LlmReceiptExtractionDTO.class), any()))
+                .thenReturn(receiptSinalizandoExtrato());
+        when(gemini.extract(any(), any(), any(), eq(LlmStatementExtractionDTO.class), any()))
+                .thenReturn(new LlmStatementExtractionDTO(List.of(), null, null, 0.9));
+
+        VisionExtractor extractor = new VisionExtractor(List.of(gemini), "2026-07-24", 60, 4096);
+
+        assertThatThrownBy(() -> extractor.extract(input(IMAGE, "image/jpeg")))
+                .isInstanceOf(ExtractionException.class)
+                .hasMessageContaining("nenhum lançamento");
+    }
+
+    @Test
+    void amountNegativoNormalizaParaAbsolutoEZeraConfianca() {
+        VisionModelClient gemini = mockClient("gemini", "gemini-2.5-flash");
+        when(gemini.extract(any(), any(), any(), eq(LlmReceiptExtractionDTO.class), any()))
+                .thenReturn(receiptSinalizandoExtrato());
+        LlmStatementExtractionDTO.Line linhaNegativa =
+                new LlmStatementExtractionDTO.Line(new BigDecimal("-42.00"), 0.9, "2026-06-01", 0.9, "X", 0.9, "debit", 0.9);
+        when(gemini.extract(any(), any(), any(), eq(LlmStatementExtractionDTO.class), any()))
+                .thenReturn(new LlmStatementExtractionDTO(List.of(linhaNegativa), null, null, 0.9));
+
+        NormalizedBatchDTO batch = new VisionExtractor(List.of(gemini), "2026-07-24", 60, 4096)
+                .extract(input(IMAGE, "image/jpeg"));
+
+        NormalizedTransactionDTO tx = batch.transactions().get(0);
+        assertThat(tx.fields().get("amount").value()).isEqualTo(new BigDecimal("42.00"));
+        // Sinal ambíguo/conflitante com direction — zera a confiança do CAMPO (não descarta a
+        // linha, spec §6.4).
+        assertThat(tx.fields().get("amount").confidence()).isEqualByComparingTo("0");
+    }
+
+    @Test
+    void reconciliacaoDivergenteNaoDescartaNenhumaLinha() {
+        VisionModelClient gemini = mockClient("gemini", "gemini-2.5-flash");
+        when(gemini.extract(any(), any(), any(), eq(LlmReceiptExtractionDTO.class), any()))
+                .thenReturn(receiptSinalizandoExtrato());
+        // declaredTotalDebits (200) NÃO bate com a soma real das linhas (50) — fora de qualquer
+        // tolerância razoável.
+        when(gemini.extract(any(), any(), any(), eq(LlmStatementExtractionDTO.class), any()))
+                .thenReturn(new LlmStatementExtractionDTO(
+                        List.of(linha("50.00", "2026-06-01", "X", "debit")),
+                        new BigDecimal("200.00"), null, 0.9));
+
+        NormalizedBatchDTO batch = new VisionExtractor(List.of(gemini), "2026-07-24", 60, 4096)
+                .extract(input(IMAGE, "image/jpeg"));
+
+        // Mismatch é sinal de log, nunca motivo pra descartar dado (issue #194 exige não-destrutivo).
+        assertThat(batch.transactions()).hasSize(1);
+    }
+
+    @Test
+    void semTotalDeclaradoPulaReconciliacaoSemErro() {
+        VisionModelClient gemini = mockClient("gemini", "gemini-2.5-flash");
+        when(gemini.extract(any(), any(), any(), eq(LlmReceiptExtractionDTO.class), any()))
+                .thenReturn(receiptSinalizandoExtrato());
+        when(gemini.extract(any(), any(), any(), eq(LlmStatementExtractionDTO.class), any()))
+                .thenReturn(new LlmStatementExtractionDTO(
+                        List.of(linha("50.00", "2026-06-01", "X", "debit")), null, null, 0.9));
+
+        NormalizedBatchDTO batch = new VisionExtractor(List.of(gemini), "2026-07-24", 60, 4096)
+                .extract(input(IMAGE, "image/jpeg"));
+
+        assertThat(batch.transactions()).hasSize(1);
     }
 
     /**
@@ -195,7 +363,8 @@ class VisionExtractorTest {
         VisionModelClient primeiro = new FakeVisionModelClient(fullReceipt(), null);
         VisionModelClient nuncaChamado = new VisionModelClient() {
             @Override
-            public LlmReceiptExtractionDTO extract(String prompt, MimeType mimeType, Resource imageResource) {
+            public <T> T extract(
+                    String prompt, MimeType mimeType, Resource imageResource, Class<T> responseType, Integer maxOutputTokens) {
                 throw new AssertionError("client fora da posição 0 não deveria ser chamado nesta Onda");
             }
 
@@ -210,7 +379,7 @@ class VisionExtractorTest {
             }
         };
 
-        NormalizedBatchDTO batch = new VisionExtractor(List.of(primeiro, nuncaChamado), "2026-07-24")
+        NormalizedBatchDTO batch = new VisionExtractor(List.of(primeiro, nuncaChamado), "2026-07-24", 60, 4096)
                 .extract(input(IMAGE, "image/jpeg"));
 
         assertThat(batch.extractorUsed()).isEqualTo("vision_ollama_qwen2.5vl");
@@ -220,7 +389,7 @@ class VisionExtractorTest {
 
     private VisionExtractor extractorForSupportsOnly() {
         // Nenhum client é chamado nestes testes — supports() não toca no provider.
-        return new VisionExtractor(List.of(new FakeVisionModelClient(fullReceipt(), null)), "2026-07-24");
+        return new VisionExtractor(List.of(new FakeVisionModelClient(fullReceipt(), null)), "2026-07-24", 60, 4096);
     }
 
     @Test
@@ -263,13 +432,13 @@ class VisionExtractorTest {
     @Test
     void caiParaOSegundoProviderQuandoOPrimeiroEIndisponivel() {
         VisionModelClient gemini = mockClient("gemini", "gemini-2.5-flash");
-        when(gemini.extract(any(), any(), any()))
+        when(gemini.extract(any(), any(), any(), any(), any()))
                 .thenThrow(new VisionProviderUnavailableException("quota", "Gemini indisponível (limite de cota atingido).", null));
 
         VisionModelClient ollama = mockClient("ollama", "qwen2.5vl");
-        when(ollama.extract(any(), any(), any())).thenReturn(fullReceipt());
+        when(ollama.extract(any(), any(), any(), any(), any())).thenReturn(fullReceipt());
 
-        NormalizedBatchDTO batch = new VisionExtractor(List.of(gemini, ollama), "2026-07-24")
+        NormalizedBatchDTO batch = new VisionExtractor(List.of(gemini, ollama), "2026-07-24", 60, 4096)
                 .extract(input(IMAGE, "image/jpeg"));
 
         // O resultado vem do SECUNDÁRIO (quem respondeu) — extractorUsed reflete quem venceu.
@@ -280,28 +449,34 @@ class VisionExtractorTest {
         assertThat(batch.fallbackReason()).isEqualTo("quota");
     }
 
+    /**
+     * #194 substituiu a recusa do #193 por aceite (ver seção "caminho de EXTRATO" acima) — este
+     * teste cobria "falha de CONTEÚDO na revalidação não dispara fallback" usando a antiga recusa
+     * como exemplo; agora usa uma falha de conteúdo real do caminho novo (zero linhas
+     * reconhecidas na 2ª chamada), preservando a mesma garantia de regra central.
+     */
     @Test
-    void naoTentaOSegundoProviderQuandoOPrimeiroRecusaPorMultiplasTransacoes() {
-        // O primeiro NÃO lança exceção — devolve um DTO (a chamada ao provider funcionou). É a
-        // REVALIDAÇÃO de conteúdo (depois que o client já "venceu") que rejeita. Por construção,
-        // o loop de fallback já encerrou antes dessa rejeição existir — o segundo nunca é chamado.
-        LlmReceiptExtractionDTO extrato = new LlmReceiptExtractionDTO(
+    void naoTentaOSegundoProviderQuandoASegundaChamadaFalhaPorConteudo() {
+        LlmReceiptExtractionDTO sinalizaExtrato = new LlmReceiptExtractionDTO(
                 new BigDecimal("89.90"), 0.95, "2026-06-28", 0.95, "MERCADO", 0.9,
                 "debit", 0.95, null, null, 0.93, true);
 
         VisionModelClient gemini = mockClient("gemini", "gemini-2.5-flash");
-        when(gemini.extract(any(), any(), any())).thenReturn(extrato);
+        when(gemini.extract(any(), any(), any(), eq(LlmReceiptExtractionDTO.class), any()))
+                .thenReturn(sinalizaExtrato);
+        when(gemini.extract(any(), any(), any(), eq(LlmStatementExtractionDTO.class), any()))
+                .thenReturn(new LlmStatementExtractionDTO(List.of(), null, null, 0.9));
 
         VisionModelClient ollama = mockClient("ollama", "qwen2.5vl");
 
-        VisionExtractor extractor = new VisionExtractor(List.of(gemini, ollama), "2026-07-24");
+        VisionExtractor extractor = new VisionExtractor(List.of(gemini, ollama), "2026-07-24", 60, 4096);
 
         assertThatThrownBy(() -> extractor.extract(input(IMAGE, "image/jpeg")))
-                .isInstanceOf(ExtractionException.class)
-                .hasMessage(VisionExtractor.MULTIPLE_TRANSACTIONS_MESSAGE);
+                .isInstanceOf(ExtractionException.class);
 
-        // A asserção que trava a regra central da Onda: falha de CONTEÚDO nunca dispara fallback.
-        verify(ollama, never()).extract(any(), any(), any());
+        // A asserção que trava a regra central: falha de CONTEÚDO na 2ª chamada nunca dispara
+        // fallback pro próximo provider — nem na 1ª (regra de sempre), nem aqui.
+        verify(ollama, never()).extract(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -310,29 +485,29 @@ class VisionExtractorTest {
                 null, 0.10, "2026-06-28", 0.9, "x", 0.9, "debit", 0.9, null, null, 0.5, false);
 
         VisionModelClient gemini = mockClient("gemini", "gemini-2.5-flash");
-        when(gemini.extract(any(), any(), any())).thenReturn(semValor);
+        when(gemini.extract(any(), any(), any(), any(), any())).thenReturn(semValor);
 
         VisionModelClient ollama = mockClient("ollama", "qwen2.5vl");
 
-        VisionExtractor extractor = new VisionExtractor(List.of(gemini, ollama), "2026-07-24");
+        VisionExtractor extractor = new VisionExtractor(List.of(gemini, ollama), "2026-07-24", 60, 4096);
 
         assertThatThrownBy(() -> extractor.extract(input(IMAGE, "image/jpeg")))
                 .isInstanceOf(ExtractionException.class);
 
-        verify(ollama, never()).extract(any(), any(), any());
+        verify(ollama, never()).extract(any(), any(), any(), any(), any());
     }
 
     @Test
     void todosIndisponiveisLancaExtractionExceptionComMotivoDoUltimo() {
         VisionModelClient gemini = mockClient("gemini", "gemini-2.5-flash");
-        when(gemini.extract(any(), any(), any()))
+        when(gemini.extract(any(), any(), any(), any(), any()))
                 .thenThrow(new VisionProviderUnavailableException("quota", "Gemini indisponível (limite de cota atingido).", null));
 
         VisionModelClient ollama = mockClient("ollama", "qwen2.5vl");
-        when(ollama.extract(any(), any(), any()))
+        when(ollama.extract(any(), any(), any(), any(), any()))
                 .thenThrow(new VisionProviderUnavailableException("unavailable", "Ollama indisponível (provedor indisponível no momento).", null));
 
-        VisionExtractor extractor = new VisionExtractor(List.of(gemini, ollama), "2026-07-24");
+        VisionExtractor extractor = new VisionExtractor(List.of(gemini, ollama), "2026-07-24", 60, 4096);
 
         // ExtractionException (não VisionProviderUnavailableException) — é isso que o
         // ImportService sabe capturar para marcar o batch FAILED. Motivo do ÚLTIMO erro (Ollama).
@@ -344,7 +519,7 @@ class VisionExtractorTest {
 
     @Test
     void listaVaziaLancaExtractionExceptionEmVezDeNullPointerException() {
-        VisionExtractor extractor = new VisionExtractor(List.of(), "2026-07-24");
+        VisionExtractor extractor = new VisionExtractor(List.of(), "2026-07-24", 60, 4096);
 
         assertThatThrownBy(() -> extractor.extract(input(IMAGE, "image/jpeg")))
                 .isInstanceOf(ExtractionException.class);

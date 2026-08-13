@@ -17,12 +17,16 @@ import org.springframework.stereotype.Component;
 import java.awt.geom.Rectangle2D;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.DateTimeException;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -30,8 +34,9 @@ import java.util.regex.Pattern;
  * Template Itaú fatura de cartão — reconhece transações da seção "Lançamentos: compras e
  * saques" (spec: registry de templates, decisões c/e). Datas de lançamento vêm sem ano
  * (DD/MM); o ano é inferido da data de vencimento, que aparece uma vez no documento com ano
- * completo. Colunas de lançamento são separadas por detecção dinâmica de vão horizontal,
- * por página (spec: fix-itau-split-coluna-dinamico) — não há constante fixa de corte.
+ * completo. Colunas de lançamento são separadas por página, ancorando na posição X dos tokens
+ * de data que iniciam cada lançamento (spec: itau-ancora-coluna-por-data) — não há nenhuma
+ * coordenada de corte assada no código.
  */
 @Slf4j
 @Component
@@ -40,6 +45,8 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
 
     private static final String CNPJ_ITAU = "60.872.504/0001-23";
     private static final String HEADER_LANCAMENTOS = "Lançamentos: compras e saques";
+    private static final String HEADER_PRODUTOS_SERVICOS = "Lançamentos: produtos e serviços";
+    private static final String HEADER_INTERNACIONAL = "Lançamentos internacionais";
 
     // Cabeçalhos de seção que fecham o bloco de lançamentos do ciclo corrente — em especial
     // "Compras parceladas - próximas faturas", que repete o MESMO formato de linha (data +
@@ -48,8 +55,13 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
             "Compras parceladas - próximas faturas",
             "Limites de crédito",
             "Encargos cobrados",
-            "Lançamentos internacionais",
-            "Lançamentos: produtos e serviços");
+            HEADER_INTERNACIONAL,
+            HEADER_PRODUTOS_SERVICOS,
+            // Sem este marcador, um bloco de produtos/internacional que aparece ANTES de um
+            // segundo bloco "compras e saques" no mesmo stream (titular adicional) engole esse
+            // bloco inteiro — e extrairTransacoesDoStream o processa de novo, duplicando as
+            // transações (achado da revisão final do branch).
+            HEADER_LANCAMENTOS);
 
     private static final Pattern DUE_DATE =
             Pattern.compile("Vencimento\\D{0,20}(\\d{2})/(\\d{2})/(\\d{4})");
@@ -57,22 +69,51 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
     private static final Pattern TRAILING_AMOUNT =
             Pattern.compile("(-?)\\s*(\\d{1,3}(?:\\.\\d{3})*,\\d{2})\\s*$");
     private static final Pattern TRAILING_INSTALLMENT_MARKER = Pattern.compile("(\\d{2})/(\\d{2})\\s*$");
+    // Linha de subtotal do bloco internacional — já soma o valor em R$ de todos os
+    // lançamentos, incluindo IOF. Tolerante a espaço duplo entre "lançamentos" e "inter."
+    // (variante observada no corpus real).
+    private static final Pattern TOTAL_INTERNACIONAL =
+            Pattern.compile("Total lançamentos\\s+inter\\. em R\\$\\s*(\\d[\\d.,]*)");
+    // Primeira ocorrência de DD/MM dentro do bloco — usada como data representativa da
+    // transação sintética consolidada (spec: decisão a).
+    private static final Pattern PRIMEIRA_DATA_DO_BLOCO = Pattern.compile("(\\d{2})/(\\d{2})");
+    // Token que INICIA com data. Precisa aceitar as duas granularidades com que o PDFBox
+    // entrega texto: nas faturas reais cada palavra vira um token ("28/11" sozinho), mas em
+    // PDF gerado com uma única operação de escrita a linha inteira vem num token só
+    // ("28/11 Estabelecimento 112,67"). Casar só o token exato funcionaria no primeiro caso e
+    // falharia silenciosamente no segundo.
+    private static final Pattern DATE_TOKEN_PREFIX = Pattern.compile("^\\d{2}/\\d{2}(\\s|$)");
 
-    // Vão mínimo (pt) pra considerar uma quebra de coluna real, não espaço normal entre
-    // palavras/blocos de texto — folga generosa: o vão real medido no documento que
-    // motivou este fix era ~77pt; espaçamento intra-linha em fonte 10pt não passa de
-    // poucos pontos. Abaixo disso, a página é tratada como coluna única (spec §4.1).
-    private static final float MIN_GAP_WIDTH = 20f;
+    // Um token "DD/MM" só conta como início de linha de lançamento se tiver este tanto de
+    // espaço vazio à esquerda. Sem isso, o marcador de parcela ("04/06", mesmo formato) viraria
+    // âncora: no levantamento de 45 faturas reais, 87% do ruído de cluster vinha daí.
+    private static final float MIN_BLOCK_GAP = 15f;
 
-    // Valor histórico do antigo COLUMN_SPLIT_X (corte fixo, calibrado manualmente contra uma
-    // fatura Itaú real antes deste fix). Usado APENAS como último recurso, quando a detecção
-    // dinâmica da página não encontra nenhum vão confiável — nunca como mecanismo primário
-    // (isso reintroduziria o bug original: 365f sempre, mesmo quando o layout real diverge).
-    // Ver final-review.md (C1): devolver pageWidth nesse caminho funde as duas colunas no
-    // mesmo stream (dado corrompido); devolver este default degrada, na pior hipótese, para
-    // o comportamento antigo conhecido (perde a coluna direita) — pior que sem dado, nunca
-    // pior que dado errado.
-    private static final float FALLBACK_SPLIT_X = 365f;
+    // Tolerância para dois tokens de data pertencerem à mesma coluna. As colunas reais medidas
+    // têm variância interna ~0,01pt e ficam a ~216pt uma da outra — 5pt separa com folga larga.
+    private static final float CLUSTER_TOLERANCE = 5f;
+
+    // Massa mínima do 2º cluster para a página ser considerada de duas colunas. Medido: limiar
+    // 1, 2, 3 e 5 produzem resultado IDÊNTICO nas 45 faturas reais — coluna de verdade tem massa
+    // 15–36, nunca fica perto do limiar. Fica no mínimo porque é o único valor que cobre a
+    // coluna direita esparsa (última página com 1–2 lançamentos). O risco oposto — uma data
+    // solta virando "coluna" — não é barrado por limiar de massa nenhum, e sim pela checagem de
+    // faixa vazia em fimDoConteudoAEsquerda(): se o conteúdo da esquerda alcança a suposta
+    // coluna direita, a página vira coluna única em vez de ser cortada ao meio.
+    private static final int MIN_CLUSTER_MASS = 1;
+
+    // Distância mínima entre os dois clusters para serem colunas de verdade, e não uma coluna
+    // real mais um punhado de datas dispersas. Medido: as duas colunas ficam a 215,6–218,3pt
+    // uma da outra em todas as 121 páginas do levantamento. O limiar é menos da metade disso.
+    private static final float MIN_COLUMN_SEPARATION = 100f;
+
+    // Afastamento entre as duas colunas de lançamento — usado para posicionar a coluna direita
+    // "virtual" quando a página tem lançamentos só à esquerda (última página), de modo a isolar
+    // as caixas de resumo do lado direito. Medido em 215,6–218,3pt; aqui fica um pouco abaixo,
+    // pra cair na FAIXA VAZIA antes da coluna, não em cima dela. Varredura de sensibilidade
+    // sobre as 45 faturas: 190 a 214 dão resultado idêntico (23 faturas exatas), 220 degrada —
+    // ou seja, é um platô largo, não um valor de sorte.
+    private static final float COLUMN_OFFSET = 206f;
 
     @Override
     public boolean matches(String fullText) {
@@ -86,13 +127,9 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
 
     @Override
     public List<NormalizedTransactionDTO> parse(String fullText, byte[] content) {
-        Matcher dueDateMatcher = DUE_DATE.matcher(fullText);
-        if (!dueDateMatcher.find()) {
-            throw new ExtractionException(
-                    "Não foi possível localizar a data de vencimento na fatura Itaú.");
-        }
-        int mesVencimento = Integer.parseInt(dueDateMatcher.group(2));
-        int anoVencimento = Integer.parseInt(dueDateMatcher.group(3));
+        LocalDate vencimento = extrairVencimento(fullText);
+        int mesVencimento = vencimento.getMonthValue();
+        int anoVencimento = vencimento.getYear();
 
         StringBuilder colunaEsquerda = new StringBuilder();
         StringBuilder colunaDireita = new StringBuilder();
@@ -126,116 +163,300 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
         List<NormalizedTransactionDTO> transacoes = new ArrayList<>();
         transacoes.addAll(extrairTransacoesDoStream(colunaEsquerda.toString(), mesVencimento, anoVencimento));
         transacoes.addAll(extrairTransacoesDoStream(colunaDireita.toString(), mesVencimento, anoVencimento));
+        transacoes.addAll(extrairProdutosEServicos(colunaEsquerda.toString(), mesVencimento, anoVencimento));
+        transacoes.addAll(extrairProdutosEServicos(colunaDireita.toString(), mesVencimento, anoVencimento));
+        transacoes.addAll(extrairInternacionalConsolidado(colunaEsquerda.toString(), mesVencimento, anoVencimento));
+        transacoes.addAll(extrairInternacionalConsolidado(colunaDireita.toString(), mesVencimento, anoVencimento));
         return transacoes;
     }
 
+    @Override
+    public YearMonth targetInvoiceReferenceMonth(String fullText) {
+        // dueDay >= closingDay é o caso normal do Itaú (confirmado nas 45 faturas medidas na
+        // spec de coluna: vencimento sempre dia 10) — nesse caso InvoiceService.createNewInvoice
+        // vence a fatura de referenceMonth no mês SEGUINTE. Recalcular pelo closingDay
+        // configurado na conta reintroduziria a mesma fragilidade que causou o sintoma original
+        // (spec 2026-08-09 §2.c) — o vencimento IMPRESSO já é o dado certo, independente de
+        // como a conta está configurada no sistema.
+        return YearMonth.from(extrairVencimento(fullText)).minusMonths(1);
+    }
+
+    /** Vencimento impresso no documento (único, aparece uma vez, com ano completo). */
+    private LocalDate extrairVencimento(String fullText) {
+        Matcher dueDateMatcher = DUE_DATE.matcher(fullText);
+        if (!dueDateMatcher.find()) {
+            throw new ExtractionException(
+                    "Não foi possível localizar a data de vencimento na fatura Itaú.");
+        }
+        int dia = Integer.parseInt(dueDateMatcher.group(1));
+        int mes = Integer.parseInt(dueDateMatcher.group(2));
+        int ano = Integer.parseInt(dueDateMatcher.group(3));
+        try {
+            return LocalDate.of(ano, mes, dia);
+        } catch (DateTimeException e) {
+            // Dia inválido pro mês (ex.: "31/02/2026", vencimento impresso corrompido) —
+            // sem este catch, DateTimeException não tratada vira 500 genérico em vez de
+            // FAILED com motivo legível (mesmo tratamento do vencimento ausente, acima).
+            throw new ExtractionException("Data de vencimento inválida na fatura Itaú.", e);
+        }
+    }
+
     /**
-     * Acha o corte de coluna da página pelo maior vão horizontal entre trechos de texto
-     * renderizados — substitui a constante fixa antiga como MECANISMO PRIMÁRIO (spec:
-     * fix-itau-split-coluna-dinamico). Sem vão significativo (≥ {@link #MIN_GAP_WIDTH}) na
-     * página inteira, devolve {@link #FALLBACK_SPLIT_X} (não a largura da página inteira):
-     * uma única palavra fora das colunas de lançamento (rodapé, endereço, numeração de
-     * página) cai na faixa X da calha com frequência em páginas reais — devolver
-     * {@code pageWidth} nesse caso funde as duas colunas no mesmo stream e produz
-     * transações com data de uma coluna e valor da outra, em silêncio (C1 do review final).
-     * O corte fixo histórico é um default seguro, não a ausência de corte.
+     * Acha o corte entre as duas colunas de lançamento da página pela posição X dos tokens de
+     * DATA que iniciam uma linha de lançamento.
+     *
+     * <p>Por que a data e não o "maior vão de texto" (que era a estratégia anterior): o vão
+     * some assim que QUALQUER texto cai perto da calha — rodapé, endereço, rótulo de subtotal —
+     * e a página inteira degrada em silêncio. Já o token de data só existe onde há lançamento,
+     * então é imune a esse ruído. Medição sobre 45 faturas reais (2022–2026): as datas formam
+     * dois clusters com variância interna ~0,01pt, nas posições exatas das duas colunas, e
+     * ZERO clusters espúrios em 141 páginas. Racional completo: spec
+     * itau-ancora-coluna-por-data §1.3.
+     *
+     * <p>Sem duas colunas detectáveis, devolve a largura da página: tudo cai numa região só e é
+     * processado normalmente (correto em página de coluna única — capa, resumo). Note que NÃO
+     * há mais fallback para coordenada fixa: a medição mostrou que o antigo corte fixo cai dentro da
+     * faixa onde a coluna direita começa (351–367pt), ou seja, corta conteúdo real.
      */
     private float detectColumnSplit(PDDocument document, PDPage page, int pageNumberOneBased)
             throws IOException {
-        List<float[]> extents = new ArrayList<>();
-        PDFTextStripper detector = new PDFTextStripper() {
+        float pageWidth = page.getMediaBox().getWidth();
+        Map<Integer, List<Token>> tokensByRow = collectTokensByRow(document, pageNumberOneBased);
+        List<Float> anchors = dateAnchors(tokensByRow);
+        List<float[]> clusters = clusterByProximity(anchors);
+        if (clusters.isEmpty()) {
+            return pageWidth;
+        }
+        // O cluster de MAIOR massa é seguramente uma coluna real (medido: 15–36 lançamentos,
+        // contra 1–3 do ruído). É a âncora a partir da qual a outra coluna é procurada.
+        clusters.sort((a, b) -> Float.compare(b[1], a[1]));
+        float[] dominante = clusters.get(0);
+
+        // Candidatas a "outra coluna", da MAIS PRÓXIMA à mais distante da dominante. Ordenar por
+        // proximidade e não por massa importa: numa última página, a coluna direita pode ter 1–2
+        // lançamentos e haver ruído mais massivo à direita dela (datas da seção de limites) — por
+        // massa, o ruído venceria e o corte cairia depois da coluna real, partindo-a ao meio.
+        List<float[]> candidatas = new ArrayList<>();
+        for (int i = 1; i < clusters.size(); i++) {
+            float[] candidata = clusters.get(i);
+            if (candidata[1] >= MIN_CLUSTER_MASS
+                    && Math.abs(candidata[0] - dominante[0]) >= MIN_COLUMN_SEPARATION) {
+                candidatas.add(candidata);
+            }
+        }
+        candidatas.sort(Comparator.comparingDouble(c -> Math.abs(c[0] - dominante[0])));
+
+        // Fica com a PRIMEIRA candidata que deixa uma faixa vertical de fato vazia até ela.
+        // Só proximidade não basta: uma data solta ENTRE as duas colunas é mais próxima que a
+        // coluna direita real e sequestraria a escolha. Exigir a faixa vazia descarta a
+        // intrusa — o conteúdo da esquerda a alcança — e a busca segue para a coluna seguinte.
+        for (float[] candidata : candidatas) {
+            float rightColumnX = Math.max(dominante[0], candidata[0]);
+            float leftContentEnd =
+                    fimDoConteudoAEsquerda(tokensByRow, rightColumnX - CLUSTER_TOLERANCE);
+            if (leftContentEnd < rightColumnX) {
+                // Meio da faixa vertical comprovadamente vazia entre as duas colunas.
+                return (leftContentEnd + rightColumnX) / 2f;
+            }
+        }
+
+        // Nenhuma segunda COLUNA DE LANÇAMENTOS. Isso não quer dizer que o lado direito esteja
+        // vazio: a última página de lançamentos costuma ter lançamentos só à esquerda e caixas
+        // de resumo à direita ("Limites de crédito", "Encargos cobrados"). Sem corte, o texto
+        // dessas caixas entra no mesmo fluxo — e como os títulos delas são justamente os
+        // marcadores de fim de bloco, o bloco é cortado logo no começo e a página inteira se
+        // perde (medido: R$ 602,12 e R$ 162,74 sumindo de duas faturas reais).
+        //
+        // Por isso cortamos assim mesmo, na posição onde a coluna direita ESTARIA. O afastamento
+        // entre colunas é a medida mais estável do layout: 215,6–218,3pt em 121 páginas de 45
+        // faturas ao longo de 4 anos. Não é a posição absoluta de uma coluna (isso variou e
+        // causou os defeitos anteriores) — é a distância entre elas.
+        float colunaVirtualX = dominante[0] + COLUMN_OFFSET;
+        if (colunaVirtualX < pageWidth) {
+            float leftContentEnd = fimDoConteudoAEsquerda(tokensByRow, colunaVirtualX);
+            if (leftContentEnd < colunaVirtualX) {
+                return (leftContentEnd + colunaVirtualX) / 2f;
+            }
+        }
+
+        if (!candidatas.isEmpty()) {
+            log.warn("ItauFaturaTemplate: nenhuma das {} candidatas a segunda coluna deixa faixa "
+                    + "vazia na página {} — tratada como coluna única.",
+                    candidatas.size(), pageNumberOneBased);
+        }
+        return pageWidth;
+    }
+
+    /**
+     * X em que termina o conteúdo das LINHAS DE LANÇAMENTO à esquerda de {@code limiteEsquerda}.
+     *
+     * <p>Só linhas de lançamento contam: rodapé, endereço e cabeçalho atravessam a calha com
+     * frequência em página real e não são conteúdo que se possa partir — considerá-los faria a
+     * página degradar por causa de um texto que ninguém precisa preservar intacto.
+     *
+     * <p>Devolve {@code 0} quando não há nenhuma linha de lançamento à esquerda (o corte então
+     * fica no meio do caminho até a coluna direita, sem nada a preservar).
+     *
+     * <p>O limite é passado pronto pelo chamador porque as duas origens pedem correções
+     * diferentes: vindo de um cluster real, é preciso descontar a tolerância (o representante é
+     * o centroide, uma média, e metade dos tokens da coluna cai abaixo dele); vindo da coluna
+     * virtual, não há cluster nenhum e descontar criaria um ponto cego — tokens entre o limite
+     * descontado e o corte ficariam de fora da conta e o corte partiria a linha ali.
+     */
+    private float fimDoConteudoAEsquerda(Map<Integer, List<Token>> tokensByRow, float limiteEsquerda) {
+        float leftEnd = 0f;
+        for (List<Token> row : tokensByRow.values()) {
+            boolean lancamentoAEsquerda = row.stream()
+                    .anyMatch(t -> t.xStart() < limiteEsquerda
+                            && DATE_TOKEN_PREFIX.matcher(t.text()).find());
+            if (!lancamentoAEsquerda) {
+                continue;
+            }
+            for (Token t : row) {
+                if (t.xStart() < limiteEsquerda) {
+                    leftEnd = Math.max(leftEnd, t.xEnd());
+                }
+            }
+        }
+        return leftEnd;
+    }
+
+    /** Um pedaço de texto posicionado, como o PDFBox o entrega. */
+    private record Token(String text, float xStart, float xEnd) {}
+
+    /** Tokens da página agrupados por linha visual (Y arredondado), cada linha ordenada por X. */
+    private Map<Integer, List<Token>> collectTokensByRow(PDDocument document, int pageNumberOneBased)
+            throws IOException {
+        Map<Integer, List<Token>> tokensByRow = new TreeMap<>();
+        PDFTextStripper collector = new PDFTextStripper() {
             @Override
             protected void writeString(String text, List<TextPosition> textPositions) {
+                if (textPositions.isEmpty()) {
+                    return;
+                }
                 float minX = Float.MAX_VALUE;
                 float maxX = -Float.MAX_VALUE;
                 for (TextPosition tp : textPositions) {
                     minX = Math.min(minX, tp.getX());
                     maxX = Math.max(maxX, tp.getX() + tp.getWidth());
                 }
-                if (minX <= maxX) {
-                    extents.add(new float[] {minX, maxX});
-                }
+                int row = Math.round(textPositions.get(0).getY());
+                tokensByRow.computeIfAbsent(row, k -> new ArrayList<>())
+                        .add(new Token(text.trim(), minX, maxX));
             }
         };
-        detector.setSortByPosition(true);
-        detector.setStartPage(pageNumberOneBased);
-        detector.setEndPage(pageNumberOneBased);
-        detector.getText(document);
-
-        float pageWidth = page.getMediaBox().getWidth();
-        if (extents.isEmpty()) {
-            return pageWidth;
-        }
-        extents.sort(Comparator.comparingDouble(e -> e[0]));
-
-        float cursor = extents.get(0)[1];  // Inicializa com o fim do primeiro extent, não 0 (evita margem esquerda)
-        float bestGapStart = -1f;
-        float bestGapSize = 0f;
-        for (int i = 1; i < extents.size(); i++) {
-            float[] extent = extents.get(i);
-            if (extent[0] > cursor) {  // Só há vão se o início deste extent for APÓS o alcance máximo visto até agora
-                float gap = extent[0] - cursor;
-                if (gap > bestGapSize) {
-                    bestGapSize = gap;
-                    bestGapStart = cursor;
-                }
-            }
-            cursor = Math.max(cursor, extent[1]);  // Atualiza cursor para o MAIOR fim visto (running-max)
-        }
-
-        if (bestGapSize < MIN_GAP_WIDTH) {
-            // Nenhum vão confiável nesta página — quase sempre porque uma única palavra fora
-            // das colunas de lançamento (rodapé/endereço/numeração) caiu na faixa X da calha
-            // e "fechou" o vão real (C1 do review final). Cair para pageWidth aqui fundiria
-            // as duas colunas; o corte histórico calibrado é o default seguro.
-            log.warn("ItauFaturaTemplate: detecção dinâmica de coluna não achou vão >= {}pt na "
-                    + "página {} — usando corte histórico ({}pt) como fallback.",
-                    MIN_GAP_WIDTH, pageNumberOneBased, FALLBACK_SPLIT_X);
-            return FALLBACK_SPLIT_X;
-        }
-        return bestGapStart + bestGapSize / 2f;
+        collector.setSortByPosition(true);
+        collector.setStartPage(pageNumberOneBased);
+        collector.setEndPage(pageNumberOneBased);
+        collector.getText(document);
+        tokensByRow.values().forEach(row -> row.sort(Comparator.comparingDouble(Token::xStart)));
+        return tokensByRow;
     }
 
     /**
-     * Localiza TODOS os blocos "Lançamentos: compras e saques" dentro de UM stream já
-     * separado por coluna (esquerda ou direita) e reconhece as transações de cada um — a
-     * mesma lógica de delimitação de seção de antes, agora rodando sobre texto limpo (sem
-     * fusão de coluna), o que a torna correta: cada coluna tem seus próprios cabeçalhos e
-     * marcadores de parada na ordem certa.
+     * Posições X dos tokens {@code DD/MM} que INICIAM uma linha de lançamento — primeiro token
+     * da linha, ou precedido por um espaço vazio de pelo menos {@link #MIN_BLOCK_GAP}. O filtro
+     * descarta o marcador de parcela, que tem o mesmo formato mas aparece colado ao meio da
+     * descrição.
      */
-    private List<NormalizedTransactionDTO> extrairTransacoesDoStream(
-            String stream, int mesVencimento, int anoVencimento) {
-        List<NormalizedTransactionDTO> transacoes = new ArrayList<>();
+    private List<Float> dateAnchors(Map<Integer, List<Token>> tokensByRow) {
+        List<Float> anchors = new ArrayList<>();
+        for (List<Token> row : tokensByRow.values()) {
+            for (int i = 0; i < row.size(); i++) {
+                Token token = row.get(i);
+                if (!DATE_TOKEN_PREFIX.matcher(token.text()).find()) {
+                    continue;
+                }
+                boolean startsBlock =
+                        i == 0 || token.xStart() - row.get(i - 1).xEnd() > MIN_BLOCK_GAP;
+                if (startsBlock) {
+                    anchors.add(token.xStart());
+                }
+            }
+        }
+        Collections.sort(anchors);
+        return anchors;
+    }
+
+    /**
+     * Agrupa posições X próximas — cada item devolvido é {@code {centroide, massa}}.
+     *
+     * <p>Cada valor é comparado com o primeiro do grupo, então um grupo nunca fica mais largo
+     * que {@link #CLUSTER_TOLERANCE} — suficiente aqui, onde a variância medida dentro de uma
+     * coluna real é ~0,01pt e as colunas distam ~216pt uma da outra.
+     *
+     * <p>Quem consome o centroide precisa descontar {@link #CLUSTER_TOLERANCE} ao usá-lo como
+     * fronteira de coluna, porque metade dos membros do grupo fica abaixo da média — ver
+     * {@link #fimDoConteudoAEsquerda}, que documenta por que a alternativa "guardar o menor X"
+     * foi medida e rejeitada.
+     */
+    private List<float[]> clusterByProximity(List<Float> sortedX) {
+        List<float[]> clusters = new ArrayList<>();
+        int i = 0;
+        while (i < sortedX.size()) {
+            float start = sortedX.get(i);
+            float sum = 0f;
+            int count = 0;
+            while (i < sortedX.size() && sortedX.get(i) - start <= CLUSTER_TOLERANCE) {
+                sum += sortedX.get(i);
+                count++;
+                i++;
+            }
+            clusters.add(new float[] {sum / count, count});
+        }
+        return clusters;
+    }
+
+    /**
+     * Concatena todos os blocos de UM header dentro do stream — cobre continuação entre
+     * páginas (o mesmo header reaparece; o loop trata como um novo bloco lógico do MESMO
+     * conteúdo, encadenado). Devolve o texto entre o header e o próximo {@link #STOP_MARKERS},
+     * excluindo o PRÓPRIO header da lista de parada — sem essa exclusão, a repetição do header
+     * por continuação de página fecharia o bloco prematuramente (mesma armadilha já corrigida
+     * pra compras e saques, agora generalizada pra qualquer seção).
+     */
+    private String extrairBlocosConcatenados(String stream, String header) {
+        StringBuilder blocos = new StringBuilder();
         int cursor = 0;
         while (true) {
-            int headerIdx = stream.indexOf(HEADER_LANCAMENTOS, cursor);
+            int headerIdx = stream.indexOf(header, cursor);
             if (headerIdx < 0) {
                 break;
             }
-            int start = headerIdx + HEADER_LANCAMENTOS.length();
+            int start = headerIdx + header.length();
             int stop = stream.length();
             for (String marker : STOP_MARKERS) {
+                if (marker.equals(header)) {
+                    continue;
+                }
                 int idx = stream.indexOf(marker, start);
                 if (idx >= 0 && idx < stop) {
                     stop = idx;
                 }
             }
-            // Header re-impresso por continuação de página não deve abrir um bloco novo —
-            // é o MESMO bloco lógico continuando. Avançar o cursor pro fim do bloco atual
-            // (não pro início do header) é matematicamente equivalente ao capping anterior
-            // para este algoritmo (verificado), mas é a leitura mais fiel do layout
-            // paginado real e evita reabrir blocos sobre header repetido por continuação.
-            String bloco = stream.substring(start, stop);
-            for (String linha : bloco.lines().toList()) {
-                TransacaoItau transacao = parseLinha(linha.trim(), mesVencimento, anoVencimento);
-                if (transacao != null) {
-                    transacoes.add(toDto(transacao));
-                }
-            }
-            // Avança o cursor pro FIM deste bloco (não pro início do header atual) — qualquer
-            // header re-impresso DENTRO deste intervalo já foi incluído (como texto inerte) e
-            // não deve reabrir um bloco novo sobreposto.
+            // O '\n' extra não é cosmético: garante uma linha VAZIA na fronteira entre blocos,
+            // o que faz proxima.isEmpty() ser true em extrairProdutosEServicos() e impede o
+            // lookahead de descrição de "roubar" a primeira linha do PRÓXIMO bloco (header
+            // repetido, nome de titular) como se fosse a continuação da descrição atual.
+            blocos.append(stream, start, stop).append('\n');
             cursor = stop;
+        }
+        return blocos.toString();
+    }
+
+    /**
+     * Localiza TODOS os blocos "Lançamentos: compras e saques" dentro de UM stream já
+     * separado por coluna (esquerda ou direita) e reconhece as transações de cada um.
+     */
+    private List<NormalizedTransactionDTO> extrairTransacoesDoStream(
+            String stream, int mesVencimento, int anoVencimento) {
+        List<NormalizedTransactionDTO> transacoes = new ArrayList<>();
+        String bloco = extrairBlocosConcatenados(stream, HEADER_LANCAMENTOS);
+        for (String linha : bloco.lines().toList()) {
+            TransacaoItau transacao = parseLinha(linha.trim(), mesVencimento, anoVencimento);
+            if (transacao != null) {
+                transacoes.add(toDto(transacao));
+            }
         }
         // Observabilidade: coluna com conteúdo que PARECE transação (linha "DD/MM ...") mas
         // zero transações reconhecidas é sinal de header ausente/quebrado nesta coluna — sem
@@ -248,6 +469,78 @@ public class ItauFaturaTemplate implements PdfBankTemplate {
                     HEADER_LANCAMENTOS);
         }
         return transacoes;
+    }
+
+    /**
+     * Extrai "Lançamentos: produtos e serviços" por transação — reusa {@link #parseLinha}
+     * (mesmo formato de linha 1: DD/MM CÓDIGO [NN/NN] VALOR) mas com 2 diferenças: (1) espia a
+     * PRÓXIMA linha do bloco — se não for início de outra transação, é a descrição completa
+     * (o código da linha 1 costuma vir truncado, ex. "ANUIDADE DIFER" para "Anuidade
+     * Diferenciada"); (2) NUNCA populada installment_number/total — decisão (c) da spec:
+     * "Anuidade Diferenciada NN/12" é uma taxa recorrente que no corpus real é cobrada e
+     * estornada quase no mês seguinte, não uma compra parcelada — criar um InstallmentGroup de
+     * 12 parcelas projetaria cobranças futuras que o histórico mostra que não acontecem.
+     */
+    private List<NormalizedTransactionDTO> extrairProdutosEServicos(
+            String stream, int mesVencimento, int anoVencimento) {
+        List<NormalizedTransactionDTO> transacoes = new ArrayList<>();
+        String bloco = extrairBlocosConcatenados(stream, HEADER_PRODUTOS_SERVICOS);
+        List<String> linhas = bloco.lines().toList();
+        for (int i = 0; i < linhas.size(); i++) {
+            TransacaoItau base = parseLinha(linhas.get(i).trim(), mesVencimento, anoVencimento);
+            if (base == null) {
+                continue;
+            }
+            String descricao = base.descricao();
+            if (i + 1 < linhas.size()) {
+                String proxima = linhas.get(i + 1).trim();
+                if (!proxima.isEmpty() && !LINE_START_DATE.matcher(proxima).matches()) {
+                    descricao = proxima;
+                }
+            }
+            transacoes.add(toDto(new TransacaoItau(base.data(), descricao, base.valor(), null, null)));
+        }
+        return transacoes;
+    }
+
+    /**
+     * "Lançamentos internacionais" vira NO MÁXIMO 1 transação sintética por fatura — decisão
+     * (a) da spec: o valor em US$/conversão vem numa segunda linha sem mapeamento confiável
+     * (amostra pequena, 9/21 faturas no corpus), mas a linha de subtotal já soma tudo certo,
+     * incluindo IOF. Ausência da seção OU do subtotal reconhecível → lista vazia, sem erro
+     * (mesma filosofia do resto do template: ausência de sinal não é erro).
+     */
+    private List<NormalizedTransactionDTO> extrairInternacionalConsolidado(
+            String stream, int mesVencimento, int anoVencimento) {
+        String bloco = extrairBlocosConcatenados(stream, HEADER_INTERNACIONAL);
+        Matcher totalMatcher = TOTAL_INTERNACIONAL.matcher(bloco);
+        if (!totalMatcher.find()) {
+            return List.of();
+        }
+        Matcher dataMatcher = PRIMEIRA_DATA_DO_BLOCO.matcher(bloco.substring(0, totalMatcher.start()));
+        if (!dataMatcher.find()) {
+            return List.of();
+        }
+        int dia = Integer.parseInt(dataMatcher.group(1));
+        int mes = Integer.parseInt(dataMatcher.group(2));
+        int ano = mes > mesVencimento ? anoVencimento - 1 : anoVencimento;
+        LocalDate data;
+        try {
+            data = LocalDate.of(ano, mes, dia);
+        } catch (DateTimeException e) {
+            return List.of();
+        }
+        BigDecimal valor;
+        try {
+            valor = parseValorBr(totalMatcher.group(1));
+        } catch (NumberFormatException e) {
+            // Subtotal malformado (ex. "120," ou "1,2,3") ainda bate o regex frouxo do valor —
+            // mesma degradação graciosa já aplicada à data acima: lista vazia, sem exceção.
+            return List.of();
+        }
+        TransacaoItau t = new TransacaoItau(
+                data, "Lançamentos internacionais (consolidado)", valor, null, null);
+        return List.of(toDto(t));
     }
 
     /** {@code null} quando a linha não bate o formato "DD/MM estabelecimento [NN/NN] valor". */

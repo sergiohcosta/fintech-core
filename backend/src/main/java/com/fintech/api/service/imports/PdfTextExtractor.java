@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -132,9 +133,13 @@ public class PdfTextExtractor implements TransactionExtractor {
 
         for (PdfBankTemplate template : templates) {
             if (template.matches(text)) {
+                YearMonth faturaAlvo = template.targetInvoiceReferenceMonth(text);
                 return new NormalizedBatchDTO(
                         input.mode(), ImportSourceType.PDF_TEXT, template.templateId(), extractorVersion,
-                        template.parse(text, input.content()));
+                        template.parse(text, input.content()),
+                        null, null, null, null, null,
+                        faturaAlvo != null ? faturaAlvo.getYear() : null,
+                        faturaAlvo != null ? faturaAlvo.getMonthValue() : null);
             }
         }
 

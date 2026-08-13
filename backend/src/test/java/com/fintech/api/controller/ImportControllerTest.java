@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -131,5 +132,34 @@ class ImportControllerTest {
         mockMvc.perform(post("/api/imports/{id}/staged/{stagedId}/discard", batchId, stagedId)
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isNotFound());
+    }
+
+    /**
+     * Finding da revisão final (2026-08-09-itau-fatura-ancora-por-documento): sem
+     * {@code @Min}/{@code @Max} em {@code targetInvoiceReferenceMonth}, um mês inválido (13)
+     * passava a validação do controller e só quebrava em {@code ImportService.commit()} com
+     * {@code YearMonth.of(ano, 13)} — {@code DateTimeException} não tratada, 500 com o batch
+     * preso. Prova que o Bean Validation barra ANTES de chegar no service (400, não 500).
+     */
+    @Test
+    @DisplayName("POST /api/imports/mock com targetInvoiceReferenceMonth inválido (13) → 400, não 500")
+    void mockReturns400WhenTargetInvoiceReferenceMonthIsInvalid() throws Exception {
+        String body = """
+                {
+                  "importMode": "NEW_TRANSACTIONS",
+                  "sourceType": "PDF_TEXT",
+                  "extractorUsed": "itau_fatura_v1",
+                  "extractorVersion": "v1",
+                  "transactions": [],
+                  "targetInvoiceReferenceYear": 2026,
+                  "targetInvoiceReferenceMonth": 13
+                }
+                """;
+
+        mockMvc.perform(post("/api/imports/mock")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest());
     }
 }

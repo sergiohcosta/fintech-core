@@ -83,7 +83,9 @@ class OllamaVisionClientTest {
         LlmReceiptExtractionDTO result = client.extract(
                 "prompt fixo",
                 MimeTypeUtils.parseMimeType("image/jpeg"),
-                new ByteArrayResource(new byte[] {1, 2, 3}));
+                new ByteArrayResource(new byte[] {1, 2, 3}),
+                LlmReceiptExtractionDTO.class,
+                null);
 
         assertThat(result).isEqualTo(fullReceipt());
     }
@@ -96,8 +98,65 @@ class OllamaVisionClientTest {
         assertThatThrownBy(() -> client.extract(
                 "prompt fixo",
                 MimeTypeUtils.parseMimeType("image/jpeg"),
-                new ByteArrayResource(new byte[] {1, 2, 3})))
+                new ByteArrayResource(new byte[] {1, 2, 3}),
+                LlmReceiptExtractionDTO.class,
+                null))
                 .isInstanceOf(ExtractionException.class);
+    }
+
+    // --- #194 — maxOutputTokens: null preserva o comportamento de antes (sem regressão no
+    // caminho de comprovante); não-nulo aplica o teto via OllamaChatOptions (numPredict). ---
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void naoChamaOptionsQuandoMaxOutputTokensENulo() {
+        ChatClient chatClient = mock(ChatClient.class);
+        ChatClient.ChatClientRequestSpec requestSpec = mock(ChatClient.ChatClientRequestSpec.class);
+        ChatClient.CallResponseSpec callResponseSpec = mock(ChatClient.CallResponseSpec.class);
+
+        when(chatClient.prompt()).thenReturn(requestSpec);
+        when(requestSpec.user(any(Consumer.class))).thenReturn(requestSpec);
+        when(requestSpec.call()).thenReturn(callResponseSpec);
+        when(callResponseSpec.entity(LlmReceiptExtractionDTO.class)).thenReturn(fullReceipt());
+
+        OllamaVisionClient client = new OllamaVisionClient(chatClient, "qwen2.5vl");
+
+        client.extract(
+                "prompt fixo", MimeTypeUtils.parseMimeType("image/jpeg"),
+                new ByteArrayResource(new byte[] {1, 2, 3}), LlmReceiptExtractionDTO.class, null);
+
+        verify(requestSpec, org.mockito.Mockito.never())
+                .options(org.mockito.ArgumentMatchers.any());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void aplicaNumPredictQuandoMaxOutputTokensInformado() {
+        // Mocks explícitos (não deep-stub) aqui: precisamos verificar .options() numa instância
+        // ESPECÍFICA da cadeia, e o deep-stub não garante a mesma referência entre a chamada
+        // real de produção e a expressão usada no verify() (identidade de mock, não só tipo).
+        ChatClient chatClient = mock(ChatClient.class);
+        ChatClient.ChatClientRequestSpec requestSpec = mock(ChatClient.ChatClientRequestSpec.class);
+        ChatClient.ChatClientRequestSpec afterOptions = mock(ChatClient.ChatClientRequestSpec.class);
+        ChatClient.CallResponseSpec callResponseSpec = mock(ChatClient.CallResponseSpec.class);
+
+        when(chatClient.prompt()).thenReturn(requestSpec);
+        when(requestSpec.user(any(Consumer.class))).thenReturn(requestSpec);
+        when(requestSpec.options(org.mockito.ArgumentMatchers.any(org.springframework.ai.chat.prompt.ChatOptions.class)))
+                .thenReturn(afterOptions);
+        when(afterOptions.call()).thenReturn(callResponseSpec);
+        when(callResponseSpec.entity(LlmReceiptExtractionDTO.class)).thenReturn(fullReceipt());
+
+        OllamaVisionClient client = new OllamaVisionClient(chatClient, "qwen2.5vl");
+
+        client.extract(
+                "prompt fixo", MimeTypeUtils.parseMimeType("image/jpeg"),
+                new ByteArrayResource(new byte[] {1, 2, 3}), LlmReceiptExtractionDTO.class, 4096);
+
+        org.mockito.ArgumentCaptor<org.springframework.ai.chat.prompt.ChatOptions> captor =
+                org.mockito.ArgumentCaptor.forClass(org.springframework.ai.chat.prompt.ChatOptions.class);
+        verify(requestSpec).options(captor.capture());
+        assertThat(captor.getValue().getMaxTokens()).isEqualTo(4096);
     }
 
     // --- Revisão final de branch: o OllamaApi.Builder do Spring AI instala por padrão o
@@ -113,7 +172,8 @@ class OllamaVisionClientTest {
         OllamaVisionClient client = new OllamaVisionClient(chatClient, "qwen2.5vl");
 
         assertThatThrownBy(() -> client.extract(
-                "prompt fixo", MimeTypeUtils.parseMimeType("image/jpeg"), new ByteArrayResource(new byte[] {1})))
+                "prompt fixo", MimeTypeUtils.parseMimeType("image/jpeg"), new ByteArrayResource(new byte[] {1}),
+                LlmReceiptExtractionDTO.class, null))
                 .isInstanceOf(VisionProviderUnavailableException.class)
                 .extracting(e -> ((VisionProviderUnavailableException) e).reasonCode())
                 .isEqualTo("unavailable");
@@ -127,7 +187,8 @@ class OllamaVisionClientTest {
         OllamaVisionClient client = new OllamaVisionClient(chatClient, "qwen2.5vl");
 
         assertThatThrownBy(() -> client.extract(
-                "prompt fixo", MimeTypeUtils.parseMimeType("image/jpeg"), new ByteArrayResource(new byte[] {1})))
+                "prompt fixo", MimeTypeUtils.parseMimeType("image/jpeg"), new ByteArrayResource(new byte[] {1}),
+                LlmReceiptExtractionDTO.class, null))
                 .isInstanceOf(VisionProviderUnavailableException.class)
                 .extracting(e -> ((VisionProviderUnavailableException) e).reasonCode())
                 .isEqualTo("unavailable");
@@ -146,7 +207,8 @@ class OllamaVisionClientTest {
         OllamaVisionClient client = new OllamaVisionClient(chatClient, "qwen2.5vl");
 
         assertThatThrownBy(() -> client.extract(
-                "prompt fixo", MimeTypeUtils.parseMimeType("image/jpeg"), new ByteArrayResource(new byte[] {1})))
+                "prompt fixo", MimeTypeUtils.parseMimeType("image/jpeg"), new ByteArrayResource(new byte[] {1}),
+                LlmReceiptExtractionDTO.class, null))
                 .isInstanceOf(ExtractionException.class)
                 .isNotInstanceOf(VisionProviderUnavailableException.class);
     }
@@ -177,7 +239,7 @@ class OllamaVisionClientTest {
         OllamaVisionClient client = new OllamaVisionClient(chatClient, "qwen2.5vl");
 
         MimeType mime = MimeTypeUtils.parseMimeType(mimeType);
-        client.extract("prompt fixo", mime, new ByteArrayResource(new byte[] {1, 2, 3}));
+        client.extract("prompt fixo", mime, new ByteArrayResource(new byte[] {1, 2, 3}), LlmReceiptExtractionDTO.class, null);
 
         // atLeastOnce: a própria montagem do stub (when(...user(any())...)) já conta uma invocação;
         // getValue() devolve a ÚLTIMA capturada, que é o Consumer real passado pelo extract().

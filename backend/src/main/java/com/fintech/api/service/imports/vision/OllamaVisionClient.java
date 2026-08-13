@@ -1,8 +1,8 @@
 package com.fintech.api.service.imports.vision;
 
 import com.fintech.api.service.imports.ExtractionException;
-import com.fintech.api.service.imports.LlmReceiptExtractionDTO;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.ollama.api.OllamaChatOptions;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
@@ -44,7 +44,8 @@ public class OllamaVisionClient implements VisionModelClient {
     }
 
     @Override
-    public LlmReceiptExtractionDTO extract(String prompt, MimeType mimeType, Resource imageResource) {
+    public <T> T extract(
+            String prompt, MimeType mimeType, Resource imageResource, Class<T> responseType, Integer maxOutputTokens) {
         // ByteArrayResource anônimo com getFilename() pra Spring AI serializar corretamente
         // (sem filename, o multipart fica malformado → Ollama rejeita com zlib error). É um
         // conhecimento caro (custou depuração de runtime) e é ESPECÍFICO deste provider — outro
@@ -53,10 +54,15 @@ public class OllamaVisionClient implements VisionModelClient {
         Resource namedResource = wrapWithFilename(imageResource, filename);
 
         try {
-            return chatClient.prompt()
-                    .user(u -> u.text(prompt).media(mimeType, namedResource))
-                    .call()
-                    .entity(LlmReceiptExtractionDTO.class);
+            ChatClient.ChatClientRequestSpec spec = chatClient.prompt()
+                    .user(u -> u.text(prompt).media(mimeType, namedResource));
+            // maxOutputTokens=null preserva o comportamento de antes do #194 (nenhuma .options()
+            // chamada) — numPredict é o nome do Ollama para o mesmo conceito (ChatOptions.getMaxTokens()
+            // é comum aos dois providers, só o builder muda).
+            if (maxOutputTokens != null) {
+                spec = spec.options(OllamaChatOptions.builder().numPredict(maxOutputTokens).build());
+            }
+            return spec.call().entity(responseType);
         } catch (Exception e) {
             // Onda 4: mesma política do GeminiVisionClient (classificação vive no cliente, não
             // aqui reaproveitado de outro provider — cada um desembrulha a exceção do SEU SDK).

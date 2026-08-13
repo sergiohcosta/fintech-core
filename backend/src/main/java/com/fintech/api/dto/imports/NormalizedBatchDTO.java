@@ -3,6 +3,8 @@ package com.fintech.api.dto.imports;
 import com.fintech.api.domain.enums.ImportMode;
 import com.fintech.api.domain.enums.ImportSourceType;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
@@ -21,6 +23,12 @@ import java.util.List;
  * preservando a fronteira atual: extratores não tocam banco. Todos nullable e opcionais: CSV/OFX/
  * PDF texto não têm provider/modelo/latência (parser determinístico, não chamada a modelo), e
  * fallback só é preenchido quando o extrator efetivamente tentou outro provider antes (Onda 4).
+ *
+ * <p><b>Fatura-alvo do documento (V30, spec 2026-08-09):</b> {@code targetInvoiceReferenceYear}/
+ * {@code Month} são o mês de referência da fatura que O DOCUMENTO IMPORTADO representa (não uma
+ * inferência por transação) — só extratores cujo documento tem "1 fatura = 1 vencimento único"
+ * populam (hoje, só {@code ItauFaturaTemplate}). {@code null} = extrator sem esse conceito; o
+ * commit cai no caminho existente (recalcula por {@code resolveInvoiceMonth}).
  */
 public record NormalizedBatchDTO(
         @NotNull ImportMode importMode,
@@ -32,12 +40,15 @@ public record NormalizedBatchDTO(
         String extractorModel,
         Integer extractionLatencyMs,
         String fallbackFrom,
-        String fallbackReason) {
+        String fallbackReason,
+        @Min(1900) Integer targetInvoiceReferenceYear,
+        @Min(1) @Max(12) Integer targetInvoiceReferenceMonth) {
 
     /**
      * Construtor de compatibilidade para os extratores/testes que ainda não informam proveniência
-     * estruturada (CSV, OFX, PDF texto — parser determinístico, sem provider/modelo/latência a
-     * medir). Evita reescrever todo chamador existente só para acrescentar campos opcionais.
+     * estruturada nem fatura-alvo (CSV, OFX, PDF texto genérico — sem provider/modelo/latência a
+     * medir, sem conceito de vencimento único de documento). Evita reescrever todo chamador
+     * existente só para acrescentar campos opcionais.
      */
     public NormalizedBatchDTO(
             ImportMode importMode,
@@ -46,6 +57,26 @@ public record NormalizedBatchDTO(
             String extractorVersion,
             List<NormalizedTransactionDTO> transactions) {
         this(importMode, sourceType, extractorUsed, extractorVersion, transactions,
-                null, null, null, null, null);
+                null, null, null, null, null, null, null);
+    }
+
+    /**
+     * Construtor de compatibilidade para chamadores que informam proveniência estruturada (V28)
+     * mas não fatura-alvo (V30) — forma usada antes desta entrega.
+     */
+    public NormalizedBatchDTO(
+            ImportMode importMode,
+            ImportSourceType sourceType,
+            String extractorUsed,
+            String extractorVersion,
+            List<NormalizedTransactionDTO> transactions,
+            String extractorProvider,
+            String extractorModel,
+            Integer extractionLatencyMs,
+            String fallbackFrom,
+            String fallbackReason) {
+        this(importMode, sourceType, extractorUsed, extractorVersion, transactions,
+                extractorProvider, extractorModel, extractionLatencyMs, fallbackFrom, fallbackReason,
+                null, null);
     }
 }

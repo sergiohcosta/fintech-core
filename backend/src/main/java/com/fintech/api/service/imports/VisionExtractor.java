@@ -25,6 +25,7 @@ import java.time.format.DateTimeParseException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Extrator de visão — implementação da porta {@link TransactionExtractor}. A partir da Onda 1
@@ -36,11 +37,14 @@ import java.util.Map;
  * <p><b>Política de fallback (Onda 4, spec §3.2):</b> só uma falha de DISPONIBILIDADE
  * ({@link VisionProviderUnavailableException} — 429/5xx/timeout/401/403/400) dispara a tentativa
  * do PRÓXIMO client da lista. Qualquer outra exceção (incl. {@link ExtractionException} de
- * conteúdo — imagem ilegível, extrato multi-transação #193, {@code amount} implausível) propaga
- * IMEDIATAMENTE, sem tentar o próximo — falha de conteúdo repetida no outro modelo pagaria
- * latência dobrada pra chegar à MESMA conclusão, e mascararia o {@code failureReason} de #193. Essa
- * distinção é garantida por CONSTRUÇÃO: o guarda-corpo de plausibilidade só roda depois que um
- * client já "venceu" (retornou sem lançar), então é fisicamente impossível ele disparar fallback.
+ * conteúdo — imagem ilegível, {@code amount} implausível, ou falha de conteúdo na 2ª chamada do
+ * caminho de extrato — #194) propaga IMEDIATAMENTE, sem tentar o próximo — falha de conteúdo
+ * repetida no outro modelo pagaria latência dobrada pra chegar à MESMA conclusão, e mascararia o
+ * {@code failureReason} de #193. Essa distinção é garantida por CONSTRUÇÃO: o guarda-corpo de
+ * plausibilidade só roda depois que um client já "venceu" (retornou sem lançar), então é
+ * fisicamente impossível ele disparar fallback. O print de extrato (multi-transação), que #193
+ * recusava com este mesmo mecanismo, foi SUBSTITUÍDO pelo caminho de aceite do #194
+ * ({@link #extractStatement}) — não é mais um caso de recusa/falha.
  *
  * <p>Fluxo: monta o prompt fixo + a imagem, delega ao {@link VisionModelClient} escolhido (que
  * devolve a saída TIPADA crua — {@link LlmReceiptExtractionDTO}), e então
@@ -48,8 +52,12 @@ import java.util.Map;
  * conteúdo são — o modelo pode alucinar um valor com formato válido. Só depois mapeia para o
  * {@link NormalizedBatchDTO} da Fase 0.
  *
- * <p>{@code requires_review} NÃO é decidido aqui (§2.f) — o {@code ImportService} deriva por
- * threshold. Este extrator só produz valores + confiança por campo.
+ * <p>{@code requires_review} não é decidido por CONFIANÇA aqui (§2.f) — o {@code ImportService}
+ * deriva por threshold a partir dos valores + confiança por campo que este extrator produz. A
+ * ÚNICA exceção é o caminho de extrato (#194, {@link #mapStatementLine}): ali o extrator FORÇA
+ * {@code true} incondicional (piso, nunca confiado por si só — {@code ImportService} ainda faz
+ * o OR com o cálculo por threshold), staged rollout enquanto não há dado de produção sobre
+ * acurácia do modelo em listas.
  *
  * <p>{@code @Order(LOWEST)}: é o ÚLTIMO extrator do funil do {@link ExtractionRouter} (roadmap
  * §1.2 — padrão universal → genérico → IA). IA é cara e ambígua; só entra quando nenhum parser
@@ -69,16 +77,14 @@ public class VisionExtractor implements TransactionExtractor {
 
     private final List<VisionModelClient> visionModelClients;
     private final String extractorVersion;
+    // #194 — limites do caminho de EXTRATO (spec §6.4/§2.e): checados DEPOIS da extração (não dá
+    // pra saber a contagem de linhas antes de chamar o modelo). Teto de saída isolado só nesta
+    // chamada — o caminho de comprovante (Fase 1, já calibrado) segue sem teto, maxOutputTokens=null.
+    private final int statementMaxLines;
+    private final int statementMaxOutputTokens;
 
     // Formato pt-BR de data — fallback quando o modelo devolve dd/MM/yyyy apesar do pedido de ISO.
     private static final DateTimeFormatter BR_DATE = DateTimeFormatter.ofPattern("dd/MM/uuuu");
-
-    // Mensagem exibida ao usuário quando a imagem está fora do escopo da Fase 1 (#193). Fica
-    // pública porque é contrato de comportamento coberto por teste, não texto solto.
-    public static final String MULTIPLE_TRANSACTIONS_MESSAGE =
-            "Esta imagem parece conter vários lançamentos (extrato ou fatura). Por enquanto só "
-                    + "conseguimos ler um comprovante por vez — envie o comprovante de uma única "
-                    + "transação ou lance manualmente.";
 
     // Prompt fixo. Português alinhado ao domínio (comprovantes/recibos BR). Pedimos confiança
     // por campo E agregada — é o que alimenta o requires_review derivado depois. As instruções
@@ -111,11 +117,46 @@ public class VisionExtractor implements TransactionExtractor {
               que mostre vários números (taxas, saldo, total). Conte as LINHAS de lançamento.
             """;
 
+    // Prompt do caminho de EXTRATO (#194) — só pedido numa 2ª chamada, quando a 1ª sinaliza
+    // multipleTransactionsDetected=true. Mesmas regras de leitura do prompt de comprovante
+    // (nunca inventar dígito, nunca presumir ano), adaptadas para LISTA.
+    private static final String PROMPT_STATEMENT = """
+            Você é um assistente que extrai lançamentos de um print de extrato bancário ou
+            histórico de transações (várias linhas, cada uma com sua própria data e valor).
+            Analise a imagem e liste APENAS os lançamentos visíveis, na ordem em que aparecem.
+            Leia os dígitos DIRETAMENTE da imagem — NUNCA use números escritos nestas instruções.
+
+            Regras:
+            - lines: uma entrada por lançamento visível. NUNCA inclua linha de saldo, cabeçalho,
+              rodapé ou total como se fosse um lançamento. Não complete nem invente uma linha
+              cortada/ilegível — inclua com confiança baixa nos campos incertos, não a descarte.
+            - amount: o valor da transação, sempre POSITIVO (a direção informa o sinal, não o
+              valor), como número decimal com ponto. No Brasil a vírgula é o separador decimal
+              e o ponto é separador de milhar: converta removendo os separadores de milhar e
+              trocando a vírgula decimal por ponto.
+            - transactionDate: a data da transação no formato ISO yyyy-MM-dd. Copie a data EXATA
+              de cada linha, inclusive o ano quando visível — nunca presuma um ano que não está
+              na imagem.
+            - direction: "debit" para saída/despesa, "credit" para entrada/receita — leia pela
+              seção/rótulo da linha (ex.: "Total de entradas"/"Total de saídas" da seção onde a
+              linha está), nunca infira só pelo sinal do valor impresso.
+            - declaredTotalDebits/declaredTotalCredits: só preencha se a imagem mostrar
+              EXPLICITAMENTE um total impresso de débitos ou créditos do período (ex.: "Total de
+              saídas: R$ 1.234,56"). Nunca calcule nem estime — deixe null se não houver total
+              impresso.
+            - Para cada campo, informe uma confiança de 0.0 a 1.0 na sua leitura.
+            - overallConfidence: sua confiança agregada na extração completa da lista.
+            """;
+
     public VisionExtractor(
             List<VisionModelClient> visionModelClients,
-            @Value("${import.vision.extractor-version:unknown}") String extractorVersion) {
+            @Value("${import.vision.extractor-version:unknown}") String extractorVersion,
+            @Value("${import.vision.statement.max-lines:60}") int statementMaxLines,
+            @Value("${import.vision.statement.max-output-tokens:4096}") int statementMaxOutputTokens) {
         this.visionModelClients = visionModelClients;
         this.extractorVersion = extractorVersion;
+        this.statementMaxLines = statementMaxLines;
+        this.statementMaxOutputTokens = statementMaxOutputTokens;
     }
 
     @Override
@@ -178,7 +219,7 @@ public class VisionExtractor implements TransactionExtractor {
         for (VisionModelClient client : visionModelClients) {
             long startNanos = System.nanoTime();
             try {
-                raw = client.extract(PROMPT, mime, imageResource);
+                raw = client.extract(PROMPT, mime, imageResource, LlmReceiptExtractionDTO.class, null);
                 latencyMs = (System.nanoTime() - startNanos) / 1_000_000;
                 winner = client;
                 break;
@@ -231,30 +272,167 @@ public class VisionExtractor implements TransactionExtractor {
                 winner.providerId(), winner.modelId(), extractorVersion, latencyMs, raw.overallConfidence(),
                 fallbackFrom, fallbackReason);
 
+        // #194 — TRUE.equals (não `raw.multipleTransactionsDetected()`) porque null = modelo que
+        // não preencheu a flag: nesse caso extrai normal como comprovante. Ausência de sinal não
+        // é sinal de "é extrato". O antigo guard-rail do #193 (recusa explícita) foi SUBSTITUÍDO
+        // por este caminho de aceite — não convivem: uma imagem multi-transação nunca mais falha
+        // só por ser multi-transação.
+        if (Boolean.TRUE.equals(raw.multipleTransactionsDetected())) {
+            return extractStatement(winner, mime, imageResource, mode, latencyMs, fallbackFrom, fallbackReason);
+        }
+
         return toNormalizedBatch(raw, mode, winner, latencyMs, fallbackFrom, fallbackReason);
     }
 
     /**
-     * GUARDA-CORPO (§2.g) + mapeamento. Revalida a plausibilidade e converte a saída plana do
-     * modelo para o schema normalizado da Fase 0. O {@code amount} é obrigatório e plausível
-     * (&gt; 0) — sem ele não há transação a lançar, então falha a extração. Data ilegível não
-     * derruba a extração (o usuário completa na revisão), mas zera a confiança para exigir olho.
+     * Caminho de EXTRATO (#194, spec §6.3) — 2ª chamada ao MESMO client vencedor da 1ª (nunca
+     * tenta outro provider aqui: trocar de modelo no meio da extração misturaria leituras
+     * diferentes da mesma imagem). Schema pedido é {@link LlmStatementExtractionDTO} — o Spring
+     * AI vincula o JSON Schema de saída ANTES da chamada, então não dá pra pedir os dois formatos
+     * na mesma chamada; por isso são duas chamadas sequenciais, não uma só.
+     */
+    private NormalizedBatchDTO extractStatement(
+            VisionModelClient winner, MimeType mime, Resource imageResource, ImportMode mode,
+            long firstCallLatencyMs, String fallbackFrom, String fallbackReason) {
+        long startNanos = System.nanoTime();
+        LlmStatementExtractionDTO statement;
+        try {
+            statement = winner.extract(
+                    PROMPT_STATEMENT, mime, imageResource, LlmStatementExtractionDTO.class, statementMaxOutputTokens);
+        } catch (VisionProviderUnavailableException e) {
+            // Falha de disponibilidade NESTA chamada não dispara fallback pro próximo provider
+            // (diferente da 1ª chamada) — já comprometemos a extração com o client vencedor.
+            throw new ExtractionException(
+                    "Não foi possível extrair a lista de lançamentos do extrato: provider indisponível "
+                            + "no meio da extração (" + e.getMessage() + ").", e);
+        }
+        long statementLatencyMs = (System.nanoTime() - startNanos) / 1_000_000;
+
+        if (statement == null || statement.lines() == null || statement.lines().isEmpty()) {
+            throw new ExtractionException("Não foi possível reconhecer nenhum lançamento no extrato.");
+        }
+        if (statement.lines().size() > statementMaxLines) {
+            throw new ExtractionException(
+                    "O extrato tem mais de " + statementMaxLines
+                            + " lançamentos — recorte a imagem em partes menores.");
+        }
+
+        reconcileTotals(statement);
+
+        BigDecimal statementOverallConfidence = clampConfidence(statement.overallConfidence());
+        List<NormalizedTransactionDTO> transactions = statement.lines().stream()
+                .map(line -> mapStatementLine(line, statementOverallConfidence))
+                .toList();
+
+        // Sufixo "_statement" distingue o volume/custo deste caminho do de comprovante (spec §3)
+        // — é o marcador usado pra revisitar o gate de confiança forçada no futuro.
+        String extractorUsed = "vision_statement_" + winner.providerId() + "_" + winner.modelId();
+        long totalLatencyMs = firstCallLatencyMs + statementLatencyMs;
+        log.info("Extração de extrato concluída: provider={}, model={}, linhas={}, latencyMs={}",
+                winner.providerId(), winner.modelId(), transactions.size(), totalLatencyMs);
+
+        return new NormalizedBatchDTO(
+                mode, ImportSourceType.IMAGE, extractorUsed, extractorVersion, transactions,
+                winner.providerId(), winner.modelId(), (int) totalLatencyMs, fallbackFrom, fallbackReason);
+    }
+
+    /**
+     * Mapeia uma linha do extrato para o schema normalizado. {@code requires_review=true}
+     * incondicional (spec §2.d/§3 — staged rollout: zero dado de produção sobre acurácia do
+     * modelo em lista, blast radius maior que comprovante único) — só tem efeito real porque
+     * {@code ImportService.createBatch} foi ajustado para ler este campo como PISO (nunca teto),
+     * nunca ceiling sobre o que os outros extratores já mandam.
+     *
+     * <p>{@code overallConfidence} vem do MODELO ({@code statement.overallConfidence()}), nunca
+     * hardcoded — achado de code review: {@code ImportService.patchStaged} RE-DERIVA
+     * {@code requires_review} a partir desse valor quando o usuário edita a staged
+     * (`deriveRequiresReview`: overall &lt; 0.90 → true). Um valor fixo alto desativaria o floor
+     * silenciosamente no primeiro campo que o usuário corrigir, mesmo sem nunca ter verificado
+     * o resto da linha.
+     */
+    private NormalizedTransactionDTO mapStatementLine(
+            LlmStatementExtractionDTO.Line line, BigDecimal statementOverallConfidence) {
+        Map<String, StagedFieldValueDTO> fields = new LinkedHashMap<>();
+
+        BigDecimal amount = line.amount();
+        BigDecimal amountConfidence = clampConfidence(line.amountConfidence());
+        if (amount != null && amount.compareTo(BigDecimal.ZERO) < 0) {
+            // Sinal negativo é ambíguo/conflitante com `direction` (a fonte de verdade do sinal
+            // aqui) — normaliza pro valor absoluto e zera a confiança (força revisão), nunca
+            // descarta a linha (issue #194 exige não-destrutivo).
+            amount = amount.abs();
+            amountConfidence = BigDecimal.ZERO;
+        }
+        fields.put("amount", new StagedFieldValueDTO(amount, amountConfidence));
+
+        NormalizedDate date = normalizeDate(line.transactionDate(), line.transactionDateConfidence());
+        fields.put("transaction_date", new StagedFieldValueDTO(date.isoValue(), date.confidence()));
+
+        fields.put("description",
+                new StagedFieldValueDTO(blankToNull(line.description()), clampConfidence(line.descriptionConfidence())));
+        fields.put("direction",
+                new StagedFieldValueDTO(normalizeDirection(line.direction()), clampConfidence(line.directionConfidence())));
+
+        return new NormalizedTransactionDTO(
+                null,
+                fields,
+                null, null,
+                statementOverallConfidence,
+                true,  // requires_review forçado — ver javadoc do método
+                null);
+    }
+
+    /**
+     * Reconciliação soma×total (spec §6.4) — sinal de LOG, nunca gate. Compara {@code Σ debit}
+     * com {@code declaredTotalDebits} e {@code Σ credit} com {@code declaredTotalCredits}, cada
+     * um só quando o total foi declarado (não estima nem calcula o que a imagem não mostrou).
+     * Mismatch fora da tolerância NUNCA descarta linha nenhuma — `requires_review` já é `true`
+     * incondicional nesta versão (mapStatementLine), então o mismatch não muda nenhuma decisão,
+     * só entra no log estruturado para telemetria futura.
+     */
+    private void reconcileTotals(LlmStatementExtractionDTO statement) {
+        reconcileDirection(statement.lines(), "debit", statement.declaredTotalDebits());
+        reconcileDirection(statement.lines(), "credit", statement.declaredTotalCredits());
+    }
+
+    private void reconcileDirection(
+            List<LlmStatementExtractionDTO.Line> lines, String direction, BigDecimal declaredTotal) {
+        if (declaredTotal == null) {
+            return;
+        }
+        BigDecimal sum = lines.stream()
+                .filter(line -> direction.equalsIgnoreCase(normalizeDirection(line.direction())))
+                .map(LlmStatementExtractionDTO.Line::amount)
+                .filter(Objects::nonNull)
+                .map(BigDecimal::abs)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Tolerância: absoluta pra extratos pequenos, relativa (1%) pra grandes — erro de
+        // arredondamento por linha acumula com o tamanho do extrato.
+        BigDecimal tolerance = declaredTotal.abs().multiply(new BigDecimal("0.01"))
+                .max(new BigDecimal("0.02"));
+        BigDecimal diff = sum.subtract(declaredTotal).abs();
+        if (diff.compareTo(tolerance) > 0) {
+            log.warn("Reconciliação soma×total divergente no caminho de extrato: direction={}, "
+                            + "somaCalculada={}, totalDeclarado={}, diferenca={}, tolerancia={}",
+                    direction, sum, declaredTotal, diff, tolerance);
+        }
+    }
+
+    /**
+     * GUARDA-CORPO (§2.g) + mapeamento do caminho de COMPROVANTE único. Revalida a
+     * plausibilidade e converte a saída plana do modelo para o schema normalizado da Fase 0. O
+     * {@code amount} é obrigatório e plausível (&gt; 0) — sem ele não há transação a lançar,
+     * então falha a extração. Data ilegível não derruba a extração (o usuário completa na
+     * revisão), mas zera a confiança para exigir olho.
+     *
+     * <p>Só chamado quando {@code multipleTransactionsDetected != true} — o caso "é extrato" já
+     * foi desviado em {@link #extract(ExtractionInput)} para {@link #extractStatement}
+     * (#194) antes deste método ser alcançado.
      */
     private NormalizedBatchDTO toNormalizedBatch(
             LlmReceiptExtractionDTO raw, ImportMode mode, VisionModelClient client, long latencyMs,
             String fallbackFrom, String fallbackReason) {
-        // ORDEM IMPORTA: a recusa por multi-transação vem ANTES da validação de valor. Num print
-        // de extrato o modelo escolhe uma linha arbitrária e devolve um amount perfeitamente
-        // plausível — se o check de valor rodasse primeiro, o caso fora de escopo passaria e as
-        // demais linhas seriam descartadas em silêncio (#193).
-        //
-        // TRUE.equals (e não `raw.multipleTransactionsDetected()`) porque null = modelo que não
-        // preencheu a flag: nesse caso extrai normalmente. Ausência de sinal não é sinal de recusa
-        // — senão trocaríamos perda silenciosa de dado por recusa indevida de comprovante válido.
-        if (Boolean.TRUE.equals(raw.multipleTransactionsDetected())) {
-            throw new ExtractionException(MULTIPLE_TRANSACTIONS_MESSAGE);
-        }
-
         if (raw.amount() == null || raw.amount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new ExtractionException(
                     "Valor extraído ausente ou não plausível (amount=" + raw.amount() + ").");

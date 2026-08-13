@@ -111,37 +111,7 @@ gh api --method POST repos/sergiohcosta/fintech-core/actions/runs/<run_id>/pendi
 
 ### Cortar uma release (versão SemVer)
 
-Racional e política: `git-operator.md` ("Versionamento e Releases") + ADR-005. Versão é
-**label** (nomeia um commit já buildado), não muda o deploy. Corte **da `main`** — o que
-está validado em hmg/prod.
-
-Pré-requisito: o commit a taggar **já passou pelo pipeline** (push em `main` → job
-`build-and-push` verde → imagem `sha-<sha>` existe no GHCR). Taggar commit não-buildado
-faz o `release.yml` falhar no re-tag ("tag not found").
-
-```bash
-# 1. Escolha o incremento (SemVer): PATCH=fix, MINOR=feature, MAJOR=quebra de contrato.
-#    Pré-1.0: MINOR pra feature, PATCH pra fix.
-
-# 2. Garanta que a main local está no commit já buildado
-git checkout main && git pull origin main
-
-# 3. Tag anotada + push (dispara o release.yml)
-git tag -a v0.2.0 -m "v0.2.0 - <resumo>"
-git push origin v0.2.0
-
-# 4. Acompanhe a run de Release (re-tag das 2 imagens + GitHub Release)
-gh run list --workflow release.yml --limit 1
-```
-
-O `release.yml` faz: login no GHCR → `docker buildx imagetools create` re-tagga
-`sha-<sha>` como `vX.Y.Z` nas 2 imagens (registry-side, sem rebuild) → `gh release create
---generate-notes` monta o changelog do intervalo desde a tag anterior.
-
-**Gotcha do runtime:** empurrou vários commits na `main` de uma vez? Espere o
-`build-and-push` do commit-alvo ficar verde **antes** de push da tag — senão o re-tag corre
-antes da imagem existir. O `release.yml` roda a versão do workflow **fixada no commit da
-tag**; re-rodar uma tag já criada roda o código daquele commit, não o atual.
+Runbook completo: skill `fintech-core-release-and-versioning`.
 
 ### Health Check
 ```bash

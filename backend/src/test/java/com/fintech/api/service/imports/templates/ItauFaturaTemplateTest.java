@@ -1,6 +1,7 @@
 package com.fintech.api.service.imports.templates;
 
 import com.fintech.api.dto.imports.NormalizedTransactionDTO;
+import com.fintech.api.service.imports.ExtractionException;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -12,9 +13,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.math.BigDecimal;
+import java.time.YearMonth;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ItauFaturaTemplateTest {
 
@@ -22,41 +25,14 @@ class ItauFaturaTemplateTest {
 
     /**
      * PDF sintético com DUAS "colunas" de texto — reproduz a fusão real de coluna do Itaú
-     * (spec: fix-templates-pdf-ordem-real, §1.1). Cada linha em {@code linhasEsquerda}/
-     * {@code linhasDireita} vira uma chamada {@code showText} própria, separada por
-     * {@code newLineAtOffset} — PDFBox não quebra linha sozinho dentro de uma única
-     * {@code showText}. Linhas na mesma posição de índice das duas listas caem na MESMA
-     * altura Y — é isso que reproduz a fusão de coluna do PDFBox no teste central deste
-     * arquivo.
+     * (spec: fix-templates-pdf-ordem-real, §1.1). Linhas na mesma posição de índice das duas
+     * listas caem na MESMA altura Y, que é o que reproduz a fusão do PDFBox.
+     *
+     * <p>Escreve palavra a palavra, como todas as fixtures deste arquivo — ver
+     * {@link #escreveLinhasPalavraAPalavra}.
      */
     private static byte[] pdfComDuasColunas(List<String> linhasEsquerda, List<String> linhasDireita) {
-        try (PDDocument document = new PDDocument()) {
-            PDPage page = new PDPage();
-            document.addPage(page);
-            try (PDPageContentStream cs = new PDPageContentStream(document, page)) {
-                cs.beginText();
-                cs.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 10);
-                cs.newLineAtOffset(50, 700);
-                for (String linha : linhasEsquerda) {
-                    cs.showText(linha);
-                    cs.newLineAtOffset(0, -15);
-                }
-                cs.endText();
-                cs.beginText();
-                cs.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 10);
-                cs.newLineAtOffset(400, 700);
-                for (String linha : linhasDireita) {
-                    cs.showText(linha);
-                    cs.newLineAtOffset(0, -15);
-                }
-                cs.endText();
-            }
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            document.save(out);
-            return out.toByteArray();
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+        return pdfComDuasColunas(linhasEsquerda, linhasDireita, 50f, 400f);
     }
 
     /**
@@ -112,9 +88,14 @@ class ItauFaturaTemplateTest {
 
     /**
      * Variante com offsets X configuráveis — usada pelos testes de detecção dinâmica de
-     * coluna, que precisam controlar exatamente onde cada coluna começa (diferente das
-     * demais fixtures deste arquivo, que sempre usam 50/400, posições seguras em relação ao
-     * corte fixo antigo).
+     * coluna, que precisam controlar exatamente onde cada coluna começa.
+     *
+     * <p><b>Escreve PALAVRA A PALAVRA, cada uma posicionada por métrica de fonte</b>, e não a
+     * linha inteira numa operação só. Isso importa: o PDFBox entrega a uma
+     * {@code PDFTextStripper} exatamente os pedaços que foram escritos — uma fatura real (que
+     * posiciona cada palavra) chega token a token, enquanto uma fixture que escreve a linha
+     * inteira chega num token só. Fixture com granularidade errada testa um caminho de código
+     * que não existe em produção; foi assim que defeitos reais passaram pelos testes antes.
      */
     private static byte[] pdfComDuasColunas(
             List<String> linhasEsquerda, List<String> linhasDireita, float xEsquerda, float xDireita) {
@@ -122,30 +103,49 @@ class ItauFaturaTemplateTest {
             PDPage page = new PDPage();
             document.addPage(page);
             try (PDPageContentStream cs = new PDPageContentStream(document, page)) {
-                cs.beginText();
-                cs.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 10);
-                cs.newLineAtOffset(xEsquerda, 700);
-                for (String linha : linhasEsquerda) {
-                    cs.showText(linha);
-                    cs.newLineAtOffset(0, -15);
-                }
-                cs.endText();
-                if (!linhasDireita.isEmpty()) {
-                    cs.beginText();
-                    cs.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 10);
-                    cs.newLineAtOffset(xDireita, 700);
-                    for (String linha : linhasDireita) {
-                        cs.showText(linha);
-                        cs.newLineAtOffset(0, -15);
-                    }
-                    cs.endText();
-                }
+                escreveLinhasPalavraAPalavra(cs, linhasEsquerda, xEsquerda, 700);
+                escreveLinhasPalavraAPalavra(cs, linhasDireita, xDireita, 700);
             }
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             document.save(out);
             return out.toByteArray();
         } catch (IOException e) {
             throw new UncheckedIOException(e);
+        }
+    }
+
+    private static final PDType1Font FONTE_FIXTURE =
+            new PDType1Font(Standard14Fonts.FontName.HELVETICA);
+    private static final float TAMANHO_FONTE_FIXTURE = 10f;
+
+    /** Largura do texto na fonte da fixture, em pontos. */
+    private static float larguraDe(String texto) throws IOException {
+        return FONTE_FIXTURE.getStringWidth(texto) / 1000f * TAMANHO_FONTE_FIXTURE;
+    }
+
+    /**
+     * Escreve cada linha com uma operação de escrita POR PALAVRA, avançando X pela largura
+     * real da palavra mais um espaço — reproduz a granularidade de token de um PDF de verdade.
+     */
+    private static void escreveLinhasPalavraAPalavra(
+            PDPageContentStream cs, List<String> linhas, float x0, float y0) throws IOException {
+        float espaco = larguraDe(" ");
+        float y = y0;
+        for (String linha : linhas) {
+            float x = x0;
+            for (String palavra : linha.split(" ")) {
+                if (palavra.isEmpty()) {
+                    x += espaco;
+                    continue;
+                }
+                cs.beginText();
+                cs.setFont(FONTE_FIXTURE, TAMANHO_FONTE_FIXTURE);
+                cs.newLineAtOffset(x, y);
+                cs.showText(palavra);
+                cs.endText();
+                x += larguraDe(palavra) + espaco;
+            }
+            y -= 15f;
         }
     }
 
@@ -516,14 +516,12 @@ class ItauFaturaTemplateTest {
     }
 
     /**
-     * Duas colunas na mesma posição da fixture padrão deste arquivo (esquerda X=50, direita
-     * X=400 — a mesma calibração do corte histórico {@code FALLBACK_SPLIT_X}) mais UMA linha
-     * de rodapé, fora da área de lançamentos (Y bem abaixo das linhas de transação), cujo
-     * texto começa dentro do vão real entre as colunas e se estende além dele — reproduz a
-     * prova empírica do C1 do review final: uma palavra qualquer cruzando a calha anula a
-     * detecção dinâmica do vão (nenhuma faixa X fica 100% vazia na página inteira). O corte
-     * fixo de fallback (365f) continua separando as colunas corretamente aqui — X=400 > 365 —
-     * é exatamente o cenário em que o corte histórico é um default seguro.
+     * Duas colunas na posição padrão deste arquivo (esquerda X=50, direita X=400) mais UMA
+     * linha de rodapé, fora da área de lançamentos (Y bem abaixo das linhas de transação),
+     * cujo texto começa dentro do vão real entre as colunas e se estende além dele — uma
+     * palavra qualquer cruzando a calha anula qualquer detecção baseada em "faixa X vazia".
+     * A âncora de data ignora esse ruído por construção: o rodapé não tem token {@code DD/MM}
+     * iniciando bloco, então não entra em nenhum cluster.
      */
     private static byte[] pdfComDuasColunasComLinhaAvulsaNaCalha() throws IOException {
         try (PDDocument document = new PDDocument()) {
@@ -587,5 +585,547 @@ class ItauFaturaTemplateTest {
                         new BigDecimal("999.99"),  // Linha larga da esquerda
                         new BigDecimal("1.00"),    // Linha estreita da esquerda
                         new BigDecimal("36.00"));  // Coluna direita
+    }
+
+    @Test
+    void parseReconheceColunasNaGeometriaRealMedidaMaisComum() {
+        // Coordenadas medidas em fatura real: coluna esquerda X=151.2, direita X=367.2 —
+        // o par mais frequente no levantamento de 45 faturas (spec §1.3).
+        byte[] pdfBytes = pdfComDuasColunas(
+                List.of("Lançamentos: compras e saques", "28/11 Foco Aluguel de Ca04/06 112,67"),
+                List.of("Lançamentos: compras e saques", "07/02 BeneficiarioTeste 36,00"),
+                151.2f, 367.2f);
+        String fullTextFake = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques";
+
+        List<NormalizedTransactionDTO> resultado = template.parse(fullTextFake, pdfBytes);
+
+        assertThat(resultado).hasSize(2);
+        assertThat(resultado)
+                .extracting(t -> t.fields().get("amount").value())
+                .containsExactlyInAnyOrder(new BigDecimal("112.67"), new BigDecimal("36.00"));
+        assertThat(resultado)
+                .extracting(t -> t.fields().get("description").value())
+                .containsExactlyInAnyOrder("Foco Aluguel de Ca", "BeneficiarioTeste");
+    }
+
+    /**
+     * Reproduz o modo de falha REAL medido em fatura de produção, que exige DOIS fatores
+     * simultâneos — nenhum deles sozinho quebra, e é por isso que as fixtures anteriores
+     * deste arquivo não pegaram o defeito:
+     *
+     * <ol>
+     *   <li>uma linha avulsa cruzando a calha (rodapé/endereço), que anula a detecção por
+     *       maior vão — nenhuma faixa X da página fica 100% vazia;
+     *   <li>coluna direita começando ANTES de 365pt (aqui 351,3 — extremo real medido no
+     *       levantamento de 45 faturas), de modo que o corte histórico de fallback cai
+     *       DENTRO da coluna direita e a corrompe.
+     * </ol>
+     */
+    private static byte[] pdfCalhaCruzadaComColunaDireitaAntesDe365() throws IOException {
+        try (PDDocument document = new PDDocument()) {
+            PDPage page = new PDPage();
+            document.addPage(page);
+            try (PDPageContentStream cs = new PDPageContentStream(document, page)) {
+                cs.beginText();
+                cs.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 10);
+                cs.newLineAtOffset(133.0f, 700);
+                cs.showText("Lançamentos: compras e saques");
+                cs.newLineAtOffset(0, -15);
+                cs.showText("28/11 Foco Aluguel de Ca04/06 112,67");
+                cs.endText();
+
+                cs.beginText();
+                cs.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 10);
+                cs.newLineAtOffset(351.3f, 700);
+                cs.showText("Lançamentos: compras e saques");
+                cs.newLineAtOffset(0, -15);
+                cs.showText("07/02 BeneficiarioTeste 36,00");
+                cs.endText();
+
+                // Rodapé isolado cruzando a calha entre as colunas (fator 1).
+                cs.beginText();
+                cs.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 10);
+                cs.newLineAtOffset(280, 100);
+                cs.showText("Central de atendimento SAC 0800 728 0728");
+                cs.endText();
+            }
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            document.save(out);
+            return out.toByteArray();
+        }
+    }
+
+    @Test
+    void parseReconheceColunasNoOutroExtremoDaGeometriaMedida() throws IOException {
+        // Extremo real medido no corpus: esquerda X=133.0, direita X=351.3, com linha avulsa
+        // na calha. Falha contra qualquer implementação que caia num corte fixo de 365pt —
+        // esse valor cai dentro da coluna direita aqui e a funde com a esquerda.
+        byte[] pdfBytes = pdfCalhaCruzadaComColunaDireitaAntesDe365();
+        String fullTextFake = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques";
+
+        List<NormalizedTransactionDTO> resultado = template.parse(fullTextFake, pdfBytes);
+
+        assertThat(resultado).hasSize(2);
+        assertThat(resultado)
+                .extracting(t -> t.fields().get("amount").value())
+                .containsExactlyInAnyOrder(new BigDecimal("112.67"), new BigDecimal("36.00"));
+        assertThat(resultado)
+                .extracting(t -> t.fields().get("description").value())
+                .containsExactlyInAnyOrder("Foco Aluguel de Ca", "BeneficiarioTeste");
+    }
+
+    /**
+     * Página de coluna ÚNICA mais um token de data solto bem à direita (ex.: uma data isolada
+     * numa caixa de resumo). Sem proteção, esse token vira "coluna direita" e o corte cai DENTRO
+     * das linhas de lançamento, partindo cada uma em metade-data e metade-valor — a página
+     * inteira some da extração, em silêncio. É o cenário que o review final provou com PDFBox.
+     */
+    private static byte[] pdfColunaUnicaComDataSoltaADireita() throws IOException {
+        try (PDDocument document = new PDDocument()) {
+            PDPage page = new PDPage();
+            document.addPage(page);
+            try (PDPageContentStream cs = new PDPageContentStream(document, page)) {
+                escreveLinhasPalavraAPalavra(cs, List.of(
+                        "Lançamentos: compras e saques",
+                        "28/11 Foco Aluguel de Cavalos Premium Ltda 112,67",
+                        "29/11 Outra Compra Qualquer Bem Comprida 50,00",
+                        "30/11 Terceira Compra Aqui Tambem Longa 25,00"), 50f, 700f);
+                // Data solta em outra altura, longe o bastante pra passar no guard de separação
+                // (>100pt) mas perto o bastante pra que o corte resultante caia DENTRO das
+                // linhas de lançamento acima — é essa combinação que produz o defeito.
+                escreveLinhasPalavraAPalavra(cs, List.of("15/12"), 180f, 300f);
+            }
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            document.save(out);
+            return out.toByteArray();
+        }
+    }
+
+    @Test
+    void parseNaoPerdeColunaUnicaQuandoHaDataSoltaADireita() throws IOException {
+        // Guard de "o corte não pode atravessar linha de lançamento": mesmo que a data solta
+        // forme um cluster e passe pelos limiares de massa e separação, o corte resultante
+        // partiria as três linhas ao meio — então a página é tratada como coluna única e as
+        // três transações continuam sendo extraídas.
+        byte[] pdfBytes = pdfColunaUnicaComDataSoltaADireita();
+        String fullTextFake = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques";
+
+        List<NormalizedTransactionDTO> resultado = template.parse(fullTextFake, pdfBytes);
+
+        assertThat(resultado).hasSize(3);
+        assertThat(resultado)
+                .extracting(t -> t.fields().get("amount").value())
+                .containsExactlyInAnyOrder(
+                        new BigDecimal("112.67"), new BigDecimal("50.00"), new BigDecimal("25.00"));
+    }
+
+    /**
+     * Última página típica: coluna esquerda cheia, coluna direita com POUCOS lançamentos, e
+     * datas de ruído ainda mais à direita (seção de limites de crédito). Se a segunda coluna
+     * fosse escolhida por MASSA, o ruído (massa maior que a coluna esparsa) venceria e o corte
+     * cairia depois da coluna direita real, partindo-a ao meio.
+     */
+    private static byte[] pdfColunaDireitaEsparsaComRuidoMaisADireita() throws IOException {
+        try (PDDocument document = new PDDocument()) {
+            PDPage page = new PDPage();
+            document.addPage(page);
+            try (PDPageContentStream cs = new PDPageContentStream(document, page)) {
+                escreveLinhasPalavraAPalavra(cs, List.of(
+                        "Lançamentos: compras e saques",
+                        "28/11 Primeira Esquerda 10,00",
+                        "29/11 Segunda Esquerda 20,00",
+                        "30/11 Terceira Esquerda 30,00",
+                        "01/12 Quarta Esquerda 40,00"), 143f, 700f);
+                // Coluna direita real, esparsa: 2 lançamentos.
+                escreveLinhasPalavraAPalavra(cs, List.of(
+                        "Lançamentos: compras e saques",
+                        "02/12 Primeira Direita 50,00",
+                        "03/12 Segunda Direita 60,00"), 358f, 700f);
+                // Ruído mais à direita, com massa MAIOR que a coluna direita real (3 > 2),
+                // em outra altura — não são lançamentos.
+                escreveLinhasPalavraAPalavra(cs,
+                        List.of("10/12", "11/12", "12/12"), 500f, 300f);
+            }
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            document.save(out);
+            return out.toByteArray();
+        }
+    }
+
+    /**
+     * Coluna única cujos marcadores de parcela estão ALINHADOS em X — formam um cluster com
+     * massa igual à da própria coluna. É o único arranjo que exercita {@link
+     * ItauFaturaTemplate} no ponto do filtro de "início de bloco": sem ele, esse cluster vira
+     * "coluna direita" e o corte cai no meio das linhas. Marcadores em X variável (o que
+     * acontece quando as descrições têm larguras diferentes) NÃO testam nada — viram clusters
+     * de massa 1 e perdem para a coluna real por qualquer critério.
+     */
+    private static byte[] pdfMarcadoresDeParcelaAlinhados() throws IOException {
+        try (PDDocument document = new PDDocument()) {
+            PDPage page = new PDPage();
+            document.addPage(page);
+            try (PDPageContentStream cs = new PDPageContentStream(document, page)) {
+                escreveLinhasPalavraAPalavra(cs, List.of("Lançamentos: compras e saques"), 143f, 700f);
+                // Descrições de MESMA largura → os marcadores caem todos no mesmo X.
+                String[] datas = {"28/11", "29/11", "30/11", "01/12"};
+                String[] valores = {"10,00", "20,00", "30,00", "40,00"};
+                float y = 685f;
+                for (int i = 0; i < datas.length; i++) {
+                    escreveLinhasPalavraAPalavra(cs, List.of(datas[i] + " LojaParceladaAqui"), 143f, y);
+                    // Marcador de parcela colado à descrição, sempre no MESMO X.
+                    escreveLinhasPalavraAPalavra(cs, List.of("0" + (i + 1) + "/06"), 255f, y);
+                    escreveLinhasPalavraAPalavra(cs, List.of(valores[i]), 300f, y);
+                    y -= 15f;
+                }
+            }
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            document.save(out);
+            return out.toByteArray();
+        }
+    }
+
+    @Test
+    void parseNaoTomaMarcadoresDeParcelaAlinhadosComoColuna() throws IOException {
+        // Os 4 marcadores alinhados em X=255 formam um cluster de massa 4 — mesma massa da
+        // coluna real e a 112pt dela, ou seja, passariam por todos os limiares. Só o filtro de
+        // "início de bloco" (MIN_BLOCK_GAP) os descarta, porque estão colados à descrição.
+        byte[] pdfBytes = pdfMarcadoresDeParcelaAlinhados();
+        String fullTextFake = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques";
+
+        List<NormalizedTransactionDTO> resultado = template.parse(fullTextFake, pdfBytes);
+
+        assertThat(resultado).hasSize(4);
+        assertThat(resultado)
+                .extracting(t -> t.fields().get("amount").value())
+                .containsExactlyInAnyOrder(
+                        new BigDecimal("10.00"), new BigDecimal("20.00"),
+                        new BigDecimal("30.00"), new BigDecimal("40.00"));
+    }
+
+    /**
+     * Duas colunas normais mais UMA data solta ENTRE elas. A intrusa é mais próxima da coluna
+     * esquerda que a coluna direita real, então um critério de pura proximidade a escolheria e
+     * o corte cairia dentro das linhas da esquerda — data de uma compra com valor de outra.
+     */
+    private static byte[] pdfComDataSoltaEntreAsColunas() throws IOException {
+        try (PDDocument document = new PDDocument()) {
+            PDPage page = new PDPage();
+            document.addPage(page);
+            try (PDPageContentStream cs = new PDPageContentStream(document, page)) {
+                escreveLinhasPalavraAPalavra(cs, List.of(
+                        "Lançamentos: compras e saques",
+                        "28/11 Primeira Esquerda 10,00",
+                        "29/11 Segunda Esquerda 20,00",
+                        "30/11 Terceira Esquerda 30,00",
+                        "01/12 Quarta Esquerda 40,00"), 143f, 700f);
+                escreveLinhasPalavraAPalavra(cs, List.of(
+                        "Lançamentos: compras e saques",
+                        "02/12 Primeira Direita 50,00",
+                        "03/12 Segunda Direita 60,00"), 358f, 700f);
+                // Intrusa: entre as colunas, mais perto da esquerda que a coluna direita real.
+                escreveLinhasPalavraAPalavra(cs, List.of("10/12"), 250f, 300f);
+            }
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            document.save(out);
+            return out.toByteArray();
+        }
+    }
+
+    @Test
+    void parseIgnoraDataSoltaEntreAsColunasEAchaAColunaDireitaReal() throws IOException {
+        // A intrusa em X=250 é a candidata mais próxima, mas o conteúdo da coluna esquerda a
+        // alcança — não há faixa vazia até ela. A busca então segue para a próxima candidata,
+        // que é a coluna direita real, e as 6 transações saem corretas.
+        byte[] pdfBytes = pdfComDataSoltaEntreAsColunas();
+        String fullTextFake = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques";
+
+        List<NormalizedTransactionDTO> resultado = template.parse(fullTextFake, pdfBytes);
+
+        assertThat(resultado).hasSize(6);
+        assertThat(resultado)
+                .extracting(t -> t.fields().get("amount").value())
+                .containsExactlyInAnyOrder(
+                        new BigDecimal("10.00"), new BigDecimal("20.00"), new BigDecimal("30.00"),
+                        new BigDecimal("40.00"), new BigDecimal("50.00"), new BigDecimal("60.00"));
+    }
+
+    @Test
+    void parseEscolheColunaDireitaRealEmVezDoRuidoMaisMassivoADireita() throws IOException {
+        byte[] pdfBytes = pdfColunaDireitaEsparsaComRuidoMaisADireita();
+        String fullTextFake = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques";
+
+        List<NormalizedTransactionDTO> resultado = template.parse(fullTextFake, pdfBytes);
+
+        assertThat(resultado).hasSize(6);
+        assertThat(resultado)
+                .extracting(t -> t.fields().get("amount").value())
+                .containsExactlyInAnyOrder(
+                        new BigDecimal("10.00"), new BigDecimal("20.00"), new BigDecimal("30.00"),
+                        new BigDecimal("40.00"), new BigDecimal("50.00"), new BigDecimal("60.00"));
+    }
+
+    @Test
+    void parseIgnoraMarcadorDeParcelaComoAncoraDeColuna() {
+        // "04/06" no meio da descrição tem o MESMO formato de uma data de lançamento. Se contasse
+        // como âncora, criaria um cluster espúrio no meio da página e deslocaria o corte. O filtro
+        // de "início de bloco" (>15pt de espaço à esquerda) existe exatamente para isso: no
+        // levantamento, 87% do ruído de cluster vinha de marcador de parcela.
+        byte[] pdfBytes = pdfComDuasColunas(
+                List.of("Lançamentos: compras e saques",
+                        "28/11 Foco Aluguel de Ca 04/06 112,67",
+                        "29/11 Outra Compra 02/03 50,00"),
+                List.of("Lançamentos: compras e saques",
+                        "07/02 BeneficiarioTeste 36,00",
+                        "08/02 Segunda Direita 21,00"),
+                151.2f, 367.2f);
+        String fullTextFake = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques";
+
+        List<NormalizedTransactionDTO> resultado = template.parse(fullTextFake, pdfBytes);
+
+        assertThat(resultado).hasSize(4);
+        assertThat(resultado)
+                .extracting(t -> t.fields().get("amount").value())
+                .containsExactlyInAnyOrder(
+                        new BigDecimal("112.67"), new BigDecimal("50.00"),
+                        new BigDecimal("36.00"), new BigDecimal("21.00"));
+    }
+
+    @Test
+    void targetInvoiceReferenceMonthDerivaDoVencimentoImpresso() {
+        ItauFaturaTemplate template = new ItauFaturaTemplate();
+        String texto = "FULANO DE TAL\nVencimento 10/08/2026\n60.872.504/0001-23\n";
+
+        YearMonth alvo = template.targetInvoiceReferenceMonth(texto);
+
+        // Vencimento 10/08 → referenceMonth = mês anterior (mesma relação que InvoiceService já
+        // assume no caso dueDay >= closingDay — spec §2.c).
+        assertThat(alvo).isEqualTo(YearMonth.of(2026, 7));
+    }
+
+    @Test
+    void targetInvoiceReferenceMonthLancaQuandoVencimentoAusente() {
+        ItauFaturaTemplate template = new ItauFaturaTemplate();
+
+        assertThatThrownBy(() -> template.targetInvoiceReferenceMonth("texto sem vencimento nenhum"))
+                .isInstanceOf(ExtractionException.class);
+    }
+
+    @Test
+    void targetInvoiceReferenceMonthLancaExtractionExceptionQuandoDiaInvalidoParaOMes() {
+        // Achado da revisão final do branch: "31/02/2026" bate o regex DUE_DATE (dígitos), mas
+        // fevereiro não tem dia 31 — LocalDate.of lançaria DateTimeException não tratada (500
+        // genérico) sem o catch em extrairVencimento(). Precisa virar ExtractionException, o
+        // mesmo tipo usado quando o vencimento está ausente, para o batch virar FAILED com
+        // motivo legível em vez de 500.
+        ItauFaturaTemplate template = new ItauFaturaTemplate();
+        String texto = "FULANO DE TAL\nVencimento 31/02/2026\n60.872.504/0001-23\n";
+
+        assertThatThrownBy(() -> template.targetInvoiceReferenceMonth(texto))
+                .isInstanceOf(ExtractionException.class)
+                .isNotInstanceOf(java.time.DateTimeException.class);
+    }
+    /**
+     * Última página de lançamentos, como ela é de verdade: lançamentos SÓ na coluna esquerda e,
+     * do lado direito, as caixas de resumo da fatura. Os títulos dessas caixas ("Limites de
+     * crédito", "Encargos cobrados") são exatamente os marcadores de fim de bloco — se a página
+     * não for cortada, eles entram no mesmo fluxo dos lançamentos e encerram o bloco logo no
+     * começo, levando a página inteira embora.
+     */
+    private static byte[] pdfUltimaPaginaComCaixasADireita() throws IOException {
+        try (PDDocument document = new PDDocument()) {
+            PDPage page = new PDPage();
+            document.addPage(page);
+            try (PDPageContentStream cs = new PDPageContentStream(document, page)) {
+                escreveLinhasPalavraAPalavra(cs, List.of(
+                        "Lançamentos: compras e saques",
+                        "28/11 Primeira Compra 10,00",
+                        "29/11 Segunda Compra 20,00",
+                        "30/11 Terceira Compra 30,00",
+                        "01/12 Quarta Compra 40,00"), 151.2f, 700f);
+                // Caixas de resumo à direita, na mesma faixa vertical das linhas de lançamento.
+                escreveLinhasPalavraAPalavra(cs, List.of(
+                        "Limites de crédito",
+                        "Limite total 10.000,00",
+                        "Encargos cobrados",
+                        "Juros do rotativo 0,00"), 367.2f, 700f);
+            }
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            document.save(out);
+            return out.toByteArray();
+        }
+    }
+
+    @Test
+    void parseNaoPerdeUltimaPaginaQuandoLancamentosSaoSoNaEsquerda() throws IOException {
+        // Sem corte, "Limites de crédito" cai logo depois do header e encerra o bloco com ZERO
+        // transações. Cortando na posição onde a coluna direita estaria, as caixas ficam de fora
+        // e os 4 lançamentos sobrevivem.
+        byte[] pdfBytes = pdfUltimaPaginaComCaixasADireita();
+        String fullTextFake = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques";
+
+        List<NormalizedTransactionDTO> resultado = template.parse(fullTextFake, pdfBytes);
+
+        assertThat(resultado).hasSize(4);
+        assertThat(resultado)
+                .extracting(t -> t.fields().get("amount").value())
+                .containsExactlyInAnyOrder(
+                        new BigDecimal("10.00"), new BigDecimal("20.00"),
+                        new BigDecimal("30.00"), new BigDecimal("40.00"));
+    }
+
+    @Test
+    void parseReconheceProdutoServicoDeLinhaUnicaSemContinuacao() {
+        byte[] pdfBytes = pdfComDuasColunas(
+                List.of("Lançamentos: compras e saques", "Limites de crédito",
+                        "Lançamentos: produtos e serviços", "03/01 ENVIOMENS.AUTOMATICA 7,49",
+                        "Limites de crédito"),
+                List.of(), 50f, 400f);
+        String texto = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques\n";
+
+        List<NormalizedTransactionDTO> transacoes = template.parse(texto, pdfBytes);
+
+        NormalizedTransactionDTO t = transacoes.stream()
+                .filter(tx -> "7.49".equals(tx.fields().get("amount").value().toString()))
+                .findFirst().orElseThrow();
+        assertThat(t.fields().get("description").value()).isEqualTo("ENVIOMENS.AUTOMATICA");
+        assertThat(t.fields()).doesNotContainKey("installment_number");
+    }
+
+    @Test
+    void parseReconheceProdutoServicoComDescricaoDaLinhaDeContinuacao() {
+        byte[] pdfBytes = pdfComDuasColunas(
+                List.of("Lançamentos: compras e saques", "Limites de crédito",
+                        "Lançamentos: produtos e serviços", "04/07 ANUIDADE DIFER 03/12 62,00",
+                        "Anuidade Diferenciada", "Limites de crédito"),
+                List.of(), 50f, 400f);
+        String texto = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques\n";
+
+        List<NormalizedTransactionDTO> transacoes = template.parse(texto, pdfBytes);
+
+        NormalizedTransactionDTO t = transacoes.stream()
+                .filter(tx -> "62.00".equals(tx.fields().get("amount").value().toString()))
+                .findFirst().orElseThrow();
+        // Descrição vem da linha de CONTINUAÇÃO, não do código truncado da linha 1.
+        assertThat(t.fields().get("description").value()).isEqualTo("Anuidade Diferenciada");
+        // Marcador 03/12 estava presente na linha — mas produtos/serviços NUNCA vira parcela
+        // (decisão c da spec: taxa recorrente, não compra parcelada).
+        assertThat(t.fields()).doesNotContainKey("installment_number");
+        assertThat(t.fields()).doesNotContainKey("installment_total");
+    }
+
+    @Test
+    void parseReconheceEstornoDeProdutoServicoComoCredito() {
+        byte[] pdfBytes = pdfComDuasColunas(
+                List.of("Lançamentos: compras e saques", "Limites de crédito",
+                        "Lançamentos: produtos e serviços", "13/07 Redução Mensalidade do - 31,00",
+                        "Limites de crédito"),
+                List.of(), 50f, 400f);
+        String texto = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques\n";
+
+        List<NormalizedTransactionDTO> transacoes = template.parse(texto, pdfBytes);
+
+        NormalizedTransactionDTO t = transacoes.stream()
+                .filter(tx -> "31.00".equals(tx.fields().get("amount").value().toString()))
+                .findFirst().orElseThrow();
+        assertThat(t.fields().get("direction").value()).isEqualTo("credit");
+    }
+
+    @Test
+    void parseNaoQuebraQuandoSecaoDeProdutosEServicosAusente() {
+        byte[] pdfBytes = pdfComDuasColunas(
+                List.of("Lançamentos: compras e saques", "03/02 SUBWAY FAZENDINHA 49,00",
+                        "Limites de crédito"),
+                List.of(), 50f, 400f);
+        String texto = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques\n";
+
+        List<NormalizedTransactionDTO> transacoes = template.parse(texto, pdfBytes);
+
+        // Compras e saques inalterado (regressão) — nenhuma transação extra, sem exceção.
+        assertThat(transacoes).hasSize(1);
+        assertThat(transacoes.get(0).fields().get("description").value()).isEqualTo("SUBWAY FAZENDINHA");
+    }
+
+    @Test
+    void parseCriaTransacaoSinteticaConsolidadaParaLancamentosInternacionais() {
+        byte[] pdfBytes = pdfComDuasColunas(
+                List.of("Lançamentos: compras e saques", "Limites de crédito",
+                        "Lançamentos internacionais",
+                        "DATA ESTABELECIMENTO US$ R$",
+                        "18/07 ANTHROPIC* CLAUDE SUBSA 116,58",
+                        "Total transações inter. em R$ 116,58",
+                        "Repasse de IOF em R$ 4,08",
+                        "Total lançamentos inter. em R$ 120,66",
+                        "Limites de crédito"),
+                List.of(), 50f, 400f);
+        String texto = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques\n";
+
+        List<NormalizedTransactionDTO> transacoes = template.parse(texto, pdfBytes);
+
+        NormalizedTransactionDTO t = transacoes.stream()
+                .filter(tx -> "120.66".equals(tx.fields().get("amount").value().toString()))
+                .findFirst().orElseThrow();
+        assertThat(t.fields().get("description").value())
+                .isEqualTo("Lançamentos internacionais (consolidado)");
+        // CABECALHO_VENCIMENTO = "Vencimento 10/03/2025" (mesVencimento=3, anoVencimento=2025).
+        // Transação em 18/07: mês(7) > mesVencimento(3) → pertence ao ano ANTERIOR (mesma regra
+        // já usada em parseLinha, ex. vencimento 10/03/2025 + lançamento 28/11 = 28/11/2024).
+        assertThat(t.fields().get("transaction_date").value()).isEqualTo("2024-07-18");
+        assertThat(t.fields()).doesNotContainKey("installment_number");
+    }
+
+    @Test
+    void parseNaoCriaTransacaoQuandoSecaoInternacionalAusente() {
+        byte[] pdfBytes = pdfComDuasColunas(
+                List.of("Lançamentos: compras e saques", "03/02 SUBWAY FAZENDINHA 49,00",
+                        "Limites de crédito"),
+                List.of(), 50f, 400f);
+        String texto = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques\n";
+
+        List<NormalizedTransactionDTO> transacoes = template.parse(texto, pdfBytes);
+
+        assertThat(transacoes)
+                .noneMatch(tx -> "Lançamentos internacionais (consolidado)"
+                        .equals(tx.fields().get("description").value()));
+    }
+
+    @Test
+    void parseNaoDuplicaComprasQuandoBlocoDeComprasApareceDepoisDeProdutosServicos() {
+        // Regressão da revisão final do branch: STOP_MARKERS não incluía HEADER_LANCAMENTOS,
+        // então um segundo bloco "Lançamentos: compras e saques" (titular adicional) DEPOIS de
+        // um bloco de produtos/serviços no MESMO stream era engolido inteiro pelo bloco de
+        // produtos — e extrairTransacoesDoStream processava esse mesmo bloco de novo,
+        // duplicando a transação em dois caminhos distintos do parser.
+        byte[] pdfBytes = pdfComDuasColunas(
+                List.of("Lançamentos: compras e saques", "01/07 PRIMEIRA COMPRA 10,00",
+                        "Lançamentos: produtos e serviços", "04/07 ANUIDADE DIFER 03/12 62,00",
+                        "Lançamentos: compras e saques", "02/07 SEGUNDA COMPRA 20,00",
+                        "Limites de crédito"),
+                List.of(), 50f, 400f);
+        String texto = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques\n";
+
+        List<NormalizedTransactionDTO> transacoes = template.parse(texto, pdfBytes);
+
+        long qtdSegundaCompra = transacoes.stream()
+                .filter(t -> "20.00".equals(t.fields().get("amount").value().toString()))
+                .count();
+        assertThat(qtdSegundaCompra).isEqualTo(1);
+    }
+
+    @Test
+    void parseNaoCriaTransacaoQuandoSubtotalInternacionalNaoReconhecido() {
+        // Header presente, mas sem a linha de subtotal no formato esperado — degrada em
+        // silêncio (ausência de sinal não é erro), não lança exceção.
+        byte[] pdfBytes = pdfComDuasColunas(
+                List.of("Lançamentos: compras e saques", "Limites de crédito",
+                        "Lançamentos internacionais", "algum texto sem o subtotal reconhecível",
+                        "Limites de crédito"),
+                List.of(), 50f, 400f);
+        String texto = CABECALHO_VENCIMENTO + "Lançamentos: compras e saques\n";
+
+        List<NormalizedTransactionDTO> transacoes = template.parse(texto, pdfBytes);
+
+        assertThat(transacoes)
+                .noneMatch(tx -> "Lançamentos internacionais (consolidado)"
+                        .equals(tx.fields().get("description").value()));
     }
 }
