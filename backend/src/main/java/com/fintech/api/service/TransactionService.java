@@ -21,6 +21,7 @@ import com.fintech.api.dto.transfer.TransferResponseDTO;
 import com.fintech.api.exception.BusinessException;
 import com.fintech.api.exception.EntityNotFoundException;
 import com.fintech.api.repository.AccountRepository;
+import com.fintech.api.repository.BudgetItemRepository;
 import com.fintech.api.repository.CategoryRepository;
 import com.fintech.api.repository.CreditCardDetailsRepository;
 import com.fintech.api.repository.InstallmentGroupRepository;
@@ -50,6 +51,7 @@ public class TransactionService {
     private final CreditCardDetailsRepository creditCardDetailsRepository;
     private final InvoiceService invoiceService;
     private final RecurrenceProjectionService projectionService;
+    private final BudgetItemRepository budgetItemRepository;
 
     @Transactional(readOnly = true)
     public List<TransactionResponseDTO> findAll(User user, UUID invoiceId, List<UUID> accountIds,
@@ -360,6 +362,16 @@ public class TransactionService {
                 "Perna de transferência não pode ser excluída individualmente. "
                 + "Use DELETE /api/transfers/{transferId} para remover o par.");
         }
+
+        // Incidente prod (2026-08-13): transação vinculada a um BudgetItem tem FK RESTRICT
+        // (budget_items.transaction_id) — excluir sem desvincular estourava FK violation não
+        // tratada (500). O vínculo é estado de negócio real (item REALIZED), então aqui o
+        // certo é bloquear e pedir ação explícita do usuário, não desvincular silenciosamente.
+        budgetItemRepository.findByTransaction(t).ifPresent(item -> {
+            throw new BusinessException(
+                "Transação vinculada a um item do planejamento mensal. "
+                + "Desvincule o item antes de excluir a transação.");
+        });
 
         if (scope == DeleteInstallmentScope.SINGLE || t.getInstallmentGroup() == null) {
             repository.delete(t);

@@ -77,6 +77,8 @@ para i=0..N-1:
 
 **Perna de transferência é imutável isoladamente (#138):** `PUT`/`DELETE` numa transação com `transferId != null` → **400** (`BusinessException`). Double-entry é invariante: as pernas nascem juntas (`createTransfer`) e morrem juntas (`DELETE /api/transfers/{transferId}`). Frontend desabilita editar/excluir individual nessas linhas.
 
+**DELETE bloqueia transação vinculada a item do planejamento (incidente prod 2026-08-13):** `budget_items.transaction_id` é FK RESTRICT (sem `ON DELETE`) — excluir sem desvincular estourava `DataIntegrityViolationException` não tratada (500). `TransactionService.delete` agora checa `BudgetItemRepository.findByTransaction` **antes** do delete e bloqueia com **400** (`BusinessException`, mesmo padrão do #138) pedindo para desvincular o item primeiro (`BudgetItemService.unlink`/`unrealize`). Vínculo de `staged_transactions.promoted_transaction_id` (proveniência de import) é tratado diferente — `ON DELETE SET NULL` na FK (V31), já que ali não é estado de negócio, só histórico.
+
 **PUT `propagate: string[]`:** aplica campos às parcelas futuras `PENDING` (`installmentNumber >` atual). PAID nunca revertido.
 
 ## Linha do Tempo (`/transactions/timeline`) — só frontend
