@@ -331,6 +331,71 @@ class ImportServiceTest {
         assertThat(requiresReviewOf(staged, "0.99")).isTrue();   // amount conf < 0.95 → revisa
     }
 
+    /** Alta confiança em tudo, mas o EXTRATOR manda requiresReview=true — mesma via do #194. */
+    private NormalizedTransactionDTO highConfidenceComRequiresReviewForcado() {
+        return new NormalizedTransactionDTO(
+                null,
+                Map.of("amount", fieldValue(50.00, "0.98"),
+                        "transaction_date", fieldValue("2026-06-01", "0.95"),
+                        "description", fieldValue("EXTRATO LINHA 1", "0.90")),
+                null, null,
+                new BigDecimal("0.95"),
+                true, null);
+    }
+
+    /**
+     * #194 — {@code tx.requiresReview()} é PISO, nunca teto: mesmo com confiança alta o bastante
+     * pra NÃO exigir revisão por threshold (prova disso é {@code derivaRequiresReviewPorThresholdNoCodigo}
+     * logo acima, mesmos números), o extrator pode forçar {@code true} e isso precisa persistir.
+     */
+    @Test
+    void requiresReviewDoExtratorEPisoNuncaTeto() {
+        Tenant tenant = persistTenant("Tenant Import Piso");
+        User user = persistUser(tenant, "piso@import.test");
+
+        ImportBatchResponseDTO created = importService.createBatch(
+                batchOf(highConfidenceComRequiresReviewForcado()), user);
+
+        List<StagedTransactionResponseDTO> staged = importService.listStaged(created.id(), user);
+        assertThat(staged).hasSize(1);
+        assertThat(staged.get(0).requiresReview()).isTrue();
+    }
+
+    /**
+     * Achado de code review sobre #194: {@code overallConfidence} da linha de extrato precisa
+     * vir do MODELO (baixa, ex. lista longa e incerta), não hardcoded alto — senão
+     * {@code patchStaged} re-deriva {@code requires_review} usando um overall artificialmente
+     * alto + confiança de amount alta, e um edit em campo NÃO relacionado (aqui, description)
+     * apaga o floor forçado sem que ninguém tenha verificado data/direção/valor de verdade.
+     */
+    @Test
+    void editarCampoNaoRelacionadoNaoApagaRequiresReviewForcadoQuandoOverallEBaixo() {
+        Tenant tenant = persistTenant("Tenant Import Piso Patch");
+        User user = persistUser(tenant, "piso-patch@import.test");
+
+        NormalizedTransactionDTO linhaDeExtrato = new NormalizedTransactionDTO(
+                null,
+                Map.of("amount", fieldValue(50.00, "0.99"),  // amount confidence ALTA de propósito
+                        "transaction_date", fieldValue("2026-06-01", "0.95"),
+                        "description", fieldValue("MERCADO X", "0.90")),
+                null, null,
+                new BigDecimal("0.50"),  // overallConfidence BAIXA — sinal real do modelo pra lista
+                true, null);
+
+        ImportBatchResponseDTO created = importService.createBatch(batchOf(linhaDeExtrato), user);
+        StagedTransactionResponseDTO before = importService.listStaged(created.id(), user).get(0);
+        assertThat(before.requiresReview()).isTrue();  // floor na criação
+
+        // Edita só a description — não toca amount, data nem direction.
+        StagedPatchDTO patch = new StagedPatchDTO(Map.of("description", "MERCADO X CORRIGIDO"), null);
+        StagedTransactionResponseDTO updated = importService.patchStaged(created.id(), before.id(), patch, user);
+
+        // overallConfidence=0.50 < threshold 0.90 → deriveRequiresReview continua true na
+        // re-derivação, mesmo com amount confidence alta. Se overallConfidence fosse hardcoded
+        // em 1.0 (bug corrigido), este assert falharia.
+        assertThat(updated.requiresReview()).isTrue();
+    }
+
     @Test
     void naoVazaBatchNemStagedEntreTenants() {
         Tenant owner = persistTenant("Tenant Import Owner");

@@ -19,8 +19,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 /**
- * #193 — o batch FAILED passa a carregar o MOTIVO da falha (coluna V25), porque causas distintas
- * pedem ações distintas do usuário ("suba um comprovante por vez" != "a imagem está ilegível").
+ * #193 (V25) — o batch FAILED passa a carregar o MOTIVO da falha, porque causas distintas pedem
+ * ações distintas do usuário ("imagem ilegível" != "extrato com lançamentos demais"). Mecanismo
+ * genérico, testado aqui num nível acima do extrator específico (mock de
+ * {@link TransactionExtractor}) — o exemplo de mensagem usado é o do #194 (limite de linhas do
+ * caminho de extrato), mas qualquer {@link ExtractionException} exercitaria o mesmo caminho.
  *
  * <p>O {@link TransactionExtractor} é substituído por mock ({@code @MockitoBean}) — a suíte nunca
  * bate no Ollama real. Classe separada de propósito: o mock troca o bean para todo o contexto.
@@ -62,14 +65,14 @@ class ImportFailureReasonTest {
         return importService.createFromFile(input, false, persistUser());
     }
 
-    /** Recusa de escopo (#193): a mensagem que redigimos chega íntegra ao usuário. */
+    /** A mensagem que o extrator redige (nossa, não do provider) chega íntegra ao usuário. */
     @Test
     void extractionExceptionViraMotivoExibivelNoBatch() {
-        ImportBatchResponseDTO batch =
-                uploadFailingWith(new ExtractionException(VisionExtractor.MULTIPLE_TRANSACTIONS_MESSAGE));
+        String motivo = "O extrato tem mais de 60 lançamentos — recorte a imagem em partes menores.";
+        ImportBatchResponseDTO batch = uploadFailingWith(new ExtractionException(motivo));
 
         assertThat(batch.status()).isEqualTo(ImportBatchStatus.FAILED);
-        assertThat(batch.failureReason()).isEqualTo(VisionExtractor.MULTIPLE_TRANSACTIONS_MESSAGE);
+        assertThat(batch.failureReason()).isEqualTo(motivo);
     }
 
     /**

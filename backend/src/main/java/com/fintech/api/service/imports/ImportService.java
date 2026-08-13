@@ -249,7 +249,13 @@ public class ImportService {
                     .suggestedCategoryCode(tx.suggestedCategoryCode())
                     .suggestedCategoryConfidence(tx.suggestedCategoryConfidence())
                     .overallConfidence(tx.overallConfidence())
-                    .requiresReview(deriveRequiresReview(fields, tx.overallConfidence()))
+                    // #194 — tx.requiresReview() é PISO, nunca teto: extratores existentes
+                    // (CSV/OFX/comprovante) mandam null aqui (Boolean.TRUE.equals(null)=false),
+                    // então o OR cai inteiro no cálculo por confiança de sempre, comportamento
+                    // bit-a-bit idêntico. Só o caminho novo de extrato (VisionExtractor,
+                    // mapStatementLine) manda true — staged rollout incondicional, spec §2.d.
+                    .requiresReview(Boolean.TRUE.equals(tx.requiresReview())
+                            || deriveRequiresReview(fields, tx.overallConfidence()))
                     .duplicateCandidateOf(duplicateOf)
                     .status(StagedTransactionStatus.PENDING)
                     .build());

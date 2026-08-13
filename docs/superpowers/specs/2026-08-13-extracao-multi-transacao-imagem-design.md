@@ -97,6 +97,22 @@ extrato apareça marcada para o usuário olhar, o que já é o mecanismo de segu
 CSV/OFX/comprovante usam há duas fases. Não é enforcement técnico; é sinal correto no lugar
 que já existe.
 
+**Correção (achada só na implementação, não no design original do gate):** pra esse sinal
+realmente chegar ao banco, `ImportService.createBatch` (linha ~252) precisa de um ajuste de
+UMA linha — hoje ele **nunca lê** `tx.requiresReview()`, só deriva por confiança
+(`deriveRequiresReview(fields, tx.overallConfidence())`). Sem esse ajuste, o `true` que o
+`VisionExtractor` manda no DTO seria descartado silenciosamente e §6.4 ficaria inconsistente
+com o código de verdade. Fix mínimo, "piso nunca teto", em UMA linha:
+```java
+.requiresReview(Boolean.TRUE.equals(tx.requiresReview()) || deriveRequiresReview(fields, tx.overallConfidence()))
+```
+Não-destrutivo: todo extrator existente (CSV/OFX/comprovante) manda `null` nesse campo hoje
+— `Boolean.TRUE.equals(null)` é `false`, então o `||` cai inteiro no `deriveRequiresReview`
+de sempre, comportamento bit-a-bit idêntico. Só o caminho novo de extrato passa `true`
+explícito. Isso NÃO é o enforcement de commit descartado em §2.f (que seguiria bloqueando
+ativamente); é só fazer o sinal persistir e chegar à UI que já existe — diferença entre
+"gravar o dado" e "impedir a ação com base nele".
+
 **(e) Teto só na chamada nova.**
 Isolamento de risco: zero chance de o teto de tokens interferir no caminho de comprovante já
 calibrado (Fase 1, 95% precisão). Dimensionado por `max-lines` (60 × ~50 tokens/linha +
@@ -329,3 +345,28 @@ resposta do endpoint.
 7. **Documentação**: `summary.md` (seção de Importação), `docs/roadmap-extracao-e-conciliacao.md`
    (marcar entrega, citar #194 explicitamente na Fase 3), fechar issue #193 apontando para
    #194 como substituição.
+
+## 15. Correção pós-implementação (code review)
+
+Review antes do commit (subagente) achou um problema real: `mapStatementLine` hardcodeava
+`overallConfidence=1.0` para toda linha de extrato, em vez de propagar
+`statement.overallConfidence()` (a confiança agregada real do modelo). Isso não quebrava a
+criação do batch (`requires_review=true` incondicional já cobre esse momento — §2.d), mas
+desativava silenciosamente o floor no momento em que o usuário edita a staged:
+`ImportService.patchStaged` RE-DERIVA `requires_review` a partir de
+`deriveRequiresReview(fields, overallConfidence)`, e com `overallConfidence` sempre `1.0` o
+ramo "overall < 0.90 → revisa" nunca dispara — sobra só a confiança do campo `amount`. Cenário
+concreto: usuário corrige a *descrição* de uma linha de extrato (nunca toca valor/data/direção)
+→ `requires_review` cai pra `false` mesmo que ninguém tenha verificado o resto da linha.
+
+Corrigido: `extractStatement` calcula `clampConfidence(statement.overallConfidence())` uma vez
+e propaga pra cada linha via `mapStatementLine(line, statementOverallConfidence)`. Testes novos
+(RED confirmado antes do fix): `overallConfidenceBaixaDoExtratoPersisteParaAlimentarReDerivacaoNoPatch`
+(`VisionExtractorTest`) e `editarCampoNaoRelacionadoNaoApagaRequiresReviewForcadoQuandoOverallEBaixo`
+(`ImportServiceTest`, ponta a ponta via `patchStaged`).
+
+**Diferido, não bloqueante** (mesmo review): teste de integração real (`ImportControllerTest`,
+upload multipart → `ExtractionRouter` → commit) para o caminho de extrato — a cobertura hoje é
+via unitários (`VisionExtractorTest` prova a saída do extrator, `ImportServiceTest` prova a
+persistência do floor), que juntos aproximam a mesma garantia sem exercitar o roteamento HTTP
+real. Fica como próximo passo, não bloqueia esta entrega.

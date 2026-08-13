@@ -1,6 +1,5 @@
 package com.fintech.api.service.imports.vision;
 
-import com.fintech.api.service.imports.LlmReceiptExtractionDTO;
 import org.springframework.core.io.Resource;
 import org.springframework.util.MimeType;
 
@@ -27,15 +26,28 @@ public interface VisionModelClient {
      * Chama o modelo de visão com o prompt fixo e a imagem, e devolve a saída estruturada CRUA
      * (sem qualquer validação de plausibilidade — isso é responsabilidade de quem chama).
      *
-     * @param prompt        prompt fixo, igual para todos os providers (spec: "Prompt — o mesmo
-     *                      para os dois providers", evita duplicar superfície de manutenção)
-     * @param mimeType      mimeType da imagem, usado para anexar o {@code Resource} à mensagem
-     * @param imageResource conteúdo da imagem como {@link Resource} — cada implementação decide
-     *                      como empacotar (ex.: o Ollama precisa de um {@code Resource} com
-     *                      {@code getFilename()} preenchido; ver {@code OllamaVisionClient})
+     * <p>Generificado no #194 (extração multi-transação por imagem): o {@code VisionExtractor}
+     * passou a pedir DOIS schemas de saída diferentes ao mesmo client — o comprovante plano
+     * (Fase 1) e, quando a imagem é um extrato, uma lista de linhas. Só 2 implementações
+     * existem, então generificar o método troca uma linha (o {@code .entity(Class)} do Spring
+     * AI já aceita qualquer tipo) em vez de duplicar toda a mecânica de fallback/classificação
+     * de disponibilidade numa segunda implementação por client.
+     *
+     * @param prompt          prompt fixo, igual para todos os providers (spec: "Prompt — o
+     *                        mesmo para os dois providers", evita duplicar superfície de
+     *                        manutenção)
+     * @param mimeType        mimeType da imagem, usado para anexar o {@code Resource} à mensagem
+     * @param imageResource   conteúdo da imagem como {@link Resource} — cada implementação
+     *                        decide como empacotar (ex.: o Ollama precisa de um {@code Resource}
+     *                        com {@code getFilename()} preenchido; ver {@code OllamaVisionClient})
+     * @param responseType    o record de saída que o Spring AI deve preencher (schema JSON
+     *                        gerado a partir dele via {@code .entity(Class)})
+     * @param maxOutputTokens teto de tokens de saída, ou {@code null} para não aplicar teto
+     *                        nenhum (comportamento idêntico ao de antes do #194 — usado no
+     *                        caminho de comprovante, já calibrado, para não arriscar regressão)
      * @return a saída estruturada do modelo, ou {@code null} se o provider não retornou nada
      */
-    LlmReceiptExtractionDTO extract(String prompt, MimeType mimeType, Resource imageResource);
+    <T> T extract(String prompt, MimeType mimeType, Resource imageResource, Class<T> responseType, Integer maxOutputTokens);
 
     /** Identificador curto do provider (ex.: {@code "ollama"}), usado para montar {@code extractorUsed}. */
     String providerId();
