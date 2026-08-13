@@ -355,7 +355,9 @@ export class TransactionList implements OnInit {
             this.snackBar.open(msg, 'OK', { duration: 4000 });
             this.loadTransactions();
           },
-          error: () => this.snackBar.open('Erro ao excluir parcela.', 'Fechar', { duration: 5000 }),
+          error: (err) => this.snackBar.open(
+            err.error?.message ?? 'Erro ao excluir parcela.', 'Fechar', { duration: 5000 },
+          ),
         });
       });
       return;
@@ -374,7 +376,9 @@ export class TransactionList implements OnInit {
         if (confirmed !== true) return;
         this.transferService.deleteTransfer(t.transferId!).subscribe({
           next: () => { this.snackBar.open('Transferência excluída.', 'OK', { duration: 3000 }); this.loadTransactions(); },
-          error: () => this.snackBar.open('Erro ao excluir transferência.', 'Fechar', { duration: 5000 }),
+          error: (err) => this.snackBar.open(
+            err.error?.message ?? 'Erro ao excluir transferência.', 'Fechar', { duration: 5000 },
+          ),
         });
       });
       return;
@@ -392,7 +396,9 @@ export class TransactionList implements OnInit {
       if (confirmed !== true) return;
       this.service.deleteTransaction(t.id).subscribe({
         next: () => { this.snackBar.open('Transação excluída.', 'OK', { duration: 3000 }); this.loadTransactions(); },
-        error: () => this.snackBar.open('Erro ao excluir transação.', 'Fechar', { duration: 5000 }),
+        error: (err) => this.snackBar.open(
+          err.error?.message ?? 'Erro ao excluir transação.', 'Fechar', { duration: 5000 },
+        ),
       });
     });
   }

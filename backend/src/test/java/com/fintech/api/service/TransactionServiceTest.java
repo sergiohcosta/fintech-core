@@ -2,6 +2,7 @@ package com.fintech.api.service;
 
 import com.fintech.api.domain.account.Account;
 import com.fintech.api.domain.account.CreditCardDetails;
+import com.fintech.api.domain.budget.BudgetItem;
 import com.fintech.api.domain.enums.AccountType;
 import com.fintech.api.domain.enums.DeleteInstallmentScope;
 import com.fintech.api.domain.enums.InvoiceStatus;
@@ -20,6 +21,7 @@ import com.fintech.api.dto.transfer.TransferRequestDTO;
 import com.fintech.api.exception.BusinessException;
 import com.fintech.api.exception.EntityNotFoundException;
 import com.fintech.api.repository.AccountRepository;
+import com.fintech.api.repository.BudgetItemRepository;
 import com.fintech.api.repository.CategoryRepository;
 import com.fintech.api.repository.CreditCardDetailsRepository;
 import com.fintech.api.repository.InstallmentGroupRepository;
@@ -52,6 +54,7 @@ class TransactionServiceTest {
     @Mock InstallmentGroupRepository installmentGroupRepository;
     @Mock CreditCardDetailsRepository creditCardDetailsRepository;
     @Mock InvoiceService invoiceService;
+    @Mock BudgetItemRepository budgetItemRepository;
     @InjectMocks TransactionService service;
 
     @Test
@@ -239,6 +242,25 @@ class TransactionServiceTest {
         assertThatThrownBy(() -> service.delete(id, DeleteInstallmentScope.SINGLE, user))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("transferência");
+        verify(repository, never()).delete(any());
+        verify(repository, never()).deleteAll(any());
+    }
+
+    @Test
+    @DisplayName("delete rejeita transação vinculada a item de planejamento (evita FK violation em prod)")
+    void deleteRejectsBudgetLinkedTransaction() {
+        User user = buildUser();
+        UUID id = UUID.randomUUID();
+        Transaction t = Transaction.builder().id(id)
+                .type(TransactionType.EXPENSE).account(buildAccount(user))
+                .status(TransactionStatus.PENDING).tenant(user.getTenant()).build();
+        BudgetItem item = BudgetItem.builder().id(UUID.randomUUID()).transaction(t).build();
+        when(repository.findByIdAndTenant(id, user.getTenant())).thenReturn(Optional.of(t));
+        when(budgetItemRepository.findByTransaction(t)).thenReturn(Optional.of(item));
+
+        assertThatThrownBy(() -> service.delete(id, DeleteInstallmentScope.SINGLE, user))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("planejamento");
         verify(repository, never()).delete(any());
         verify(repository, never()).deleteAll(any());
     }

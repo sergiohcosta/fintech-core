@@ -1,0 +1,3432 @@
+{
+  ".claude/hooks/block-code-edit-on-develop.py": {
+    "mtime": 1786123865.603033,
+    "ast_hash": "1360cd6744c6c9b156d419e63b53e81f",
+    "semantic_hash": "1360cd6744c6c9b156d419e63b53e81f"
+  },
+  ".cmux/setup": {
+    "mtime": 1786123865.606033,
+    "ast_hash": "233a07a4789f2015308c91013bd8559d",
+    "semantic_hash": "233a07a4789f2015308c91013bd8559d"
+  },
+  ".githooks/post-merge": {
+    "mtime": 1786123865.606033,
+    "ast_hash": "67e881b2604f99198a444c3c295bbe45",
+    "semantic_hash": "67e881b2604f99198a444c3c295bbe45"
+  },
+  "android/app/build.gradle.kts": {
+    "mtime": 1786123865.6080332,
+    "ast_hash": "a7d50930fd5e8b076b8b5ee5083e9dc7",
+    "semantic_hash": "a7d50930fd5e8b076b8b5ee5083e9dc7"
+  },
+  "android/app/src/main/java/com/fintech/mobile/MainActivity.kt": {
+    "mtime": 1786123865.6087725,
+    "ast_hash": "c54995ec6fb745965e672edc7e6be1c5",
+    "semantic_hash": "c54995ec6fb745965e672edc7e6be1c5"
+  },
+  "android/app/src/main/java/com/fintech/mobile/MobileApp.kt": {
+    "mtime": 1786123865.6088624,
+    "ast_hash": "dbaac6b744c3c63fdd0a66842d8101ba",
+    "semantic_hash": "dbaac6b744c3c63fdd0a66842d8101ba"
+  },
+  "android/app/src/main/java/com/fintech/mobile/core/format/AmountParser.kt": {
+    "mtime": 1786123865.6089473,
+    "ast_hash": "7db6c393fbeb01c9ef954b6da190fd64",
+    "semantic_hash": "7db6c393fbeb01c9ef954b6da190fd64"
+  },
+  "android/app/src/main/java/com/fintech/mobile/core/network/ApiCall.kt": {
+    "mtime": 1786123865.6089473,
+    "ast_hash": "d9235d6b4c03d920a6868e184ac5b8a4",
+    "semantic_hash": "d9235d6b4c03d920a6868e184ac5b8a4"
+  },
+  "android/app/src/main/java/com/fintech/mobile/core/network/ApiResult.kt": {
+    "mtime": 1786123865.6090884,
+    "ast_hash": "024159e0d3c7a0c179a45ad0ff87aa77",
+    "semantic_hash": "024159e0d3c7a0c179a45ad0ff87aa77"
+  },
+  "android/app/src/main/java/com/fintech/mobile/core/network/BackendErrorResponse.kt": {
+    "mtime": 1786123865.6090884,
+    "ast_hash": "209b8438c0010bd298a1a7cc3f74f93f",
+    "semantic_hash": "209b8438c0010bd298a1a7cc3f74f93f"
+  },
+  "android/app/src/main/java/com/fintech/mobile/core/network/Environment.kt": {
+    "mtime": 1786123865.6090884,
+    "ast_hash": "38892e693fcf2085942fc47735123e04",
+    "semantic_hash": "38892e693fcf2085942fc47735123e04"
+  },
+  "android/app/src/main/java/com/fintech/mobile/core/network/EnvironmentUrlResolver.kt": {
+    "mtime": 1786123865.6090884,
+    "ast_hash": "237c0bb4896ae0f6a8223a99e351af47",
+    "semantic_hash": "237c0bb4896ae0f6a8223a99e351af47"
+  },
+  "android/app/src/main/java/com/fintech/mobile/data/EnvironmentPreferences.kt": {
+    "mtime": 1786123865.6090884,
+    "ast_hash": "1d56af400fc3f2041717ed5abf3fde06",
+    "semantic_hash": "1d56af400fc3f2041717ed5abf3fde06"
+  },
+  "android/app/src/main/java/com/fintech/mobile/data/EnvironmentUrlProvider.kt": {
+    "mtime": 1786123865.6093884,
+    "ast_hash": "0c370d10d9a555ddfb163fad844cb2b3",
+    "semantic_hash": "0c370d10d9a555ddfb163fad844cb2b3"
+  },
+  "android/app/src/main/java/com/fintech/mobile/data/local/AppDatabase.kt": {
+    "mtime": 1786123865.6093884,
+    "ast_hash": "350aa3299210a9ffa60dcc5e7d4e04b9",
+    "semantic_hash": "350aa3299210a9ffa60dcc5e7d4e04b9"
+  },
+  "android/app/src/main/java/com/fintech/mobile/data/local/PendingTransactionDao.kt": {
+    "mtime": 1786123865.6095204,
+    "ast_hash": "a0dff9f94525d3dfdfb265b07d466783",
+    "semantic_hash": "a0dff9f94525d3dfdfb265b07d466783"
+  },
+  "android/app/src/main/java/com/fintech/mobile/data/local/PendingTransactionEntity.kt": {
+    "mtime": 1786123865.6095204,
+    "ast_hash": "47beffe225c540173d79a8d4f27760ff",
+    "semantic_hash": "47beffe225c540173d79a8d4f27760ff"
+  },
+  "android/app/src/main/java/com/fintech/mobile/data/repository/AccountRepository.kt": {
+    "mtime": 1786123865.6095204,
+    "ast_hash": "0b2750e83e2f099c1f523b8871c2b802",
+    "semantic_hash": "0b2750e83e2f099c1f523b8871c2b802"
+  },
+  "android/app/src/main/java/com/fintech/mobile/data/repository/AuthRepository.kt": {
+    "mtime": 1786123865.6096685,
+    "ast_hash": "f47665eef72ab9f67d190da5989a3505",
+    "semantic_hash": "f47665eef72ab9f67d190da5989a3505"
+  },
+  "android/app/src/main/java/com/fintech/mobile/data/repository/CategoryRepository.kt": {
+    "mtime": 1786123865.6096685,
+    "ast_hash": "7e280bb323ec653372bcf7474305567b",
+    "semantic_hash": "7e280bb323ec653372bcf7474305567b"
+  },
+  "android/app/src/main/java/com/fintech/mobile/data/repository/CreateTransactionResult.kt": {
+    "mtime": 1786123865.6096685,
+    "ast_hash": "58033c8d25d26aa3d022293e7e4af67e",
+    "semantic_hash": "58033c8d25d26aa3d022293e7e4af67e"
+  },
+  "android/app/src/main/java/com/fintech/mobile/data/repository/TransactionRepository.kt": {
+    "mtime": 1786123865.6096685,
+    "ast_hash": "8fde671a474e0bc67a8f8cd3479d36fc",
+    "semantic_hash": "8fde671a474e0bc67a8f8cd3479d36fc"
+  },
+  "android/app/src/main/java/com/fintech/mobile/di/DatabaseModule.kt": {
+    "mtime": 1786123865.6096685,
+    "ast_hash": "f39c2587ea7c1914219783737d837f25",
+    "semantic_hash": "f39c2587ea7c1914219783737d837f25"
+  },
+  "android/app/src/main/java/com/fintech/mobile/di/EnvironmentModule.kt": {
+    "mtime": 1786123865.609874,
+    "ast_hash": "5c69741d9ac2dfaed6f15e6bbeee5f90",
+    "semantic_hash": "5c69741d9ac2dfaed6f15e6bbeee5f90"
+  },
+  "android/app/src/main/java/com/fintech/mobile/di/NetworkModule.kt": {
+    "mtime": 1786123865.609874,
+    "ast_hash": "e91701276680e785c311f5daa11c1a9b",
+    "semantic_hash": "e91701276680e785c311f5daa11c1a9b"
+  },
+  "android/app/src/main/java/com/fintech/mobile/di/SessionModule.kt": {
+    "mtime": 1786123865.609874,
+    "ast_hash": "5fc1d1aa5c9113d6a601f3f80159effb",
+    "semantic_hash": "5fc1d1aa5c9113d6a601f3f80159effb"
+  },
+  "android/app/src/main/java/com/fintech/mobile/session/AuthInterceptor.kt": {
+    "mtime": 1786123865.609874,
+    "ast_hash": "f08eaed481662721fe7af4469086dcf4",
+    "semantic_hash": "f08eaed481662721fe7af4469086dcf4"
+  },
+  "android/app/src/main/java/com/fintech/mobile/session/EnvironmentInterceptor.kt": {
+    "mtime": 1786123865.610113,
+    "ast_hash": "7d595a9c6c26cdded3f65bdd8b8f1f2c",
+    "semantic_hash": "7d595a9c6c26cdded3f65bdd8b8f1f2c"
+  },
+  "android/app/src/main/java/com/fintech/mobile/session/SessionManager.kt": {
+    "mtime": 1786123865.610113,
+    "ast_hash": "ea5df40feb12a405b1847fa0af631566",
+    "semantic_hash": "ea5df40feb12a405b1847fa0af631566"
+  },
+  "android/app/src/main/java/com/fintech/mobile/session/TokenProvider.kt": {
+    "mtime": 1786123865.610113,
+    "ast_hash": "6a1991ce96ded665f2007f1e7217442f",
+    "semantic_hash": "6a1991ce96ded665f2007f1e7217442f"
+  },
+  "android/app/src/main/java/com/fintech/mobile/sync/SyncWorker.kt": {
+    "mtime": 1786123865.610113,
+    "ast_hash": "cb3274be7b9dadcc48b8326d319ad9ce",
+    "semantic_hash": "cb3274be7b9dadcc48b8326d319ad9ce"
+  },
+  "android/app/src/main/java/com/fintech/mobile/ui/login/EnvironmentSelector.kt": {
+    "mtime": 1786123865.6103535,
+    "ast_hash": "a2a51bd66f78ec87bfdc90c7e2e806fc",
+    "semantic_hash": "a2a51bd66f78ec87bfdc90c7e2e806fc"
+  },
+  "android/app/src/main/java/com/fintech/mobile/ui/login/EnvironmentViewModel.kt": {
+    "mtime": 1786123865.6104174,
+    "ast_hash": "a17a1ffab0cd0e1cbb314c0a1291d553",
+    "semantic_hash": "a17a1ffab0cd0e1cbb314c0a1291d553"
+  },
+  "android/app/src/main/java/com/fintech/mobile/ui/login/LoginScreen.kt": {
+    "mtime": 1786123865.6104174,
+    "ast_hash": "1b96065d2efaba30ac97fad01dde1c20",
+    "semantic_hash": "1b96065d2efaba30ac97fad01dde1c20"
+  },
+  "android/app/src/main/java/com/fintech/mobile/ui/login/LoginUiState.kt": {
+    "mtime": 1786123865.6104174,
+    "ast_hash": "44fef6e0748c8767a9ccc358c81d18fd",
+    "semantic_hash": "44fef6e0748c8767a9ccc358c81d18fd"
+  },
+  "android/app/src/main/java/com/fintech/mobile/ui/login/LoginViewModel.kt": {
+    "mtime": 1786123865.6104174,
+    "ast_hash": "e23392823e37f9d457bc231283a5646a",
+    "semantic_hash": "e23392823e37f9d457bc231283a5646a"
+  },
+  "android/app/src/main/java/com/fintech/mobile/ui/navigation/AppNavHost.kt": {
+    "mtime": 1786123865.6104174,
+    "ast_hash": "06e42032058be93315ca0cd6a82fa679",
+    "semantic_hash": "06e42032058be93315ca0cd6a82fa679"
+  },
+  "android/app/src/main/java/com/fintech/mobile/ui/navigation/SessionViewModel.kt": {
+    "mtime": 1786123865.6106796,
+    "ast_hash": "c4da500f691e34ade42cd3dcad14d097",
+    "semantic_hash": "c4da500f691e34ade42cd3dcad14d097"
+  },
+  "android/app/src/main/java/com/fintech/mobile/ui/newtransaction/NewTransactionFormValidator.kt": {
+    "mtime": 1786123865.6106796,
+    "ast_hash": "02303086b4fc6971a2b0057534bd087b",
+    "semantic_hash": "02303086b4fc6971a2b0057534bd087b"
+  },
+  "android/app/src/main/java/com/fintech/mobile/ui/newtransaction/NewTransactionScreen.kt": {
+    "mtime": 1786123865.6108255,
+    "ast_hash": "8680b4000337329087be808bcfefce70",
+    "semantic_hash": "8680b4000337329087be808bcfefce70"
+  },
+  "android/app/src/main/java/com/fintech/mobile/ui/newtransaction/NewTransactionUiState.kt": {
+    "mtime": 1786123865.6108255,
+    "ast_hash": "ec50a5651d5c80b9f7019b3ddab7849c",
+    "semantic_hash": "ec50a5651d5c80b9f7019b3ddab7849c"
+  },
+  "android/app/src/main/java/com/fintech/mobile/ui/newtransaction/NewTransactionViewModel.kt": {
+    "mtime": 1786123865.6108255,
+    "ast_hash": "885c5be717631c954b40280894193f2c",
+    "semantic_hash": "885c5be717631c954b40280894193f2c"
+  },
+  "android/app/src/main/java/com/fintech/mobile/ui/transactionlist/TransactionListScreen.kt": {
+    "mtime": 1786123865.6108255,
+    "ast_hash": "48315ea8fe059d6a98b7acf047e814a1",
+    "semantic_hash": "48315ea8fe059d6a98b7acf047e814a1"
+  },
+  "android/app/src/main/java/com/fintech/mobile/ui/transactionlist/TransactionListUiState.kt": {
+    "mtime": 1786123865.6110873,
+    "ast_hash": "78e6ff2365140e837d722f2d633f6e56",
+    "semantic_hash": "78e6ff2365140e837d722f2d633f6e56"
+  },
+  "android/app/src/main/java/com/fintech/mobile/ui/transactionlist/TransactionListViewModel.kt": {
+    "mtime": 1786123865.6110873,
+    "ast_hash": "3ef4025844888bcc87a23f41b744295f",
+    "semantic_hash": "3ef4025844888bcc87a23f41b744295f"
+  },
+  "android/app/src/test/java/com/fintech/mobile/core/format/AmountParserTest.kt": {
+    "mtime": 1786123865.6115665,
+    "ast_hash": "7edd664332f348781413893e92b855c4",
+    "semantic_hash": "7edd664332f348781413893e92b855c4"
+  },
+  "android/app/src/test/java/com/fintech/mobile/core/network/ApiCallTest.kt": {
+    "mtime": 1786123865.6115665,
+    "ast_hash": "b988e550f96b1623ac5b19978ea9ffe6",
+    "semantic_hash": "b988e550f96b1623ac5b19978ea9ffe6"
+  },
+  "android/app/src/test/java/com/fintech/mobile/core/network/EnvironmentUrlResolverTest.kt": {
+    "mtime": 1786123865.611774,
+    "ast_hash": "cdc5160cf6e745958ecbc3383529e7c3",
+    "semantic_hash": "cdc5160cf6e745958ecbc3383529e7c3"
+  },
+  "android/app/src/test/java/com/fintech/mobile/data/EnvironmentPreferencesTest.kt": {
+    "mtime": 1786123865.611774,
+    "ast_hash": "b93e3bd1e4cbc5c58a3549653908f8e1",
+    "semantic_hash": "b93e3bd1e4cbc5c58a3549653908f8e1"
+  },
+  "android/app/src/test/java/com/fintech/mobile/data/local/PendingTransactionDaoTest.kt": {
+    "mtime": 1786123865.6119356,
+    "ast_hash": "a2030f0922679eeef1ce96b7094716ae",
+    "semantic_hash": "a2030f0922679eeef1ce96b7094716ae"
+  },
+  "android/app/src/test/java/com/fintech/mobile/data/repository/AccountRepositoryTest.kt": {
+    "mtime": 1786123865.6119356,
+    "ast_hash": "cbc5b8cf3f2ca7065a337ecbb415694d",
+    "semantic_hash": "cbc5b8cf3f2ca7065a337ecbb415694d"
+  },
+  "android/app/src/test/java/com/fintech/mobile/data/repository/AuthRepositoryTest.kt": {
+    "mtime": 1786123865.6121044,
+    "ast_hash": "9324dbdda7584c3957031ce4b2a7b9a3",
+    "semantic_hash": "9324dbdda7584c3957031ce4b2a7b9a3"
+  },
+  "android/app/src/test/java/com/fintech/mobile/data/repository/CategoryRepositoryTest.kt": {
+    "mtime": 1786123865.6121044,
+    "ast_hash": "b00e8b5bbd494e49c44767c82a11727c",
+    "semantic_hash": "b00e8b5bbd494e49c44767c82a11727c"
+  },
+  "android/app/src/test/java/com/fintech/mobile/data/repository/TransactionRepositoryTest.kt": {
+    "mtime": 1786123865.6121044,
+    "ast_hash": "a986ad129fae09607386d5fa7e0ed8ef",
+    "semantic_hash": "a986ad129fae09607386d5fa7e0ed8ef"
+  },
+  "android/app/src/test/java/com/fintech/mobile/session/AuthInterceptorTest.kt": {
+    "mtime": 1786123865.6121044,
+    "ast_hash": "7b546c1d7d4bda290bf49e83294298ae",
+    "semantic_hash": "7b546c1d7d4bda290bf49e83294298ae"
+  },
+  "android/app/src/test/java/com/fintech/mobile/session/EnvironmentInterceptorTest.kt": {
+    "mtime": 1786123865.6123946,
+    "ast_hash": "faae71c5a9a4266a6cc2b190b61b8a3e",
+    "semantic_hash": "faae71c5a9a4266a6cc2b190b61b8a3e"
+  },
+  "android/app/src/test/java/com/fintech/mobile/sync/SyncWorkerTest.kt": {
+    "mtime": 1786123865.6123946,
+    "ast_hash": "de2b641e361b691230879d3898412af4",
+    "semantic_hash": "de2b641e361b691230879d3898412af4"
+  },
+  "android/app/src/test/java/com/fintech/mobile/ui/login/LoginViewModelTest.kt": {
+    "mtime": 1786123865.612586,
+    "ast_hash": "64532c68b95bd807bbdff989eaff7ecc",
+    "semantic_hash": "64532c68b95bd807bbdff989eaff7ecc"
+  },
+  "android/app/src/test/java/com/fintech/mobile/ui/newtransaction/NewTransactionFormValidatorTest.kt": {
+    "mtime": 1786123865.612586,
+    "ast_hash": "683ca2c6de150e47a738ec89667e971c",
+    "semantic_hash": "683ca2c6de150e47a738ec89667e971c"
+  },
+  "android/app/src/test/java/com/fintech/mobile/ui/newtransaction/NewTransactionViewModelTest.kt": {
+    "mtime": 1786123865.6127446,
+    "ast_hash": "3f80e12f05f15f6f2e614cf2277fbe0c",
+    "semantic_hash": "3f80e12f05f15f6f2e614cf2277fbe0c"
+  },
+  "android/app/src/test/java/com/fintech/mobile/ui/transactionlist/TransactionListViewModelTest.kt": {
+    "mtime": 1786123865.6127446,
+    "ast_hash": "13183bcb3aaf0d276bb818c025924c3b",
+    "semantic_hash": "13183bcb3aaf0d276bb818c025924c3b"
+  },
+  "android/build.gradle.kts": {
+    "mtime": 1786123865.6127446,
+    "ast_hash": "b25c584fabffd4de6544d36ebff8cdff",
+    "semantic_hash": "b25c584fabffd4de6544d36ebff8cdff"
+  },
+  "android/gradlew": {
+    "mtime": 1786123865.613033,
+    "ast_hash": "f092910dfa8e47c5a37a452c3f6baf8a",
+    "semantic_hash": "f092910dfa8e47c5a37a452c3f6baf8a"
+  },
+  "android/settings.gradle.kts": {
+    "mtime": 1786123865.613033,
+    "ast_hash": "3f41395e714e02485a18d394c6e2d485",
+    "semantic_hash": "3f41395e714e02485a18d394c6e2d485"
+  },
+  "backend/mvnw": {
+    "mtime": 1786123865.614006,
+    "ast_hash": "ab50dd89da7da2346b28003352eeeeeb",
+    "semantic_hash": "ab50dd89da7da2346b28003352eeeeeb"
+  },
+  "backend/pom.xml": {
+    "mtime": 1786123865.6140332,
+    "ast_hash": "24aa952187b2e346a263236b026ca281",
+    "semantic_hash": "24aa952187b2e346a263236b026ca281"
+  },
+  "backend/src/main/java/com/fintech/api/FintechApiApplication.java": {
+    "mtime": 1786123865.6145551,
+    "ast_hash": "c06d39a8c15f600265fa38e3c820ac39",
+    "semantic_hash": "c06d39a8c15f600265fa38e3c820ac39"
+  },
+  "backend/src/main/java/com/fintech/api/config/GeminiAutoConfigExclusionPostProcessor.java": {
+    "mtime": 1786123865.614641,
+    "ast_hash": "5a82059255d7440b38729401bd93f026",
+    "semantic_hash": "5a82059255d7440b38729401bd93f026"
+  },
+  "backend/src/main/java/com/fintech/api/config/LoginRateLimiter.java": {
+    "mtime": 1786123865.6147444,
+    "ast_hash": "eacdae8979086bac303103f454468211",
+    "semantic_hash": "eacdae8979086bac303103f454468211"
+  },
+  "backend/src/main/java/com/fintech/api/config/NeonFallbackEnvironmentPostProcessor.java": {
+    "mtime": 1786123865.6147444,
+    "ast_hash": "97ee5e6003200700194723e287d5d535",
+    "semantic_hash": "97ee5e6003200700194723e287d5d535"
+  },
+  "backend/src/main/java/com/fintech/api/config/RequestIdFilter.java": {
+    "mtime": 1786123865.6147444,
+    "ast_hash": "f2846a7f931ec4216522bff2b4e89cec",
+    "semantic_hash": "f2846a7f931ec4216522bff2b4e89cec"
+  },
+  "backend/src/main/java/com/fintech/api/config/SecurityConfigurations.java": {
+    "mtime": 1786123865.6147444,
+    "ast_hash": "7813b0e465a3ea6ad11ead847fd05146",
+    "semantic_hash": "7813b0e465a3ea6ad11ead847fd05146"
+  },
+  "backend/src/main/java/com/fintech/api/config/SecurityFilter.java": {
+    "mtime": 1786123865.6147444,
+    "ast_hash": "b8cbdf2d3e2c519749c7200aca150820",
+    "semantic_hash": "b8cbdf2d3e2c519749c7200aca150820"
+  },
+  "backend/src/main/java/com/fintech/api/config/SecurityUtils.java": {
+    "mtime": 1786123865.6147444,
+    "ast_hash": "c1f2fa05d91b13fa6b27d54936f74ded",
+    "semantic_hash": "c1f2fa05d91b13fa6b27d54936f74ded"
+  },
+  "backend/src/main/java/com/fintech/api/config/TokenService.java": {
+    "mtime": 1786123865.6147444,
+    "ast_hash": "2560b7b0b68e5fa01b26496b8d5ae0a8",
+    "semantic_hash": "2560b7b0b68e5fa01b26496b8d5ae0a8"
+  },
+  "backend/src/main/java/com/fintech/api/config/VisionAiConfig.java": {
+    "mtime": 1786123865.6147444,
+    "ast_hash": "a345bc90e55282c34a8826eec0f1ee84",
+    "semantic_hash": "a345bc90e55282c34a8826eec0f1ee84"
+  },
+  "backend/src/main/java/com/fintech/api/controller/AccountController.java": {
+    "mtime": 1786123865.6150331,
+    "ast_hash": "30017607094f333a077af7bb0f42bb0a",
+    "semantic_hash": "30017607094f333a077af7bb0f42bb0a"
+  },
+  "backend/src/main/java/com/fintech/api/controller/AuthController.java": {
+    "mtime": 1786123865.6150331,
+    "ast_hash": "f790d722a0062759a19163d0a6e7f148",
+    "semantic_hash": "f790d722a0062759a19163d0a6e7f148"
+  },
+  "backend/src/main/java/com/fintech/api/controller/BudgetCycleController.java": {
+    "mtime": 1786123865.6150331,
+    "ast_hash": "98bfd618c0f07551dd379cae6dc96212",
+    "semantic_hash": "98bfd618c0f07551dd379cae6dc96212"
+  },
+  "backend/src/main/java/com/fintech/api/controller/BudgetItemController.java": {
+    "mtime": 1786123865.6150331,
+    "ast_hash": "41added3b602d75920e4bb0767ea1299",
+    "semantic_hash": "41added3b602d75920e4bb0767ea1299"
+  },
+  "backend/src/main/java/com/fintech/api/controller/CategoryController.java": {
+    "mtime": 1786123865.6150331,
+    "ast_hash": "1715dccc2062cfaadff4ec6c20df0d90",
+    "semantic_hash": "1715dccc2062cfaadff4ec6c20df0d90"
+  },
+  "backend/src/main/java/com/fintech/api/controller/DashboardController.java": {
+    "mtime": 1786123865.6150331,
+    "ast_hash": "7f8d8f87eef4377ec52e130b0584e62d",
+    "semantic_hash": "7f8d8f87eef4377ec52e130b0584e62d"
+  },
+  "backend/src/main/java/com/fintech/api/controller/ImportController.java": {
+    "mtime": 1786123865.6150331,
+    "ast_hash": "581d36a4e5c73db366c9fe528bd04b8b",
+    "semantic_hash": "581d36a4e5c73db366c9fe528bd04b8b"
+  },
+  "backend/src/main/java/com/fintech/api/controller/InstallmentGroupController.java": {
+    "mtime": 1786123865.6150331,
+    "ast_hash": "aa5694032b65c7fa59de73d9a14b5210",
+    "semantic_hash": "aa5694032b65c7fa59de73d9a14b5210"
+  },
+  "backend/src/main/java/com/fintech/api/controller/InvitationController.java": {
+    "mtime": 1786123865.6150331,
+    "ast_hash": "faf6c780b127b823ec3599d7e1b8508e",
+    "semantic_hash": "faf6c780b127b823ec3599d7e1b8508e"
+  },
+  "backend/src/main/java/com/fintech/api/controller/InvoiceController.java": {
+    "mtime": 1786123865.6150331,
+    "ast_hash": "c2f6a1bea8fe3a578955f09bfd4f044f",
+    "semantic_hash": "c2f6a1bea8fe3a578955f09bfd4f044f"
+  },
+  "backend/src/main/java/com/fintech/api/controller/MembersController.java": {
+    "mtime": 1786123865.6150331,
+    "ast_hash": "9927c62cb3ab042dc39d86cf3672bec9",
+    "semantic_hash": "9927c62cb3ab042dc39d86cf3672bec9"
+  },
+  "backend/src/main/java/com/fintech/api/controller/RecurrenceRulesController.java": {
+    "mtime": 1786123865.6150331,
+    "ast_hash": "03625eab6d6cf175ac1cca5a936b38d8",
+    "semantic_hash": "03625eab6d6cf175ac1cca5a936b38d8"
+  },
+  "backend/src/main/java/com/fintech/api/controller/TenantController.java": {
+    "mtime": 1786123865.6150331,
+    "ast_hash": "1c47db65707c370f12275a50c7a0699e",
+    "semantic_hash": "1c47db65707c370f12275a50c7a0699e"
+  },
+  "backend/src/main/java/com/fintech/api/controller/TransactionController.java": {
+    "mtime": 1786123865.6150331,
+    "ast_hash": "c4057df6ad08482cbb182fdf4f5ed22d",
+    "semantic_hash": "c4057df6ad08482cbb182fdf4f5ed22d"
+  },
+  "backend/src/main/java/com/fintech/api/controller/TransferController.java": {
+    "mtime": 1786123865.6150331,
+    "ast_hash": "1505a6ee340fe8670e9b1b28a9454ed1",
+    "semantic_hash": "1505a6ee340fe8670e9b1b28a9454ed1"
+  },
+  "backend/src/main/java/com/fintech/api/domain/account/Account.java": {
+    "mtime": 1786123865.6158464,
+    "ast_hash": "5c6c1388948a715e9f7336c7f10b863b",
+    "semantic_hash": "5c6c1388948a715e9f7336c7f10b863b"
+  },
+  "backend/src/main/java/com/fintech/api/domain/account/CreditCardDetails.java": {
+    "mtime": 1786123865.6159153,
+    "ast_hash": "1755300955317a04b747ea56b8855a36",
+    "semantic_hash": "1755300955317a04b747ea56b8855a36"
+  },
+  "backend/src/main/java/com/fintech/api/domain/budget/BudgetCycle.java": {
+    "mtime": 1786123865.6159153,
+    "ast_hash": "53cf20600f833c2c5b10de9997fc2619",
+    "semantic_hash": "53cf20600f833c2c5b10de9997fc2619"
+  },
+  "backend/src/main/java/com/fintech/api/domain/budget/BudgetItem.java": {
+    "mtime": 1786123865.6160645,
+    "ast_hash": "3eee4bb1cc1ff07f169154fa95aa35b9",
+    "semantic_hash": "3eee4bb1cc1ff07f169154fa95aa35b9"
+  },
+  "backend/src/main/java/com/fintech/api/domain/category/Category.java": {
+    "mtime": 1786123865.6160645,
+    "ast_hash": "bc2d0581a022721a5a35eec9a4a746dc",
+    "semantic_hash": "bc2d0581a022721a5a35eec9a4a746dc"
+  },
+  "backend/src/main/java/com/fintech/api/domain/category/CategoryTaxonomy.java": {
+    "mtime": 1786123865.6162117,
+    "ast_hash": "9fca6c413de549489ce5bae4bae1d5c0",
+    "semantic_hash": "9fca6c413de549489ce5bae4bae1d5c0"
+  },
+  "backend/src/main/java/com/fintech/api/domain/category/CategoryTemplateNode.java": {
+    "mtime": 1786123865.6162117,
+    "ast_hash": "695652d9e07b2c6d97f3e0d81677d1e6",
+    "semantic_hash": "695652d9e07b2c6d97f3e0d81677d1e6"
+  },
+  "backend/src/main/java/com/fintech/api/domain/enums/AccountType.java": {
+    "mtime": 1786123865.6162117,
+    "ast_hash": "64edcc6e8a00a306c392cdd6e4d1e304",
+    "semantic_hash": "64edcc6e8a00a306c392cdd6e4d1e304"
+  },
+  "backend/src/main/java/com/fintech/api/domain/enums/BudgetCycleStatus.java": {
+    "mtime": 1786123865.616357,
+    "ast_hash": "47d69de1507926baf0ee395d63956b39",
+    "semantic_hash": "47d69de1507926baf0ee395d63956b39"
+  },
+  "backend/src/main/java/com/fintech/api/domain/enums/BudgetItemSource.java": {
+    "mtime": 1786123865.616357,
+    "ast_hash": "3dd4fae3b3802c7475ba31f50a053b5b",
+    "semantic_hash": "3dd4fae3b3802c7475ba31f50a053b5b"
+  },
+  "backend/src/main/java/com/fintech/api/domain/enums/BudgetItemStatus.java": {
+    "mtime": 1786123865.616357,
+    "ast_hash": "c670af78bb9dcfd52d5d6a1a58f33c86",
+    "semantic_hash": "c670af78bb9dcfd52d5d6a1a58f33c86"
+  },
+  "backend/src/main/java/com/fintech/api/domain/enums/CardBrand.java": {
+    "mtime": 1786123865.616357,
+    "ast_hash": "0f6dea3fed2118adedad32bda9c17241",
+    "semantic_hash": "0f6dea3fed2118adedad32bda9c17241"
+  },
+  "backend/src/main/java/com/fintech/api/domain/enums/DeleteInstallmentScope.java": {
+    "mtime": 1786123865.616357,
+    "ast_hash": "ee92112f253fe487230577767ca79db7",
+    "semantic_hash": "ee92112f253fe487230577767ca79db7"
+  },
+  "backend/src/main/java/com/fintech/api/domain/enums/ImportBatchStatus.java": {
+    "mtime": 1786123865.616357,
+    "ast_hash": "7e3b989e470836c5d6bd365e6df55a97",
+    "semantic_hash": "7e3b989e470836c5d6bd365e6df55a97"
+  },
+  "backend/src/main/java/com/fintech/api/domain/enums/ImportMode.java": {
+    "mtime": 1786123865.616357,
+    "ast_hash": "640ea14cb2304b99588fc2971e438d69",
+    "semantic_hash": "640ea14cb2304b99588fc2971e438d69"
+  },
+  "backend/src/main/java/com/fintech/api/domain/enums/ImportSourceType.java": {
+    "mtime": 1786123865.616357,
+    "ast_hash": "29be81bc60997611b1920887e4e965f8",
+    "semantic_hash": "29be81bc60997611b1920887e4e965f8"
+  },
+  "backend/src/main/java/com/fintech/api/domain/enums/InvitationStatus.java": {
+    "mtime": 1786123865.616357,
+    "ast_hash": "cb927f5e9fba1a626add4350190a686f",
+    "semantic_hash": "cb927f5e9fba1a626add4350190a686f"
+  },
+  "backend/src/main/java/com/fintech/api/domain/enums/InvoiceStatus.java": {
+    "mtime": 1786123865.616357,
+    "ast_hash": "6c6839ef9dbfb0dba22e6104d2526ba7",
+    "semantic_hash": "6c6839ef9dbfb0dba22e6104d2526ba7"
+  },
+  "backend/src/main/java/com/fintech/api/domain/enums/RecurrenceStatus.java": {
+    "mtime": 1786123865.616357,
+    "ast_hash": "649ef9e0c956d653cf33688c5756347c",
+    "semantic_hash": "649ef9e0c956d653cf33688c5756347c"
+  },
+  "backend/src/main/java/com/fintech/api/domain/enums/StagedTransactionStatus.java": {
+    "mtime": 1786123865.616357,
+    "ast_hash": "3fade30f60bb11b60bde364f73cf3aeb",
+    "semantic_hash": "3fade30f60bb11b60bde364f73cf3aeb"
+  },
+  "backend/src/main/java/com/fintech/api/domain/enums/TransactionStatus.java": {
+    "mtime": 1786123865.616357,
+    "ast_hash": "0186d2a9c55fbb8ac89c2aa7f909a57b",
+    "semantic_hash": "0186d2a9c55fbb8ac89c2aa7f909a57b"
+  },
+  "backend/src/main/java/com/fintech/api/domain/enums/TransactionType.java": {
+    "mtime": 1786123865.616357,
+    "ast_hash": "da15fabd8832e488016df574e385a6bd",
+    "semantic_hash": "da15fabd8832e488016df574e385a6bd"
+  },
+  "backend/src/main/java/com/fintech/api/domain/enums/UserRole.java": {
+    "mtime": 1786123865.616357,
+    "ast_hash": "39fd76733817c37c78c5cf55d952e172",
+    "semantic_hash": "39fd76733817c37c78c5cf55d952e172"
+  },
+  "backend/src/main/java/com/fintech/api/domain/imports/ImportBatch.java": {
+    "mtime": 1786354270.3893294,
+    "ast_hash": "46c32a729904aa370d61736e8661089a",
+    "semantic_hash": "46c32a729904aa370d61736e8661089a"
+  },
+  "backend/src/main/java/com/fintech/api/domain/imports/StagedFieldValue.java": {
+    "mtime": 1786123865.616942,
+    "ast_hash": "3782b85e7cc8fae739f9f58bd9807d3f",
+    "semantic_hash": "3782b85e7cc8fae739f9f58bd9807d3f"
+  },
+  "backend/src/main/java/com/fintech/api/domain/imports/StagedTransaction.java": {
+    "mtime": 1786123865.616942,
+    "ast_hash": "bc39779ecb7c1c0eb2857f42d9b1f5df",
+    "semantic_hash": "bc39779ecb7c1c0eb2857f42d9b1f5df"
+  },
+  "backend/src/main/java/com/fintech/api/domain/installment/InstallmentGroup.java": {
+    "mtime": 1786123865.616942,
+    "ast_hash": "554ba6df9f569b058644de07dea38d20",
+    "semantic_hash": "554ba6df9f569b058644de07dea38d20"
+  },
+  "backend/src/main/java/com/fintech/api/domain/invitation/Invitation.java": {
+    "mtime": 1786123865.616942,
+    "ast_hash": "ba9086be85e81b3dc9127ed5bab5dadb",
+    "semantic_hash": "ba9086be85e81b3dc9127ed5bab5dadb"
+  },
+  "backend/src/main/java/com/fintech/api/domain/invoice/Invoice.java": {
+    "mtime": 1786123865.617033,
+    "ast_hash": "cf6f970bd0673c297d6f12b2515bbcc7",
+    "semantic_hash": "cf6f970bd0673c297d6f12b2515bbcc7"
+  },
+  "backend/src/main/java/com/fintech/api/domain/recurrence/RecurrenceException.java": {
+    "mtime": 1786123865.617033,
+    "ast_hash": "9e7f6f60e0fa9ab6d60964ca63ab35f7",
+    "semantic_hash": "9e7f6f60e0fa9ab6d60964ca63ab35f7"
+  },
+  "backend/src/main/java/com/fintech/api/domain/recurrence/RecurrenceRule.java": {
+    "mtime": 1786123865.617298,
+    "ast_hash": "0e8345381cd65e8cff97582c3902212c",
+    "semantic_hash": "0e8345381cd65e8cff97582c3902212c"
+  },
+  "backend/src/main/java/com/fintech/api/domain/tenant/Tenant.java": {
+    "mtime": 1786123865.617298,
+    "ast_hash": "959ab5991ff260aab5569209341e2357",
+    "semantic_hash": "959ab5991ff260aab5569209341e2357"
+  },
+  "backend/src/main/java/com/fintech/api/domain/transaction/Transaction.java": {
+    "mtime": 1786123865.617298,
+    "ast_hash": "844b9259cd2198495b6cc26e30921b59",
+    "semantic_hash": "844b9259cd2198495b6cc26e30921b59"
+  },
+  "backend/src/main/java/com/fintech/api/domain/user/User.java": {
+    "mtime": 1786123865.617298,
+    "ast_hash": "506da1ac072252cd4f64f7c0b9a4f656",
+    "semantic_hash": "506da1ac072252cd4f64f7c0b9a4f656"
+  },
+  "backend/src/main/java/com/fintech/api/dto/AcceptInviteDTO.java": {
+    "mtime": 1786123865.617298,
+    "ast_hash": "d7ce666c80d2a85ff5b7b7ef5c376ac6",
+    "semantic_hash": "d7ce666c80d2a85ff5b7b7ef5c376ac6"
+  },
+  "backend/src/main/java/com/fintech/api/dto/CreateInvitationDTO.java": {
+    "mtime": 1786123865.6176088,
+    "ast_hash": "39f28e5527ecba2a3ed51e9df6d969bb",
+    "semantic_hash": "39f28e5527ecba2a3ed51e9df6d969bb"
+  },
+  "backend/src/main/java/com/fintech/api/dto/InvitationInfoDTO.java": {
+    "mtime": 1786123865.6176088,
+    "ast_hash": "5f6bb20a0ead56d07d4f2a32f125de20",
+    "semantic_hash": "5f6bb20a0ead56d07d4f2a32f125de20"
+  },
+  "backend/src/main/java/com/fintech/api/dto/InvitationResponseDTO.java": {
+    "mtime": 1786123865.6176088,
+    "ast_hash": "91222bf82f5e5d8ecf167f842f93dae0",
+    "semantic_hash": "91222bf82f5e5d8ecf167f842f93dae0"
+  },
+  "backend/src/main/java/com/fintech/api/dto/InvitationSummaryDTO.java": {
+    "mtime": 1786123865.6176088,
+    "ast_hash": "559064fa2475971254848a04d0c98c5b",
+    "semantic_hash": "559064fa2475971254848a04d0c98c5b"
+  },
+  "backend/src/main/java/com/fintech/api/dto/LoginDTO.java": {
+    "mtime": 1786123865.6176088,
+    "ast_hash": "78df489faad9bb2f47c55109ef7cb172",
+    "semantic_hash": "78df489faad9bb2f47c55109ef7cb172"
+  },
+  "backend/src/main/java/com/fintech/api/dto/LoginResponseDTO.java": {
+    "mtime": 1786123865.6176088,
+    "ast_hash": "531a6bf36c0c846774c88f482c7c310a",
+    "semantic_hash": "531a6bf36c0c846774c88f482c7c310a"
+  },
+  "backend/src/main/java/com/fintech/api/dto/MemberDTO.java": {
+    "mtime": 1786123865.6176088,
+    "ast_hash": "0968106c2cd5acb4ab57092ae8f706a9",
+    "semantic_hash": "0968106c2cd5acb4ab57092ae8f706a9"
+  },
+  "backend/src/main/java/com/fintech/api/dto/RegisterResponseDTO.java": {
+    "mtime": 1786123865.6176088,
+    "ast_hash": "7d0794600a06c46f94aca2a5e60bc5bf",
+    "semantic_hash": "7d0794600a06c46f94aca2a5e60bc5bf"
+  },
+  "backend/src/main/java/com/fintech/api/dto/TenantRegistrationDTO.java": {
+    "mtime": 1786123865.6176088,
+    "ast_hash": "1082b154c547c4541e79c50a8e8970ae",
+    "semantic_hash": "1082b154c547c4541e79c50a8e8970ae"
+  },
+  "backend/src/main/java/com/fintech/api/dto/account/AccountCreateDTO.java": {
+    "mtime": 1786123865.6176088,
+    "ast_hash": "0592df5a7847b72cd8ce099159598a75",
+    "semantic_hash": "0592df5a7847b72cd8ce099159598a75"
+  },
+  "backend/src/main/java/com/fintech/api/dto/account/AccountResponseDTO.java": {
+    "mtime": 1786123865.617959,
+    "ast_hash": "a53f8b9858c65681d668dbb8ca4015cd",
+    "semantic_hash": "a53f8b9858c65681d668dbb8ca4015cd"
+  },
+  "backend/src/main/java/com/fintech/api/dto/account/AccountUpdateDTO.java": {
+    "mtime": 1786123865.617959,
+    "ast_hash": "593f6476793bb134f4eb242917467556",
+    "semantic_hash": "593f6476793bb134f4eb242917467556"
+  },
+  "backend/src/main/java/com/fintech/api/dto/account/CreditCardDetailsDTO.java": {
+    "mtime": 1786123865.617959,
+    "ast_hash": "56fc0ca0697feb7d9c06c88704d54de0",
+    "semantic_hash": "56fc0ca0697feb7d9c06c88704d54de0"
+  },
+  "backend/src/main/java/com/fintech/api/dto/account/CreditCardDetailsResponseDTO.java": {
+    "mtime": 1786123865.617959,
+    "ast_hash": "5bf2a32498d7d998d0ad0fba976e2a99",
+    "semantic_hash": "5bf2a32498d7d998d0ad0fba976e2a99"
+  },
+  "backend/src/main/java/com/fintech/api/dto/budget/BudgetCycleOpenRequest.java": {
+    "mtime": 1786123865.617959,
+    "ast_hash": "609f43aedab6f2ef50249add3cac7bf6",
+    "semantic_hash": "609f43aedab6f2ef50249add3cac7bf6"
+  },
+  "backend/src/main/java/com/fintech/api/dto/budget/BudgetCyclePageResponse.java": {
+    "mtime": 1786123865.6181672,
+    "ast_hash": "2c860bccd06dcdd3c15ac5907508ecb8",
+    "semantic_hash": "2c860bccd06dcdd3c15ac5907508ecb8"
+  },
+  "backend/src/main/java/com/fintech/api/dto/budget/BudgetCyclePreviewDTO.java": {
+    "mtime": 1786123865.6181672,
+    "ast_hash": "6688c1c9cd8ae4881144676beecbf71e",
+    "semantic_hash": "6688c1c9cd8ae4881144676beecbf71e"
+  },
+  "backend/src/main/java/com/fintech/api/dto/budget/BudgetCycleResponseDTO.java": {
+    "mtime": 1786123865.6181672,
+    "ast_hash": "c78f769ee8dd48f872c67d3ff6526325",
+    "semantic_hash": "c78f769ee8dd48f872c67d3ff6526325"
+  },
+  "backend/src/main/java/com/fintech/api/dto/budget/BudgetCycleSummaryDTO.java": {
+    "mtime": 1786123865.6181672,
+    "ast_hash": "5392929847336d614f27b25b10877b37",
+    "semantic_hash": "5392929847336d614f27b25b10877b37"
+  },
+  "backend/src/main/java/com/fintech/api/dto/budget/BudgetItemCreateRequest.java": {
+    "mtime": 1786123865.6181672,
+    "ast_hash": "5e3421552746432d205e4e0f641638cf",
+    "semantic_hash": "5e3421552746432d205e4e0f641638cf"
+  },
+  "backend/src/main/java/com/fintech/api/dto/budget/BudgetItemLinkRequest.java": {
+    "mtime": 1786123865.6181672,
+    "ast_hash": "396052b37a5f7ec69fdd6d7a9b4dd4db",
+    "semantic_hash": "396052b37a5f7ec69fdd6d7a9b4dd4db"
+  },
+  "backend/src/main/java/com/fintech/api/dto/budget/BudgetItemRealizeRequest.java": {
+    "mtime": 1786123865.6181672,
+    "ast_hash": "5fe2b88b5817d6b12c4acefd292a35e0",
+    "semantic_hash": "5fe2b88b5817d6b12c4acefd292a35e0"
+  },
+  "backend/src/main/java/com/fintech/api/dto/budget/BudgetItemResponseDTO.java": {
+    "mtime": 1786123865.6181672,
+    "ast_hash": "7e7b5f54497562dabc5111fa5c16023b",
+    "semantic_hash": "7e7b5f54497562dabc5111fa5c16023b"
+  },
+  "backend/src/main/java/com/fintech/api/dto/budget/BudgetItemUpdateRequest.java": {
+    "mtime": 1786123865.6181672,
+    "ast_hash": "c0c76c1bf8878b830ede55765671f5df",
+    "semantic_hash": "c0c76c1bf8878b830ede55765671f5df"
+  },
+  "backend/src/main/java/com/fintech/api/dto/budget/InstallmentItemPreviewDTO.java": {
+    "mtime": 1786123865.6181672,
+    "ast_hash": "378b701d9602babad255d9a221f52dd6",
+    "semantic_hash": "378b701d9602babad255d9a221f52dd6"
+  },
+  "backend/src/main/java/com/fintech/api/dto/budget/RecurringItemPreviewDTO.java": {
+    "mtime": 1786123865.6181672,
+    "ast_hash": "42fb72468607ae8214942b2f00a2f8d2",
+    "semantic_hash": "42fb72468607ae8214942b2f00a2f8d2"
+  },
+  "backend/src/main/java/com/fintech/api/dto/budget/TenantSettingsPatchRequest.java": {
+    "mtime": 1786123865.6181672,
+    "ast_hash": "4b97be4a43f2a3359e8ee9d0676d3511",
+    "semantic_hash": "4b97be4a43f2a3359e8ee9d0676d3511"
+  },
+  "backend/src/main/java/com/fintech/api/dto/category/CategoryArchiveRequestDTO.java": {
+    "mtime": 1786123865.6181672,
+    "ast_hash": "72385469fd04b3c87c019cb8be502c4e",
+    "semantic_hash": "72385469fd04b3c87c019cb8be502c4e"
+  },
+  "backend/src/main/java/com/fintech/api/dto/category/CategoryCreateDTO.java": {
+    "mtime": 1786123865.6186008,
+    "ast_hash": "92cdbdf5edc0147c187a519de5f7414c",
+    "semantic_hash": "92cdbdf5edc0147c187a519de5f7414c"
+  },
+  "backend/src/main/java/com/fintech/api/dto/category/CategoryResponseDTO.java": {
+    "mtime": 1786123865.6186008,
+    "ast_hash": "b66fbde91f268f086ceb50baf03b6d66",
+    "semantic_hash": "b66fbde91f268f086ceb50baf03b6d66"
+  },
+  "backend/src/main/java/com/fintech/api/dto/category/CategoryUpdateDTO.java": {
+    "mtime": 1786123865.6186008,
+    "ast_hash": "ec06c8afef3d4cff851acd405cf2f169",
+    "semantic_hash": "ec06c8afef3d4cff851acd405cf2f169"
+  },
+  "backend/src/main/java/com/fintech/api/dto/dashboard/DashboardSummaryDTO.java": {
+    "mtime": 1786123865.6186008,
+    "ast_hash": "e16fea8f51b5823ad9c976b22c4bd1de",
+    "semantic_hash": "e16fea8f51b5823ad9c976b22c4bd1de"
+  },
+  "backend/src/main/java/com/fintech/api/dto/imports/ImportBatchResponseDTO.java": {
+    "mtime": 1786123865.6186008,
+    "ast_hash": "7892ac404bed8043df47bf176cfcf596",
+    "semantic_hash": "7892ac404bed8043df47bf176cfcf596"
+  },
+  "backend/src/main/java/com/fintech/api/dto/imports/ImportCommitRequestDTO.java": {
+    "mtime": 1786123865.6188061,
+    "ast_hash": "302b6dac5a1308603ba63eb26cab0ae3",
+    "semantic_hash": "302b6dac5a1308603ba63eb26cab0ae3"
+  },
+  "backend/src/main/java/com/fintech/api/dto/imports/NormalizedBatchDTO.java": {
+    "mtime": 1786354270.3893294,
+    "ast_hash": "58989d67a431990ed123e97704e8dc5b",
+    "semantic_hash": "58989d67a431990ed123e97704e8dc5b"
+  },
+  "backend/src/main/java/com/fintech/api/dto/imports/NormalizedTransactionDTO.java": {
+    "mtime": 1786633307.0707796,
+    "ast_hash": "563f4bfaa63774464c46943c642c62ac",
+    "semantic_hash": "563f4bfaa63774464c46943c642c62ac"
+  },
+  "backend/src/main/java/com/fintech/api/dto/imports/StagedCommitItemDTO.java": {
+    "mtime": 1786123865.6188061,
+    "ast_hash": "a206fb921a601d7d4bfd2b2436203268",
+    "semantic_hash": "a206fb921a601d7d4bfd2b2436203268"
+  },
+  "backend/src/main/java/com/fintech/api/dto/imports/StagedFieldValueDTO.java": {
+    "mtime": 1786123865.6188061,
+    "ast_hash": "872d38875fe54b166f567de1fee5a88e",
+    "semantic_hash": "872d38875fe54b166f567de1fee5a88e"
+  },
+  "backend/src/main/java/com/fintech/api/dto/imports/StagedPatchDTO.java": {
+    "mtime": 1786123865.6188061,
+    "ast_hash": "383a3f1d6b30055e444c7916746e7025",
+    "semantic_hash": "383a3f1d6b30055e444c7916746e7025"
+  },
+  "backend/src/main/java/com/fintech/api/dto/imports/StagedTransactionResponseDTO.java": {
+    "mtime": 1786123865.6188061,
+    "ast_hash": "a90a0e3ee2fc035dffba82aeae0ea284",
+    "semantic_hash": "a90a0e3ee2fc035dffba82aeae0ea284"
+  },
+  "backend/src/main/java/com/fintech/api/dto/installment/DeleteInstallmentResultDTO.java": {
+    "mtime": 1786123865.6188061,
+    "ast_hash": "eb3cee844c4da5ca46a4efa8061d7523",
+    "semantic_hash": "eb3cee844c4da5ca46a4efa8061d7523"
+  },
+  "backend/src/main/java/com/fintech/api/dto/installment/InstallmentGroupPatchDTO.java": {
+    "mtime": 1786123865.6191785,
+    "ast_hash": "4be0319ff35f1b4b357c001f160d16e7",
+    "semantic_hash": "4be0319ff35f1b4b357c001f160d16e7"
+  },
+  "backend/src/main/java/com/fintech/api/dto/installment/InstallmentGroupResponseDTO.java": {
+    "mtime": 1786123865.6191785,
+    "ast_hash": "c738b20282392d9d91d2562ce63e401d",
+    "semantic_hash": "c738b20282392d9d91d2562ce63e401d"
+  },
+  "backend/src/main/java/com/fintech/api/dto/invoice/InvoicePayDTO.java": {
+    "mtime": 1786123865.6191785,
+    "ast_hash": "f94b57579eeb964b84f2accad7fd8a64",
+    "semantic_hash": "f94b57579eeb964b84f2accad7fd8a64"
+  },
+  "backend/src/main/java/com/fintech/api/dto/invoice/InvoiceResponseDTO.java": {
+    "mtime": 1786123865.6193736,
+    "ast_hash": "7c9fb0f99ef81d7d239c81ea76f1000d",
+    "semantic_hash": "7c9fb0f99ef81d7d239c81ea76f1000d"
+  },
+  "backend/src/main/java/com/fintech/api/dto/recurrence/ConfirmOccurrenceDTO.java": {
+    "mtime": 1786123865.6193736,
+    "ast_hash": "4f5a2cf10c5337aa004fa49a7c2aa34a",
+    "semantic_hash": "4f5a2cf10c5337aa004fa49a7c2aa34a"
+  },
+  "backend/src/main/java/com/fintech/api/dto/recurrence/RecurrenceRuleCreateDTO.java": {
+    "mtime": 1786123865.6194854,
+    "ast_hash": "5b8b8837975fbca8cf3642631654644d",
+    "semantic_hash": "5b8b8837975fbca8cf3642631654644d"
+  },
+  "backend/src/main/java/com/fintech/api/dto/recurrence/RecurrenceRulePatchDTO.java": {
+    "mtime": 1786123865.6194854,
+    "ast_hash": "98cc9376c014aa07c378f0e114648f33",
+    "semantic_hash": "98cc9376c014aa07c378f0e114648f33"
+  },
+  "backend/src/main/java/com/fintech/api/dto/recurrence/RecurrenceRuleResponseDTO.java": {
+    "mtime": 1786123865.6194854,
+    "ast_hash": "5001d295951b6f07f17c5b50f0bf0b23",
+    "semantic_hash": "5001d295951b6f07f17c5b50f0bf0b23"
+  },
+  "backend/src/main/java/com/fintech/api/dto/recurrence/RruleValidator.java": {
+    "mtime": 1786123865.6194854,
+    "ast_hash": "746794fc8ca022e329a335b9c9391840",
+    "semantic_hash": "746794fc8ca022e329a335b9c9391840"
+  },
+  "backend/src/main/java/com/fintech/api/dto/recurrence/ValidRrule.java": {
+    "mtime": 1786123865.6194854,
+    "ast_hash": "5afc949faa82cdda690e2cfb1794c77a",
+    "semantic_hash": "5afc949faa82cdda690e2cfb1794c77a"
+  },
+  "backend/src/main/java/com/fintech/api/dto/transaction/TransactionRequestDTO.java": {
+    "mtime": 1786123865.6194854,
+    "ast_hash": "18d978fbae5ac51160d8e3eb94c125ad",
+    "semantic_hash": "18d978fbae5ac51160d8e3eb94c125ad"
+  },
+  "backend/src/main/java/com/fintech/api/dto/transaction/TransactionResponseDTO.java": {
+    "mtime": 1786123865.6197467,
+    "ast_hash": "732b12172a34e65e2247c240efbad25b",
+    "semantic_hash": "732b12172a34e65e2247c240efbad25b"
+  },
+  "backend/src/main/java/com/fintech/api/dto/transaction/TransactionUpdateDTO.java": {
+    "mtime": 1786123865.6197467,
+    "ast_hash": "0c0d6219222371717c2e98c1890a436c",
+    "semantic_hash": "0c0d6219222371717c2e98c1890a436c"
+  },
+  "backend/src/main/java/com/fintech/api/dto/transfer/TransferRequestDTO.java": {
+    "mtime": 1786123865.6197467,
+    "ast_hash": "6d9c0d06676cd7c20d27fd90cc7f597b",
+    "semantic_hash": "6d9c0d06676cd7c20d27fd90cc7f597b"
+  },
+  "backend/src/main/java/com/fintech/api/dto/transfer/TransferResponseDTO.java": {
+    "mtime": 1786123865.61991,
+    "ast_hash": "9d79f256c426e2e8625685af26ac1415",
+    "semantic_hash": "9d79f256c426e2e8625685af26ac1415"
+  },
+  "backend/src/main/java/com/fintech/api/exception/BusinessConflictException.java": {
+    "mtime": 1786123865.61991,
+    "ast_hash": "63dd51982ab2b239f6f0339802c3a530",
+    "semantic_hash": "63dd51982ab2b239f6f0339802c3a530"
+  },
+  "backend/src/main/java/com/fintech/api/exception/BusinessException.java": {
+    "mtime": 1786123865.6200113,
+    "ast_hash": "2d591737f64847a8dc421d39d1cec0db",
+    "semantic_hash": "2d591737f64847a8dc421d39d1cec0db"
+  },
+  "backend/src/main/java/com/fintech/api/exception/CategoryHasTransactionsException.java": {
+    "mtime": 1786123865.6200113,
+    "ast_hash": "8de057a04bed77389962b5bc370232b6",
+    "semantic_hash": "8de057a04bed77389962b5bc370232b6"
+  },
+  "backend/src/main/java/com/fintech/api/exception/DuplicateImportException.java": {
+    "mtime": 1786123865.6200113,
+    "ast_hash": "f0e6a31ace39c881c4b595eed9c4b374",
+    "semantic_hash": "f0e6a31ace39c881c4b595eed9c4b374"
+  },
+  "backend/src/main/java/com/fintech/api/exception/EntityNotFoundException.java": {
+    "mtime": 1786123865.6200113,
+    "ast_hash": "ae1d6c210e3de61f1ed8f6c9042bd232",
+    "semantic_hash": "ae1d6c210e3de61f1ed8f6c9042bd232"
+  },
+  "backend/src/main/java/com/fintech/api/exception/GlobalExceptionHandler.java": {
+    "mtime": 1786123865.620033,
+    "ast_hash": "440a1b3eeddd3f2593a4552e796dd0a4",
+    "semantic_hash": "440a1b3eeddd3f2593a4552e796dd0a4"
+  },
+  "backend/src/main/java/com/fintech/api/exception/InviteAlreadyUsedException.java": {
+    "mtime": 1786123865.620033,
+    "ast_hash": "8d41a89ff5806566476ff8114c88e074",
+    "semantic_hash": "8d41a89ff5806566476ff8114c88e074"
+  },
+  "backend/src/main/java/com/fintech/api/exception/InviteExpiredException.java": {
+    "mtime": 1786123865.620033,
+    "ast_hash": "3e27309ff44bd9ab7d505780c1623fb1",
+    "semantic_hash": "3e27309ff44bd9ab7d505780c1623fb1"
+  },
+  "backend/src/main/java/com/fintech/api/repository/AccountRepository.java": {
+    "mtime": 1786123865.620033,
+    "ast_hash": "66e895a51c76cb721be1fe2558c638dd",
+    "semantic_hash": "66e895a51c76cb721be1fe2558c638dd"
+  },
+  "backend/src/main/java/com/fintech/api/repository/BudgetCycleRepository.java": {
+    "mtime": 1786123865.6204526,
+    "ast_hash": "5e7e2d70747ddd2ca13cca2a52c48741",
+    "semantic_hash": "5e7e2d70747ddd2ca13cca2a52c48741"
+  },
+  "backend/src/main/java/com/fintech/api/repository/BudgetItemRepository.java": {
+    "mtime": 1786123865.6204526,
+    "ast_hash": "76a8ccbe3439b272c120513c05fc7806",
+    "semantic_hash": "76a8ccbe3439b272c120513c05fc7806"
+  },
+  "backend/src/main/java/com/fintech/api/repository/CategoryRepository.java": {
+    "mtime": 1786123865.6204526,
+    "ast_hash": "a47e95962d722a16529b130755f3bf95",
+    "semantic_hash": "a47e95962d722a16529b130755f3bf95"
+  },
+  "backend/src/main/java/com/fintech/api/repository/CreditCardDetailsRepository.java": {
+    "mtime": 1786123865.6204526,
+    "ast_hash": "ba7ea6665a982b9bae64f1c2f9b78760",
+    "semantic_hash": "ba7ea6665a982b9bae64f1c2f9b78760"
+  },
+  "backend/src/main/java/com/fintech/api/repository/ImportBatchRepository.java": {
+    "mtime": 1786123865.6204526,
+    "ast_hash": "c6c079a9838fdd4ca0658a0e634978d1",
+    "semantic_hash": "c6c079a9838fdd4ca0658a0e634978d1"
+  },
+  "backend/src/main/java/com/fintech/api/repository/InstallmentGroupRepository.java": {
+    "mtime": 1786123865.6204526,
+    "ast_hash": "6da0ad478f225c1c19646ea2e0864eae",
+    "semantic_hash": "6da0ad478f225c1c19646ea2e0864eae"
+  },
+  "backend/src/main/java/com/fintech/api/repository/InvitationRepository.java": {
+    "mtime": 1786123865.6204526,
+    "ast_hash": "1a856828205117b4eb39fe290791b53d",
+    "semantic_hash": "1a856828205117b4eb39fe290791b53d"
+  },
+  "backend/src/main/java/com/fintech/api/repository/InvoiceRepository.java": {
+    "mtime": 1786123865.6204526,
+    "ast_hash": "6784dc7aa6fdff94f0404a692c810ed8",
+    "semantic_hash": "6784dc7aa6fdff94f0404a692c810ed8"
+  },
+  "backend/src/main/java/com/fintech/api/repository/RecurrenceExceptionRepository.java": {
+    "mtime": 1786123865.6204526,
+    "ast_hash": "939ff700f9ba537883f9e1035ad61eb0",
+    "semantic_hash": "939ff700f9ba537883f9e1035ad61eb0"
+  },
+  "backend/src/main/java/com/fintech/api/repository/RecurrenceRuleRepository.java": {
+    "mtime": 1786123865.6204526,
+    "ast_hash": "898b8a65213799fd891994f3db61d38e",
+    "semantic_hash": "898b8a65213799fd891994f3db61d38e"
+  },
+  "backend/src/main/java/com/fintech/api/repository/StagedTransactionRepository.java": {
+    "mtime": 1786123865.6204526,
+    "ast_hash": "5e47210fde326266d7a1a05ee4c3a1d4",
+    "semantic_hash": "5e47210fde326266d7a1a05ee4c3a1d4"
+  },
+  "backend/src/main/java/com/fintech/api/repository/TenantRepository.java": {
+    "mtime": 1786123865.6204526,
+    "ast_hash": "56664ecb1651a0e1d8522aac95a3381f",
+    "semantic_hash": "56664ecb1651a0e1d8522aac95a3381f"
+  },
+  "backend/src/main/java/com/fintech/api/repository/TransactionRepository.java": {
+    "mtime": 1786123865.6204526,
+    "ast_hash": "516183c0e9e92889e77cfabbeaf9863e",
+    "semantic_hash": "516183c0e9e92889e77cfabbeaf9863e"
+  },
+  "backend/src/main/java/com/fintech/api/repository/UserRepository.java": {
+    "mtime": 1786123865.6204526,
+    "ast_hash": "5d974b276b4210f875fa6850e32cd504",
+    "semantic_hash": "5d974b276b4210f875fa6850e32cd504"
+  },
+  "backend/src/main/java/com/fintech/api/service/AccountService.java": {
+    "mtime": 1786123865.6210332,
+    "ast_hash": "7549ad2ab84fa4c520070b058f591a7f",
+    "semantic_hash": "7549ad2ab84fa4c520070b058f591a7f"
+  },
+  "backend/src/main/java/com/fintech/api/service/BudgetCycleService.java": {
+    "mtime": 1786123865.6210332,
+    "ast_hash": "fc76ab4c93e21cf7886fe96a7b3a0668",
+    "semantic_hash": "fc76ab4c93e21cf7886fe96a7b3a0668"
+  },
+  "backend/src/main/java/com/fintech/api/service/BudgetItemService.java": {
+    "mtime": 1786123865.6210332,
+    "ast_hash": "27ab090e68e2f94e93f89f93b76d99ae",
+    "semantic_hash": "27ab090e68e2f94e93f89f93b76d99ae"
+  },
+  "backend/src/main/java/com/fintech/api/service/BudgetSummaryService.java": {
+    "mtime": 1786123865.6210332,
+    "ast_hash": "234b28da81074286670952ec54252503",
+    "semantic_hash": "234b28da81074286670952ec54252503"
+  },
+  "backend/src/main/java/com/fintech/api/service/CategoryService.java": {
+    "mtime": 1786123865.6210332,
+    "ast_hash": "33b3373b72cddbcc922cf8cece3bf58b",
+    "semantic_hash": "33b3373b72cddbcc922cf8cece3bf58b"
+  },
+  "backend/src/main/java/com/fintech/api/service/DashboardService.java": {
+    "mtime": 1786123865.6210332,
+    "ast_hash": "b342080808ddac63dfca48906fabb972",
+    "semantic_hash": "b342080808ddac63dfca48906fabb972"
+  },
+  "backend/src/main/java/com/fintech/api/service/DefaultCategorySeeder.java": {
+    "mtime": 1786123865.6210332,
+    "ast_hash": "d5566c6d01199312d7941b910a629e8d",
+    "semantic_hash": "d5566c6d01199312d7941b910a629e8d"
+  },
+  "backend/src/main/java/com/fintech/api/service/InstallmentGroupService.java": {
+    "mtime": 1786123865.6210332,
+    "ast_hash": "85a4861da0c53b9ca16ed061796eb5a1",
+    "semantic_hash": "85a4861da0c53b9ca16ed061796eb5a1"
+  },
+  "backend/src/main/java/com/fintech/api/service/InvitationService.java": {
+    "mtime": 1786123865.6210332,
+    "ast_hash": "000bb1a44ea55f37b201d662e4896629",
+    "semantic_hash": "000bb1a44ea55f37b201d662e4896629"
+  },
+  "backend/src/main/java/com/fintech/api/service/InvoiceService.java": {
+    "mtime": 1786123865.6210332,
+    "ast_hash": "cdeaed0f9f9ffc9ac3fd36772a701546",
+    "semantic_hash": "cdeaed0f9f9ffc9ac3fd36772a701546"
+  },
+  "backend/src/main/java/com/fintech/api/service/MembersService.java": {
+    "mtime": 1786123865.6210332,
+    "ast_hash": "faec9f293a4ef19897caa0f0f8bcccbd",
+    "semantic_hash": "faec9f293a4ef19897caa0f0f8bcccbd"
+  },
+  "backend/src/main/java/com/fintech/api/service/RecurrenceRuleService.java": {
+    "mtime": 1786123865.6210332,
+    "ast_hash": "cd1545c8f520b33f9042274b688eae5c",
+    "semantic_hash": "cd1545c8f520b33f9042274b688eae5c"
+  },
+  "backend/src/main/java/com/fintech/api/service/TenantRegistrationService.java": {
+    "mtime": 1786123865.6210332,
+    "ast_hash": "86789cce3e5e5d9aa2a5a588eeac3e94",
+    "semantic_hash": "86789cce3e5e5d9aa2a5a588eeac3e94"
+  },
+  "backend/src/main/java/com/fintech/api/service/TransactionService.java": {
+    "mtime": 1786354270.3893294,
+    "ast_hash": "2688cab6895e1d063356a83d59733a0d",
+    "semantic_hash": "2688cab6895e1d063356a83d59733a0d"
+  },
+  "backend/src/main/java/com/fintech/api/service/imports/CsvExtractor.java": {
+    "mtime": 1786123865.622033,
+    "ast_hash": "c62b57fbac864309fcdf2d06177be1de",
+    "semantic_hash": "c62b57fbac864309fcdf2d06177be1de"
+  },
+  "backend/src/main/java/com/fintech/api/service/imports/ExtractionException.java": {
+    "mtime": 1786123865.6224554,
+    "ast_hash": "f8be7cab761dc844fea494e821a08ac9",
+    "semantic_hash": "f8be7cab761dc844fea494e821a08ac9"
+  },
+  "backend/src/main/java/com/fintech/api/service/imports/ExtractionInput.java": {
+    "mtime": 1786123865.6224554,
+    "ast_hash": "da9d69d91bf2cd6fc7691aeb5ad4eaa4",
+    "semantic_hash": "da9d69d91bf2cd6fc7691aeb5ad4eaa4"
+  },
+  "backend/src/main/java/com/fintech/api/service/imports/ExtractionRouter.java": {
+    "mtime": 1786123865.6224554,
+    "ast_hash": "912231c6cc6c8e7f34ed0dc06d738f8b",
+    "semantic_hash": "912231c6cc6c8e7f34ed0dc06d738f8b"
+  },
+  "backend/src/main/java/com/fintech/api/service/imports/ImportService.java": {
+    "mtime": 1786633307.0717795,
+    "ast_hash": "9d3ee721a042f74cba1d05591e66db55",
+    "semantic_hash": "9d3ee721a042f74cba1d05591e66db55"
+  },
+  "backend/src/main/java/com/fintech/api/service/imports/LlmReceiptExtractionDTO.java": {
+    "mtime": 1786123865.6224554,
+    "ast_hash": "82ded578ad79eadf1c7841d42d7240cf",
+    "semantic_hash": "82ded578ad79eadf1c7841d42d7240cf"
+  },
+  "backend/src/main/java/com/fintech/api/service/imports/OfxExtractor.java": {
+    "mtime": 1786123865.6224554,
+    "ast_hash": "ee9e5cf5774fbeb1953285870bc7304c",
+    "semantic_hash": "ee9e5cf5774fbeb1953285870bc7304c"
+  },
+  "backend/src/main/java/com/fintech/api/service/imports/PdfTextExtractor.java": {
+    "mtime": 1786354270.3903294,
+    "ast_hash": "821dfcf2d867348fc51b6bb4942f4feb",
+    "semantic_hash": "821dfcf2d867348fc51b6bb4942f4feb"
+  },
+  "backend/src/main/java/com/fintech/api/service/imports/TransactionExtractor.java": {
+    "mtime": 1786123865.6224554,
+    "ast_hash": "19cab401d5ee967d02dee2fe9533d6f2",
+    "semantic_hash": "19cab401d5ee967d02dee2fe9533d6f2"
+  },
+  "backend/src/main/java/com/fintech/api/service/imports/VisionExtractor.java": {
+    "mtime": 1786633307.0717795,
+    "ast_hash": "a37c8038640f595365fb5affe3b8a79c",
+    "semantic_hash": "a37c8038640f595365fb5affe3b8a79c"
+  },
+  "backend/src/main/java/com/fintech/api/service/imports/templates/ItauFaturaTemplate.java": {
+    "mtime": 1786571480.598216,
+    "ast_hash": "4ac0ae161f5c958013f0de970f2af09e",
+    "semantic_hash": "4ac0ae161f5c958013f0de970f2af09e"
+  },
+  "backend/src/main/java/com/fintech/api/service/imports/templates/NubankExtratoTemplate.java": {
+    "mtime": 1786123865.6235144,
+    "ast_hash": "173e26f7bc0158166ad73f9e971dd924",
+    "semantic_hash": "173e26f7bc0158166ad73f9e971dd924"
+  },
+  "backend/src/main/java/com/fintech/api/service/imports/templates/PdfBankTemplate.java": {
+    "mtime": 1786354270.3903294,
+    "ast_hash": "c2e19c80fa36637ccae9758c317883c5",
+    "semantic_hash": "c2e19c80fa36637ccae9758c317883c5"
+  },
+  "backend/src/main/java/com/fintech/api/service/imports/vision/GeminiVisionClient.java": {
+    "mtime": 1786633307.0717795,
+    "ast_hash": "73836a1c089a4998d215ece503a54dfa",
+    "semantic_hash": "73836a1c089a4998d215ece503a54dfa"
+  },
+  "backend/src/main/java/com/fintech/api/service/imports/vision/OllamaVisionClient.java": {
+    "mtime": 1786633307.0717795,
+    "ast_hash": "8862a163eb9eb0f9bfa6c7c676fa0910",
+    "semantic_hash": "8862a163eb9eb0f9bfa6c7c676fa0910"
+  },
+  "backend/src/main/java/com/fintech/api/service/imports/vision/VisionModelClient.java": {
+    "mtime": 1786633307.0717795,
+    "ast_hash": "45d7af40db1d2c715c66ac278759a18e",
+    "semantic_hash": "45d7af40db1d2c715c66ac278759a18e"
+  },
+  "backend/src/main/java/com/fintech/api/service/imports/vision/VisionProviderErrorClassifier.java": {
+    "mtime": 1786123865.623766,
+    "ast_hash": "c9c1b0de1e1bd9777d3d8f8752f31208",
+    "semantic_hash": "c9c1b0de1e1bd9777d3d8f8752f31208"
+  },
+  "backend/src/main/java/com/fintech/api/service/imports/vision/VisionProviderUnavailableException.java": {
+    "mtime": 1786123865.623766,
+    "ast_hash": "b685c7a8acc17d7a00b04d544eed5eaa",
+    "semantic_hash": "b685c7a8acc17d7a00b04d544eed5eaa"
+  },
+  "backend/src/main/java/com/fintech/api/service/recurrence/ProjectedOccurrence.java": {
+    "mtime": 1786123865.623766,
+    "ast_hash": "55854006ecad73943651951d29e85e92",
+    "semantic_hash": "55854006ecad73943651951d29e85e92"
+  },
+  "backend/src/main/java/com/fintech/api/service/recurrence/RecurrenceExpander.java": {
+    "mtime": 1786123865.6241035,
+    "ast_hash": "6f4f1f259430cef46640f0a97dfda6fb",
+    "semantic_hash": "6f4f1f259430cef46640f0a97dfda6fb"
+  },
+  "backend/src/main/java/com/fintech/api/service/recurrence/RecurrenceProjectionService.java": {
+    "mtime": 1786123865.6241035,
+    "ast_hash": "300e2d12b9ba8fa71e2d9112b5c176d8",
+    "semantic_hash": "300e2d12b9ba8fa71e2d9112b5c176d8"
+  },
+  "backend/src/test/java/com/fintech/api/FintechApiApplicationTests.java": {
+    "mtime": 1786123865.6264853,
+    "ast_hash": "429341a5253dd6178170f47f0c2472e9",
+    "semantic_hash": "429341a5253dd6178170f47f0c2472e9"
+  },
+  "backend/src/test/java/com/fintech/api/config/LoginRateLimiterTest.java": {
+    "mtime": 1786123865.6265862,
+    "ast_hash": "dd7bf5e6cdd2d3e8fd13a51420c908a2",
+    "semantic_hash": "dd7bf5e6cdd2d3e8fd13a51420c908a2"
+  },
+  "backend/src/test/java/com/fintech/api/config/SecurityFilterTest.java": {
+    "mtime": 1786123865.6266634,
+    "ast_hash": "bb2e20aac650a6a17dcc419074b06b06",
+    "semantic_hash": "bb2e20aac650a6a17dcc419074b06b06"
+  },
+  "backend/src/test/java/com/fintech/api/config/SecurityUtilsTest.java": {
+    "mtime": 1786123865.6266634,
+    "ast_hash": "75e3f3ec32ea2b583058863eae9bcb69",
+    "semantic_hash": "75e3f3ec32ea2b583058863eae9bcb69"
+  },
+  "backend/src/test/java/com/fintech/api/config/TokenServiceTest.java": {
+    "mtime": 1786123865.6266634,
+    "ast_hash": "f59168a8b35597409f1df7b181e0d92c",
+    "semantic_hash": "f59168a8b35597409f1df7b181e0d92c"
+  },
+  "backend/src/test/java/com/fintech/api/controller/AccountControllerTest.java": {
+    "mtime": 1786123865.6266634,
+    "ast_hash": "01f4d950ae7d587d426d4539d502fb2f",
+    "semantic_hash": "01f4d950ae7d587d426d4539d502fb2f"
+  },
+  "backend/src/test/java/com/fintech/api/controller/AuthControllerTest.java": {
+    "mtime": 1786123865.626923,
+    "ast_hash": "11829cd16925e24dacb30f05d7039bf6",
+    "semantic_hash": "11829cd16925e24dacb30f05d7039bf6"
+  },
+  "backend/src/test/java/com/fintech/api/controller/BudgetControllerTest.java": {
+    "mtime": 1786123865.626923,
+    "ast_hash": "325d8557366014f1c4ab338394a1e7bb",
+    "semantic_hash": "325d8557366014f1c4ab338394a1e7bb"
+  },
+  "backend/src/test/java/com/fintech/api/controller/ImportControllerTest.java": {
+    "mtime": 1786354270.3903294,
+    "ast_hash": "2dfe3113132639fcd5a2144986631b76",
+    "semantic_hash": "2dfe3113132639fcd5a2144986631b76"
+  },
+  "backend/src/test/java/com/fintech/api/controller/InvitationControllerTest.java": {
+    "mtime": 1786123865.626923,
+    "ast_hash": "7e7ac3680a189e496b7606665f5811f2",
+    "semantic_hash": "7e7ac3680a189e496b7606665f5811f2"
+  },
+  "backend/src/test/java/com/fintech/api/controller/InvoiceControllerTest.java": {
+    "mtime": 1786123865.6270332,
+    "ast_hash": "2114900193605d657db0bb9bddbb0c9e",
+    "semantic_hash": "2114900193605d657db0bb9bddbb0c9e"
+  },
+  "backend/src/test/java/com/fintech/api/controller/LoginRateLimitBypassTest.java": {
+    "mtime": 1786123865.6270332,
+    "ast_hash": "9c3c7da23060eedab12aa4f998a66798",
+    "semantic_hash": "9c3c7da23060eedab12aa4f998a66798"
+  },
+  "backend/src/test/java/com/fintech/api/controller/MembersControllerTest.java": {
+    "mtime": 1786123865.6270332,
+    "ast_hash": "1421d0134ba91c1d3b4013b64f7e8bfc",
+    "semantic_hash": "1421d0134ba91c1d3b4013b64f7e8bfc"
+  },
+  "backend/src/test/java/com/fintech/api/controller/RecurrenceOccurrenceControllerTest.java": {
+    "mtime": 1786123865.6270332,
+    "ast_hash": "46130c39c8937b5bc7085058b1bd4b1e",
+    "semantic_hash": "46130c39c8937b5bc7085058b1bd4b1e"
+  },
+  "backend/src/test/java/com/fintech/api/controller/RecurrenceRulesControllerTest.java": {
+    "mtime": 1786123865.6270332,
+    "ast_hash": "79ccd69fe164577bd2f856462044d775",
+    "semantic_hash": "79ccd69fe164577bd2f856462044d775"
+  },
+  "backend/src/test/java/com/fintech/api/controller/TenantControllerTest.java": {
+    "mtime": 1786123865.6270332,
+    "ast_hash": "0e53cb4831922d1319d6209e9ca208d0",
+    "semantic_hash": "0e53cb4831922d1319d6209e9ca208d0"
+  },
+  "backend/src/test/java/com/fintech/api/controller/TransactionControllerTest.java": {
+    "mtime": 1786123865.6270332,
+    "ast_hash": "b9a8d0aa15b88bf818f1d800ff76adcc",
+    "semantic_hash": "b9a8d0aa15b88bf818f1d800ff76adcc"
+  },
+  "backend/src/test/java/com/fintech/api/controller/TransferControllerTest.java": {
+    "mtime": 1786123865.6270332,
+    "ast_hash": "4875a54f4060b1a190b22cc807f82499",
+    "semantic_hash": "4875a54f4060b1a190b22cc807f82499"
+  },
+  "backend/src/test/java/com/fintech/api/repository/DashboardAggregatesRepositoryTest.java": {
+    "mtime": 1786123865.6270332,
+    "ast_hash": "ef2a25e41bb8a5ac7e875e2992e6ea5f",
+    "semantic_hash": "ef2a25e41bb8a5ac7e875e2992e6ea5f"
+  },
+  "backend/src/test/java/com/fintech/api/repository/RecurrenceRuleRepositoryTest.java": {
+    "mtime": 1786123865.6278286,
+    "ast_hash": "004a0ecdc68476c3e410df67d1b732e0",
+    "semantic_hash": "004a0ecdc68476c3e410df67d1b732e0"
+  },
+  "backend/src/test/java/com/fintech/api/service/AccountServiceTest.java": {
+    "mtime": 1786123865.6278286,
+    "ast_hash": "8944e32e153f96a13abdaa7330586d11",
+    "semantic_hash": "8944e32e153f96a13abdaa7330586d11"
+  },
+  "backend/src/test/java/com/fintech/api/service/BudgetCycleServiceTest.java": {
+    "mtime": 1786123865.6280096,
+    "ast_hash": "d9ae6620ba21e89d8de80d11fc37ba7d",
+    "semantic_hash": "d9ae6620ba21e89d8de80d11fc37ba7d"
+  },
+  "backend/src/test/java/com/fintech/api/service/BudgetItemServiceTest.java": {
+    "mtime": 1786123865.6280332,
+    "ast_hash": "971aaeaf416301a231b5fcd0aa730e12",
+    "semantic_hash": "971aaeaf416301a231b5fcd0aa730e12"
+  },
+  "backend/src/test/java/com/fintech/api/service/BudgetSummaryServiceTest.java": {
+    "mtime": 1786123865.6280332,
+    "ast_hash": "5f413465101715abe1ea5140d28baaeb",
+    "semantic_hash": "5f413465101715abe1ea5140d28baaeb"
+  },
+  "backend/src/test/java/com/fintech/api/service/CategoryServiceTest.java": {
+    "mtime": 1786123865.6280332,
+    "ast_hash": "0b81e690f6d8c2431c76946a3fe20ec6",
+    "semantic_hash": "0b81e690f6d8c2431c76946a3fe20ec6"
+  },
+  "backend/src/test/java/com/fintech/api/service/DashboardServiceTest.java": {
+    "mtime": 1786123865.6280332,
+    "ast_hash": "cd5e3e637e86fa63e5f4df13d39c9a40",
+    "semantic_hash": "cd5e3e637e86fa63e5f4df13d39c9a40"
+  },
+  "backend/src/test/java/com/fintech/api/service/DefaultCategorySeederTest.java": {
+    "mtime": 1786123865.6280332,
+    "ast_hash": "7dbe3ad35ef7bb17d7467b7d23898f50",
+    "semantic_hash": "7dbe3ad35ef7bb17d7467b7d23898f50"
+  },
+  "backend/src/test/java/com/fintech/api/service/InstallmentGroupServiceTest.java": {
+    "mtime": 1786123865.6280332,
+    "ast_hash": "35e542812d82bbe7bf2dab3d66e82986",
+    "semantic_hash": "35e542812d82bbe7bf2dab3d66e82986"
+  },
+  "backend/src/test/java/com/fintech/api/service/InvitationServiceTest.java": {
+    "mtime": 1786123865.6280332,
+    "ast_hash": "d5a29cdcb65c0a67d474c72f09f07915",
+    "semantic_hash": "d5a29cdcb65c0a67d474c72f09f07915"
+  },
+  "backend/src/test/java/com/fintech/api/service/InvoiceServicePaymentConcurrencyTest.java": {
+    "mtime": 1786123865.6280332,
+    "ast_hash": "483d853224db9c143a7adc043b65330e",
+    "semantic_hash": "483d853224db9c143a7adc043b65330e"
+  },
+  "backend/src/test/java/com/fintech/api/service/InvoiceServiceTest.java": {
+    "mtime": 1786123865.6280332,
+    "ast_hash": "f7c0b275b5ffdcae31354f99d30b06f3",
+    "semantic_hash": "f7c0b275b5ffdcae31354f99d30b06f3"
+  },
+  "backend/src/test/java/com/fintech/api/service/MembersServiceTest.java": {
+    "mtime": 1786123865.6280332,
+    "ast_hash": "af6736f3267391ee2f386cb3cb4714cc",
+    "semantic_hash": "af6736f3267391ee2f386cb3cb4714cc"
+  },
+  "backend/src/test/java/com/fintech/api/service/RecurrenceRuleServiceTest.java": {
+    "mtime": 1786123865.6280332,
+    "ast_hash": "986944406de8235e78d78994b17a25dd",
+    "semantic_hash": "986944406de8235e78d78994b17a25dd"
+  },
+  "backend/src/test/java/com/fintech/api/service/TenantRegistrationServiceTest.java": {
+    "mtime": 1786123865.6280332,
+    "ast_hash": "30d251f1f559456a1acd879c1a5cd418",
+    "semantic_hash": "30d251f1f559456a1acd879c1a5cd418"
+  },
+  "backend/src/test/java/com/fintech/api/service/TransactionProjectionMergeTest.java": {
+    "mtime": 1786123865.629033,
+    "ast_hash": "644f76144beda7fcb017acac6fc6444c",
+    "semantic_hash": "644f76144beda7fcb017acac6fc6444c"
+  },
+  "backend/src/test/java/com/fintech/api/service/TransactionServiceTest.java": {
+    "mtime": 1786354270.3903294,
+    "ast_hash": "554d53d21de6a37645ff8beba0919b99",
+    "semantic_hash": "554d53d21de6a37645ff8beba0919b99"
+  },
+  "backend/src/test/java/com/fintech/api/service/imports/CsvExtractorTest.java": {
+    "mtime": 1786123865.629033,
+    "ast_hash": "2dca2f6aebe79dfca924a29baf15125b",
+    "semantic_hash": "2dca2f6aebe79dfca924a29baf15125b"
+  },
+  "backend/src/test/java/com/fintech/api/service/imports/ExtractionRouterTest.java": {
+    "mtime": 1786123865.6294749,
+    "ast_hash": "2148ac5655a31789bed9402b2c3b9fd8",
+    "semantic_hash": "2148ac5655a31789bed9402b2c3b9fd8"
+  },
+  "backend/src/test/java/com/fintech/api/service/imports/ImportFailureReasonTest.java": {
+    "mtime": 1786633307.0717795,
+    "ast_hash": "bbc07c588640abaf87b0a2811a2a7145",
+    "semantic_hash": "bbc07c588640abaf87b0a2811a2a7145"
+  },
+  "backend/src/test/java/com/fintech/api/service/imports/ImportServiceTest.java": {
+    "mtime": 1786633307.0727797,
+    "ast_hash": "7665a1cb2776aa8d652036b36c2dee03",
+    "semantic_hash": "7665a1cb2776aa8d652036b36c2dee03"
+  },
+  "backend/src/test/java/com/fintech/api/service/imports/OfxExtractorTest.java": {
+    "mtime": 1786123865.6294749,
+    "ast_hash": "8d7b04774522400d68b8caf5b91088ad",
+    "semantic_hash": "8d7b04774522400d68b8caf5b91088ad"
+  },
+  "backend/src/test/java/com/fintech/api/service/imports/PdfTextExtractorTest.java": {
+    "mtime": 1786354270.3913295,
+    "ast_hash": "bfb9871e431058ee303dc3d32e5a3212",
+    "semantic_hash": "bfb9871e431058ee303dc3d32e5a3212"
+  },
+  "backend/src/test/java/com/fintech/api/service/imports/VisionExtractorTest.java": {
+    "mtime": 1786633307.0727797,
+    "ast_hash": "a6702d26f2e302c28fb79c319ff4a059",
+    "semantic_hash": "a6702d26f2e302c28fb79c319ff4a059"
+  },
+  "backend/src/test/java/com/fintech/api/service/imports/templates/ItauFaturaTemplateTest.java": {
+    "mtime": 1786571480.598216,
+    "ast_hash": "91c51d4b6828f6c87c9ea1534c959e84",
+    "semantic_hash": "91c51d4b6828f6c87c9ea1534c959e84"
+  },
+  "backend/src/test/java/com/fintech/api/service/imports/templates/NubankExtratoTemplateTest.java": {
+    "mtime": 1786123865.6300333,
+    "ast_hash": "740422b5ee454e22f1ff8170ba2fbfdb",
+    "semantic_hash": "740422b5ee454e22f1ff8170ba2fbfdb"
+  },
+  "backend/src/test/java/com/fintech/api/service/imports/vision/GeminiVisionClientTest.java": {
+    "mtime": 1786633307.0727797,
+    "ast_hash": "b10914e14f17746d662a5c2eea94c2b0",
+    "semantic_hash": "b10914e14f17746d662a5c2eea94c2b0"
+  },
+  "backend/src/test/java/com/fintech/api/service/imports/vision/OllamaVisionClientTest.java": {
+    "mtime": 1786633307.0727797,
+    "ast_hash": "7c9e03f040b3a4cd0deb939d25baf713",
+    "semantic_hash": "7c9e03f040b3a4cd0deb939d25baf713"
+  },
+  "backend/src/test/java/com/fintech/api/service/imports/vision/VisionModelClientAvailabilityTest.java": {
+    "mtime": 1786123865.6304057,
+    "ast_hash": "c37a8db84e0ef8145cb32ce5b1d2b797",
+    "semantic_hash": "c37a8db84e0ef8145cb32ce5b1d2b797"
+  },
+  "backend/src/test/java/com/fintech/api/service/recurrence/RecurrenceExpanderTest.java": {
+    "mtime": 1786123865.6304057,
+    "ast_hash": "4f3a7390961516bcd788635c150bef23",
+    "semantic_hash": "4f3a7390961516bcd788635c150bef23"
+  },
+  "backend/src/test/java/com/fintech/api/service/recurrence/RecurrenceProjectionServiceTest.java": {
+    "mtime": 1786123865.6306324,
+    "ast_hash": "0aff2b464ca6379479f379078be05c11",
+    "semantic_hash": "0aff2b464ca6379479f379078be05c11"
+  },
+  "frontend/angular.json": {
+    "mtime": 1786123865.6470332,
+    "ast_hash": "36dce75b447ec626e9c09281750264a6",
+    "semantic_hash": "36dce75b447ec626e9c09281750264a6"
+  },
+  "frontend/docker-entrypoint.d/40-app-env.sh": {
+    "mtime": 1786124668.4559221,
+    "ast_hash": "7df94ad9e83a8e9daea8ce66072bf9b9",
+    "semantic_hash": "7df94ad9e83a8e9daea8ce66072bf9b9"
+  },
+  "frontend/orval.config.ts": {
+    "mtime": 1786123865.6470332,
+    "ast_hash": "c20515ffe32139db524231fd3005c991",
+    "semantic_hash": "c20515ffe32139db524231fd3005c991"
+  },
+  "frontend/package.json": {
+    "mtime": 1786123865.6480334,
+    "ast_hash": "991641949a2615f9bf029045db489be2",
+    "semantic_hash": "991641949a2615f9bf029045db489be2"
+  },
+  "frontend/public/env.js": {
+    "mtime": 1786124668.4559221,
+    "ast_hash": "42471dc982e9fb43abc95b7b15e9cdf1",
+    "semantic_hash": "42471dc982e9fb43abc95b7b15e9cdf1"
+  },
+  "frontend/src/app/app.config.ts": {
+    "mtime": 1786123865.6492631,
+    "ast_hash": "8a4d701e753386d01b192bc0a6e8ba33",
+    "semantic_hash": "8a4d701e753386d01b192bc0a6e8ba33"
+  },
+  "frontend/src/app/app.routes.ts": {
+    "mtime": 1786123865.6493173,
+    "ast_hash": "736fe799fe1f1f2fc99c877a56c090ed",
+    "semantic_hash": "736fe799fe1f1f2fc99c877a56c090ed"
+  },
+  "frontend/src/app/app.spec.ts": {
+    "mtime": 1786123865.6493173,
+    "ast_hash": "1c0219cf5f5579e9a9802b38b9ed2e38",
+    "semantic_hash": "1c0219cf5f5579e9a9802b38b9ed2e38"
+  },
+  "frontend/src/app/app.ts": {
+    "mtime": 1786124668.4559221,
+    "ast_hash": "f61cdf6684d3aa1786255d0cc8341ab8",
+    "semantic_hash": "f61cdf6684d3aa1786255d0cc8341ab8"
+  },
+  "frontend/src/app/components/confirmation-dialog/confirmation-dialog.spec.ts": {
+    "mtime": 1786123865.6495612,
+    "ast_hash": "e43beaf08043da82ab30e27969e67719",
+    "semantic_hash": "e43beaf08043da82ab30e27969e67719"
+  },
+  "frontend/src/app/components/confirmation-dialog/confirmation-dialog.ts": {
+    "mtime": 1786123865.6495612,
+    "ast_hash": "4cabe319d1a2b1261d40e2ab33e5b064",
+    "semantic_hash": "4cabe319d1a2b1261d40e2ab33e5b064"
+  },
+  "frontend/src/app/components/icon-picker/icon-picker.spec.ts": {
+    "mtime": 1786123865.6497042,
+    "ast_hash": "83110d3c2ea58df14f16591bc7364ac8",
+    "semantic_hash": "83110d3c2ea58df14f16591bc7364ac8"
+  },
+  "frontend/src/app/components/icon-picker/icon-picker.ts": {
+    "mtime": 1786123865.6497042,
+    "ast_hash": "f95e6df650393af523090b0bae74102b",
+    "semantic_hash": "f95e6df650393af523090b0bae74102b"
+  },
+  "frontend/src/app/components/shell/shell.ts": {
+    "mtime": 1786123865.6498506,
+    "ast_hash": "470413f9a45d219bf1132853e89f021c",
+    "semantic_hash": "470413f9a45d219bf1132853e89f021c"
+  },
+  "frontend/src/app/core/api/accounts/accounts.service.ts": {
+    "mtime": 1786123865.6499739,
+    "ast_hash": "cf3b129fa494fc598bf427ec3e4ade7d",
+    "semantic_hash": "cf3b129fa494fc598bf427ec3e4ade7d"
+  },
+  "frontend/src/app/core/api/budget/budget.service.ts": {
+    "mtime": 1786123865.6500332,
+    "ast_hash": "d3876e5f69899bcd3cd92fdeb705924a",
+    "semantic_hash": "d3876e5f69899bcd3cd92fdeb705924a"
+  },
+  "frontend/src/app/core/api/categories/categories.service.ts": {
+    "mtime": 1786123865.6500332,
+    "ast_hash": "03aa0beaf38e90cb5e9e5d31ef7e3256",
+    "semantic_hash": "03aa0beaf38e90cb5e9e5d31ef7e3256"
+  },
+  "frontend/src/app/core/api/dashboard/dashboard.service.ts": {
+    "mtime": 1786123865.6500332,
+    "ast_hash": "d4fdf85833e5b285c396f4c2f027a62e",
+    "semantic_hash": "d4fdf85833e5b285c396f4c2f027a62e"
+  },
+  "frontend/src/app/core/api/fintechSaaSAPI.schemas.ts": {
+    "mtime": 1786123865.6500332,
+    "ast_hash": "0e344a6d9444ca0566775d93483362a7",
+    "semantic_hash": "0e344a6d9444ca0566775d93483362a7"
+  },
+  "frontend/src/app/core/api/imports/imports.service.ts": {
+    "mtime": 1786123865.6500332,
+    "ast_hash": "903fcfc2ab2536ad984721c3a172246d",
+    "semantic_hash": "903fcfc2ab2536ad984721c3a172246d"
+  },
+  "frontend/src/app/core/api/installment-groups/installment-groups.service.ts": {
+    "mtime": 1786123865.6500332,
+    "ast_hash": "0633bffd0f4564692451b13df1150bbf",
+    "semantic_hash": "0633bffd0f4564692451b13df1150bbf"
+  },
+  "frontend/src/app/core/api/invoices/invoices.service.ts": {
+    "mtime": 1786123865.6500332,
+    "ast_hash": "4b28822672ec684185ad4dc299ecefb3",
+    "semantic_hash": "4b28822672ec684185ad4dc299ecefb3"
+  },
+  "frontend/src/app/core/api/recurrence-rules/recurrence-rules.service.ts": {
+    "mtime": 1786123865.6500332,
+    "ast_hash": "9a1d24f43c05ff0db948ce5f7c0f95bc",
+    "semantic_hash": "9a1d24f43c05ff0db948ce5f7c0f95bc"
+  },
+  "frontend/src/app/core/api/tenant/tenant.service.ts": {
+    "mtime": 1786123865.6500332,
+    "ast_hash": "77d895df54a6b26c5000fcd5a1345704",
+    "semantic_hash": "77d895df54a6b26c5000fcd5a1345704"
+  },
+  "frontend/src/app/core/api/transactions/transactions.service.ts": {
+    "mtime": 1786123865.6500332,
+    "ast_hash": "4e6f06482fc3eb238e48dbe289a47e35",
+    "semantic_hash": "4e6f06482fc3eb238e48dbe289a47e35"
+  },
+  "frontend/src/app/core/api/transfers/transfers.service.ts": {
+    "mtime": 1786123865.6510334,
+    "ast_hash": "797ca948cc9f3ebfbf06469876f61264",
+    "semantic_hash": "797ca948cc9f3ebfbf06469876f61264"
+  },
+  "frontend/src/app/core/app-env.spec.ts": {
+    "mtime": 1786124668.4569223,
+    "ast_hash": "40cc8848e6cf2870119d62f52c444d02",
+    "semantic_hash": "40cc8848e6cf2870119d62f52c444d02"
+  },
+  "frontend/src/app/core/app-env.ts": {
+    "mtime": 1786124668.4569223,
+    "ast_hash": "a15b05c239878a5582c417ee8669df6d",
+    "semantic_hash": "a15b05c239878a5582c417ee8669df6d"
+  },
+  "frontend/src/app/core/csv.utils.spec.ts": {
+    "mtime": 1786123865.6510334,
+    "ast_hash": "7a2423f9e654c5ae4a5c1d6658f94fe3",
+    "semantic_hash": "7a2423f9e654c5ae4a5c1d6658f94fe3"
+  },
+  "frontend/src/app/core/csv.utils.ts": {
+    "mtime": 1786123865.6510334,
+    "ast_hash": "6831f6e6a343101eaff6c52e0fa6d119",
+    "semantic_hash": "6831f6e6a343101eaff6c52e0fa6d119"
+  },
+  "frontend/src/app/core/guards/auth-guard.spec.ts": {
+    "mtime": 1786123865.6510334,
+    "ast_hash": "d1b647f482177229da976b636e9af637",
+    "semantic_hash": "d1b647f482177229da976b636e9af637"
+  },
+  "frontend/src/app/core/guards/auth-guard.ts": {
+    "mtime": 1786123865.6514962,
+    "ast_hash": "0f8e54aa1a2c2b83fa0cf3f38887e604",
+    "semantic_hash": "0f8e54aa1a2c2b83fa0cf3f38887e604"
+  },
+  "frontend/src/app/core/interceptors/api-url.interceptor.ts": {
+    "mtime": 1786123865.6514962,
+    "ast_hash": "7b7705ee9778e27b88b2d735237c2216",
+    "semantic_hash": "7b7705ee9778e27b88b2d735237c2216"
+  },
+  "frontend/src/app/core/interceptors/auth.interceptor.ts": {
+    "mtime": 1786123865.651604,
+    "ast_hash": "5cc44743fab2e5692baae3f2a7f265de",
+    "semantic_hash": "5cc44743fab2e5692baae3f2a7f265de"
+  },
+  "frontend/src/app/core/services/auth.spec.ts": {
+    "mtime": 1786123865.651604,
+    "ast_hash": "4631608f6aff5480ef08abad63f181e9",
+    "semantic_hash": "4631608f6aff5480ef08abad63f181e9"
+  },
+  "frontend/src/app/core/services/auth.ts": {
+    "mtime": 1786123865.6517093,
+    "ast_hash": "0b46a6e38bec33fa80df6c88d56b76be",
+    "semantic_hash": "0b46a6e38bec33fa80df6c88d56b76be"
+  },
+  "frontend/src/app/core/services/invitation.spec.ts": {
+    "mtime": 1786123865.6517093,
+    "ast_hash": "8d8c12fac7471133e0bc821c2e693318",
+    "semantic_hash": "8d8c12fac7471133e0bc821c2e693318"
+  },
+  "frontend/src/app/core/services/invitation.ts": {
+    "mtime": 1786123865.6517093,
+    "ast_hash": "86811092042d127829756609707518de",
+    "semantic_hash": "86811092042d127829756609707518de"
+  },
+  "frontend/src/app/core/services/members.spec.ts": {
+    "mtime": 1786123865.6517093,
+    "ast_hash": "ced1944eabc5744b0f03ff7feaf12bfe",
+    "semantic_hash": "ced1944eabc5744b0f03ff7feaf12bfe"
+  },
+  "frontend/src/app/core/services/members.ts": {
+    "mtime": 1786123865.6517093,
+    "ast_hash": "101c3fb664ee4292035896707383ffc3",
+    "semantic_hash": "101c3fb664ee4292035896707383ffc3"
+  },
+  "frontend/src/app/core/services/recurrence.service.ts": {
+    "mtime": 1786123865.6517093,
+    "ast_hash": "7aa16aa789cb54a8989d80ed4ab5c615",
+    "semantic_hash": "7aa16aa789cb54a8989d80ed4ab5c615"
+  },
+  "frontend/src/app/features/account/account-form/account-form.spec.ts": {
+    "mtime": 1786123865.652081,
+    "ast_hash": "6c8688b5a38507c33204ced93993f3a0",
+    "semantic_hash": "6c8688b5a38507c33204ced93993f3a0"
+  },
+  "frontend/src/app/features/account/account-form/account-form.ts": {
+    "mtime": 1786123865.652081,
+    "ast_hash": "f4d417c5c10c21e0ba33eb7201a41e55",
+    "semantic_hash": "f4d417c5c10c21e0ba33eb7201a41e55"
+  },
+  "frontend/src/app/features/account/account-list/account-list.spec.ts": {
+    "mtime": 1786123865.6522508,
+    "ast_hash": "b79c87d43f55d1f0b14c74740ede616f",
+    "semantic_hash": "b79c87d43f55d1f0b14c74740ede616f"
+  },
+  "frontend/src/app/features/account/account-list/account-list.ts": {
+    "mtime": 1786123865.6522508,
+    "ast_hash": "acb39877d00b25efbb906d65eb9530a3",
+    "semantic_hash": "acb39877d00b25efbb906d65eb9530a3"
+  },
+  "frontend/src/app/features/auth/accept-invite/accept-invite.spec.ts": {
+    "mtime": 1786123865.652497,
+    "ast_hash": "38fcc09dcd01b9f0f4ca6d5b5a33bb03",
+    "semantic_hash": "38fcc09dcd01b9f0f4ca6d5b5a33bb03"
+  },
+  "frontend/src/app/features/auth/accept-invite/accept-invite.ts": {
+    "mtime": 1786123865.652497,
+    "ast_hash": "c8c6dfe0d10c1170f17fc6fee3d44201",
+    "semantic_hash": "c8c6dfe0d10c1170f17fc6fee3d44201"
+  },
+  "frontend/src/app/features/auth/login/login.spec.ts": {
+    "mtime": 1786123865.652696,
+    "ast_hash": "4fb597315ddb4c14df61a522ddffa26d",
+    "semantic_hash": "4fb597315ddb4c14df61a522ddffa26d"
+  },
+  "frontend/src/app/features/auth/login/login.ts": {
+    "mtime": 1786124668.4569223,
+    "ast_hash": "d7190eefc81b46b98896681ac79a4835",
+    "semantic_hash": "d7190eefc81b46b98896681ac79a4835"
+  },
+  "frontend/src/app/features/auth/register/register.spec.ts": {
+    "mtime": 1786123865.6528454,
+    "ast_hash": "5c39fb840cca30de41e11a2ce9cc2ade",
+    "semantic_hash": "5c39fb840cca30de41e11a2ce9cc2ade"
+  },
+  "frontend/src/app/features/auth/register/register.ts": {
+    "mtime": 1786123865.6528454,
+    "ast_hash": "1f50e11a41f261649f53c7594f53b8a1",
+    "semantic_hash": "1f50e11a41f261649f53c7594f53b8a1"
+  },
+  "frontend/src/app/features/category/category-archive-dialog/category-archive-dialog.ts": {
+    "mtime": 1786123865.6529977,
+    "ast_hash": "a9b66fe6ee6f21739ac1c9bdcebd3d02",
+    "semantic_hash": "a9b66fe6ee6f21739ac1c9bdcebd3d02"
+  },
+  "frontend/src/app/features/category/category-form/category-form.spec.ts": {
+    "mtime": 1786123865.6531231,
+    "ast_hash": "a9f99d94f7650826fae3e50d6968be71",
+    "semantic_hash": "a9f99d94f7650826fae3e50d6968be71"
+  },
+  "frontend/src/app/features/category/category-form/category-form.ts": {
+    "mtime": 1786123865.6531231,
+    "ast_hash": "42a700303f946bd7095f9e62934a3dce",
+    "semantic_hash": "42a700303f946bd7095f9e62934a3dce"
+  },
+  "frontend/src/app/features/category/category-list/category-list.ts": {
+    "mtime": 1786123865.653398,
+    "ast_hash": "86e30a47320f244b23ac32e466d2fced",
+    "semantic_hash": "86e30a47320f244b23ac32e466d2fced"
+  },
+  "frontend/src/app/features/category/taxonomy-mapping/taxonomy-mapping.ts": {
+    "mtime": 1786123865.6535144,
+    "ast_hash": "ced6c7dff8fea174eaee6b823cbdea60",
+    "semantic_hash": "ced6c7dff8fea174eaee6b823cbdea60"
+  },
+  "frontend/src/app/features/category/taxonomy-mapping/taxonomy-suggestions.spec.ts": {
+    "mtime": 1786123865.6535144,
+    "ast_hash": "1261f5e4491a797ab1335bacb27082eb",
+    "semantic_hash": "1261f5e4491a797ab1335bacb27082eb"
+  },
+  "frontend/src/app/features/category/taxonomy-mapping/taxonomy-suggestions.ts": {
+    "mtime": 1786123865.6535144,
+    "ast_hash": "e757c8c80d973afc4fb1b0b969362a36",
+    "semantic_hash": "e757c8c80d973afc4fb1b0b969362a36"
+  },
+  "frontend/src/app/features/dashboard/dashboard.spec.ts": {
+    "mtime": 1786123865.6538038,
+    "ast_hash": "bfb8e2bbf0cdfd201441814a20cbafbd",
+    "semantic_hash": "bfb8e2bbf0cdfd201441814a20cbafbd"
+  },
+  "frontend/src/app/features/dashboard/dashboard.ts": {
+    "mtime": 1786123865.6538038,
+    "ast_hash": "05f1100c6a1a2fe5c73a515bf0792276",
+    "semantic_hash": "05f1100c6a1a2fe5c73a515bf0792276"
+  },
+  "frontend/src/app/features/import/import-utils.spec.ts": {
+    "mtime": 1786123865.6538038,
+    "ast_hash": "a39d22c014e1aa17e6bef6a9dec18153",
+    "semantic_hash": "a39d22c014e1aa17e6bef6a9dec18153"
+  },
+  "frontend/src/app/features/import/import-utils.ts": {
+    "mtime": 1786123865.6541092,
+    "ast_hash": "0b79344cef5136460a07ebea6efc9037",
+    "semantic_hash": "0b79344cef5136460a07ebea6efc9037"
+  },
+  "frontend/src/app/features/import/import.spec.ts": {
+    "mtime": 1786123865.6541092,
+    "ast_hash": "3b4555d4615ee9e59c2d7be19150bdfc",
+    "semantic_hash": "3b4555d4615ee9e59c2d7be19150bdfc"
+  },
+  "frontend/src/app/features/import/import.ts": {
+    "mtime": 1786123865.6541092,
+    "ast_hash": "73d164026faf3707803f587fcf10dd54",
+    "semantic_hash": "73d164026faf3707803f587fcf10dd54"
+  },
+  "frontend/src/app/features/invoice/invoice-detail/invoice-detail.spec.ts": {
+    "mtime": 1786123865.6548684,
+    "ast_hash": "12d3568300d8b75ef9964a5db2d25707",
+    "semantic_hash": "12d3568300d8b75ef9964a5db2d25707"
+  },
+  "frontend/src/app/features/invoice/invoice-detail/invoice-detail.ts": {
+    "mtime": 1786123865.6548684,
+    "ast_hash": "b487eb0a0f2bafe0c1f572f458883064",
+    "semantic_hash": "b487eb0a0f2bafe0c1f572f458883064"
+  },
+  "frontend/src/app/features/invoice/invoice-detail/invoice-detail.utils.spec.ts": {
+    "mtime": 1786123865.6548684,
+    "ast_hash": "313d4424f5972cbb86a36770646c0b03",
+    "semantic_hash": "313d4424f5972cbb86a36770646c0b03"
+  },
+  "frontend/src/app/features/invoice/invoice-detail/invoice-detail.utils.ts": {
+    "mtime": 1786123865.6548684,
+    "ast_hash": "6cae8d29720f7b6c7634ab4ef7bdf52a",
+    "semantic_hash": "6cae8d29720f7b6c7634ab4ef7bdf52a"
+  },
+  "frontend/src/app/features/invoice/invoice-list/invoice-list.spec.ts": {
+    "mtime": 1786123865.6550333,
+    "ast_hash": "9064741186a0d7a04e73c30b32613c3d",
+    "semantic_hash": "9064741186a0d7a04e73c30b32613c3d"
+  },
+  "frontend/src/app/features/invoice/invoice-list/invoice-list.ts": {
+    "mtime": 1786123865.6550333,
+    "ast_hash": "5669bdaa05ab8c1b7ff21b55f2c76182",
+    "semantic_hash": "5669bdaa05ab8c1b7ff21b55f2c76182"
+  },
+  "frontend/src/app/features/invoice/invoice-pay-dialog/invoice-pay-dialog.spec.ts": {
+    "mtime": 1786123865.6555312,
+    "ast_hash": "15e265d7adfcabbca507fc21f07be6dd",
+    "semantic_hash": "15e265d7adfcabbca507fc21f07be6dd"
+  },
+  "frontend/src/app/features/invoice/invoice-pay-dialog/invoice-pay-dialog.ts": {
+    "mtime": 1786123865.6555312,
+    "ast_hash": "9c37cfe08d785e118b8f16047007f7a9",
+    "semantic_hash": "9c37cfe08d785e118b8f16047007f7a9"
+  },
+  "frontend/src/app/features/planning/breakdown/breakdown-dialog.ts": {
+    "mtime": 1786123865.6557317,
+    "ast_hash": "ff229dd08106f1497aa8b657145d31bf",
+    "semantic_hash": "ff229dd08106f1497aa8b657145d31bf"
+  },
+  "frontend/src/app/features/planning/breakdown/budget-cycle-breakdown.spec.ts": {
+    "mtime": 1786123865.6557317,
+    "ast_hash": "b431915cd3b7a82735419143f2157af1",
+    "semantic_hash": "b431915cd3b7a82735419143f2157af1"
+  },
+  "frontend/src/app/features/planning/breakdown/budget-cycle-breakdown.ts": {
+    "mtime": 1786123865.6557317,
+    "ast_hash": "f5d55019d11bfd1229426c8743ad73c4",
+    "semantic_hash": "f5d55019d11bfd1229426c8743ad73c4"
+  },
+  "frontend/src/app/features/planning/budget-cycle-current/budget-cycle-current.ts": {
+    "mtime": 1786123865.6561074,
+    "ast_hash": "87a4890ecec91ce87c08112e4d2f9734",
+    "semantic_hash": "87a4890ecec91ce87c08112e4d2f9734"
+  },
+  "frontend/src/app/features/planning/budget-cycle-current/budget-cycle.error-utils.spec.ts": {
+    "mtime": 1786123865.6561074,
+    "ast_hash": "314adedeecf9da644852a5e8d6f40a91",
+    "semantic_hash": "314adedeecf9da644852a5e8d6f40a91"
+  },
+  "frontend/src/app/features/planning/budget-cycle-current/budget-cycle.error-utils.ts": {
+    "mtime": 1786123865.6561074,
+    "ast_hash": "49d97660990d0aad48ebd9399e909c7b",
+    "semantic_hash": "49d97660990d0aad48ebd9399e909c7b"
+  },
+  "frontend/src/app/features/planning/budget-cycle-current/budget-cycle.utils.spec.ts": {
+    "mtime": 1786123865.6561074,
+    "ast_hash": "877aaa861b343c5badb8fac39e8899ee",
+    "semantic_hash": "877aaa861b343c5badb8fac39e8899ee"
+  },
+  "frontend/src/app/features/planning/budget-cycle-current/budget-cycle.utils.ts": {
+    "mtime": 1786123865.6561074,
+    "ast_hash": "85fefaf361083162b2516ab26ec57c0e",
+    "semantic_hash": "85fefaf361083162b2516ab26ec57c0e"
+  },
+  "frontend/src/app/features/planning/budget-cycle-detail/budget-cycle-detail.ts": {
+    "mtime": 1786123865.6565125,
+    "ast_hash": "72609e1d11def6cd5c2626b5c22e92b9",
+    "semantic_hash": "72609e1d11def6cd5c2626b5c22e92b9"
+  },
+  "frontend/src/app/features/planning/budget-cycle-list/budget-cycle-list.ts": {
+    "mtime": 1786123865.6567106,
+    "ast_hash": "62782fe3df7ac1a9ae980cd4a7cb6101",
+    "semantic_hash": "62782fe3df7ac1a9ae980cd4a7cb6101"
+  },
+  "frontend/src/app/features/planning/budget-cycle-open-dialog/budget-cycle-open-dialog.ts": {
+    "mtime": 1786123865.6568668,
+    "ast_hash": "32d0484e168e3dbea609a766596f41be",
+    "semantic_hash": "32d0484e168e3dbea609a766596f41be"
+  },
+  "frontend/src/app/features/planning/budget-item-form/budget-item-form.ts": {
+    "mtime": 1786123865.6570425,
+    "ast_hash": "0316677f37d5d180102a27f125c3bfc2",
+    "semantic_hash": "0316677f37d5d180102a27f125c3bfc2"
+  },
+  "frontend/src/app/features/planning/link-budget-item-dialog/link-budget-item-dialog.ts": {
+    "mtime": 1786123865.657196,
+    "ast_hash": "7d3ffeb1c43364a99f3451a5ea4f4135",
+    "semantic_hash": "7d3ffeb1c43364a99f3451a5ea4f4135"
+  },
+  "frontend/src/app/features/planning/link-transaction-dialog/link-transaction-dialog.ts": {
+    "mtime": 1786123865.6573126,
+    "ast_hash": "4ad860ee5c06bf7866424eaffb2eaea6",
+    "semantic_hash": "4ad860ee5c06bf7866424eaffb2eaea6"
+  },
+  "frontend/src/app/features/planning/planning-settings/planning-settings.ts": {
+    "mtime": 1786123865.6573126,
+    "ast_hash": "a31af0a542d495260fed5cfc1c48b36a",
+    "semantic_hash": "a31af0a542d495260fed5cfc1c48b36a"
+  },
+  "frontend/src/app/features/planning/planning-shell/planning-shell.ts": {
+    "mtime": 1786123865.6573126,
+    "ast_hash": "3da5a061b7ce88184aae2117fb5e8c58",
+    "semantic_hash": "3da5a061b7ce88184aae2117fb5e8c58"
+  },
+  "frontend/src/app/features/planning/planning.routes.ts": {
+    "mtime": 1786123865.6573126,
+    "ast_hash": "6bde120b637ba3fad16b7ac8bf037041",
+    "semantic_hash": "6bde120b637ba3fad16b7ac8bf037041"
+  },
+  "frontend/src/app/features/planning/planning.service.ts": {
+    "mtime": 1786123865.6573126,
+    "ast_hash": "d63ccff4abdcaea54c22db392d59d1a8",
+    "semantic_hash": "d63ccff4abdcaea54c22db392d59d1a8"
+  },
+  "frontend/src/app/features/planning/recurring-item-form/recurring-item-form.ts": {
+    "mtime": 1786123865.6576633,
+    "ast_hash": "38cf557db80ef29147479194a07f982b",
+    "semantic_hash": "38cf557db80ef29147479194a07f982b"
+  },
+  "frontend/src/app/features/planning/recurring-item-list/recurring-item-list.ts": {
+    "mtime": 1786123865.6577828,
+    "ast_hash": "02a2a6daa93e70848051627474c2a9e6",
+    "semantic_hash": "02a2a6daa93e70848051627474c2a9e6"
+  },
+  "frontend/src/app/features/recurrence/recurrence-list/recurrence-list.ts": {
+    "mtime": 1786123865.6579623,
+    "ast_hash": "315f5fc2c7fc604e42b0350009ac9bd6",
+    "semantic_hash": "315f5fc2c7fc604e42b0350009ac9bd6"
+  },
+  "frontend/src/app/features/recurrence/rrule-editor/rrule-builder.spec.ts": {
+    "mtime": 1786123865.6579623,
+    "ast_hash": "44f6ac0dcc0cf9c23989ef2ecc3a3f3a",
+    "semantic_hash": "44f6ac0dcc0cf9c23989ef2ecc3a3f3a"
+  },
+  "frontend/src/app/features/recurrence/rrule-editor/rrule-builder.ts": {
+    "mtime": 1786123865.6581104,
+    "ast_hash": "fb8a3be5d6ce09cd06d942cfd2e57aff",
+    "semantic_hash": "fb8a3be5d6ce09cd06d942cfd2e57aff"
+  },
+  "frontend/src/app/features/recurrence/rrule-editor/rrule-editor.ts": {
+    "mtime": 1786123865.6581104,
+    "ast_hash": "183cfc09c899c12e94bf2173e58603fb",
+    "semantic_hash": "183cfc09c899c12e94bf2173e58603fb"
+  },
+  "frontend/src/app/features/team/invite-dialog/invite-dialog.spec.ts": {
+    "mtime": 1786123865.6583521,
+    "ast_hash": "d76b13d100aa1b587084a4ffaaef0131",
+    "semantic_hash": "d76b13d100aa1b587084a4ffaaef0131"
+  },
+  "frontend/src/app/features/team/invite-dialog/invite-dialog.ts": {
+    "mtime": 1786123865.6583521,
+    "ast_hash": "9ecc15231440a878f69a4198af9ee9f9",
+    "semantic_hash": "9ecc15231440a878f69a4198af9ee9f9"
+  },
+  "frontend/src/app/features/team/team/team.spec.ts": {
+    "mtime": 1786123865.6584992,
+    "ast_hash": "08374a5baffcfd3f2eae5273b10a4dc4",
+    "semantic_hash": "08374a5baffcfd3f2eae5273b10a4dc4"
+  },
+  "frontend/src/app/features/team/team/team.ts": {
+    "mtime": 1786123865.6584992,
+    "ast_hash": "7c38a52875179813d60b15182a2ff955",
+    "semantic_hash": "7c38a52875179813d60b15182a2ff955"
+  },
+  "frontend/src/app/features/transaction/transaction-form/amount-math.spec.ts": {
+    "mtime": 1786123865.6586545,
+    "ast_hash": "c8e7b4c7e4945d6a3a3bd3802e32d543",
+    "semantic_hash": "c8e7b4c7e4945d6a3a3bd3802e32d543"
+  },
+  "frontend/src/app/features/transaction/transaction-form/amount-math.ts": {
+    "mtime": 1786123865.6587043,
+    "ast_hash": "7988a122dc40d8ae82bdb9f92cbbfddb",
+    "semantic_hash": "7988a122dc40d8ae82bdb9f92cbbfddb"
+  },
+  "frontend/src/app/features/transaction/transaction-form/installment-preview.spec.ts": {
+    "mtime": 1786123865.6587043,
+    "ast_hash": "bb752d31258af97d192f1a549ddf52e9",
+    "semantic_hash": "bb752d31258af97d192f1a549ddf52e9"
+  },
+  "frontend/src/app/features/transaction/transaction-form/installment-preview.ts": {
+    "mtime": 1786123865.6587043,
+    "ast_hash": "ae953181096c9a4f61d0f3c8fe54d694",
+    "semantic_hash": "ae953181096c9a4f61d0f3c8fe54d694"
+  },
+  "frontend/src/app/features/transaction/transaction-form/transaction-form.spec.ts": {
+    "mtime": 1786123865.6587043,
+    "ast_hash": "f405722e995f0bde551f3994c5df5744",
+    "semantic_hash": "f405722e995f0bde551f3994c5df5744"
+  },
+  "frontend/src/app/features/transaction/transaction-form/transaction-form.ts": {
+    "mtime": 1786123865.6587043,
+    "ast_hash": "f3f693e2642e61ff7c5637a0df0308cc",
+    "semantic_hash": "f3f693e2642e61ff7c5637a0df0308cc"
+  },
+  "frontend/src/app/features/transaction/transaction-form/transaction-form.utils.spec.ts": {
+    "mtime": 1786123865.6587043,
+    "ast_hash": "077c5af4cdebc9e369239b5b9b419ef8",
+    "semantic_hash": "077c5af4cdebc9e369239b5b9b419ef8"
+  },
+  "frontend/src/app/features/transaction/transaction-form/transaction-form.utils.ts": {
+    "mtime": 1786123865.6587043,
+    "ast_hash": "31c6a73d24b86bd57241ed62e5d4e4c6",
+    "semantic_hash": "31c6a73d24b86bd57241ed62e5d4e4c6"
+  },
+  "frontend/src/app/features/transaction/transaction-list/delete-installment-dialog/delete-installment-dialog.ts": {
+    "mtime": 1786123865.659319,
+    "ast_hash": "c38c30cf5fff377fd1c8036198211616",
+    "semantic_hash": "c38c30cf5fff377fd1c8036198211616"
+  },
+  "frontend/src/app/features/transaction/transaction-list/transaction-filters/transaction-filters.ts": {
+    "mtime": 1786123865.659458,
+    "ast_hash": "2f5da88ed0d7f87a4c573918f57dbf91",
+    "semantic_hash": "2f5da88ed0d7f87a4c573918f57dbf91"
+  },
+  "frontend/src/app/features/transaction/transaction-list/transaction-filters/transaction-filters.types.ts": {
+    "mtime": 1786123865.659458,
+    "ast_hash": "c66edd454991a521b99ef55d826084dc",
+    "semantic_hash": "c66edd454991a521b99ef55d826084dc"
+  },
+  "frontend/src/app/features/transaction/transaction-list/transaction-list.spec.ts": {
+    "mtime": 1786123865.659458,
+    "ast_hash": "ec2e9c5ea38a9e0704fb40fea9b59d95",
+    "semantic_hash": "ec2e9c5ea38a9e0704fb40fea9b59d95"
+  },
+  "frontend/src/app/features/transaction/transaction-list/transaction-list.ts": {
+    "mtime": 1786123865.659458,
+    "ast_hash": "85fb8ba11977ac73305e013ee024a152",
+    "semantic_hash": "85fb8ba11977ac73305e013ee024a152"
+  },
+  "frontend/src/app/features/transaction/transaction-list/transaction-list.utils.spec.ts": {
+    "mtime": 1786123865.659458,
+    "ast_hash": "c7a001631cbe559e5d76893aac5a2444",
+    "semantic_hash": "c7a001631cbe559e5d76893aac5a2444"
+  },
+  "frontend/src/app/features/transaction/transaction-list/transaction-list.utils.ts": {
+    "mtime": 1786123865.659458,
+    "ast_hash": "6d7d827266fc238282d7199564e73a10",
+    "semantic_hash": "6d7d827266fc238282d7199564e73a10"
+  },
+  "frontend/src/app/features/transaction/transaction-timeline/timeline-calendar/calendar-utils.spec.ts": {
+    "mtime": 1786123865.660098,
+    "ast_hash": "6d421c702e10e66fb1cfa42fb1d58dec",
+    "semantic_hash": "6d421c702e10e66fb1cfa42fb1d58dec"
+  },
+  "frontend/src/app/features/transaction/transaction-timeline/timeline-calendar/calendar-utils.ts": {
+    "mtime": 1786123865.660147,
+    "ast_hash": "84ff2f3ff4d19495770267cf9ba0efbb",
+    "semantic_hash": "84ff2f3ff4d19495770267cf9ba0efbb"
+  },
+  "frontend/src/app/features/transaction/transaction-timeline/timeline-calendar/timeline-calendar.ts": {
+    "mtime": 1786123865.660147,
+    "ast_hash": "22b06e644147e85b99a7b7622e507f10",
+    "semantic_hash": "22b06e644147e85b99a7b7622e507f10"
+  },
+  "frontend/src/app/features/transaction/transaction-timeline/timeline-grouped-list/grouped-list.utils.spec.ts": {
+    "mtime": 1786123865.660147,
+    "ast_hash": "44aff940983180c49bf0016818bf15a4",
+    "semantic_hash": "44aff940983180c49bf0016818bf15a4"
+  },
+  "frontend/src/app/features/transaction/transaction-timeline/timeline-grouped-list/grouped-list.utils.ts": {
+    "mtime": 1786123865.6603327,
+    "ast_hash": "fbc397efc92ef74fb07f9d9a004f692c",
+    "semantic_hash": "fbc397efc92ef74fb07f9d9a004f692c"
+  },
+  "frontend/src/app/features/transaction/transaction-timeline/timeline-grouped-list/timeline-grouped-list.ts": {
+    "mtime": 1786123865.6603327,
+    "ast_hash": "1ad018dfba2334601af411916ae0db7a",
+    "semantic_hash": "1ad018dfba2334601af411916ae0db7a"
+  },
+  "frontend/src/app/features/transaction/transaction-timeline/timeline-horizontal/horizontal-utils.spec.ts": {
+    "mtime": 1786123865.6603327,
+    "ast_hash": "c4c5d36313b941b21972dae47fa064b0",
+    "semantic_hash": "c4c5d36313b941b21972dae47fa064b0"
+  },
+  "frontend/src/app/features/transaction/transaction-timeline/timeline-horizontal/horizontal-utils.ts": {
+    "mtime": 1786123865.660513,
+    "ast_hash": "f55a7278e377c298c0f90266c89b4ed4",
+    "semantic_hash": "f55a7278e377c298c0f90266c89b4ed4"
+  },
+  "frontend/src/app/features/transaction/transaction-timeline/timeline-horizontal/timeline-horizontal.ts": {
+    "mtime": 1786123865.660513,
+    "ast_hash": "b1812a275831c91fca7db3a56ffa6bd3",
+    "semantic_hash": "b1812a275831c91fca7db3a56ffa6bd3"
+  },
+  "frontend/src/app/features/transaction/transaction-timeline/timeline-shared.spec.ts": {
+    "mtime": 1786123865.660513,
+    "ast_hash": "081c0c7a0e5b10dfeef3478c6c3ad1e6",
+    "semantic_hash": "081c0c7a0e5b10dfeef3478c6c3ad1e6"
+  },
+  "frontend/src/app/features/transaction/transaction-timeline/timeline-shared.ts": {
+    "mtime": 1786123865.660513,
+    "ast_hash": "7958e2e5cd3c83e425b1f5d32790c98b",
+    "semantic_hash": "7958e2e5cd3c83e425b1f5d32790c98b"
+  },
+  "frontend/src/app/features/transaction/transaction-timeline/transaction-timeline.filters.spec.ts": {
+    "mtime": 1786123865.660513,
+    "ast_hash": "c00e872a325f95cdceda4447398a68b0",
+    "semantic_hash": "c00e872a325f95cdceda4447398a68b0"
+  },
+  "frontend/src/app/features/transaction/transaction-timeline/transaction-timeline.filters.ts": {
+    "mtime": 1786123865.660513,
+    "ast_hash": "9d9f1c077deb7110264a0696439cf27f",
+    "semantic_hash": "9d9f1c077deb7110264a0696439cf27f"
+  },
+  "frontend/src/app/features/transaction/transaction-timeline/transaction-timeline.spec.ts": {
+    "mtime": 1786123865.660513,
+    "ast_hash": "773ee086bbcdeb28545a5d064c9e6089",
+    "semantic_hash": "773ee086bbcdeb28545a5d064c9e6089"
+  },
+  "frontend/src/app/features/transaction/transaction-timeline/transaction-timeline.ts": {
+    "mtime": 1786123865.660513,
+    "ast_hash": "7c85e0dda5de220b72b2ba6cc39fc326",
+    "semantic_hash": "7c85e0dda5de220b72b2ba6cc39fc326"
+  },
+  "frontend/src/app/teste/teste.spec.ts": {
+    "mtime": 1786123865.6609216,
+    "ast_hash": "0161742016988b9b32a1adaf9c4b9c50",
+    "semantic_hash": "0161742016988b9b32a1adaf9c4b9c50"
+  },
+  "frontend/src/app/teste/teste.ts": {
+    "mtime": 1786123865.6609216,
+    "ast_hash": "8cca6ebaf95e093ea216d13be09d5c5a",
+    "semantic_hash": "8cca6ebaf95e093ea216d13be09d5c5a"
+  },
+  "frontend/src/environments/environment.homelab.ts": {
+    "mtime": 1786123865.6609216,
+    "ast_hash": "58f1ca893877b94fe6edae8fdf66d4e7",
+    "semantic_hash": "58f1ca893877b94fe6edae8fdf66d4e7"
+  },
+  "frontend/src/environments/environment.production.ts": {
+    "mtime": 1786123865.661028,
+    "ast_hash": "85de1346646458d9ce9cce8c370bbf30",
+    "semantic_hash": "85de1346646458d9ce9cce8c370bbf30"
+  },
+  "frontend/src/environments/environment.ts": {
+    "mtime": 1786123865.661028,
+    "ast_hash": "eb5e4709fbe509f956b77dca4d4ee030",
+    "semantic_hash": "eb5e4709fbe509f956b77dca4d4ee030"
+  },
+  "frontend/src/main.ts": {
+    "mtime": 1786123865.661028,
+    "ast_hash": "ac0b277dca1867b341af9e2d25224ae9",
+    "semantic_hash": "ac0b277dca1867b341af9e2d25224ae9"
+  },
+  "frontend/src/test-setup.ts": {
+    "mtime": 1786123865.661028,
+    "ast_hash": "b294963aad949abc127f942f0d5af5ab",
+    "semantic_hash": "b294963aad949abc127f942f0d5af5ab"
+  },
+  "frontend/vercel.json": {
+    "mtime": 1786123865.6630332,
+    "ast_hash": "2dfd00655510e39dbd56e3690f6ac197",
+    "semantic_hash": "2dfd00655510e39dbd56e3690f6ac197"
+  },
+  "frontend/vitest.config.ts": {
+    "mtime": 1786123865.6630332,
+    "ast_hash": "d0c10964be5a2733d0adf59a2b674f78",
+    "semantic_hash": "d0c10964be5a2733d0adf59a2b674f78"
+  },
+  "scripts/api-sync.sh": {
+    "mtime": 1786123865.663656,
+    "ast_hash": "9ebb30295f3c674cd40a5becc48f5a8b",
+    "semantic_hash": "9ebb30295f3c674cd40a5becc48f5a8b"
+  },
+  "scripts/claude-tmux.sh": {
+    "mtime": 1786123865.663656,
+    "ast_hash": "dcffbdccdb53a1b33f81b4c11c346601",
+    "semantic_hash": "dcffbdccdb53a1b33f81b4c11c346601"
+  },
+  "scripts/clean-worktrees.sh": {
+    "mtime": 1786123865.663656,
+    "ast_hash": "6c4b162982d56f9806cf63d12439fe60",
+    "semantic_hash": "6c4b162982d56f9806cf63d12439fe60"
+  },
+  "scripts/dev-start.sh": {
+    "mtime": 1786123865.663656,
+    "ast_hash": "7f28667279d46b74e7b9a9887f64fe1c",
+    "semantic_hash": "7f28667279d46b74e7b9a9887f64fe1c"
+  },
+  "scripts/neon-develop-reset.sh": {
+    "mtime": 1786123865.663656,
+    "ast_hash": "dbc4b7d21a924812df281199f47a6296",
+    "semantic_hash": "dbc4b7d21a924812df281199f47a6296"
+  },
+  "scripts/sonar-scan.sh": {
+    "mtime": 1786123865.663656,
+    "ast_hash": "5c198f931e5e2a24a72b287b6ba06afb",
+    "semantic_hash": "5c198f931e5e2a24a72b287b6ba06afb"
+  },
+  "scripts/sync-db.sh": {
+    "mtime": 1786123865.663656,
+    "ast_hash": "52e2dcb568261c1e98ebe3f083189de9",
+    "semantic_hash": "52e2dcb568261c1e98ebe3f083189de9"
+  },
+  "scripts/sync-tenant.sh": {
+    "mtime": 1786123865.663656,
+    "ast_hash": "92dfe2aa07ff7641533bbcb49e08dbdf",
+    "semantic_hash": "92dfe2aa07ff7641533bbcb49e08dbdf"
+  },
+  "scripts/test-summary.sh": {
+    "mtime": 1786123865.663656,
+    "ast_hash": "2aa9a47014a1fd5737a302a092dba879",
+    "semantic_hash": "2aa9a47014a1fd5737a302a092dba879"
+  },
+  ".claude/skills/_index.md": {
+    "mtime": 1786123865.603033,
+    "ast_hash": "52334229d98f8b0e864045f0b85debde",
+    "semantic_hash": "52334229d98f8b0e864045f0b85debde"
+  },
+  ".github/workflows/ci-cd.yml": {
+    "mtime": 1786123865.6068423,
+    "ast_hash": "ab455223482e74d9a427abe6757c0c69",
+    "semantic_hash": "ab455223482e74d9a427abe6757c0c69"
+  },
+  ".github/workflows/deploy-env.yml": {
+    "mtime": 1786124668.4559221,
+    "ast_hash": "c4a08cd1e0c54432cd8fcd129fb46378",
+    "semantic_hash": "c4a08cd1e0c54432cd8fcd129fb46378"
+  },
+  ".kiro/specs/budget-cycle-planning/requirements.md": {
+    "mtime": 1786123865.6073036,
+    "ast_hash": "972139e9327afa1a9fa0662daa3f4934",
+    "semantic_hash": "972139e9327afa1a9fa0662daa3f4934"
+  },
+  ".kiro/specs/budget-cycle-planning/tasks.md": {
+    "mtime": 1786123865.6073036,
+    "ast_hash": "cd020f0772e49f1234611691b75c55df",
+    "semantic_hash": "cd020f0772e49f1234611691b75c55df"
+  },
+  ".kiro/specs/budget-error-message-display/bugfix.md": {
+    "mtime": 1786123865.6076763,
+    "ast_hash": "f0c1e4b445f92ab52e71508d288d32b0",
+    "semantic_hash": "f0c1e4b445f92ab52e71508d288d32b0"
+  },
+  ".kiro/specs/budget-error-message-display/design.md": {
+    "mtime": 1786123865.6076763,
+    "ast_hash": "07da297d21efb87421597fa57999cb6a",
+    "semantic_hash": "07da297d21efb87421597fa57999cb6a"
+  },
+  ".kiro/specs/budget-error-message-display/tasks.md": {
+    "mtime": 1786123865.6076763,
+    "ast_hash": "cb814ace2a01f32750cf32188f8f24d1",
+    "semantic_hash": "cb814ace2a01f32750cf32188f8f24d1"
+  },
+  ".kiro/steering/product.md": {
+    "mtime": 1786123865.6076763,
+    "ast_hash": "c1cb243b7ab1c47e95f66786541f3e04",
+    "semantic_hash": "c1cb243b7ab1c47e95f66786541f3e04"
+  },
+  ".kiro/steering/structure.md": {
+    "mtime": 1786123865.6078947,
+    "ast_hash": "cad62e8f2256207d2bec3193dde06b02",
+    "semantic_hash": "cad62e8f2256207d2bec3193dde06b02"
+  },
+  ".kiro/steering/tech.md": {
+    "mtime": 1786123865.6078947,
+    "ast_hash": "e16866700bed54963aada7be7ec26ac3",
+    "semantic_hash": "e16866700bed54963aada7be7ec26ac3"
+  },
+  "CLAUDE.md": {
+    "mtime": 1786123865.6078947,
+    "ast_hash": "8c6c67f43fc216630e4a5a5bbc47f967",
+    "semantic_hash": "8c6c67f43fc216630e4a5a5bbc47f967"
+  },
+  "GEMINI.md": {
+    "mtime": 1786123865.6078947,
+    "ast_hash": "21f53cb747ac15fce06b171a9cdcdc28",
+    "semantic_hash": "21f53cb747ac15fce06b171a9cdcdc28"
+  },
+  "README.md": {
+    "mtime": 1786123865.6080332,
+    "ast_hash": "55c848791466a6aab2c4aa50348e5f1f",
+    "semantic_hash": "55c848791466a6aab2c4aa50348e5f1f"
+  },
+  "api-spec/openapi.yaml": {
+    "mtime": 1786633307.0707796,
+    "ast_hash": "63769969fc3aea01f028ae9a9819d1c5",
+    "semantic_hash": "63769969fc3aea01f028ae9a9819d1c5"
+  },
+  "architecture.md": {
+    "mtime": 1786572386.1521235,
+    "ast_hash": "7fc675c0fd7e6eb5068816da9c0d7924",
+    "semantic_hash": "7fc675c0fd7e6eb5068816da9c0d7924"
+  },
+  "commands.md": {
+    "mtime": 1786572386.1521235,
+    "ast_hash": "108e1072d433f160047a523c9ba65628",
+    "semantic_hash": "108e1072d433f160047a523c9ba65628"
+  },
+  "database-schema.md": {
+    "mtime": 1786354270.3913295,
+    "ast_hash": "9c75e8eae61785ba598beacdbd566217",
+    "semantic_hash": "9c75e8eae61785ba598beacdbd566217"
+  },
+  "dataset.md": {
+    "mtime": 1786123865.6314151,
+    "ast_hash": "8a321712583fc661ac3184bfce134fd6",
+    "semantic_hash": "8a321712583fc661ac3184bfce134fd6"
+  },
+  "docker-compose.yml": {
+    "mtime": 1786123865.6314151,
+    "ast_hash": "105dc0381ae52c3f0b263aa2460a7457",
+    "semantic_hash": "105dc0381ae52c3f0b263aa2460a7457"
+  },
+  "docs/adr/ADR-001-avaliacao-arquitetural.md": {
+    "mtime": 1786123865.63183,
+    "ast_hash": "8de30a132cda4cbd57c43bd9e223a066",
+    "semantic_hash": "8de30a132cda4cbd57c43bd9e223a066"
+  },
+  "docs/adr/ADR-002-billing-stripe.md": {
+    "mtime": 1786123865.631983,
+    "ast_hash": "83d37929f32b898b1ed9013b7ae571ca",
+    "semantic_hash": "83d37929f32b898b1ed9013b7ae571ca"
+  },
+  "docs/adr/ADR-003-infra-flyio.md": {
+    "mtime": 1786123865.631983,
+    "ast_hash": "92e65d5644dcce423b11393937b57c0a",
+    "semantic_hash": "92e65d5644dcce423b11393937b57c0a"
+  },
+  "docs/adr/ADR-004-cicd-hosted-ghcr-deploy-verificado.md": {
+    "mtime": 1786123865.631983,
+    "ast_hash": "971fb9336e9ad8b2516a00328a5aea30",
+    "semantic_hash": "971fb9336e9ad8b2516a00328a5aea30"
+  },
+  "docs/adr/ADR-005-versionamento-semver-releases.md": {
+    "mtime": 1786123865.632033,
+    "ast_hash": "7dc35d74ac1fc028074c74eba1d96dff",
+    "semantic_hash": "7dc35d74ac1fc028074c74eba1d96dff"
+  },
+  "docs/commercialization-plan.md": {
+    "mtime": 1786123865.632033,
+    "ast_hash": "75528fb19678185808787e386111fbd4",
+    "semantic_hash": "75528fb19678185808787e386111fbd4"
+  },
+  "docs/innovation-roadmap.md": {
+    "mtime": 1786123865.6324008,
+    "ast_hash": "489e884016c915cf9aa2159f082580e0",
+    "semantic_hash": "489e884016c915cf9aa2159f082580e0"
+  },
+  "docs/roadmap-extracao-e-conciliacao.md": {
+    "mtime": 1786633307.0727797,
+    "ast_hash": "c09d3c8186ff67edaf55edb148cddcf9",
+    "semantic_hash": "c09d3c8186ff67edaf55edb148cddcf9"
+  },
+  "docs/superpowers/plans/2026-05-26-account-management.md": {
+    "mtime": 1786123865.6330333,
+    "ast_hash": "53caa96c0648c0b7e72229e0a886ce54",
+    "semantic_hash": "53caa96c0648c0b7e72229e0a886ce54"
+  },
+  "docs/superpowers/plans/2026-06-11-budget-planning-frontend.md": {
+    "mtime": 1786123865.6370332,
+    "ast_hash": "86864738eb2cad17574efc9ec73edd04",
+    "semantic_hash": "86864738eb2cad17574efc9ec73edd04"
+  },
+  "docs/superpowers/plans/2026-06-17-invoice-detail-improvements.md": {
+    "mtime": 1786123865.6380332,
+    "ast_hash": "e915f47bda432f104b9cd7487584392a",
+    "semantic_hash": "e915f47bda432f104b9cd7487584392a"
+  },
+  "docs/superpowers/plans/2026-06-17-jwt-httponly-cookie.md": {
+    "mtime": 1786123865.6380332,
+    "ast_hash": "3a570237e1eeda2de1472a320decd27b",
+    "semantic_hash": "3a570237e1eeda2de1472a320decd27b"
+  },
+  "docs/superpowers/plans/2026-06-17-transaction-multi-sort.md": {
+    "mtime": 1786123865.6380332,
+    "ast_hash": "d7c85c276853f8d3130facaa51b36d5c",
+    "semantic_hash": "d7c85c276853f8d3130facaa51b36d5c"
+  },
+  "docs/superpowers/plans/2026-06-18-budget-unplanned-and-balance.md": {
+    "mtime": 1786123865.6380332,
+    "ast_hash": "abe2dba549742e4f191611382359a1b6",
+    "semantic_hash": "abe2dba549742e4f191611382359a1b6"
+  },
+  "docs/superpowers/plans/2026-06-23-transaction-timeline.md": {
+    "mtime": 1786123865.6380332,
+    "ast_hash": "c13453cdbd907fdb496cb2d38dac0fa8",
+    "semantic_hash": "c13453cdbd907fdb496cb2d38dac0fa8"
+  },
+  "docs/superpowers/plans/2026-06-24-sonarqube-integration.md": {
+    "mtime": 1786123865.6390333,
+    "ast_hash": "816e17f1f6e74aba6a4d7f9389bf8126",
+    "semantic_hash": "816e17f1f6e74aba6a4d7f9389bf8126"
+  },
+  "docs/superpowers/plans/2026-06-25-motor-de-recorrencia-nucleo.md": {
+    "mtime": 1786123865.6390333,
+    "ast_hash": "48d0230ee99f68f8fddb9796c68f5bfc",
+    "semantic_hash": "48d0230ee99f68f8fddb9796c68f5bfc"
+  },
+  "docs/superpowers/plans/2026-07-14-deploy-health-gate-smoke.md": {
+    "mtime": 1786123865.6390333,
+    "ast_hash": "38e7bea5e8f5bdc76e0cd9134fd8e79c",
+    "semantic_hash": "38e7bea5e8f5bdc76e0cd9134fd8e79c"
+  },
+  "docs/superpowers/plans/2026-07-28-extracao-fase2-csv-ofx.md": {
+    "mtime": 1786123865.6400332,
+    "ast_hash": "4b2de14afbde2aa9efb1f8817f18da1d",
+    "semantic_hash": "4b2de14afbde2aa9efb1f8817f18da1d"
+  },
+  "docs/superpowers/specs/2026-08-07-fix-itau-split-coluna-dinamico-design.md": {
+    "mtime": 1786124100.4841619,
+    "ast_hash": "86020932647b6657f0ddc1b37560b191",
+    "semantic_hash": "86020932647b6657f0ddc1b37560b191"
+  },
+  "docs/superpowers/specs/2026-08-07-itau-ancora-coluna-por-data-design.md": {
+    "mtime": 1786129164.9024832,
+    "ast_hash": "7cf26894026f1a59564336dee8a54907",
+    "semantic_hash": "7cf26894026f1a59564336dee8a54907"
+  },
+  "docs/superpowers/specs/2026-08-09-itau-fatura-ancora-por-documento-design.md": {
+    "mtime": 1786354270.3913295,
+    "ast_hash": "fb6fe6c156af0d9ec9232b85576e00c8",
+    "semantic_hash": "fb6fe6c156af0d9ec9232b85576e00c8"
+  },
+  "docs/superpowers/specs/2026-08-10-itau-internacional-produtos-servicos-design.md": {
+    "mtime": 1786391864.6896844,
+    "ast_hash": "3ed7280636a8ef1f990d4c22fd0ae0cb",
+    "semantic_hash": "3ed7280636a8ef1f990d4c22fd0ae0cb"
+  },
+  "domain.md": {
+    "mtime": 1786123865.6460333,
+    "ast_hash": "c5baffd385007fd151313eb1341b2cd2",
+    "semantic_hash": "c5baffd385007fd151313eb1341b2cd2"
+  },
+  "frontend/src/app/app.html": {
+    "mtime": 1786124668.4559221,
+    "ast_hash": "dcc60eef8a59433cfc9fdbc9f45d5bf6",
+    "semantic_hash": "dcc60eef8a59433cfc9fdbc9f45d5bf6"
+  },
+  "frontend/src/app/features/import/import.html": {
+    "mtime": 1786123865.6541092,
+    "ast_hash": "4b7051a6c835eda5319a54603c20a0c7",
+    "semantic_hash": "4b7051a6c835eda5319a54603c20a0c7"
+  },
+  "frontend/src/app/features/planning/budget-cycle-current/budget-cycle-current.html": {
+    "mtime": 1786123865.6557317,
+    "ast_hash": "02d6059270b434826ffd1ffd98f9a9de",
+    "semantic_hash": "02d6059270b434826ffd1ffd98f9a9de"
+  },
+  "frontend/src/app/features/transaction/transaction-form/transaction-form.html": {
+    "mtime": 1786123865.6587043,
+    "ast_hash": "0b37ad734b4aebfecff20b8ed07a56ad",
+    "semantic_hash": "0b37ad734b4aebfecff20b8ed07a56ad"
+  },
+  "git-operator.md": {
+    "mtime": 1786124668.4579222,
+    "ast_hash": "3cb2fd949723929481ea300a5f380d27",
+    "semantic_hash": "3cb2fd949723929481ea300a5f380d27"
+  },
+  "render.yaml": {
+    "mtime": 1786123865.6630332,
+    "ast_hash": "44dab10630949a8e20bb93f67eab9ec7",
+    "semantic_hash": "44dab10630949a8e20bb93f67eab9ec7"
+  },
+  "summary.md": {
+    "mtime": 1786633307.0737796,
+    "ast_hash": "ece1fcdfc81ab68b1cb890c71edd68c0",
+    "semantic_hash": "ece1fcdfc81ab68b1cb890c71edd68c0"
+  },
+  "tech.md": {
+    "mtime": 1786572386.1521235,
+    "ast_hash": "b79e74d308bbe5bdcc1df2b1c74e1783",
+    "semantic_hash": "b79e74d308bbe5bdcc1df2b1c74e1783"
+  },
+  "frontend/structure.png": {
+    "mtime": 1786123865.6620333,
+    "ast_hash": "3c501575ceea49ca7793887fa142a1da",
+    "semantic_hash": "3c501575ceea49ca7793887fa142a1da"
+  },
+  ".claude/skills/fintech-core-architecture-contract/SKILL.md": {
+    "mtime": 1786123865.604033,
+    "ast_hash": "8f3f1fd3a669d10eec771dbbaf99736a",
+    "semantic_hash": "8f3f1fd3a669d10eec771dbbaf99736a"
+  },
+  ".claude/skills/fintech-core-bug-backlog-campaign/SKILL.md": {
+    "mtime": 1786123865.6043823,
+    "ast_hash": "56886a54b45590b16d09570d9d2ac614",
+    "semantic_hash": "56886a54b45590b16d09570d9d2ac614"
+  },
+  ".claude/skills/fintech-core-build-and-env/SKILL.md": {
+    "mtime": 1786123865.6047494,
+    "ast_hash": "25ff0b72fc5db4e6cc9969f64974e5be",
+    "semantic_hash": "25ff0b72fc5db4e6cc9969f64974e5be"
+  },
+  ".claude/skills/fintech-core-change-control/SKILL.md": {
+    "mtime": 1786123865.6047494,
+    "ast_hash": "573a8979c11e67b7b1843fec467aa1d7",
+    "semantic_hash": "573a8979c11e67b7b1843fec467aa1d7"
+  },
+  ".claude/skills/fintech-core-config-and-flags/SKILL.md": {
+    "mtime": 1786123865.6050534,
+    "ast_hash": "be9780dc1bf4ca6acd132242af06b710",
+    "semantic_hash": "be9780dc1bf4ca6acd132242af06b710"
+  },
+  ".claude/skills/fintech-core-research-frontier/SKILL.md": {
+    "mtime": 1786123865.6050534,
+    "ast_hash": "ab73f36db037df58023e90539b24ef44",
+    "semantic_hash": "ab73f36db037df58023e90539b24ef44"
+  },
+  ".claude/skills/fintech-core-run-and-operate/SKILL.md": {
+    "mtime": 1786123865.606033,
+    "ast_hash": "d90c4577abaad827a3497244a958791b",
+    "semantic_hash": "d90c4577abaad827a3497244a958791b"
+  },
+  ".claude/skills/fintech-core-validation-and-qa/SKILL.md": {
+    "mtime": 1786123865.606033,
+    "ast_hash": "39d5205276a2bff9edd62d77b47a0be0",
+    "semantic_hash": "39d5205276a2bff9edd62d77b47a0be0"
+  },
+  ".claude/skills/fintech-domain-reference/SKILL.md": {
+    "mtime": 1786123865.606033,
+    "ast_hash": "030cd0d71f45e4147d146225ed66e8e7",
+    "semantic_hash": "030cd0d71f45e4147d146225ed66e8e7"
+  },
+  ".kiro/specs/budget-cycle-planning/design.md": {
+    "mtime": 1786123865.6073036,
+    "ast_hash": "630ef090294850dcfc537ac9de31a1de",
+    "semantic_hash": "630ef090294850dcfc537ac9de31a1de"
+  },
+  "backend/src/main/resources/static/openapi.yaml": {
+    "mtime": 1786123865.626033,
+    "ast_hash": "36a6e4f78a4da05fef3f7bfdf1c38e0a",
+    "semantic_hash": "36a6e4f78a4da05fef3f7bfdf1c38e0a"
+  },
+  "docker-compose.prod.yml": {
+    "mtime": 1786123865.6314151,
+    "ast_hash": "94084b5395cfc6aae7d4e73f478fd2af",
+    "semantic_hash": "94084b5395cfc6aae7d4e73f478fd2af"
+  },
+  "docs/superpowers/plans/2026-05-29-transfer-entre-contas.md": {
+    "mtime": 1786123865.6340332,
+    "ast_hash": "fd4f2660457f7c51bab70249da07f1e3",
+    "semantic_hash": "fd4f2660457f7c51bab70249da07f1e3"
+  },
+  "docs/superpowers/plans/2026-06-01-installments-plan.md": {
+    "mtime": 1786123865.6340332,
+    "ast_hash": "e2761cf882e2ad07828842509abd8b5b",
+    "semantic_hash": "e2761cf882e2ad07828842509abd8b5b"
+  },
+  "docs/superpowers/plans/2026-06-02-invoice-implementation.md": {
+    "mtime": 1786123865.6340332,
+    "ast_hash": "5d505c8495e1128872026010594c458a",
+    "semantic_hash": "5d505c8495e1128872026010594c458a"
+  },
+  "docs/superpowers/plans/2026-06-05-invoice-close-pay-behavior.md": {
+    "mtime": 1786123865.6350331,
+    "ast_hash": "2d2dbc68d4890e4f2e148d9f3229842c",
+    "semantic_hash": "2d2dbc68d4890e4f2e148d9f3229842c"
+  },
+  "docs/superpowers/plans/2026-06-05-team-invitations.md": {
+    "mtime": 1786123865.6350331,
+    "ast_hash": "95d0ae6b7011d02b59dd73962a5c4c39",
+    "semantic_hash": "95d0ae6b7011d02b59dd73962a5c4c39"
+  },
+  "docs/superpowers/plans/2026-06-16-planning-frontend-actions.md": {
+    "mtime": 1786123865.6370332,
+    "ast_hash": "c51364a0f0adc0bf60dbe541995469af",
+    "semantic_hash": "c51364a0f0adc0bf60dbe541995469af"
+  },
+  "docs/superpowers/plans/2026-06-29-recorrencia-migracao-planejamento.md": {
+    "mtime": 1786123865.6390333,
+    "ast_hash": "cbc13189f90626b329a31acc2eaf55e5",
+    "semantic_hash": "cbc13189f90626b329a31acc2eaf55e5"
+  },
+  "docs/superpowers/plans/2026-06-30-export-transacoes-csv.md": {
+    "mtime": 1786123865.6390333,
+    "ast_hash": "234cd1cf0eb09045025f03ba62e1d830",
+    "semantic_hash": "234cd1cf0eb09045025f03ba62e1d830"
+  },
+  "docs/superpowers/plans/2026-07-01-export-fatura-csv.md": {
+    "mtime": 1786123865.6390333,
+    "ast_hash": "85906f6070076ee083a127b1152fb6fd",
+    "semantic_hash": "85906f6070076ee083a127b1152fb6fd"
+  },
+  "docs/superpowers/plans/2026-07-14-build-github-hosted-ghcr.md": {
+    "mtime": 1786123865.6390333,
+    "ast_hash": "66fb8e508f38437dfe2dbb39a4a2ec27",
+    "semantic_hash": "66fb8e508f38437dfe2dbb39a4a2ec27"
+  },
+  "docs/superpowers/plans/2026-07-24-extracao-implantacao.md": {
+    "mtime": 1786123865.6400332,
+    "ast_hash": "13a53a5d2f2350cfecab251319864da6",
+    "semantic_hash": "13a53a5d2f2350cfecab251319864da6"
+  },
+  "docs/superpowers/plans/2026-07-29-extracao-gemini-primario-ollama-fallback.md": {
+    "mtime": 1786123865.6400332,
+    "ast_hash": "07df336fad3f93209a9045ad8d224ffa",
+    "semantic_hash": "07df336fad3f93209a9045ad8d224ffa"
+  },
+  "docs/superpowers/plans/2026-07-31-extracao-fase3-pdf-texto.md": {
+    "mtime": 1786123865.6410332,
+    "ast_hash": "d9f027bf866da28ebd32d1d00581c382",
+    "semantic_hash": "d9f027bf866da28ebd32d1d00581c382"
+  },
+  "docs/superpowers/plans/2026-08-04-android-seletor-de-ambiente.md": {
+    "mtime": 1786123865.6410332,
+    "ast_hash": "a36f80ff2ed8414a0cc98401e22b730e",
+    "semantic_hash": "a36f80ff2ed8414a0cc98401e22b730e"
+  },
+  "docs/superpowers/plans/2026-08-06-fix-templates-pdf-ordem-real.md": {
+    "mtime": 1786123865.6410332,
+    "ast_hash": "71b7d934c262a3340214cff6eb9cf167",
+    "semantic_hash": "71b7d934c262a3340214cff6eb9cf167"
+  },
+  "structure.md": {
+    "mtime": 1786572386.1521235,
+    "ast_hash": "677a9153e55a0bce1d1d351f9ff9aaa0",
+    "semantic_hash": "677a9153e55a0bce1d1d351f9ff9aaa0"
+  },
+  ".claude/settings.json": {
+    "mtime": 1786123865.603033,
+    "ast_hash": "57d2ea7f9a9c661cf266a38808a3fa43",
+    "semantic_hash": "57d2ea7f9a9c661cf266a38808a3fa43"
+  },
+  "android/app/schemas/com.fintech.mobile.data.local.AppDatabase/1.json": {
+    "mtime": 1786123865.608442,
+    "ast_hash": "52aa84041a9ebfc41580885475ac8fc7",
+    "semantic_hash": "52aa84041a9ebfc41580885475ac8fc7"
+  },
+  "backend/src/main/java/com/fintech/api/service/imports/LlmStatementExtractionDTO.java": {
+    "mtime": 1786633307.0717795,
+    "ast_hash": "0110bae1da7adcaed3e4d08b7b087c29",
+    "semantic_hash": "0110bae1da7adcaed3e4d08b7b087c29"
+  },
+  "backend/src/main/resources/db/migration/V11__category_taxonomy_code.sql": {
+    "mtime": 1786123865.624631,
+    "ast_hash": "22a23fb07a685e45896ee58663425efb",
+    "semantic_hash": "22a23fb07a685e45896ee58663425efb"
+  },
+  "backend/src/main/resources/db/migration/V12__budget_planning.sql": {
+    "mtime": 1786123865.6246908,
+    "ast_hash": "9217156190e1da53b252b609b50a2605",
+    "semantic_hash": "9217156190e1da53b252b609b50a2605"
+  },
+  "backend/src/main/resources/db/migration/V14__budget_cycle_snapshot.sql": {
+    "mtime": 1786123865.6246908,
+    "ast_hash": "6aeb0dc5a6ad82bee4df6140ceccc321",
+    "semantic_hash": "6aeb0dc5a6ad82bee4df6140ceccc321"
+  },
+  "backend/src/main/resources/db/migration/V15__budget_cycle_ended_status.sql": {
+    "mtime": 1786123865.6246908,
+    "ast_hash": "272230befce700d20a03f56a98183041",
+    "semantic_hash": "272230befce700d20a03f56a98183041"
+  },
+  "backend/src/main/resources/db/migration/V17__fix_invoice_reference_months.sql": {
+    "mtime": 1786123865.6246908,
+    "ast_hash": "269b0c6dc403e99482aebcd936992f85",
+    "semantic_hash": "269b0c6dc403e99482aebcd936992f85"
+  },
+  "backend/src/main/resources/db/migration/V19__recurrence_rules.sql": {
+    "mtime": 1786123865.6246908,
+    "ast_hash": "6a2d7c5eac166b0991b71886f5d6033d",
+    "semantic_hash": "6a2d7c5eac166b0991b71886f5d6033d"
+  },
+  "backend/src/main/resources/db/migration/V1__create_tenants_and_users.sql": {
+    "mtime": 1786123865.6246908,
+    "ast_hash": "9352f13c863d60b79f0212a1bec5b2cd",
+    "semantic_hash": "9352f13c863d60b79f0212a1bec5b2cd"
+  },
+  "backend/src/main/resources/db/migration/V21__migrate_recurring_budget_items_to_recurrence_rules.sql": {
+    "mtime": 1786123865.6246908,
+    "ast_hash": "dbc60f9d08828ef4a92bfc5d8e368d9f",
+    "semantic_hash": "dbc60f9d08828ef4a92bfc5d8e368d9f"
+  },
+  "backend/src/main/resources/db/migration/V22__transaction_paid_invoice_marker.sql": {
+    "mtime": 1786123865.6246908,
+    "ast_hash": "987da73c7eb73885aa5048276e5253b2",
+    "semantic_hash": "987da73c7eb73885aa5048276e5253b2"
+  },
+  "backend/src/main/resources/db/migration/V23__import_foundation.sql": {
+    "mtime": 1786123865.6246908,
+    "ast_hash": "b128712a7c70dd52714b111cae51a118",
+    "semantic_hash": "b128712a7c70dd52714b111cae51a118"
+  },
+  "backend/src/main/resources/db/migration/V25__import_batch_failure_reason.sql": {
+    "mtime": 1786123865.6246908,
+    "ast_hash": "f2699ac00f56a5bce64e8949a2fda08b",
+    "semantic_hash": "f2699ac00f56a5bce64e8949a2fda08b"
+  },
+  "backend/src/main/resources/db/migration/V26__import_source_hash.sql": {
+    "mtime": 1786123865.6246908,
+    "ast_hash": "746c58c8b96de4d794cce53d4fabb289",
+    "semantic_hash": "746c58c8b96de4d794cce53d4fabb289"
+  },
+  "backend/src/main/resources/db/migration/V28__import_batch_provenance.sql": {
+    "mtime": 1786123865.6250331,
+    "ast_hash": "2cf61f7ef56c4b9821de2bc341eb1770",
+    "semantic_hash": "2cf61f7ef56c4b9821de2bc341eb1770"
+  },
+  "backend/src/main/resources/db/migration/V2__create-table-credit-cards.sql": {
+    "mtime": 1786123865.6250331,
+    "ast_hash": "2d3e5bf3e4a153a0b885452365ce0e5d",
+    "semantic_hash": "2d3e5bf3e4a153a0b885452365ce0e5d"
+  },
+  "backend/src/main/resources/db/migration/V30__import_batch_target_invoice.sql": {
+    "mtime": 1786354270.3903294,
+    "ast_hash": "a6d9a4ddda19ef1821a54ea6da20ca03",
+    "semantic_hash": "a6d9a4ddda19ef1821a54ea6da20ca03"
+  },
+  "backend/src/main/resources/db/migration/V3__create_categories_and_transactions.sql": {
+    "mtime": 1786123865.6250331,
+    "ast_hash": "4465b37daa73bffd34b4359066fa0485",
+    "semantic_hash": "4465b37daa73bffd34b4359066fa0485"
+  },
+  "backend/src/main/resources/db/migration/V4__add_status_and_installments.sql": {
+    "mtime": 1786123865.6250331,
+    "ast_hash": "9bdb871a109eba46b4cd0b5cdf8431ff",
+    "semantic_hash": "9bdb871a109eba46b4cd0b5cdf8431ff"
+  },
+  "backend/src/main/resources/db/migration/V5__accounts_migration.sql": {
+    "mtime": 1786123865.6250331,
+    "ast_hash": "4e8a00784e8e148f985445e322c5bbcd",
+    "semantic_hash": "4e8a00784e8e148f985445e322c5bbcd"
+  },
+  "backend/src/main/resources/db/migration/V6__create_invitations.sql": {
+    "mtime": 1786123865.6250331,
+    "ast_hash": "ac9e8d77c1f84fe9880021e75cfa6644",
+    "semantic_hash": "ac9e8d77c1f84fe9880021e75cfa6644"
+  },
+  "backend/src/main/resources/db/migration/V7__category_soft_delete.sql": {
+    "mtime": 1786123865.6250331,
+    "ast_hash": "f8391d5a938733db6709f12accb864c8",
+    "semantic_hash": "f8391d5a938733db6709f12accb864c8"
+  },
+  "backend/src/main/resources/db/migration/V8__installment_groups.sql": {
+    "mtime": 1786123865.6250331,
+    "ast_hash": "01b157d72e1241307479c16ed84fe128",
+    "semantic_hash": "01b157d72e1241307479c16ed84fe128"
+  },
+  "backend/src/main/resources/db/migration/V9__invoices.sql": {
+    "mtime": 1786123865.6250331,
+    "ast_hash": "10cc4f84c7a05265b4b893e651bae3f5",
+    "semantic_hash": "10cc4f84c7a05265b4b893e651bae3f5"
+  },
+  "backend/src/main/resources/db/seed/V13__seed_dev.sql": {
+    "mtime": 1786123865.6256282,
+    "ast_hash": "ce29cac9e08b3c3847fb0bbaa25496fc",
+    "semantic_hash": "ce29cac9e08b3c3847fb0bbaa25496fc"
+  },
+  "backend/src/main/resources/db/seed/V16__seed_dev_budget.sql": {
+    "mtime": 1786123865.6256282,
+    "ast_hash": "902a4f97ea94c7eb4105a982902fd1c2",
+    "semantic_hash": "902a4f97ea94c7eb4105a982902fd1c2"
+  },
+  "backend/src/main/resources/db/seed/V18__fix_dev_budget_opening_balance.sql": {
+    "mtime": 1786123865.6256282,
+    "ast_hash": "062da35b8bdbcd19acef06ca1e665697",
+    "semantic_hash": "062da35b8bdbcd19acef06ca1e665697"
+  },
+  "backend/src/main/resources/db/seed/V20__seed_dev_recurrence.sql": {
+    "mtime": 1786123865.6256282,
+    "ast_hash": "b9b476798ef4790f7c07104d9302f871",
+    "semantic_hash": "b9b476798ef4790f7c07104d9302f871"
+  },
+  "backend/src/main/resources/db/seed/V24__seed_dev_import.sql": {
+    "mtime": 1786123865.6256282,
+    "ast_hash": "4b097a003bc95e5ac24c0249e5fa9edb",
+    "semantic_hash": "4b097a003bc95e5ac24c0249e5fa9edb"
+  },
+  "backend/src/main/resources/db/seed/V27__seed_dev_import_csv.sql": {
+    "mtime": 1786123865.6256282,
+    "ast_hash": "131aa462b123cc299667255c7531462a",
+    "semantic_hash": "131aa462b123cc299667255c7531462a"
+  },
+  "backend/src/main/resources/db/seed/V29__seed_dev_import_provenance.sql": {
+    "mtime": 1786123865.6256282,
+    "ast_hash": "5979fa404717b93cccb7967acef5eea2",
+    "semantic_hash": "5979fa404717b93cccb7967acef5eea2"
+  },
+  "backend/src/test/resources/sql/cleanup.sql": {
+    "mtime": 1786123865.6310332,
+    "ast_hash": "e43493f526269077a8396174c2c65517",
+    "semantic_hash": "e43493f526269077a8396174c2c65517"
+  },
+  "backend/src/test/resources/sql/seed_base.sql": {
+    "mtime": 1786123865.6314151,
+    "ast_hash": "586dbd6a8d9067c1d94af8f0332d30cf",
+    "semantic_hash": "586dbd6a8d9067c1d94af8f0332d30cf"
+  },
+  "frontend/proxy.conf.json": {
+    "mtime": 1786123865.6480334,
+    "ast_hash": "2d0f3405071f738e85d686b23ffadc6a",
+    "semantic_hash": "2d0f3405071f738e85d686b23ffadc6a"
+  },
+  "frontend/tsconfig.app.json": {
+    "mtime": 1786123865.6630332,
+    "ast_hash": "67a3f20f3c9369570c8dc70e3d5bb7ce",
+    "semantic_hash": "67a3f20f3c9369570c8dc70e3d5bb7ce"
+  },
+  "frontend/tsconfig.json": {
+    "mtime": 1786123865.6630332,
+    "ast_hash": "d4886a8a9be1c35a2d17ab5e0f4439c2",
+    "semantic_hash": "d4886a8a9be1c35a2d17ab5e0f4439c2"
+  },
+  "frontend/tsconfig.spec.json": {
+    "mtime": 1786123865.6630332,
+    "ast_hash": "9261a8f9db3b2c991df0e6f9d51828b1",
+    "semantic_hash": "9261a8f9db3b2c991df0e6f9d51828b1"
+  },
+  "mcp-config.json": {
+    "mtime": 1786123865.6630332,
+    "ast_hash": "5db649385f8d12c28d1df849fe77f4b7",
+    "semantic_hash": "5db649385f8d12c28d1df849fe77f4b7"
+  },
+  ".claude/skills/fintech-core-debugging-playbook/SKILL.md": {
+    "mtime": 1786123865.6050534,
+    "ast_hash": "1fcc91aa2bb290e33e63b5fd27f5e7ca",
+    "semantic_hash": "1fcc91aa2bb290e33e63b5fd27f5e7ca"
+  },
+  ".claude/skills/fintech-core-docs-and-writing/SKILL.md": {
+    "mtime": 1786123865.6050534,
+    "ast_hash": "59c0294a1b2213968dcc191657cd0828",
+    "semantic_hash": "59c0294a1b2213968dcc191657cd0828"
+  },
+  ".claude/skills/fintech-core-proof-and-analysis-toolkit/SKILL.md": {
+    "mtime": 1786123865.6050534,
+    "ast_hash": "176c2bc07046d70a15aa24e015350667",
+    "semantic_hash": "176c2bc07046d70a15aa24e015350667"
+  },
+  ".claude/skills/fintech-core-release-and-versioning/SKILL.md": {
+    "mtime": 1786123865.6050534,
+    "ast_hash": "be25b619a4f84c67f0d72af73e627697",
+    "semantic_hash": "be25b619a4f84c67f0d72af73e627697"
+  },
+  ".github/ISSUE_TEMPLATE/bug_report.md": {
+    "mtime": 1786123865.6068017,
+    "ast_hash": "134b7d7aa9ebc5040a604e232c26e38e",
+    "semantic_hash": "134b7d7aa9ebc5040a604e232c26e38e"
+  },
+  ".github/ISSUE_TEMPLATE/chore.md": {
+    "mtime": 1786123865.6068423,
+    "ast_hash": "10393e5341bb8e83b77de456f8b37906",
+    "semantic_hash": "10393e5341bb8e83b77de456f8b37906"
+  },
+  ".github/ISSUE_TEMPLATE/config.yml": {
+    "mtime": 1786123865.6068423,
+    "ast_hash": "39ac593e7e36c2f655770df84b3c95e7",
+    "semantic_hash": "39ac593e7e36c2f655770df84b3c95e7"
+  },
+  ".github/ISSUE_TEMPLATE/feature_request.md": {
+    "mtime": 1786123865.6068423,
+    "ast_hash": "7f31ae5036e83e6d674086717a3b072c",
+    "semantic_hash": "7f31ae5036e83e6d674086717a3b072c"
+  },
+  ".github/pull_request_template.md": {
+    "mtime": 1786123865.6068423,
+    "ast_hash": "aad0b0fc1baa9dd2317113882c538beb",
+    "semantic_hash": "aad0b0fc1baa9dd2317113882c538beb"
+  },
+  ".github/workflows/release.yml": {
+    "mtime": 1786123865.6070144,
+    "ast_hash": "e608ca4b39f0b43375aa08ad286da072",
+    "semantic_hash": "e608ca4b39f0b43375aa08ad286da072"
+  },
+  "docs/http/README.md": {
+    "mtime": 1786123865.632033,
+    "ast_hash": "9f65416c03a8cc49891febe51aebd331",
+    "semantic_hash": "9f65416c03a8cc49891febe51aebd331"
+  },
+  "docs/superpowers/plans/2026-05-26-openapi-adoption.md": {
+    "mtime": 1786123865.6330333,
+    "ast_hash": "bfe0315ac8ba5373553de383d6a56b24",
+    "semantic_hash": "bfe0315ac8ba5373553de383d6a56b24"
+  },
+  "docs/superpowers/plans/2026-05-27-multi-env-deploy.md": {
+    "mtime": 1786123865.6330333,
+    "ast_hash": "2d8e531c19c753f639505fa8649e7966",
+    "semantic_hash": "2d8e531c19c753f639505fa8649e7966"
+  },
+  "docs/superpowers/plans/2026-05-28-invite-join-tenant.md": {
+    "mtime": 1786123865.6330333,
+    "ast_hash": "7eb4df7644bb6c93a86fd8a7bfa9d42e",
+    "semantic_hash": "7eb4df7644bb6c93a86fd8a7bfa9d42e"
+  },
+  "docs/superpowers/plans/2026-05-29-category-form-improvements.md": {
+    "mtime": 1786123865.6330333,
+    "ast_hash": "e6ea0dc069635e807843c50739d2bdea",
+    "semantic_hash": "e6ea0dc069635e807843c50739d2bdea"
+  },
+  "docs/superpowers/plans/2026-06-01-dashboard-empty-state.md": {
+    "mtime": 1786123865.6340332,
+    "ast_hash": "bb7fed3ba8ec9e0baa73de8096b8b817",
+    "semantic_hash": "bb7fed3ba8ec9e0baa73de8096b8b817"
+  },
+  "docs/superpowers/plans/2026-06-05-invoice-management.md": {
+    "mtime": 1786123865.6350331,
+    "ast_hash": "cb40379cc75ef6ec4d21eeaabd28a8f8",
+    "semantic_hash": "cb40379cc75ef6ec4d21eeaabd28a8f8"
+  },
+  "docs/superpowers/plans/2026-06-08-transaction-batch-entry.md": {
+    "mtime": 1786123865.6350331,
+    "ast_hash": "495a41bfa464a051a04902ba3866eab8",
+    "semantic_hash": "495a41bfa464a051a04902ba3866eab8"
+  },
+  "docs/superpowers/plans/2026-06-08-transaction-filters-ux-redesign.md": {
+    "mtime": 1786123865.6350331,
+    "ast_hash": "2e5aecdc11312366627e483d8aa4e4cb",
+    "semantic_hash": "2e5aecdc11312366627e483d8aa4e4cb"
+  },
+  "docs/superpowers/plans/2026-06-08-transaction-filters.md": {
+    "mtime": 1786123865.6350331,
+    "ast_hash": "ebbb8921437e6a5e3f5d983756c564b7",
+    "semantic_hash": "ebbb8921437e6a5e3f5d983756c564b7"
+  },
+  "docs/superpowers/plans/2026-06-09-transaction-filters-improvements.md": {
+    "mtime": 1786123865.6360333,
+    "ast_hash": "156300e064a3a8139ef50db8d654374b",
+    "semantic_hash": "156300e064a3a8139ef50db8d654374b"
+  },
+  "docs/superpowers/plans/2026-06-10-default-category-seed.md": {
+    "mtime": 1786123865.6360333,
+    "ast_hash": "b2bf0c5be7eff728402f4c3ced26221c",
+    "semantic_hash": "b2bf0c5be7eff728402f4c3ced26221c"
+  },
+  "docs/superpowers/plans/2026-06-10-taxonomy-mapping.md": {
+    "mtime": 1786123865.6360333,
+    "ast_hash": "9b64702aba9b885ac10a1c0b8fbef5ee",
+    "semantic_hash": "9b64702aba9b885ac10a1c0b8fbef5ee"
+  },
+  "docs/superpowers/plans/2026-06-10-test-dataset.md": {
+    "mtime": 1786123865.6360333,
+    "ast_hash": "e23e8fe54d9580a35e96ebdf99164aee",
+    "semantic_hash": "e23e8fe54d9580a35e96ebdf99164aee"
+  },
+  "docs/superpowers/plans/2026-06-11-budget-planning-backend.md": {
+    "mtime": 1786123865.6360333,
+    "ast_hash": "adb5ad3a1d150e0fab3e005f5e686208",
+    "semantic_hash": "adb5ad3a1d150e0fab3e005f5e686208"
+  },
+  "docs/superpowers/plans/2026-06-12-budget-bugs-95.md": {
+    "mtime": 1786123865.6370332,
+    "ast_hash": "e5750808d024e844a9ff9aa7737bc8ad",
+    "semantic_hash": "e5750808d024e844a9ff9aa7737bc8ad"
+  },
+  "docs/superpowers/plans/2026-06-12-planning-shell-tabs.md": {
+    "mtime": 1786123865.6370332,
+    "ast_hash": "868bc458c9bf8028b9923907ff9426b0",
+    "semantic_hash": "868bc458c9bf8028b9923907ff9426b0"
+  },
+  "docs/superpowers/plans/2026-06-16-budget-cycle-delete.md": {
+    "mtime": 1786123865.6370332,
+    "ast_hash": "2dabc75c6f360280fda5af1ef4001603",
+    "semantic_hash": "2dabc75c6f360280fda5af1ef4001603"
+  },
+  "docs/superpowers/plans/2026-06-16-budget-cycle-states.md": {
+    "mtime": 1786123865.6370332,
+    "ast_hash": "35b233bcde9c8af9e739719dd1eb41fa",
+    "semantic_hash": "35b233bcde9c8af9e739719dd1eb41fa"
+  },
+  "docs/superpowers/plans/2026-06-16-security-hardening-110-115.md": {
+    "mtime": 1786123865.6380332,
+    "ast_hash": "5c3340da1d6f2ad95aceffeeb8af7239",
+    "semantic_hash": "5c3340da1d6f2ad95aceffeeb8af7239"
+  },
+  "docs/superpowers/plans/2026-07-31-android-lancamento-transacoes.md": {
+    "mtime": 1786123865.6400332,
+    "ast_hash": "061570099aeb7ed2a064db981cd54e34",
+    "semantic_hash": "061570099aeb7ed2a064db981cd54e34"
+  },
+  "docs/superpowers/plans/2026-08-05-extracao-fase3-registry-templates.md": {
+    "mtime": 1786123865.6410332,
+    "ast_hash": "40336d69d7c9385033016f6a8a0406d4",
+    "semantic_hash": "40336d69d7c9385033016f6a8a0406d4"
+  },
+  "docs/superpowers/plans/2026-08-06-import-itau-parcelamento.md": {
+    "mtime": 1786123865.6410332,
+    "ast_hash": "02f691789da321af3d468cfa8f223d82",
+    "semantic_hash": "02f691789da321af3d468cfa8f223d82"
+  },
+  "docs/superpowers/plans/2026-08-07-fix-itau-split-coluna-dinamico.md": {
+    "mtime": 1786124100.4841619,
+    "ast_hash": "a14e5c57c970b3c8842bb70d12ee9912",
+    "semantic_hash": "a14e5c57c970b3c8842bb70d12ee9912"
+  },
+  "docs/superpowers/plans/2026-08-07-itau-ancora-coluna-por-data.md": {
+    "mtime": 1786129270.4410062,
+    "ast_hash": "a6e33754840fb0eff300e216002f5d0c",
+    "semantic_hash": "a6e33754840fb0eff300e216002f5d0c"
+  },
+  "docs/superpowers/plans/2026-08-09-itau-fatura-ancora-por-documento.md": {
+    "mtime": 1786314230.7109578,
+    "ast_hash": "f6fb9e782d59ed8b60a16219c5634244",
+    "semantic_hash": "f6fb9e782d59ed8b60a16219c5634244"
+  },
+  "docs/superpowers/plans/2026-08-10-itau-internacional-produtos-servicos.md": {
+    "mtime": 1786400755.10198,
+    "ast_hash": "c5f1ba538bc4cb010c97d5e25571f6d4",
+    "semantic_hash": "c5f1ba538bc4cb010c97d5e25571f6d4"
+  },
+  "docs/superpowers/specs/2026-05-26-account-management-design.md": {
+    "mtime": 1786123865.6420333,
+    "ast_hash": "55b2cee60d88c5d80f04e67be85833f6",
+    "semantic_hash": "55b2cee60d88c5d80f04e67be85833f6"
+  },
+  "docs/superpowers/specs/2026-05-26-openapi-adoption-design.md": {
+    "mtime": 1786123865.6424701,
+    "ast_hash": "9575a42370752297af42561eba8b7f1d",
+    "semantic_hash": "9575a42370752297af42561eba8b7f1d"
+  },
+  "docs/superpowers/specs/2026-05-27-multi-env-deploy-design.md": {
+    "mtime": 1786123865.6424701,
+    "ast_hash": "32b3b0ee587346e087f0c3fd31bbc585",
+    "semantic_hash": "32b3b0ee587346e087f0c3fd31bbc585"
+  },
+  "docs/superpowers/specs/2026-05-28-invite-join-tenant-design.md": {
+    "mtime": 1786123865.6424701,
+    "ast_hash": "5adb276c76f2eb79866e8a8a3a6d54a2",
+    "semantic_hash": "5adb276c76f2eb79866e8a8a3a6d54a2"
+  },
+  "docs/superpowers/specs/2026-05-29-category-form-improvements-design.md": {
+    "mtime": 1786123865.6424701,
+    "ast_hash": "6e67af80c13a0c864d65d0b6899370bd",
+    "semantic_hash": "6e67af80c13a0c864d65d0b6899370bd"
+  },
+  "docs/superpowers/specs/2026-05-29-transfer-design.md": {
+    "mtime": 1786123865.6424701,
+    "ast_hash": "f57b5c91532e8ae8aec71084f77a114a",
+    "semantic_hash": "f57b5c91532e8ae8aec71084f77a114a"
+  },
+  "docs/superpowers/specs/2026-06-01-installments-design.md": {
+    "mtime": 1786123865.6424701,
+    "ast_hash": "5de6fbb6bb4a264e06f75d870efbb35c",
+    "semantic_hash": "5de6fbb6bb4a264e06f75d870efbb35c"
+  },
+  "docs/superpowers/specs/2026-06-02-invoice-design.md": {
+    "mtime": 1786123865.6424701,
+    "ast_hash": "107c0c37fb40dafe0a5ec4dd62b6d689",
+    "semantic_hash": "107c0c37fb40dafe0a5ec4dd62b6d689"
+  },
+  "docs/superpowers/specs/2026-06-05-invoice-close-pay-behavior-design.md": {
+    "mtime": 1786123865.6424701,
+    "ast_hash": "be0074fcab668fcd37c0878ff0e6a772",
+    "semantic_hash": "be0074fcab668fcd37c0878ff0e6a772"
+  },
+  "docs/superpowers/specs/2026-06-05-invoice-management-design.md": {
+    "mtime": 1786123865.6424701,
+    "ast_hash": "038dfde67c6fcf50871ce5519975eb22",
+    "semantic_hash": "038dfde67c6fcf50871ce5519975eb22"
+  },
+  "docs/superpowers/specs/2026-06-05-team-invitations-design.md": {
+    "mtime": 1786123865.6430333,
+    "ast_hash": "c2000f968dca315cf02eff561df18226",
+    "semantic_hash": "c2000f968dca315cf02eff561df18226"
+  },
+  "docs/superpowers/specs/2026-06-08-transaction-batch-entry-design.md": {
+    "mtime": 1786123865.6430333,
+    "ast_hash": "638eb6f7bf1ebfd5583b5dc5de2610b9",
+    "semantic_hash": "638eb6f7bf1ebfd5583b5dc5de2610b9"
+  },
+  "docs/superpowers/specs/2026-06-08-transaction-filters-design.md": {
+    "mtime": 1786123865.6430333,
+    "ast_hash": "e2c99b31b7d18d04dd4bcc485b0f213f",
+    "semantic_hash": "e2c99b31b7d18d04dd4bcc485b0f213f"
+  },
+  "docs/superpowers/specs/2026-06-08-transaction-filters-ux-redesign.md": {
+    "mtime": 1786123865.6430333,
+    "ast_hash": "0fef2f116d55535202c1e5ade706b3d5",
+    "semantic_hash": "0fef2f116d55535202c1e5ade706b3d5"
+  },
+  "docs/superpowers/specs/2026-06-09-test-dataset-design.md": {
+    "mtime": 1786123865.6430333,
+    "ast_hash": "1841167fb3ad4abcb4ed796d461aae82",
+    "semantic_hash": "1841167fb3ad4abcb4ed796d461aae82"
+  },
+  "docs/superpowers/specs/2026-06-09-transaction-filters-improvements-design.md": {
+    "mtime": 1786123865.6430333,
+    "ast_hash": "77000ccf3650beb3acfee91d693c02d1",
+    "semantic_hash": "77000ccf3650beb3acfee91d693c02d1"
+  },
+  "docs/superpowers/specs/2026-06-10-default-category-seed-design.md": {
+    "mtime": 1786123865.6430333,
+    "ast_hash": "f21882c488a0f268d582691a2552e92b",
+    "semantic_hash": "f21882c488a0f268d582691a2552e92b"
+  },
+  "docs/superpowers/specs/2026-06-10-taxonomy-mapping-design.md": {
+    "mtime": 1786123865.6430333,
+    "ast_hash": "090655f6de8d5ccdda989941727788c1",
+    "semantic_hash": "090655f6de8d5ccdda989941727788c1"
+  },
+  "docs/superpowers/specs/2026-06-11-monthly-planning-design.md": {
+    "mtime": 1786123865.6430333,
+    "ast_hash": "cce67ae6bbf24ec1c2af69604ec497a1",
+    "semantic_hash": "cce67ae6bbf24ec1c2af69604ec497a1"
+  },
+  "docs/superpowers/specs/2026-06-12-planning-shell-tabs-design.md": {
+    "mtime": 1786123865.6430333,
+    "ast_hash": "214a80159204290e4706e18601fe2240",
+    "semantic_hash": "214a80159204290e4706e18601fe2240"
+  },
+  "docs/superpowers/specs/2026-06-16-budget-cycle-states-design.md": {
+    "mtime": 1786123865.6430333,
+    "ast_hash": "a361e7fda1ca3330045d8a302b8ff200",
+    "semantic_hash": "a361e7fda1ca3330045d8a302b8ff200"
+  },
+  "docs/superpowers/specs/2026-06-16-planning-frontend-actions-design.md": {
+    "mtime": 1786123865.6430333,
+    "ast_hash": "49480d7ebb64a176b30f211c0ade5339",
+    "semantic_hash": "49480d7ebb64a176b30f211c0ade5339"
+  },
+  "docs/superpowers/specs/2026-06-17-budget-cycle-open-dialog-ux-design.md": {
+    "mtime": 1786123865.6430333,
+    "ast_hash": "06a1bb97d8173ff6ae453dc611d65a35",
+    "semantic_hash": "06a1bb97d8173ff6ae453dc611d65a35"
+  },
+  "docs/superpowers/specs/2026-06-17-invoice-detail-improvements-design.md": {
+    "mtime": 1786123865.6440332,
+    "ast_hash": "290fb4c2d93032ce9016e0b9468b609e",
+    "semantic_hash": "290fb4c2d93032ce9016e0b9468b609e"
+  },
+  "docs/superpowers/specs/2026-06-17-jwt-httponly-cookie-design.md": {
+    "mtime": 1786123865.6440332,
+    "ast_hash": "dc229c0a6086af689ed9a49d4e489a8d",
+    "semantic_hash": "dc229c0a6086af689ed9a49d4e489a8d"
+  },
+  "docs/superpowers/specs/2026-06-17-transaction-multi-sort-design.md": {
+    "mtime": 1786123865.6440332,
+    "ast_hash": "e8014ff31d4822eddd663d418916f846",
+    "semantic_hash": "e8014ff31d4822eddd663d418916f846"
+  },
+  "docs/superpowers/specs/2026-06-23-transaction-timeline-design.md": {
+    "mtime": 1786123865.6440332,
+    "ast_hash": "f22ac9b2c53cb3e05803cc08c1839e15",
+    "semantic_hash": "f22ac9b2c53cb3e05803cc08c1839e15"
+  },
+  "docs/superpowers/specs/2026-06-24-sonarqube-integration-design.md": {
+    "mtime": 1786123865.6440332,
+    "ast_hash": "248d604cfff4322803dcb1a8f843f027",
+    "semantic_hash": "248d604cfff4322803dcb1a8f843f027"
+  },
+  "docs/superpowers/specs/2026-06-25-motor-de-recorrencia-nucleo-design.md": {
+    "mtime": 1786123865.6440332,
+    "ast_hash": "bd83c6d7d672002af2a7fdce7ead1476",
+    "semantic_hash": "bd83c6d7d672002af2a7fdce7ead1476"
+  },
+  "docs/superpowers/specs/2026-06-25-motor-de-recorrencia.md": {
+    "mtime": 1786123865.6440332,
+    "ast_hash": "ed6b72c8777062f7d6661c143ced7471",
+    "semantic_hash": "ed6b72c8777062f7d6661c143ced7471"
+  },
+  "docs/superpowers/specs/2026-06-29-recorrencia-migracao-planejamento-design.md": {
+    "mtime": 1786123865.6440332,
+    "ast_hash": "6aa11679ff2835957c46d7a21444abf0",
+    "semantic_hash": "6aa11679ff2835957c46d7a21444abf0"
+  },
+  "docs/superpowers/specs/2026-06-30-export-transacoes-csv-design.md": {
+    "mtime": 1786123865.6440332,
+    "ast_hash": "0edb684303a57c2fd4319b03c7ad82c0",
+    "semantic_hash": "0edb684303a57c2fd4319b03c7ad82c0"
+  },
+  "docs/superpowers/specs/2026-07-01-export-fatura-csv-design.md": {
+    "mtime": 1786123865.6440332,
+    "ast_hash": "ef57d5c6d126a353156a8e35ef8d7162",
+    "semantic_hash": "ef57d5c6d126a353156a8e35ef8d7162"
+  },
+  "docs/superpowers/specs/2026-07-12-criticas-restantes-design.md": {
+    "mtime": 1786123865.6440332,
+    "ast_hash": "645f7e6aaf0fa7f1e97316cf1bd1cee8",
+    "semantic_hash": "645f7e6aaf0fa7f1e97316cf1bd1cee8"
+  },
+  "docs/superpowers/specs/2026-07-12-fase1-cluster-dinheiro-design.md": {
+    "mtime": 1786123865.6440332,
+    "ast_hash": "899189708c88a04d4e4310bfd6da033c",
+    "semantic_hash": "899189708c88a04d4e4310bfd6da033c"
+  },
+  "docs/superpowers/specs/2026-07-12-fase2-cluster-seguranca-design.md": {
+    "mtime": 1786123865.6450334,
+    "ast_hash": "2c42482df50fc05a9a31ab648464c569",
+    "semantic_hash": "2c42482df50fc05a9a31ab648464c569"
+  },
+  "docs/superpowers/specs/2026-07-12-fase3-cluster-double-entry-dashboard-design.md": {
+    "mtime": 1786123865.6450334,
+    "ast_hash": "92df6fa450ed304e5b9236fd16be99f8",
+    "semantic_hash": "92df6fa450ed304e5b9236fd16be99f8"
+  },
+  "docs/superpowers/specs/2026-07-12-fase4-recorrencia-planejamento-design.md": {
+    "mtime": 1786123865.6450334,
+    "ast_hash": "a81d45f3f2b64736f6711b73a9f3f1f5",
+    "semantic_hash": "a81d45f3f2b64736f6711b73a9f3f1f5"
+  },
+  "docs/superpowers/specs/2026-07-14-build-github-hosted-ghcr-design.md": {
+    "mtime": 1786123865.6450334,
+    "ast_hash": "28eaf4133e62bd9052ef15c97f6a4a42",
+    "semantic_hash": "28eaf4133e62bd9052ef15c97f6a4a42"
+  },
+  "docs/superpowers/specs/2026-07-14-deploy-health-gate-smoke-design.md": {
+    "mtime": 1786123865.6450334,
+    "ast_hash": "5ab19a9d554d586659bf572923f923d9",
+    "semantic_hash": "5ab19a9d554d586659bf572923f923d9"
+  },
+  "docs/superpowers/specs/2026-07-24-extracao-fundacao-e-mvp-imagem-design.md": {
+    "mtime": 1786123865.6450334,
+    "ast_hash": "afca2678fb0d5b7874931af2f578d895",
+    "semantic_hash": "afca2678fb0d5b7874931af2f578d895"
+  },
+  "docs/superpowers/specs/2026-07-28-extracao-fase2-csv-ofx-design.md": {
+    "mtime": 1786123865.6450334,
+    "ast_hash": "1d98bf1a201d5d698d45581c2ee3a8c1",
+    "semantic_hash": "1d98bf1a201d5d698d45581c2ee3a8c1"
+  },
+  "docs/superpowers/specs/2026-07-29-extracao-gemini-primario-ollama-fallback-design.md": {
+    "mtime": 1786123865.6450334,
+    "ast_hash": "6f3643f781fbf0670c7eb585297610bd",
+    "semantic_hash": "6f3643f781fbf0670c7eb585297610bd"
+  },
+  "docs/superpowers/specs/2026-07-30-extracao-fase2-revisao-em-lote-design.md": {
+    "mtime": 1786123865.6450334,
+    "ast_hash": "5878deee0ebb98db756b7937118b3617",
+    "semantic_hash": "5878deee0ebb98db756b7937118b3617"
+  },
+  "docs/superpowers/specs/2026-07-31-android-lancamento-transacoes-design.md": {
+    "mtime": 1786123865.6460333,
+    "ast_hash": "67c9ee4381c8add9ec079f4e82e18de0",
+    "semantic_hash": "67c9ee4381c8add9ec079f4e82e18de0"
+  },
+  "docs/superpowers/specs/2026-07-31-extracao-fase3-pdf-texto-design.md": {
+    "mtime": 1786123865.6460333,
+    "ast_hash": "e8c9f42e8c05fd03630a3ea4ed4a91f3",
+    "semantic_hash": "e8c9f42e8c05fd03630a3ea4ed4a91f3"
+  },
+  "docs/superpowers/specs/2026-08-04-android-seletor-de-ambiente-design.md": {
+    "mtime": 1786123865.6460333,
+    "ast_hash": "e678269f7bafa62119712abd06222d8a",
+    "semantic_hash": "e678269f7bafa62119712abd06222d8a"
+  },
+  "docs/superpowers/specs/2026-08-05-extracao-fase3-registry-templates-design.md": {
+    "mtime": 1786123865.6460333,
+    "ast_hash": "c34412440c3eacdd495cc48306128685",
+    "semantic_hash": "c34412440c3eacdd495cc48306128685"
+  },
+  "docs/superpowers/specs/2026-08-06-fix-templates-pdf-ordem-real-design.md": {
+    "mtime": 1786123865.6460333,
+    "ast_hash": "9a86dd5d049ac5c7acc5fafc6b665969",
+    "semantic_hash": "9a86dd5d049ac5c7acc5fafc6b665969"
+  },
+  "docs/superpowers/specs/2026-08-06-import-itau-parcelamento-design.md": {
+    "mtime": 1786123865.6460333,
+    "ast_hash": "6de8e12a32fb2ba190d28ffbad817e6b",
+    "semantic_hash": "6de8e12a32fb2ba190d28ffbad817e6b"
+  },
+  "docs/superpowers/specs/2026-08-13-extracao-multi-transacao-imagem-design.md": {
+    "mtime": 1786633307.0727797,
+    "ast_hash": "cca94ba8b189f1ebd056b321429ea46f",
+    "semantic_hash": "cca94ba8b189f1ebd056b321429ea46f"
+  },
+  "frontend/README.md": {
+    "mtime": 1786123865.6470332,
+    "ast_hash": "83e311c832a9178118bab7d950edc3a5",
+    "semantic_hash": "83e311c832a9178118bab7d950edc3a5"
+  },
+  "frontend/src/app/components/confirmation-dialog/confirmation-dialog.html": {
+    "mtime": 1786123865.649519,
+    "ast_hash": "11f85e780919e865efa5c8fb1c7d21b1",
+    "semantic_hash": "11f85e780919e865efa5c8fb1c7d21b1"
+  },
+  "frontend/src/app/components/icon-picker/icon-picker.html": {
+    "mtime": 1786123865.6495612,
+    "ast_hash": "d5aafced143b25f681e5f2b56b28f526",
+    "semantic_hash": "d5aafced143b25f681e5f2b56b28f526"
+  },
+  "frontend/src/app/components/shell/shell.html": {
+    "mtime": 1786123865.6497042,
+    "ast_hash": "718b2b42643ce00c0181c9ccff2dead2",
+    "semantic_hash": "718b2b42643ce00c0181c9ccff2dead2"
+  },
+  "frontend/src/app/features/account/account-form/account-form.html": {
+    "mtime": 1786123865.6519897,
+    "ast_hash": "b3f67dd9cc9a9ed514d7a843b72f1f76",
+    "semantic_hash": "b3f67dd9cc9a9ed514d7a843b72f1f76"
+  },
+  "frontend/src/app/features/account/account-list/account-list.html": {
+    "mtime": 1786123865.652081,
+    "ast_hash": "03efe165daf032677e8c93dddfaf42fd",
+    "semantic_hash": "03efe165daf032677e8c93dddfaf42fd"
+  },
+  "frontend/src/app/features/auth/accept-invite/accept-invite.html": {
+    "mtime": 1786123865.6524289,
+    "ast_hash": "858f61a186da494570435c28d0092ebc",
+    "semantic_hash": "858f61a186da494570435c28d0092ebc"
+  },
+  "frontend/src/app/features/auth/login/login.html": {
+    "mtime": 1786124668.4569223,
+    "ast_hash": "127620f26008206b89e14a623bbb9001",
+    "semantic_hash": "127620f26008206b89e14a623bbb9001"
+  },
+  "frontend/src/app/features/auth/register/register.html": {
+    "mtime": 1786123865.652696,
+    "ast_hash": "045735d16d02d85fea8ca99b5f7c7c5f",
+    "semantic_hash": "045735d16d02d85fea8ca99b5f7c7c5f"
+  },
+  "frontend/src/app/features/category/category-archive-dialog/category-archive-dialog.html": {
+    "mtime": 1786123865.6529524,
+    "ast_hash": "9b2516424ea4d3bc86e624baab7364bf",
+    "semantic_hash": "9b2516424ea4d3bc86e624baab7364bf"
+  },
+  "frontend/src/app/features/category/category-form/category-form.html": {
+    "mtime": 1786123865.6529977,
+    "ast_hash": "10a91ed1481a938f3bbcf058049ebfea",
+    "semantic_hash": "10a91ed1481a938f3bbcf058049ebfea"
+  },
+  "frontend/src/app/features/category/category-list/category-list.html": {
+    "mtime": 1786123865.6531231,
+    "ast_hash": "0903fbb7c057faa6b3a2f62fb15cd644",
+    "semantic_hash": "0903fbb7c057faa6b3a2f62fb15cd644"
+  },
+  "frontend/src/app/features/category/taxonomy-mapping/taxonomy-mapping.html": {
+    "mtime": 1786123865.653398,
+    "ast_hash": "174b7dda937171dd981492a669a4e057",
+    "semantic_hash": "174b7dda937171dd981492a669a4e057"
+  },
+  "frontend/src/app/features/dashboard/dashboard.html": {
+    "mtime": 1786123865.6535144,
+    "ast_hash": "89ca116bd62ddb27fd125cf6251fadc2",
+    "semantic_hash": "89ca116bd62ddb27fd125cf6251fadc2"
+  },
+  "frontend/src/app/features/invoice/invoice-detail/invoice-detail.html": {
+    "mtime": 1786123865.6547713,
+    "ast_hash": "d04654f8771e87ba508858a90ff70784",
+    "semantic_hash": "d04654f8771e87ba508858a90ff70784"
+  },
+  "frontend/src/app/features/invoice/invoice-list/invoice-list.html": {
+    "mtime": 1786123865.6550333,
+    "ast_hash": "5c18e78118bad950c3eb269edfb268cf",
+    "semantic_hash": "5c18e78118bad950c3eb269edfb268cf"
+  },
+  "frontend/src/app/features/invoice/invoice-pay-dialog/invoice-pay-dialog.html": {
+    "mtime": 1786123865.6550333,
+    "ast_hash": "7366db975fb43a6daf9a3628f78a5319",
+    "semantic_hash": "7366db975fb43a6daf9a3628f78a5319"
+  },
+  "frontend/src/app/features/planning/breakdown/breakdown-dialog.html": {
+    "mtime": 1786123865.6556692,
+    "ast_hash": "5b2bf655f592d14fe313c7500d902132",
+    "semantic_hash": "5b2bf655f592d14fe313c7500d902132"
+  },
+  "frontend/src/app/features/planning/budget-cycle-detail/budget-cycle-detail.html": {
+    "mtime": 1786123865.6561074,
+    "ast_hash": "1009551b5d6b432a81778a1abc237285",
+    "semantic_hash": "1009551b5d6b432a81778a1abc237285"
+  },
+  "frontend/src/app/features/planning/budget-cycle-list/budget-cycle-list.html": {
+    "mtime": 1786123865.6565125,
+    "ast_hash": "afdea3324b21767ca4ca2da40a13ed9c",
+    "semantic_hash": "afdea3324b21767ca4ca2da40a13ed9c"
+  },
+  "frontend/src/app/features/planning/budget-cycle-open-dialog/budget-cycle-open-dialog.html": {
+    "mtime": 1786123865.6567106,
+    "ast_hash": "0e937d711550e5650602ab018368a68b",
+    "semantic_hash": "0e937d711550e5650602ab018368a68b"
+  },
+  "frontend/src/app/features/planning/budget-item-form/budget-item-form.html": {
+    "mtime": 1786123865.6568668,
+    "ast_hash": "60fcdcc7f73a71b0df0cd8c7672e391c",
+    "semantic_hash": "60fcdcc7f73a71b0df0cd8c7672e391c"
+  },
+  "frontend/src/app/features/planning/link-budget-item-dialog/link-budget-item-dialog.html": {
+    "mtime": 1786123865.6570425,
+    "ast_hash": "e5d2170836c8a9fd639237ec962bd75c",
+    "semantic_hash": "e5d2170836c8a9fd639237ec962bd75c"
+  },
+  "frontend/src/app/features/planning/link-transaction-dialog/link-transaction-dialog.html": {
+    "mtime": 1786123865.657196,
+    "ast_hash": "bf1195512634d184d36abd5e88e99159",
+    "semantic_hash": "bf1195512634d184d36abd5e88e99159"
+  },
+  "frontend/src/app/features/planning/recurring-item-form/recurring-item-form.html": {
+    "mtime": 1786123865.6573126,
+    "ast_hash": "8f4eec63c83bbebaa5e3da63b02522de",
+    "semantic_hash": "8f4eec63c83bbebaa5e3da63b02522de"
+  },
+  "frontend/src/app/features/planning/recurring-item-list/recurring-item-list.html": {
+    "mtime": 1786123865.6576633,
+    "ast_hash": "2d8db169999b16a728881afa08ee1d4c",
+    "semantic_hash": "2d8db169999b16a728881afa08ee1d4c"
+  },
+  "frontend/src/app/features/recurrence/recurrence-list/recurrence-list.html": {
+    "mtime": 1786123865.6578968,
+    "ast_hash": "1ca32413e3041da669e6e6eb4a5e93b7",
+    "semantic_hash": "1ca32413e3041da669e6e6eb4a5e93b7"
+  },
+  "frontend/src/app/features/recurrence/rrule-editor/rrule-editor.html": {
+    "mtime": 1786123865.6581104,
+    "ast_hash": "8c6ad01131bc95c032b21885e48bf839",
+    "semantic_hash": "8c6ad01131bc95c032b21885e48bf839"
+  },
+  "frontend/src/app/features/team/invite-dialog/invite-dialog.html": {
+    "mtime": 1786123865.6583004,
+    "ast_hash": "1facb68a17307e61dcd1333aa4baf7ae",
+    "semantic_hash": "1facb68a17307e61dcd1333aa4baf7ae"
+  },
+  "frontend/src/app/features/team/team/team.html": {
+    "mtime": 1786123865.6583521,
+    "ast_hash": "18e994ac1339e286b16ab7f40c19513e",
+    "semantic_hash": "18e994ac1339e286b16ab7f40c19513e"
+  },
+  "frontend/src/app/features/transaction/transaction-list/delete-installment-dialog/delete-installment-dialog.html": {
+    "mtime": 1786123865.6592505,
+    "ast_hash": "39606608d9b6282416741d9f8cc37cf0",
+    "semantic_hash": "39606608d9b6282416741d9f8cc37cf0"
+  },
+  "frontend/src/app/features/transaction/transaction-list/transaction-filters/transaction-filters.html": {
+    "mtime": 1786123865.659319,
+    "ast_hash": "b0bf075115ac21d896d026cdd549f80d",
+    "semantic_hash": "b0bf075115ac21d896d026cdd549f80d"
+  },
+  "frontend/src/app/features/transaction/transaction-list/transaction-list.html": {
+    "mtime": 1786123865.659458,
+    "ast_hash": "8f3f3301dcfe66b2b5dc72b60f9e46fb",
+    "semantic_hash": "8f3f3301dcfe66b2b5dc72b60f9e46fb"
+  },
+  "frontend/src/app/features/transaction/transaction-timeline/timeline-calendar/timeline-calendar.html": {
+    "mtime": 1786123865.660147,
+    "ast_hash": "699f1681937f6345d95e018b0ffc646d",
+    "semantic_hash": "699f1681937f6345d95e018b0ffc646d"
+  },
+  "frontend/src/app/features/transaction/transaction-timeline/timeline-grouped-list/timeline-grouped-list.html": {
+    "mtime": 1786123865.6603327,
+    "ast_hash": "283a855ac611823e7188b82076a9bbda",
+    "semantic_hash": "283a855ac611823e7188b82076a9bbda"
+  },
+  "frontend/src/app/features/transaction/transaction-timeline/timeline-horizontal/timeline-horizontal.html": {
+    "mtime": 1786123865.660513,
+    "ast_hash": "d81f1f5ee6f6654b959a8436025d40f6",
+    "semantic_hash": "d81f1f5ee6f6654b959a8436025d40f6"
+  },
+  "frontend/src/app/features/transaction/transaction-timeline/transaction-timeline.html": {
+    "mtime": 1786123865.660513,
+    "ast_hash": "2ac0ddd74836a091997ecff021146076",
+    "semantic_hash": "2ac0ddd74836a091997ecff021146076"
+  },
+  "frontend/src/app/teste/teste.html": {
+    "mtime": 1786123865.660513,
+    "ast_hash": "e81307a32b50b80d63bf6c9e5bc53abe",
+    "semantic_hash": "e81307a32b50b80d63bf6c9e5bc53abe"
+  },
+  "frontend/src/index.html": {
+    "mtime": 1786123865.661028,
+    "ast_hash": "19e478ddaa3bffe2d427dc1ee1f8fd25",
+    "semantic_hash": "19e478ddaa3bffe2d427dc1ee1f8fd25"
+  },
+  "frontend/structure.txt": {
+    "mtime": 1786123865.6630332,
+    "ast_hash": "0ea6cd7d7903b355693040bfcfa4b538",
+    "semantic_hash": "0ea6cd7d7903b355693040bfcfa4b538"
+  }
+}
