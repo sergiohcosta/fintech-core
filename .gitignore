@@ -30,3 +30,9 @@ android/.idea/
 android/*.iml
 android/captures/
 !android/gradle/wrapper/gradle-wrapper.jar
+
+# graphify: cache e estado local (paths absolutos da máquina) não versionam
+graphify-out/cache/
+graphify-out/.graphify_python
+graphify-out/.graphify_root
+graphify-out/20*/
