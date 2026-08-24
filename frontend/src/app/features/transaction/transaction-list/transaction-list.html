@@ -50,8 +50,40 @@
     </div>
   }
 
+  @if (selectedCount() > 0) {
+    <div class="bulk-action-bar mat-elevation-z3">
+      <span>{{ selectedCount() }} selecionada(s)</span>
+      <button mat-button (click)="clearSelection()">Cancelar</button>
+      <button mat-flat-button color="warn" (click)="bulkDelete()">
+        <mat-icon>delete</mat-icon>
+        Excluir selecionadas
+      </button>
+    </div>
+  }
+
   <div class="table-container mat-elevation-z2">
     <table mat-table [dataSource]="displayRows()">
+
+      <ng-container matColumnDef="select">
+        <th mat-header-cell *matHeaderCellDef>
+          @if (selectableRowIds().length > 0) {
+            <mat-checkbox
+              [checked]="allSelected()"
+              (change)="toggleSelectAll()"
+              matTooltip="Selecionar todas">
+            </mat-checkbox>
+          }
+        </th>
+        <td mat-cell *matCellDef="let row">
+          @if (row.kind !== 'invoice-summary' && !isGhost($any(row).data)) {
+            <mat-checkbox
+              [checked]="isSelected($any(row).data?.id)"
+              (change)="toggleSelect($any(row).data?.id)"
+              (click)="$event.stopPropagation()">
+            </mat-checkbox>
+          }
+        </td>
+      </ng-container>
 
       <ng-container matColumnDef="periodHeader">
         <td mat-cell *matCellDef="let row" [attr.colspan]="displayedColumns.length" class="period-header-cell">

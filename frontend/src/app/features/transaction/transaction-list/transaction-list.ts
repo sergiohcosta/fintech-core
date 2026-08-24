@@ -9,7 +9,8 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { forkJoin } from 'rxjs';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { forkJoin, map, catchError, of, Observable } from 'rxjs';
 
 import { TransactionsService } from '../../../core/api/transactions/transactions.service';
 import { AccountsService } from '../../../core/api/accounts/accounts.service';
@@ -21,7 +22,7 @@ import { ConfirmationDialogComponent } from '../../../components/confirmation-di
 import { DeleteInstallmentDialogComponent, DeleteInstallmentDialogResult } from './delete-installment-dialog/delete-installment-dialog';
 import { TransactionFiltersComponent } from './transaction-filters/transaction-filters';
 import { TransactionFilters, DEFAULT_FILTERS, currentMonthFilters, TransactionType, TransactionStatus } from './transaction-filters/transaction-filters.types';
-import { buildDisplayRows, InstallmentGroupInfo, DisplayRow, InvoiceSummaryRow, resolveMonthKey, formatMonthLabel, SortCol, SortCriterion, applySort, getSortInfo, isGhost, exportToCsv } from './transaction-list.utils';
+import { buildDisplayRows, InstallmentGroupInfo, DisplayRow, InvoiceSummaryRow, resolveMonthKey, formatMonthLabel, SortCol, SortCriterion, applySort, getSortInfo, isGhost, exportToCsv, selectableRowId, planBulkDelete } from './transaction-list.utils';
 import { RecurrenceService } from '../../../core/services/recurrence.service';
 import { triggerCsvDownload } from '../../../core/csv.utils';
 export { buildDisplayRows } from './transaction-list.utils';
@@ -41,6 +42,7 @@ export type { InstallmentGroupInfo, DisplayRow, InvoiceSummaryRow, SortCriterion
     MatTooltipModule,
     MatSnackBarModule,
     MatProgressBarModule,
+    MatCheckboxModule,
     CurrencyPipe,
     DatePipe,
     TransactionFiltersComponent,
@@ -67,6 +69,7 @@ export class TransactionList implements OnInit {
   showFilters          = signal(false);
   sortCriteria         = signal<SortCriterion[]>([{ col: 'date', dir: 'desc' }]);
   invoicesForGrouping  = signal<InvoiceResponseDTO[]>([]);
+  selectedIds          = signal<Set<string>>(new Set());
 
   constructor() {
     effect(() => {
@@ -122,7 +125,7 @@ export class TransactionList implements OnInit {
     return txs.filter(t => t.description?.toLowerCase().includes(desc));
   });
 
-  displayedColumns = ['description', 'amount', 'date', 'type', 'status', 'category', 'account', 'actions'];
+  displayedColumns = ['select', 'description', 'amount', 'date', 'type', 'status', 'category', 'account', 'actions'];
 
   displayRows = computed(() =>
     buildDisplayRows(
@@ -134,6 +137,21 @@ export class TransactionList implements OnInit {
       this.invoicesForGrouping(),
     )
   );
+
+  // Ids selecionáveis na visão atual (regra em selectableRowId: single real + parcelas, nunca
+  // fantasma/detail/summary/header) — base pro "selecionar tudo" e pro plano de exclusão em lote.
+  selectableRowIds = computed(() =>
+    this.displayRows()
+      .map(row => selectableRowId(row))
+      .filter((id): id is string => id !== null)
+  );
+
+  selectedCount = computed(() => this.selectedIds().size);
+
+  allSelected = computed(() => {
+    const ids = this.selectableRowIds();
+    return ids.length > 0 && ids.every(id => this.selectedIds().has(id));
+  });
 
   activeFilterChips = computed((): Array<{ label: string; field: string; colorClass: string }> => {
     const f = this.filters();
@@ -230,6 +248,7 @@ export class TransactionList implements OnInit {
   }
 
   onFilterChange(newFilters: TransactionFilters): void {
+    this.clearSelection();
     const prev = this.filters();
     this.filters.set(newFilters);
     this.saveToStorage(newFilters);
@@ -241,6 +260,7 @@ export class TransactionList implements OnInit {
   }
 
   clearFilterChip(field: string): void {
+    this.clearSelection();
     this.filters.update(f => {
       if (field === 'accountIds')  return { ...f, accountIds: [] };
       if (field === 'statuses')    return { ...f, statuses: [] };
@@ -331,6 +351,75 @@ export class TransactionList implements OnInit {
           this.loadTransactions();
         },
         error: () => this.snackBar.open('Erro ao excluir grupo.', 'Fechar', { duration: 5000 }),
+      });
+    });
+  }
+
+  isSelected(id: string | null | undefined): boolean {
+    return !!id && this.selectedIds().has(id);
+  }
+
+  toggleSelect(id: string | null | undefined): void {
+    if (!id) return;
+    this.selectedIds.update(set => {
+      const next = new Set(set);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  toggleSelectAll(): void {
+    this.selectedIds.set(this.allSelected() ? new Set() : new Set(this.selectableRowIds()));
+  }
+
+  clearSelection(): void {
+    this.selectedIds.set(new Set());
+  }
+
+  // Cada linha selecionada já sabe sua própria regra de exclusão (avulsa/parcela vs. perna de
+  // transferência — ver planBulkDelete). Falha individual não aborta o lote: cada chamada vira
+  // {success,reason} via catchError antes do forkJoin, senão 1 transação bloqueada (ex.: vinculada
+  // a item de planejamento, 400) derrubaria a exclusão das outras N-1 que eram válidas.
+  bulkDelete(): void {
+    const plan = planBulkDelete(this.displayRows(), this.selectedIds());
+    const total = plan.transactionIds.length + plan.transferIds.length;
+    if (total === 0) return;
+
+    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+      width: '400px',
+      data: {
+        title: 'Excluir transações selecionadas',
+        message: `Deseja excluir ${this.selectedCount()} transação(ões) selecionada(s)? Esta ação não pode ser desfeita.`,
+        confirmText: 'Sim, excluir',
+      },
+    });
+
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (confirmed !== true) return;
+
+      type DeleteResult = { success: true } | { success: false; reason: string };
+      const safeDelete = <T>(obs: Observable<T>, fallback: string): Observable<DeleteResult> =>
+        obs.pipe(
+          map((): DeleteResult => ({ success: true })),
+          catchError(err => of<DeleteResult>({ success: false, reason: err.error?.message ?? fallback })),
+        );
+
+      const deletes$ = [
+        ...plan.transactionIds.map(id =>
+          safeDelete(this.service.deleteTransaction(id, { scope: 'SINGLE' }), 'Erro ao excluir transação.')),
+        ...plan.transferIds.map(id =>
+          safeDelete(this.transferService.deleteTransfer(id), 'Erro ao excluir transferência.')),
+      ];
+
+      forkJoin(deletes$).subscribe(results => {
+        const okCount = results.filter(r => r.success).length;
+        const failed = results.filter((r): r is { success: false; reason: string } => !r.success);
+        const msg = failed.length > 0
+          ? `${okCount} excluída(s). ${failed.length} falharam (${failed[0].reason}).`
+          : `${okCount} excluída(s).`;
+        this.snackBar.open(msg, 'OK', { duration: 5000 });
+        this.clearSelection();
+        this.loadTransactions();
       });
     });
   }

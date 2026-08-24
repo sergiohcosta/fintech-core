@@ -43,6 +43,47 @@ export type DisplayRow =
 // "Linha fantasma": projeção de uma regra de recorrência, ainda não materializada.
 export const isGhost = (r: { projected?: boolean }): boolean => r.projected === true;
 
+// Só linhas com exatamente 1 transação real por trás são selecionáveis para exclusão em lote.
+// 'installment' já é a parcela individual (1 linha por transação, mesmo colapsada) — igual 'single'.
+// 'installment-detail' é só o painel de metadados do GRUPO (progresso, "excluir pendentes"), não
+// uma transação própria. 'invoice-summary' agrega N transações. Fantasma não existe no banco.
+export function selectableRowId(row: DisplayRow): string | null {
+  if (row.kind === 'single' && !isGhost(row.data)) return row.data.id;
+  if (row.kind === 'installment') return row.data.id;
+  return null;
+}
+
+export type BulkDeletePlan = {
+  transactionIds: string[]; // DELETE /api/transactions/{id}?scope=SINGLE (avulsa ou parcela)
+  transferIds: string[];    // DELETE /api/transfers/{id} — par imutável isoladamente (#138)
+};
+
+// Perna de transferência não pode ser apagada via /transactions/{id} (400, #138) — precisa do
+// endpoint de par. Se as 2 pernas da mesma transferência estiverem selecionadas, dispara só 1
+// chamada (a 2ª bateria 404, o par já foi removido junto da 1ª).
+export function planBulkDelete(rows: DisplayRow[], selectedIds: ReadonlySet<string>): BulkDeletePlan {
+  const transactionIds: string[] = [];
+  const transferIds: string[] = [];
+  const seenTransfers = new Set<string>();
+
+  for (const row of rows) {
+    const id = selectableRowId(row);
+    if (!id || !selectedIds.has(id)) continue;
+
+    const transferId = (row as { data: TransactionResponseDTO }).data.transferId;
+    if (transferId) {
+      if (!seenTransfers.has(transferId)) {
+        seenTransfers.add(transferId);
+        transferIds.push(transferId);
+      }
+    } else {
+      transactionIds.push(id);
+    }
+  }
+
+  return { transactionIds, transferIds };
+}
+
 function sortTransferPairsTogether(transactions: TransactionResponseDTO[]): TransactionResponseDTO[] {
   const result: TransactionResponseDTO[] = [];
   const placed = new Set<string>();

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { sortTransactions, applySort, getSortInfo, isGhost, exportToCsv } from './transaction-list.utils';
+import { sortTransactions, applySort, getSortInfo, isGhost, exportToCsv, selectableRowId, planBulkDelete } from './transaction-list.utils';
 import type { TransactionResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
+import type { DisplayRow, InstallmentGroupInfo } from './transaction-list.utils';
 
 function tx(overrides: Partial<TransactionResponseDTO> = {}): TransactionResponseDTO {
   return {
@@ -215,5 +216,86 @@ describe('exportToCsv', () => {
 
     const row = csv.split('\n')[1];
     expect(row).toContain('Transferência');
+  });
+});
+
+const group: InstallmentGroupInfo = {
+  groupId: 'g1', description: 'TV', totalInstallments: 3, paidInstallments: 0,
+  installmentAmount: 100, categoryName: null, accountName: null, transactions: [],
+};
+
+describe('selectableRowId', () => {
+  it('retorna o id para linha single não-fantasma', () => {
+    const row: DisplayRow = { kind: 'single', data: tx({ id: 'a' }) };
+    expect(selectableRowId(row)).toBe('a');
+  });
+
+  it('retorna null para linha single fantasma (projeção de recorrência)', () => {
+    const row: DisplayRow = { kind: 'single', data: tx({ id: 'ghost:r1:2026-08-01', projected: true }) };
+    expect(selectableRowId(row)).toBeNull();
+  });
+
+  it('retorna o id para linha installment (cada parcela é 1 transação real, mesmo colapsada)', () => {
+    const row: DisplayRow = { kind: 'installment', data: tx({ id: 'p1' }), group, isExpanded: false };
+    expect(selectableRowId(row)).toBe('p1');
+  });
+
+  it('retorna null para installment-detail (painel de metadados do grupo, não é 1 transação)', () => {
+    const row: DisplayRow = { kind: 'installment-detail', data: tx({ id: 'p2' }), group };
+    expect(selectableRowId(row)).toBeNull();
+  });
+
+  it('retorna null para invoice-summary e period-header (sem transação real por trás)', () => {
+    expect(selectableRowId({ kind: 'invoice-summary', invoiceId: 'i1', label: '', dueDate: '', totalAmount: 0, status: 'OPEN', accountName: '', transactionCount: 0 })).toBeNull();
+    expect(selectableRowId({ kind: 'period-header', key: 'k', label: '', totalIncome: 0, totalExpense: 0, balance: 0 })).toBeNull();
+  });
+});
+
+describe('planBulkDelete', () => {
+  it('separa transação avulsa (transactionIds) de perna de transferência (transferIds)', () => {
+    const rows: DisplayRow[] = [
+      { kind: 'single', data: tx({ id: 'a' }) },
+      { kind: 'single', data: tx({ id: 'b', transferId: 'tr1' }) },
+    ];
+    const plan = planBulkDelete(rows, new Set(['a', 'b']));
+    expect(plan.transactionIds).toEqual(['a']);
+    expect(plan.transferIds).toEqual(['tr1']);
+  });
+
+  it('deduplica as 2 pernas da mesma transferência numa única entrada', () => {
+    const rows: DisplayRow[] = [
+      { kind: 'single', data: tx({ id: 'leg-out', transferId: 'tr1' }) },
+      { kind: 'single', data: tx({ id: 'leg-in', transferId: 'tr1' }) },
+    ];
+    const plan = planBulkDelete(rows, new Set(['leg-out', 'leg-in']));
+    expect(plan.transferIds).toEqual(['tr1']);
+  });
+
+  it('ignora linhas cujo id não está no conjunto selecionado', () => {
+    const rows: DisplayRow[] = [
+      { kind: 'single', data: tx({ id: 'a' }) },
+      { kind: 'single', data: tx({ id: 'b' }) },
+    ];
+    const plan = planBulkDelete(rows, new Set(['a']));
+    expect(plan.transactionIds).toEqual(['a']);
+  });
+
+  it('inclui parcela (kind installment) em transactionIds junto de perna de transferência (regras distintas)', () => {
+    const rows: DisplayRow[] = [
+      { kind: 'installment', data: tx({ id: 'p1' }), group, isExpanded: false },
+      { kind: 'single', data: tx({ id: 'b', transferId: 'tr1' }) },
+    ];
+    const plan = planBulkDelete(rows, new Set(['p1', 'b']));
+    expect(plan.transactionIds).toEqual(['p1']);
+    expect(plan.transferIds).toEqual(['tr1']);
+  });
+
+  it('ignora linha fantasma mesmo que seu id sintético esteja no conjunto selecionado (defensivo)', () => {
+    const rows: DisplayRow[] = [
+      { kind: 'single', data: tx({ id: 'ghost:r1:2026-08-01', projected: true }) },
+    ];
+    const plan = planBulkDelete(rows, new Set(['ghost:r1:2026-08-01']));
+    expect(plan.transactionIds).toEqual([]);
+    expect(plan.transferIds).toEqual([]);
   });
 });
