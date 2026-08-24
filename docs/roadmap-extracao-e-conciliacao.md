@@ -200,7 +200,7 @@ Princípio de ordenação: **construir de dentro pra fora** — cada fase é us�
 
 **Entregas**
 - Extrator de texto de PDF (heurística de linha, sem registry) — **entregue, fatia 1** (#205)
-- Extração via visão para PDF escaneado — fatia futura
+- Extração via visão para PDF escaneado — **entregue, fatia 4**
 - **IA como camada universal**: qualquer PDF/CSV que não case com template nem parser genérico vai para extração via IA, transparente para o usuário (mapeamento manual vira opcional, não último recurso)
 - **Camada de IA agora tem provider gerenciado primário** (plano "extração Gemini primário / Ollama fallback", entregue): a `VisionExtractor` tenta Gemini (Google AI Studio, tier free) antes do Ollama do homelab, caindo pro Ollama só por falha de disponibilidade (cota/5xx/timeout/auth). Relevante para o dimensionamento desta fase: se PDF/CSV desconhecidos passarem a rotear para extração via IA em volume, é a **cota gratuita do Gemini** que absorve a maior parte do tráfego primeiro — dimensionar/monitorar essa cota (não só a capacidade da GPU do homelab) vira parte do critério de saída da fase quando o volume via IA crescer
 - Registry de templates para os 2–3 bancos principais (definidos pelos dados da Fase 2) — cabeça da curva apenas — **entregue, fatia 2**: Itaú (fatura PDF) e Nubank (extrato PDF). Nubank CSV não precisou de template — os headers reais já batem os sinônimos genéricos do `CsvExtractor` (Fase 2). CEF fica fora (só existe como print de imagem no caso avaliado — pertence a #194, não a registry de PDF/CSV)
@@ -208,7 +208,7 @@ Princípio de ordenação: **construir de dentro pra fora** — cada fase é us�
 - **Telemetria por formato**: volume, custo em tokens, taxa de casamento de template por banco — a base tanto do alerta de drift quanto da decisão de quais templates criar/promover
 - **Extração multi-transação por imagem única** (print de extrato completo, não PDF) — **entregue** (#194)
 
-**Fatia 1 entregue** (spec `docs/superpowers/specs/2026-07-31-extracao-fase3-pdf-texto-design.md`, #205, sub-issue do épico #176): `PdfTextExtractor` (Apache PDFBox) reconhece PDF com camada de texto pelo magic number, extrai o texto via `PDFTextStripper` e reconhece transação por heurística de linha (data + valor na mesma linha) — sem registry de templates, sem validação soma × total, sem suporte a PDF escaneado (falha explícita, encaminhando para o formulário manual ou envio como imagem). Reaproveita 100% do pipeline genérico existente (`ExtractionRouter`, guard-rails de sanidade do `ImportService`, dedup por trio data+valor+descrição) — nenhuma mudança no núcleo.
+**Fatia 1 entregue** (spec `docs/superpowers/specs/2026-07-31-extracao-fase3-pdf-texto-design.md`, #205, sub-issue do épico #176): `PdfTextExtractor` (Apache PDFBox) reconhece PDF com camada de texto pelo magic number, extrai o texto via `PDFTextStripper` e reconhece transação por heurística de linha (data + valor na mesma linha) — sem registry de templates, sem validação soma × total. PDF escaneado (sem texto) falhava explicitamente nesta fatia (encaminhando para o formulário manual ou envio como imagem) — suporte real chegou na **fatia 4**. Reaproveita 100% do pipeline genérico existente (`ExtractionRouter`, guard-rails de sanidade do `ImportService`, dedup por trio data+valor+descrição) — nenhuma mudança no núcleo.
 
 **Fatia 2 entregue** (spec `docs/superpowers/specs/2026-08-05-extracao-fase3-registry-templates-design.md`):
 `PdfBankTemplate` (interface + lista de beans ordenada, mesmo padrão do `VisionModelClient`)
@@ -278,6 +278,23 @@ sobre acurácia do modelo em lista), teto de `maxOutputTokens` isolado só nessa
 (gap real que não existia — nenhum client de visão tinha teto de saída antes). Interface
 `VisionModelClient` generificada (`<T> T extract(..., Class<T>, Integer maxOutputTokens)`) para
 suportar os dois schemas sem duplicar a mecânica de fallback entre providers.
+
+**Fatia 4 entregue — PDF escaneado via rasterização** (spec
+`docs/superpowers/specs/2026-08-24-extracao-fase3-pdf-escaneado-design.md`): fecha a última
+lacuna explícita da fatia 1. Quando `PdfTextExtractor` não encontra texto suficiente, em vez
+de falhar ("suporte ainda não disponível"), rasteriza cada página (Apache PDFBox
+`PDFRenderer`, PNG) e delega ao `VisionExtractor` já existente (reusa fallback Gemini→Ollama
+e detecção multi-transação do #194 sem duplicar lógica de visão) — dependência tipada pela
+porta `TransactionExtractor` (`@Qualifier`), não pela classe concreta, pra não quebrar o
+padrão de mock por nome já usado nos testes. Guard-rails: fail-fast em
+`import.pdf-scanned.max-pages` (checado ANTES de qualquer chamada de IA) e all-or-nothing
+(falha de uma página derruba o documento inteiro, sem estado parcial). `requiresReview=true`
+forçado em toda linha (mesmo staged rollout do #194) e `sourceType=PDF_SCANNED` — inclusive
+em batch `FAILED` originado deste caminho (`ScannedPdfExtractionException`, correção
+encontrada em revisão de código pós-implementação: sem ela, `sourceType()` fixo da interface
+gravaria `PDF_TEXT` mesmo numa falha do caminho escaneado). Zero migration, zero mudança de
+contrato — `PDF_SCANNED` e as colunas de proveniência V28 já existiam sem uso. Sem template
+bancário para este caminho (mesmo princípio da fatia 2: não construir sem volume real).
 
 **Critérios de saída**
 - [ ] **Taxa de reconhecimento de template ≥90%** para os bancos cobertos

@@ -2,6 +2,7 @@ package com.fintech.api.service.imports;
 
 import com.fintech.api.domain.enums.ImportBatchStatus;
 import com.fintech.api.domain.enums.ImportMode;
+import com.fintech.api.domain.enums.ImportSourceType;
 import com.fintech.api.domain.enums.StagedTransactionStatus;
 import com.fintech.api.domain.enums.TransactionStatus;
 import com.fintech.api.domain.enums.TransactionType;
@@ -124,7 +125,12 @@ public class ImportService {
                     .tenant(user.getTenant())
                     .createdBy(user)
                     .importMode(effectiveMode)
-                    .sourceType(extractor.sourceType())
+                    // sourceType() da interface é fixo por extrator — não cobre o PdfTextExtractor
+                    // quando ele decide o sub-caminho escaneado e falha DEPOIS de decidir (limite
+                    // de páginas, página ilegível). ScannedPdfExtractionException carrega esse
+                    // sinal; sem o check, todo FAILED do caminho escaneado gravaria PDF_TEXT.
+                    .sourceType(e instanceof ScannedPdfExtractionException
+                            ? ImportSourceType.PDF_SCANNED : extractor.sourceType())
                     .extractorUsed(extractor.getClass().getSimpleName())
                     .extractorVersion(extractor.extractorVersion())
                     .sourceHash(sourceHash)

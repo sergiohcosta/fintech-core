@@ -8,11 +8,18 @@ import com.fintech.api.service.imports.templates.PdfBankTemplate;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.rendering.ImageType;
+import org.apache.pdfbox.rendering.PDFRenderer;
 import org.apache.pdfbox.text.PDFTextStripper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -36,18 +43,19 @@ import java.util.regex.Pattern;
  * {@link CsvExtractor} — esperado, não defeito: é o dado que a fase existe para produzir
  * (roadmap §3, "cada transição exige aprendizado").
  *
- * <p><b>PDF escaneado (sem camada de texto) falha EXPLICITAMENTE aqui</b>, em vez de tentar
- * visão/OCR: o {@link VisionExtractor} hoje só processa bytes de imagem (prompt de comprovante),
- * não sabe renderizar página de PDF — rotear pra ele seria pior que a falha explícita. Suporte a
- * PDF escaneado é fatia futura da Fase 3 (mesmo espírito da decisão (f) da Fase 2: "formato não
- * reconhecido falha, ainda não cai na IA" — aqui o formato *é* reconhecido, só o conteúdo ainda
- * não tem extrator).
+ * <p><b>PDF escaneado (sem camada de texto)</b> é rasterizado página a página (Apache PDFBox
+ * {@link PDFRenderer}) e cada página delega ao {@link VisionExtractor} já existente — reaproveita
+ * de graça o fallback Gemini→Ollama e a detecção multi-transação (#194) sem duplicar lógica de
+ * visão aqui. Fail-fast: o número de páginas é checado ANTES de chamar qualquer IA, porque o
+ * custo (tempo + possível chamada paga) de renderizar/extrair um documento acima do limite não
+ * reverteria em nada aproveitável. All-or-nothing: falha de UMA página derruba o documento
+ * inteiro — persistir só parte de um extrato seria uma visão financeira incompleta e silenciosa.
+ * Sem template bancário para este caminho (mesmo princípio dos templates de texto: não construir
+ * reconhecimento específico sem volume real).
  *
  * <p>{@code supports()} reconhece QUALQUER PDF pelo magic number, escaneado ou não — a distinção
  * "tem texto ou não" só é possível depois que o PDFBox abre o documento, dentro de
- * {@link #extract}. Se {@code supports()} fosse restrito a "tem texto extraível", um PDF
- * escaneado cairia no {@link VisionExtractor} (que não sabe processá-lo hoje) em vez de receber a
- * mensagem explicativa certa.
+ * {@link #extract}.
  */
 @Component
 @Order(30)
@@ -84,12 +92,34 @@ public class PdfTextExtractor implements TransactionExtractor {
 
     private final String extractorVersion;
     private final List<PdfBankTemplate> templates;
+    // Tipado pela PORTA (TransactionExtractor), não pela classe concreta VisionExtractor: o único
+    // contrato que este caminho usa é extract(ExtractionInput), já garantido pela interface — a
+    // classe concreta só acoplaria sem necessidade e quebraria o @MockitoBean(name="visionExtractor")
+    // dos testes existentes (eles substituem o bean pelo tipo da interface).
+    private final TransactionExtractor visionExtractor;
+    private final int scannedMaxPages;
+    private final int scannedRenderDpi;
 
+    // @Autowired explícito: com 2 construtores públicos (este + o de compatibilidade abaixo),
+    // Spring não sabe mais qual escolher sozinho — sem a anotação, o contexto falha ao subir
+    // (NoSuchMethodException, só visível em teste @SpringBootTest, não em unitário puro).
+    @Autowired
     public PdfTextExtractor(
             @Value("${import.pdf-text.extractor-version:v1}") String extractorVersion,
-            List<PdfBankTemplate> templates) {
+            List<PdfBankTemplate> templates,
+            @Qualifier("visionExtractor") TransactionExtractor visionExtractor,
+            @Value("${import.pdf-scanned.max-pages:10}") int scannedMaxPages,
+            @Value("${import.pdf-scanned.render-dpi:150}") int scannedRenderDpi) {
         this.extractorVersion = extractorVersion;
         this.templates = templates;
+        this.visionExtractor = visionExtractor;
+        this.scannedMaxPages = scannedMaxPages;
+        this.scannedRenderDpi = scannedRenderDpi;
+    }
+
+    /** Construtor de compatibilidade — testes do caminho determinístico (PDF com texto) não precisam do caminho escaneado. */
+    public PdfTextExtractor(String extractorVersion, List<PdfBankTemplate> templates) {
+        this(extractorVersion, templates, null, 10, 150);
     }
 
     @Override
@@ -121,47 +151,128 @@ public class PdfTextExtractor implements TransactionExtractor {
 
     @Override
     public NormalizedBatchDTO extract(ExtractionInput input) {
-        String text = extractText(input.content());
+        // PDDocument aberto UMA VEZ só: o caminho escaneado reusa o mesmo documento pra renderizar
+        // páginas, evitando parsear o PDF duas vezes.
+        try (PDDocument document = Loader.loadPDF(input.content())) {
+            String text = extractText(document);
 
-        long meaningfulChars = text.chars().filter(c -> !Character.isWhitespace(c)).count();
-        if (meaningfulChars < MIN_TEXT_CHARS) {
-            throw new ExtractionException(
-                    "Este PDF parece ser uma imagem digitalizada (sem texto extraível). Suporte a "
-                            + "PDF escaneado ainda não está disponível — use o formulário manual ou "
-                            + "envie como imagem.");
-        }
-
-        for (PdfBankTemplate template : templates) {
-            if (template.matches(text)) {
-                YearMonth faturaAlvo = template.targetInvoiceReferenceMonth(text);
-                return new NormalizedBatchDTO(
-                        input.mode(), ImportSourceType.PDF_TEXT, template.templateId(), extractorVersion,
-                        template.parse(text, input.content()),
-                        null, null, null, null, null,
-                        faturaAlvo != null ? faturaAlvo.getYear() : null,
-                        faturaAlvo != null ? faturaAlvo.getMonthValue() : null);
+            long meaningfulChars = text.chars().filter(c -> !Character.isWhitespace(c)).count();
+            if (meaningfulChars < MIN_TEXT_CHARS) {
+                return extractScanned(document, input);
             }
-        }
 
-        // Nenhum template bateu — heurística genérica de linha (fatia 1, comportamento
-        // inalterado). Linha sem data+valor não vira transação (ausência de sinal, não erro);
-        // batch vazio cai no guard-rail já existente do ImportService.
-        List<NormalizedTransactionDTO> transactions = parseLines(text);
+            for (PdfBankTemplate template : templates) {
+                if (template.matches(text)) {
+                    YearMonth faturaAlvo = template.targetInvoiceReferenceMonth(text);
+                    return new NormalizedBatchDTO(
+                            input.mode(), ImportSourceType.PDF_TEXT, template.templateId(), extractorVersion,
+                            template.parse(text, input.content()),
+                            null, null, null, null, null,
+                            faturaAlvo != null ? faturaAlvo.getYear() : null,
+                            faturaAlvo != null ? faturaAlvo.getMonthValue() : null);
+                }
+            }
 
-        return new NormalizedBatchDTO(input.mode(), ImportSourceType.PDF_TEXT, EXTRACTOR_USED, extractorVersion, transactions);
-    }
+            // Nenhum template bateu — heurística genérica de linha (fatia 1, comportamento
+            // inalterado). Linha sem data+valor não vira transação (ausência de sinal, não erro);
+            // batch vazio cai no guard-rail já existente do ImportService.
+            List<NormalizedTransactionDTO> transactions = parseLines(text);
 
-    /** Extrai o texto bruto do documento inteiro. Falha do PDFBox (corrompido/senha) vira {@link ExtractionException}. */
-    private String extractText(byte[] content) {
-        try (PDDocument document = Loader.loadPDF(content)) {
-            PDFTextStripper stripper = new PDFTextStripper();
-            stripper.setSortByPosition(true);
-            return stripper.getText(document);
+            return new NormalizedBatchDTO(input.mode(), ImportSourceType.PDF_TEXT, EXTRACTOR_USED, extractorVersion, transactions);
         } catch (IOException e) {
             // Nenhuma exceção de infra (mensagem/stacktrace do PDFBox) cruza a borda da API —
             // mesma regra do restante do pipeline (ImportService.failureReasonFor).
             throw new ExtractionException("Não foi possível abrir este PDF — arquivo corrompido ou protegido por senha.", e);
         }
+    }
+
+    /** Extrai o texto bruto de um documento já aberto (evita reabrir o PDF). */
+    private String extractText(PDDocument document) throws IOException {
+        PDFTextStripper stripper = new PDFTextStripper();
+        stripper.setSortByPosition(true);
+        return stripper.getText(document);
+    }
+
+    /**
+     * Rasteriza cada página em PNG e delega ao {@link VisionExtractor} — mesmo prompt/fallback/
+     * detecção multi-transação que a imagem avulsa já usa, só que uma vez por página. Proveniência
+     * (provider/model/fallback) é capturada da PRIMEIRA página, mesmo critério do {@code
+     * fallbackFrom} (primeiro sinal observado), pra não misturar "provider da última página" com
+     * "fallback da primeira" — inconsistência que passaria despercebida numa auditoria.
+     */
+    private NormalizedBatchDTO extractScanned(PDDocument document, ExtractionInput input) throws IOException {
+        int pageCount = document.getNumberOfPages();
+        if (pageCount > scannedMaxPages) {
+            // Fail-fast ANTES de renderizar ou chamar IA — custo parcial de um documento que nunca
+            // vai virar um batch utilizável não vale a pena. ScannedPdfExtractionException (não
+            // ExtractionException genérica) pra o ImportService gravar sourceType=PDF_SCANNED no
+            // batch FAILED — sourceType() da interface é fixo em PDF_TEXT, cobre só o caso em que
+            // extract() nunca chegou a decidir o sub-caminho.
+            throw new ScannedPdfExtractionException(
+                    "Este PDF escaneado tem " + pageCount + " páginas — acima do limite de "
+                            + scannedMaxPages + " suportado. Divida o arquivo em partes menores.");
+        }
+        if (visionExtractor == null) {
+            throw new ScannedPdfExtractionException("Extração de PDF escaneado não está configurada.");
+        }
+
+        PDFRenderer renderer = new PDFRenderer(document);
+        List<NormalizedTransactionDTO> allTransactions = new ArrayList<>();
+        String firstProvider = null;
+        String firstModel = null;
+        int totalLatencyMs = 0;
+        String fallbackFrom = null;
+        String fallbackReason = null;
+
+        for (int page = 0; page < pageCount; page++) {
+            BufferedImage image = renderer.renderImageWithDPI(page, scannedRenderDpi, ImageType.RGB);
+            byte[] pngBytes;
+            try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+                ImageIO.write(image, "png", output);
+                pngBytes = output.toByteArray();
+            }
+
+            // Falha de QUALQUER página (visão indisponível ou conteúdo implausível) derruba o
+            // documento inteiro (all-or-nothing, sem estado parcial persistido). Recapturada só
+            // pra trocar o TIPO da exceção (mesma mensagem, mesma causa) — sourceType=PDF_SCANNED
+            // no batch FAILED, mesmo motivo do guard-rail de páginas acima.
+            NormalizedBatchDTO pageBatch;
+            try {
+                pageBatch = visionExtractor.extract(
+                        new ExtractionInput(pngBytes, input.filename(), "image/png", input.mode()));
+            } catch (ExtractionException e) {
+                throw new ScannedPdfExtractionException(e.getMessage(), e);
+            }
+
+            allTransactions.addAll(pageBatch.transactions());
+            totalLatencyMs += pageBatch.extractionLatencyMs() != null ? pageBatch.extractionLatencyMs() : 0;
+            if (page == 0) {
+                firstProvider = pageBatch.extractorProvider();
+                firstModel = pageBatch.extractorModel();
+            }
+            if (fallbackFrom == null && pageBatch.fallbackFrom() != null) {
+                fallbackFrom = pageBatch.fallbackFrom();
+                fallbackReason = pageBatch.fallbackReason();
+            }
+        }
+
+        if (allTransactions.isEmpty()) {
+            throw new ScannedPdfExtractionException("Nenhuma transação foi reconhecida neste PDF escaneado.");
+        }
+
+        // requiresReview forçado true em toda linha — mesmo staged rollout do caminho de extrato
+        // do VisionExtractor (#194): zero dado de produção sobre acurácia do modelo em página
+        // rasterizada, então a confiança por campo sozinha não é suficiente pra dispensar revisão.
+        List<NormalizedTransactionDTO> reviewedTransactions = allTransactions.stream()
+                .map(tx -> new NormalizedTransactionDTO(
+                        tx.transactionId(), tx.fields(), tx.suggestedCategoryCode(), tx.suggestedCategoryConfidence(),
+                        tx.overallConfidence(), true, tx.duplicateCandidateOf()))
+                .toList();
+
+        String extractorUsed = "vision_pdf_scanned_" + firstProvider + "_" + firstModel;
+        return new NormalizedBatchDTO(
+                input.mode(), ImportSourceType.PDF_SCANNED, extractorUsed, extractorVersion,
+                reviewedTransactions, firstProvider, firstModel, totalLatencyMs, fallbackFrom, fallbackReason);
     }
 
     /** Reconhece transações linha a linha: precisa casar UMA data E UM valor na mesma linha. */
