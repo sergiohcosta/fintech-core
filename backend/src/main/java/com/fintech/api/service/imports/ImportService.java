@@ -119,8 +119,12 @@ public class ImportService {
         } catch (Exception e) {
             // ExtractionException (guarda-corpo/provider) OU qualquer erro inesperado → FAILED.
             // O batch FAILED é registrado (proveniência) e o fallback manual assume no frontend.
+            // `e` como último argumento (sem placeholder correspondente) faz o SLF4J imprimir a
+            // stack trace inteira, INCLUINDO "Caused by:" — sem isso a causa real (ex.: exceção
+            // crua do SDK do Gemini, embrulhada em ExtractionException) nunca aparecia no log,
+            // só a mensagem genérica em PT-BR já redigida pra não vazar detalhe de infra ao usuário.
             log.error("Extração de arquivo falhou; gravando batch FAILED. tenant={}, extrator={}, causa={}",
-                    user.getTenant().getId(), extractor.getClass().getSimpleName(), e.getMessage());
+                    user.getTenant().getId(), extractor.getClass().getSimpleName(), e.getMessage(), e);
             ImportBatch failed = batchRepository.save(ImportBatch.builder()
                     .tenant(user.getTenant())
                     .createdBy(user)
