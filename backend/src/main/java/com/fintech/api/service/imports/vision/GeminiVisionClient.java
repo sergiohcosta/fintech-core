@@ -5,6 +5,7 @@ import com.google.genai.errors.ApiException;
 import com.google.genai.errors.GenAiIOException;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.google.genai.GoogleGenAiChatOptions;
+import org.springframework.ai.google.genai.common.GoogleGenAiThinkingLevel;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
@@ -75,8 +76,16 @@ public class GeminiVisionClient implements VisionModelClient {
                     .user(u -> u.text(prompt).media(mimeType, imageResource));
             // maxOutputTokens=null preserva EXATAMENTE o comportamento de antes do #194 (nenhuma
             // .options() chamada) — só o caminho novo de extrato passa um teto explícito.
+            // thinkingLevel(LOW): Gemini 3.x reserva parte do maxOutputTokens pra "pensar" antes
+            // de responder (sem opção de desligar — só LOW/HIGH) — sem isso, a maior parte do teto
+            // ia pro raciocínio interno e o JSON de saída truncava no meio (achado em produção,
+            // 2026-08-25: extrato Itaú truncava mesmo em 8192 tokens). Tarefa é extração estruturada
+            // de texto visível, não requer raciocínio — LOW maximiza o espaço pro payload real.
             if (maxOutputTokens != null) {
-                spec = spec.options(GoogleGenAiChatOptions.builder().maxOutputTokens(maxOutputTokens).build());
+                spec = spec.options(GoogleGenAiChatOptions.builder()
+                        .maxOutputTokens(maxOutputTokens)
+                        .thinkingLevel(GoogleGenAiThinkingLevel.LOW)
+                        .build());
             }
             return spec.call().entity(responseType);
         } catch (Exception e) {
