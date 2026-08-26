@@ -416,6 +416,28 @@ class ImportServiceTest {
         assertThat(importService.listStaged(batch.id(), ownerUser)).hasSize(1);
     }
 
+    /**
+     * Histórico de importações: lista só os batches do tenant do usuário (isolamento, mesma
+     * regra de {@link #naoVazaBatchNemStagedEntreTenants}), ordenados do mais recente pro mais
+     * antigo — createdAt cresce na ordem de criação aqui, então o resultado é o reverso.
+     */
+    @Test
+    void listBatchesRetornaSoDoTenantOrdenadoPorCreatedAtDesc() {
+        Tenant owner = persistTenant("Tenant Import History Owner");
+        User ownerUser = persistUser(owner, "history-owner@import.test");
+        Tenant other = persistTenant("Tenant Import History Other");
+        User otherUser = persistUser(other, "history-other@import.test");
+
+        ImportBatchResponseDTO first = importService.createBatch(batchOf(highConfidence()), ownerUser);
+        ImportBatchResponseDTO second = importService.createBatch(batchOf(highConfidence()), ownerUser);
+        importService.createBatch(batchOf(highConfidence()), otherUser);
+
+        List<ImportBatchResponseDTO> history = importService.listBatches(ownerUser);
+
+        assertThat(history).extracting(ImportBatchResponseDTO::id)
+                .containsExactly(second.id(), first.id());
+    }
+
     // ------------------------------------------------------------------------------------
     // Fase 1 — commit (promoção) e patch
     // ------------------------------------------------------------------------------------

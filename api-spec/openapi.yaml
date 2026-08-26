@@ -2323,6 +2323,19 @@ paths:
           description: Batch não encontrado (ou de outro tenant)
 
   /api/imports:
+    get:
+      tags: [imports]
+      operationId: listImports
+      summary: Histórico de importações do tenant, mais recente primeiro
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ImportBatchResponseDTO'
     post:
       tags: [imports]
       operationId: createImport
