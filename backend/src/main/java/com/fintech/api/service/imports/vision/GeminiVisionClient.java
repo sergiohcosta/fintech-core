@@ -116,13 +116,23 @@ public class GeminiVisionClient implements VisionModelClient {
      * {@code ClientException} (4xx) quanto {@code ServerException} (5xx), então basta checar o
      * supertipo. {@link GenAiIOException} embrulha falha de TRANSPORTE (timeout, conexão recusada)
      * — sem status HTTP nenhum, mas é indisponibilidade de qualquer forma.
+     *
+     * <p><b>Percorre a cadeia de causas</b> (bug real de produção, 2026-08-26): o
+     * {@code GoogleGenAiChatModel} do Spring AI embrulha a {@link ApiException} do SDK numa
+     * {@code RuntimeException("Failed to generate content", causa)} antes dela chegar aqui — um
+     * 429 de cota (limite do tier free) nunca era classificado (checar só {@code e} direto sempre
+     * batia {@code false}, mesmo com 429 real dois níveis abaixo), caindo pro erro de conteúdo
+     * genérico e NUNCA disparando o fallback pro Ollama — justamente o cenário mais comum que a
+     * arquitetura "Gemini primário / Ollama fallback" existe pra cobrir.
      */
     private String classifyAvailability(Exception e) {
-        if (e instanceof ApiException apiException) {
-            return VisionProviderErrorClassifier.reasonForHttpStatus(apiException.code());
-        }
-        if (e instanceof GenAiIOException) {
-            return VisionProviderErrorClassifier.REASON_UNAVAILABLE;
+        for (Throwable cause = e; cause != null; cause = cause.getCause()) {
+            if (cause instanceof ApiException apiException) {
+                return VisionProviderErrorClassifier.reasonForHttpStatus(apiException.code());
+            }
+            if (cause instanceof GenAiIOException) {
+                return VisionProviderErrorClassifier.REASON_UNAVAILABLE;
+            }
         }
         return null;
     }
