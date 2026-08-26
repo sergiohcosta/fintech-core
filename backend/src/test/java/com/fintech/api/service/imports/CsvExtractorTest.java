@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -116,6 +117,30 @@ class CsvExtractorTest {
     void supportsAceitaHeaderComSinonimosReconhecidos() {
         assertThat(extractor.supports(input("csv_virgula_iso.csv"))).isTrue();
         assertThat(extractor.supports(input("csv_pontovirgula_ptbr.csv"))).isTrue();
+    }
+
+    /**
+     * Bug real de produção (OOM, 2026-08-26): supports() não tinha guarda de magic bytes — um
+     * upload de IMAGEM caía direto no parse RFC 4180 (tentativa de arquivo inteiro + fallback
+     * linha a linha, ×2 delimitadores), antes do ExtractionRouter sequer chegar no
+     * VisionExtractor. Uma aspa solta no meio dos bytes binários faz o commons-csv "engolir" o
+     * resto do arquivo num campo gigante (mesmo mecanismo documentado no javadoc de tryParse) —
+     * em heap pequeno (128MB no pod de dev), isso derrubava o processo com OutOfMemoryError antes
+     * de qualquer linha de log. Reproduzido ao vivo em dev (stack trace real: OOM dentro de
+     * CsvExtractor.parseSingleLine); não reproduzido aqui como teste de memória/tempo (o heap e a
+     * JVM do teste não têm o mesmo teto do pod, então essa classe de reprodução seria só
+     * inconstante) — a garantia testável é a de comportamento: nenhum arquivo com magic number
+     * binário conhecido chega a ser tratado como candidato a CSV.
+     */
+    @Test
+    void supportsRejeitaConteudoBinarioPeloMagicNumberSemTentarParsear() {
+        byte[] jpeg = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46};
+        byte[] png = {(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
+        byte[] pdf = "%PDF-1.4\n".getBytes(StandardCharsets.ISO_8859_1);
+
+        assertThat(extractor.supports(new ExtractionInput(jpeg, "foto.jpg", "image/jpeg", ImportMode.NEW_TRANSACTIONS))).isFalse();
+        assertThat(extractor.supports(new ExtractionInput(png, "foto.png", "image/png", ImportMode.NEW_TRANSACTIONS))).isFalse();
+        assertThat(extractor.supports(new ExtractionInput(pdf, "fatura.pdf", "application/pdf", ImportMode.NEW_TRANSACTIONS))).isFalse();
     }
 
     @Test
