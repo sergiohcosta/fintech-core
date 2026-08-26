@@ -179,6 +179,29 @@ class GeminiVisionClientTest {
                 .isEqualTo("quota");
     }
 
+    /**
+     * Bug real de produção (2026-08-26): o {@code GoogleGenAiChatModel} do Spring AI embrulha a
+     * {@link ClientException} numa {@code RuntimeException("Failed to generate content", causa)}
+     * antes dela chegar no client — reproduzido aqui exatamente como acontece na prática. Sem
+     * desembrulhar a cadeia de causas, um 429 de cota nunca era classificado como indisponível e
+     * o fallback pro Ollama nunca disparava no cenário mais comum da feature.
+     */
+    @Test
+    void classifica429EmbrulhadoPeloSpringAiComoIndisponibilidadePorCota() {
+        RuntimeException wrapped = new RuntimeException(
+                "Failed to generate content",
+                new ClientException(429, "RESOURCE_EXHAUSTED", "Quota exceeded for quota metric ..."));
+        ChatClient chatClient = chatClientThrowing(wrapped);
+        GeminiVisionClient client = new GeminiVisionClient(chatClient, "gemini-2.5-flash");
+
+        assertThatThrownBy(() -> client.extract(
+                "prompt fixo", MimeTypeUtils.parseMimeType("image/jpeg"), new ByteArrayResource(new byte[] {1}),
+                LlmReceiptExtractionDTO.class, null))
+                .isInstanceOf(VisionProviderUnavailableException.class)
+                .extracting(e -> ((VisionProviderUnavailableException) e).reasonCode())
+                .isEqualTo("quota");
+    }
+
     /** 5xx (erro do lado do provider, não da nossa requisição) também é falha de disponibilidade. */
     @Test
     void classifica5xxComoIndisponibilidade() {
