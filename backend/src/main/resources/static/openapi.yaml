@@ -1063,8 +1063,8 @@ components:
           nullable: true
           description: >-
             Motivo legível da falha, exibível ao usuário. Só preenchido quando status = FAILED —
-            distingue causas que pedem ações diferentes (ex.: imagem com vários lançamentos vs.
-            imagem ilegível).
+            distingue causas que pedem ações diferentes (ex.: extrato com mais lançamentos do
+            que o limite suportado vs. imagem ilegível).
         sourceFilename:
           type: string
           nullable: true
@@ -2323,6 +2323,19 @@ paths:
           description: Batch não encontrado (ou de outro tenant)
 
   /api/imports:
+    get:
+      tags: [imports]
+      operationId: listImports
+      summary: Histórico de importações do tenant, mais recente primeiro
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ImportBatchResponseDTO'
     post:
       tags: [imports]
       operationId: createImport
@@ -2333,12 +2346,16 @@ paths:
         como application/octet-stream): imagem aciona o VisionExtractor (Spring AI + Ollama), CSV
         e OFX usam parsers determinísticos, e PDF com camada de texto usa heurística de linha
         (data + valor) via Apache PDFBox — PDF escaneado (sem texto extraível) falha
-        explicitamente, sem tentar OCR/IA nesta fase. Grava o batch EXTRACTED e as transações em
-        staging (PENDING), derivando requires_review por threshold no backend. Falha de um
-        extrator que RECONHECEU o arquivo mas não conseguiu processá-lo grava o batch como FAILED
-        (o fallback é o formulário manual de transação) — formato que NENHUM extrator reconhece é
-        400 direto, sem gravar batch. Dedup por arquivo (mesmo tenant): reenviar o mesmo arquivo
-        sem force=true é 409; force=true reimporta mesmo assim.
+        explicitamente, sem tentar OCR/IA nesta fase. Imagem com um único comprovante extrai uma
+        transação; imagem com múltiplos lançamentos visíveis (print de extrato completo) extrai
+        TODAS as linhas reconhecidas (até um limite configurável), todas marcadas para revisão
+        obrigatória — não é mais recusada. Grava o batch EXTRACTED e as transações em staging
+        (PENDING), derivando requires_review por threshold no backend (ou herdando `true` do
+        extrator, quando ele sinalizar). Falha de um extrator que RECONHECEU o arquivo mas não
+        conseguiu processá-lo grava o batch como FAILED (o fallback é o formulário manual de
+        transação) — formato que NENHUM extrator reconhece é 400 direto, sem gravar batch. Dedup
+        por arquivo (mesmo tenant): reenviar o mesmo arquivo sem force=true é 409; force=true
+        reimporta mesmo assim.
       parameters:
         - name: force
           in: query

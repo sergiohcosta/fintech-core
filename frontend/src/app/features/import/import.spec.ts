@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
-import { provideRouter, Router } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
@@ -384,5 +384,61 @@ describe('ImportComponent', () => {
 
     expect(c.rows()[0].duplicateCandidateOf).toBeNull();
     expect(c.rows()[1].duplicateCandidateOf).toBe('s1');
+  });
+});
+
+/** Navegação direta pra um batch existente (histórico → `/import/:id`) — reusa o mesmo componente,
+ *  mas carrega do backend em vez de partir do estágio de upload. */
+describe('ImportComponent — carregado por :id da rota', () => {
+  let imports: ImportsService;
+  let accounts: AccountsService;
+  let categories: CategoriesService;
+
+  function configureWithRouteId(id: string): void {
+    TestBed.configureTestingModule({
+      imports: [ImportComponent, NoopAnimationsModule],
+      providers: [
+        provideZonelessChangeDetection(),
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { paramMap: convertToParamMap({ id }) } },
+        },
+      ],
+    });
+    imports = TestBed.inject(ImportsService);
+    accounts = TestBed.inject(AccountsService);
+    categories = TestBed.inject(CategoriesService);
+    vi.spyOn(accounts, 'listAccounts').mockReturnValue(of([account]) as any);
+    vi.spyOn(categories, 'listCategories').mockReturnValue(of([]) as any);
+  }
+
+  it('carrega o batch e a staged existentes direto no init, sem passar por upload', () => {
+    configureWithRouteId('b1');
+    vi.spyOn(imports, 'getImport').mockReturnValue(of(extractedBatch) as any);
+    vi.spyOn(imports, 'listImportStaged').mockReturnValue(of([staged]) as any);
+
+    const c = TestBed.createComponent(ImportComponent).componentInstance;
+    c.ngOnInit();
+
+    expect(c.stage()).toBe('review');
+    expect(c.rows()).toHaveLength(1);
+    expect(c.readOnly()).toBe(false);
+  });
+
+  it('batch COMMITTED entra em modo somente-leitura', () => {
+    configureWithRouteId('b1');
+    const committedBatch: ImportBatchResponseDTO = { ...extractedBatch, status: 'COMMITTED' };
+    vi.spyOn(imports, 'getImport').mockReturnValue(of(committedBatch) as any);
+    vi.spyOn(imports, 'listImportStaged').mockReturnValue(
+      of([{ ...staged, status: 'CONFIRMED' }]) as any,
+    );
+
+    const c = TestBed.createComponent(ImportComponent).componentInstance;
+    c.ngOnInit();
+
+    expect(c.readOnly()).toBe(true);
   });
 });

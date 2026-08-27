@@ -1,8 +1,14 @@
 <div class="import-page">
-  <h1 class="page-title">
-    <mat-icon>document_scanner</mat-icon>
-    Importar transações
-  </h1>
+  <div class="page-title-row">
+    <h1 class="page-title">
+      <mat-icon>document_scanner</mat-icon>
+      Importar transações
+    </h1>
+    <a mat-button routerLink="/imports">
+      <mat-icon>history</mat-icon>
+      Ver histórico
+    </a>
+  </div>
 
   <!-- ETAPA 1: UPLOAD -->
   @if (stage() === 'upload') {
@@ -103,20 +109,28 @@
       <mat-progress-bar mode="indeterminate" />
     }
 
-    <p class="hint">
-      Confira os dados extraídos. Campos com
-      <span class="conf-badge low">baixa confiança</span>
-      merecem atenção. Escolha a conta de cada lançamento e confirme. Linhas que você não quer
-      lançar podem ser descartadas.
-    </p>
+    @if (readOnly()) {
+      <p class="hint">
+        Importação já lançada — consulta somente leitura das transações confirmadas.
+      </p>
+    } @else {
+      <p class="hint">
+        Confira os dados extraídos. Campos com
+        <span class="conf-badge low">baixa confiança</span>
+        merecem atenção. Escolha a conta de cada lançamento e confirme. Linhas que você não quer
+        lançar podem ser descartadas.
+      </p>
+    }
 
-    <!-- Selecionar todas (todas as páginas, não só a visível) — atalho pra aplicar conta/
-         categoria/tipo ao lote inteiro sem precisar paginar marcando linha por linha. -->
-    <div class="selection-bar">
-      <button mat-button type="button" (click)="selectAllRows()">
-        <mat-icon>done_all</mat-icon> Selecionar todas ({{ rows().length }})
-      </button>
-    </div>
+    @if (!readOnly()) {
+      <!-- Selecionar todas (todas as páginas, não só a visível) — atalho pra aplicar conta/
+           categoria/tipo ao lote inteiro sem precisar paginar marcando linha por linha. -->
+      <div class="selection-bar">
+        <button mat-button type="button" (click)="selectAllRows()">
+          <mat-icon>done_all</mat-icon> Selecionar todas ({{ rows().length }})
+        </button>
+      </div>
+    }
 
     <!-- Ações em massa: só existem quando há seleção. Conta/categoria/tipo são LOCAIS (nenhuma
          chamada HTTP); descartar é a única que fala com o backend. -->
@@ -265,15 +279,19 @@
       <ng-container matColumnDef="direction">
         <th mat-header-cell *matHeaderCellDef>Tipo</th>
         <td mat-cell *matCellDef="let row">
-          <mat-form-field appearance="outline" class="cell-field" subscriptSizing="dynamic">
-            <mat-select
-              [value]="row.direction"
-              (selectionChange)="updateField(row.stagedId, 'direction', $event.value)"
-            >
-              <mat-option value="debit">Saída (despesa)</mat-option>
-              <mat-option value="credit">Entrada (receita)</mat-option>
-            </mat-select>
-          </mat-form-field>
+          @if (readOnly()) {
+            {{ row.direction === 'credit' ? 'Entrada (receita)' : 'Saída (despesa)' }}
+          } @else {
+            <mat-form-field appearance="outline" class="cell-field" subscriptSizing="dynamic">
+              <mat-select
+                [value]="row.direction"
+                (selectionChange)="updateField(row.stagedId, 'direction', $event.value)"
+              >
+                <mat-option value="debit">Saída (despesa)</mat-option>
+                <mat-option value="credit">Entrada (receita)</mat-option>
+              </mat-select>
+            </mat-form-field>
+          }
         </td>
       </ng-container>
 
@@ -339,7 +357,7 @@
 
       <!-- Linha expandida: mesmos mat-form-field da revisão da Fase 1, só reorganizados -->
       <ng-container matColumnDef="expandedDetail">
-        <td mat-cell *matCellDef="let row" [attr.colspan]="displayedColumns.length">
+        <td mat-cell *matCellDef="let row" [attr.colspan]="displayedColumns().length">
           @if (isExpanded(row.stagedId)) {
             <div class="field-grid detail-grid">
               <mat-form-field appearance="outline">
@@ -414,8 +432,8 @@
         </td>
       </ng-container>
 
-      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedColumns" class="review-row"></tr>
+      <tr mat-header-row *matHeaderRowDef="displayedColumns()"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns()" class="review-row"></tr>
       <tr
         mat-row
         *matRowDef="let row; columns: ['expandedDetail']"
@@ -435,21 +453,30 @@
       />
     }
 
-    <div class="review-actions">
-      <span class="hint commit-count">
-        {{ readyCount() }} de {{ pendingCount() }} serão lançadas agora
-      </span>
-      <button mat-button type="button" (click)="reset()">Cancelar</button>
-      <button
-        mat-flat-button
-        color="primary"
-        type="button"
-        [disabled]="!canConfirm()"
-        (click)="confirm()"
-      >
-        <mat-icon>check</mat-icon>
-        Confirmar e lançar
-      </button>
-    </div>
+    @if (readOnly()) {
+      <div class="review-actions">
+        <a mat-button routerLink="/imports">
+          <mat-icon>arrow_back</mat-icon>
+          Voltar ao histórico
+        </a>
+      </div>
+    } @else {
+      <div class="review-actions">
+        <span class="hint commit-count">
+          {{ readyCount() }} de {{ pendingCount() }} serão lançadas agora
+        </span>
+        <button mat-button type="button" (click)="reset()">Cancelar</button>
+        <button
+          mat-flat-button
+          color="primary"
+          type="button"
+          [disabled]="!canConfirm()"
+          (click)="confirm()"
+        >
+          <mat-icon>check</mat-icon>
+          Confirmar e lançar
+        </button>
+      </div>
+    }
   }
 </div>

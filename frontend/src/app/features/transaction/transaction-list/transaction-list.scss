@@ -411,3 +411,18 @@ table {
     opacity: 0.6;
   }
 }
+
+.bulk-action-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 24px;
+  margin: 0 0 12px;
+  border-radius: 8px;
+  background: var(--mat-sys-surface-container, #f1f3f4);
+
+  span {
+    font-weight: 500;
+    margin-right: auto;
+  }
+}

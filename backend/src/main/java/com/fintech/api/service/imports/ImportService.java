@@ -2,6 +2,7 @@ package com.fintech.api.service.imports;
 
 import com.fintech.api.domain.enums.ImportBatchStatus;
 import com.fintech.api.domain.enums.ImportMode;
+import com.fintech.api.domain.enums.ImportSourceType;
 import com.fintech.api.domain.enums.StagedTransactionStatus;
 import com.fintech.api.domain.enums.TransactionStatus;
 import com.fintech.api.domain.enums.TransactionType;
@@ -118,13 +119,22 @@ public class ImportService {
         } catch (Exception e) {
             // ExtractionException (guarda-corpo/provider) OU qualquer erro inesperado → FAILED.
             // O batch FAILED é registrado (proveniência) e o fallback manual assume no frontend.
+            // `e` como último argumento (sem placeholder correspondente) faz o SLF4J imprimir a
+            // stack trace inteira, INCLUINDO "Caused by:" — sem isso a causa real (ex.: exceção
+            // crua do SDK do Gemini, embrulhada em ExtractionException) nunca aparecia no log,
+            // só a mensagem genérica em PT-BR já redigida pra não vazar detalhe de infra ao usuário.
             log.error("Extração de arquivo falhou; gravando batch FAILED. tenant={}, extrator={}, causa={}",
-                    user.getTenant().getId(), extractor.getClass().getSimpleName(), e.getMessage());
+                    user.getTenant().getId(), extractor.getClass().getSimpleName(), e.getMessage(), e);
             ImportBatch failed = batchRepository.save(ImportBatch.builder()
                     .tenant(user.getTenant())
                     .createdBy(user)
                     .importMode(effectiveMode)
-                    .sourceType(extractor.sourceType())
+                    // sourceType() da interface é fixo por extrator — não cobre o PdfTextExtractor
+                    // quando ele decide o sub-caminho escaneado e falha DEPOIS de decidir (limite
+                    // de páginas, página ilegível). ScannedPdfExtractionException carrega esse
+                    // sinal; sem o check, todo FAILED do caminho escaneado gravaria PDF_TEXT.
+                    .sourceType(e instanceof ScannedPdfExtractionException
+                            ? ImportSourceType.PDF_SCANNED : extractor.sourceType())
                     .extractorUsed(extractor.getClass().getSimpleName())
                     .extractorVersion(extractor.extractorVersion())
                     .sourceHash(sourceHash)
@@ -344,6 +354,14 @@ public class ImportService {
     @Transactional(readOnly = true)
     public ImportBatchResponseDTO getBatch(UUID id, User user) {
         return ImportBatchResponseDTO.fromEntity(findBatch(id, user));
+    }
+
+    @Transactional(readOnly = true)
+    public List<ImportBatchResponseDTO> listBatches(User user) {
+        return batchRepository.findByTenantOrderByCreatedAtDesc(user.getTenant())
+                .stream()
+                .map(ImportBatchResponseDTO::fromEntity)
+                .toList();
     }
 
     @Transactional(readOnly = true)

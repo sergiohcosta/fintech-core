@@ -1165,31 +1165,37 @@ Content-Type: application/json
 
 ###
 
-### 11.2 Detalhe do batch criado
+### 11.2 Histórico de importações do tenant (mais recente primeiro)
+GET http://localhost:8080/api/imports
+Authorization: Bearer {{token_carlos}}
+
+###
+
+### 11.3 Detalhe do batch criado
 GET http://localhost:8080/api/imports/{{import_batch_id}}
 Authorization: Bearer {{token_carlos}}
 
 ###
 
-### 11.3 Lista as transações em staging do batch (confira requires_review derivado)
+### 11.4 Lista as transações em staging do batch (confira requires_review derivado)
 GET http://localhost:8080/api/imports/{{import_batch_id}}/staged
 Authorization: Bearer {{token_carlos}}
 
 ###
 
-### 11.4 Batch do seed dev (V24) — já COMMITTED, com 2 staged CONFIRMED promovidas
+### 11.5 Batch do seed dev (V24) — já COMMITTED, com 2 staged CONFIRMED promovidas
 GET http://localhost:8080/api/imports/a0000000-0000-0000-0000-000000000001
 Authorization: Bearer {{token_carlos}}
 
 ###
 
-### 11.5 Staged do batch seed (V24) — promoted_transaction_id aponta p/ transações do V13
+### 11.6 Staged do batch seed (V24) — promoted_transaction_id aponta p/ transações do V13
 GET http://localhost:8080/api/imports/a0000000-0000-0000-0000-000000000001/staged
 Authorization: Bearer {{token_carlos}}
 
 ###
 
-### 11.6 (Fase 1) Upload de imagem real — aciona o VisionExtractor (Ollama)
+### 11.7 (Fase 1) Upload de imagem real — aciona o VisionExtractor (Ollama)
 ###      < ./comprovante.jpg é um PLACEHOLDER: coloque uma imagem de comprovante com esse nome
 ###      ao lado deste arquivo .http (ou ajuste o caminho) antes de rodar este bloco. Requer o
 ###      Ollama do import.vision configurado e no ar — sem isso (ou se a extração falhar), o
@@ -1215,7 +1221,7 @@ client.global.set("import_batch_id", response.body.id);
 
 ###
 
-### 11.7 (Fase 1) Lista a staged recém-extraída e captura o id para editar/lançar
+### 11.8 (Fase 1) Lista a staged recém-extraída e captura o id para editar/lançar
 ###      Se o 11.6 voltou batch FAILED, esta lista vem vazia — pule para o formulário manual.
 GET http://localhost:8080/api/imports/{{import_batch_id}}/staged
 Authorization: Bearer {{token_carlos}}
@@ -1226,7 +1232,7 @@ client.global.set("staged_id", response.body[0].id);
 
 ###
 
-### 11.8 (Fase 1) Corrige um campo da staged antes de lançar (ex.: valor ilegível na imagem)
+### 11.9 (Fase 1) Corrige um campo da staged antes de lançar (ex.: valor ilegível na imagem)
 ###      Valor editado grava confiança 1.0 (dado confirmado por humano) e requires_review é
 ###      re-derivado com a nova confiança.
 PATCH http://localhost:8080/api/imports/{{import_batch_id}}/staged/{{staged_id}}
@@ -1242,7 +1248,7 @@ Content-Type: application/json
 
 ###
 
-### 11.9 (Fase 1) Commit — promove a staged corrigida a Transaction (conta + categoria escolhidas)
+### 11.10 (Fase 1) Commit — promove a staged corrigida a Transaction (conta + categoria escolhidas)
 ###      Reusa o caminho de criação de Transaction existente; o batch vira COMMITTED quando
 ###      não sobra nenhuma staged PENDING.
 POST http://localhost:8080/api/imports/{{import_batch_id}}/commit
@@ -1257,19 +1263,19 @@ Content-Type: application/json
 
 ###
 
-### 11.10 (Fase 2) Batch CSV do seed dev (V27) — EXTRACTED, 3 staged PENDING (uma duplicata intra-batch)
+### 11.11 (Fase 2) Batch CSV do seed dev (V27) — EXTRACTED, 3 staged PENDING (uma duplicata intra-batch)
 GET http://localhost:8080/api/imports/a0000000-0000-0000-0000-000000000002
 Authorization: Bearer {{token_carlos}}
 
 ###
 
-### 11.11 (Fase 2) Staged do batch CSV seed (V27) — a 3ª tem duplicateCandidateOf apontando pra 1ª
+### 11.12 (Fase 2) Staged do batch CSV seed (V27) — a 3ª tem duplicateCandidateOf apontando pra 1ª
 GET http://localhost:8080/api/imports/a0000000-0000-0000-0000-000000000002/staged
 Authorization: Bearer {{token_carlos}}
 
 ###
 
-### 11.11b (Fase 2 metade B) Descarta a staged candidata a duplicata do batch CSV seed (V27)
+### 11.12b (Fase 2 metade B) Descarta a staged candidata a duplicata do batch CSV seed (V27)
 ###        PENDING → DISCARDED: a linha não vira Transaction e para de bloquear a revisão.
 ###        Reenviar o mesmo POST → 400 (só transiciona a partir de PENDING).
 POST http://localhost:8080/api/imports/a0000000-0000-0000-0000-000000000002/staged/a1000000-0000-0000-0000-000000000005/discard
@@ -1277,7 +1283,7 @@ Authorization: Bearer {{token_carlos}}
 
 ###
 
-### 11.12 (Fase 2) Upload de CSV real — aciona o CsvExtractor (parser determinístico, sem Ollama)
+### 11.13 (Fase 2) Upload de CSV real — aciona o CsvExtractor (parser determinístico, sem Ollama)
 ###       < ./extrato.csv é um PLACEHOLDER: coloque um CSV (header data/valor/descrição
 ###       reconhecível — ver CsvExtractor) ao lado deste arquivo antes de rodar este bloco.
 POST http://localhost:8080/api/imports
@@ -1301,7 +1307,7 @@ client.global.set("import_batch_id_csv", response.body.id);
 
 ###
 
-### 11.13 (Fase 2) Upload de OFX real — aciona o OfxExtractor (SGML 1.x ou XML 2.x)
+### 11.14 (Fase 2) Upload de OFX real — aciona o OfxExtractor (SGML 1.x ou XML 2.x)
 ###       < ./extrato.ofx é um PLACEHOLDER — coloque um arquivo OFX ao lado deste arquivo.
 POST http://localhost:8080/api/imports
 Authorization: Bearer {{token_carlos}}
@@ -1320,7 +1326,7 @@ NEW_TRANSACTIONS
 
 ###
 
-### 11.13b (Fase 3 — Onda 3) Upload de PDF com texto — aciona o PdfTextExtractor (heurística de
+### 11.14b (Fase 3 — Onda 3) Upload de PDF com texto — aciona o PdfTextExtractor (heurística de
 ###          linha, sem registry de templates). PDF escaneado (sem texto extraível) falha
 ###          explicitamente em vez de cair na IA (fatia futura da Fase 3).
 ###          < ./extrato.pdf é um PLACEHOLDER — coloque um PDF com camada de texto (não escaneado)
@@ -1343,8 +1349,8 @@ NEW_TRANSACTIONS
 
 ###
 
-### 11.14 (Fase 2 — Onda 4/5) Reenviar o MESMO arquivo do 11.12 → 409 (dedup por hash+tenant)
-###       Body do 409 traz batchId/createdAt/filename do batch anterior — repita o 11.12 antes
+### 11.15 (Fase 2 — Onda 4/5) Reenviar o MESMO arquivo do 11.13 → 409 (dedup por hash+tenant)
+###       Body do 409 traz batchId/createdAt/filename do batch anterior — repita o 11.13 antes
 ###       de rodar este bloco pra ver o conflito (mesmo file, mesmo tenant, sem force).
 POST http://localhost:8080/api/imports
 Authorization: Bearer {{token_carlos}}
@@ -1363,7 +1369,7 @@ NEW_TRANSACTIONS
 
 ###
 
-### 11.15 (Fase 2 — Onda 4/5) force=true reimporta o mesmo arquivo mesmo assim (201, novo batch)
+### 11.16 (Fase 2 — Onda 4/5) force=true reimporta o mesmo arquivo mesmo assim (201, novo batch)
 POST http://localhost:8080/api/imports?force=true
 Authorization: Bearer {{token_carlos}}
 Content-Type: multipart/form-data; boundary=WebAppBoundary

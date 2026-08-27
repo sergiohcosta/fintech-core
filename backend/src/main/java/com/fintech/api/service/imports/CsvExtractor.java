@@ -73,9 +73,39 @@ public class CsvExtractor implements TransactionExtractor {
         this.extractorVersion = extractorVersion;
     }
 
+    // Magic numbers dos formatos binários já reconhecidos noutros pontos do funil (Vision/PDF) —
+    // conferidos aqui ANTES de qualquer parse. Sem isso, um upload de imagem cai direto no RFC
+    // 4180 (arquivo inteiro + fallback linha a linha, ×2 delimitadores): bytes binários com uma
+    // aspa solta fazem o commons-csv "engolir o resto do arquivo" num campo gigante (mesmo
+    // mecanismo do javadoc de tryParse) — em heap pequeno (128MB no pod de dev), isso já
+    // derrubou o processo com OutOfMemoryError antes do ExtractionRouter chegar no
+    // VisionExtractor (incidente 2026-08-26).
+    private static final byte[] JPEG = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF};
+    private static final byte[] PNG = {(byte) 0x89, 0x50, 0x4E, 0x47};
+    private static final byte[] GIF = {0x47, 0x49, 0x46};
+    private static final byte[] WEBP_RIFF = {0x52, 0x49, 0x46, 0x46};
+    private static final byte[] PDF = {0x25, 0x50, 0x44, 0x46}; // "%PDF"
+
+    private boolean isKnownBinaryFormat(byte[] content) {
+        return startsWith(content, JPEG) || startsWith(content, PNG) || startsWith(content, GIF)
+                || startsWith(content, WEBP_RIFF) || startsWith(content, PDF);
+    }
+
+    private boolean startsWith(byte[] content, byte[] magic) {
+        if (content.length < magic.length) {
+            return false;
+        }
+        for (int i = 0; i < magic.length; i++) {
+            if (content[i] != magic[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     @Override
     public boolean supports(ExtractionInput input) {
-        if (input.content() == null || input.content().length == 0) {
+        if (input.content() == null || input.content().length == 0 || isKnownBinaryFormat(input.content())) {
             return false;
         }
         ParsedCsv parsed = tryParse(input.content());

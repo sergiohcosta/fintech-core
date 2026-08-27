@@ -107,6 +107,15 @@ export const routes: Routes = [
         path: 'import',
         loadComponent: () => import('./features/import/import').then(m => m.ImportComponent)
       },
+      {
+        path: 'import/:id',
+        loadComponent: () => import('./features/import/import').then(m => m.ImportComponent)
+      },
+      {
+        path: 'imports',
+        loadComponent: () =>
+          import('./features/import/import-history/import-history').then(m => m.ImportHistory)
+      },
     ]
   }
 ];

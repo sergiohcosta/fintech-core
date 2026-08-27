@@ -1,7 +1,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { SelectionModel } from '@angular/cdk/collections';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -89,6 +89,7 @@ interface ReviewRow {
   standalone: true,
   imports: [
     CommonModule,
+    RouterLink,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
@@ -113,6 +114,7 @@ export class ImportComponent implements OnInit {
   private readonly categoriesService = inject(CategoriesService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   readonly selectedFile = signal<File | null>(null);
   readonly uploading = signal(false);
@@ -139,6 +141,11 @@ export class ImportComponent implements OnInit {
     return 'review';
   });
 
+  // Batch COMMITTED navegado pelo histórico não tem mais staged PENDING pra editar/lançar — a
+  // revisão vira consulta. Único status terminal aqui: FAILED já cai no card de falha (sem
+  // staged pra mostrar) e os demais (EXTRACTED/REVIEWED) ainda aceitam edição/commit.
+  readonly readOnly = computed(() => this.batch()?.status === 'COMMITTED');
+
   // Motivo da recusa vindo do backend (#193). Fallback local só cobre batch antigo (pré-V25),
   // que não tem motivo gravado — o texto certo é sempre o do backend, que conhece a causa.
   readonly failureReason = computed(
@@ -153,18 +160,14 @@ export class ImportComponent implements OnInit {
 
   // --- Tabela: seleção, paginação e expansão (Fase 2 metade B) ---
 
-  /** Colunas da tabela compacta. A edição fina (valor/data/descrição/tipo) vive na linha expandida. */
-  readonly displayedColumns = [
-    'select',
-    'flags',
-    'amount',
-    'transaction_date',
-    'description',
-    'direction',
-    'account',
-    'category',
-    'actions',
-  ];
+  /** Colunas da tabela compacta. A edição fina (valor/data/descrição/tipo) vive na linha expandida.
+   *  Somente-leitura (batch COMMITTED) tira seleção/conta/categoria/ações — nada disso se aplica
+   *  a uma staged já promovida (sem editar, sem escolher conta de novo). */
+  readonly displayedColumns = computed(() =>
+    this.readOnly()
+      ? ['flags', 'amount', 'transaction_date', 'description', 'direction']
+      : ['select', 'flags', 'amount', 'transaction_date', 'description', 'direction', 'account', 'category', 'actions'],
+  );
 
   /** Menor opção de página — abaixo disso o paginador não tem o que paginar e fica escondido. */
   static readonly MIN_PAGE_SIZE = 10;
@@ -238,6 +241,28 @@ export class ImportComponent implements OnInit {
     this.categoriesService
       .listCategories()
       .subscribe((tree) => this.categoryOptions.set(flattenCategories(tree)));
+
+    // Navegado a partir do histórico (`/import/:id`) — carrega o batch existente em vez de
+    // partir do estágio de upload.
+    const id = this.route.snapshot.paramMap.get('id');
+    if (id) {
+      this.loadBatch(id);
+    }
+  }
+
+  private loadBatch(id: string): void {
+    this.imports.getImport(id).subscribe({
+      next: (batch) => {
+        this.batch.set(batch);
+        if (batch.status !== 'FAILED') {
+          this.loadStaged(batch.id);
+        }
+      },
+      error: (e) =>
+        this.snackBar.open(this.errorText(e, 'Falha ao carregar a importação.'), 'OK', {
+          duration: 6000,
+        }),
+    });
   }
 
   // --- Seleção de arquivo (input + drag-drop) ---

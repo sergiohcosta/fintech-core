@@ -20,6 +20,8 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -81,9 +83,89 @@ class PdfTextExtractorTest {
         }
     }
 
+    /** PDF de verdade, várias páginas em branco — simula extrato escaneado multipágina. */
+    private static byte[] pdfSemTextoComPaginas(int pageCount) {
+        try (PDDocument document = new PDDocument()) {
+            for (int page = 0; page < pageCount; page++) {
+                document.addPage(new PDPage());
+            }
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            document.save(out);
+            return out.toByteArray();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
     /** Bytes com o magic number correto, mas sem NENHUMA estrutura válida de PDF por trás. */
     private static byte[] pdfCorrompido() {
         return "%PDF-1.4\nisto nao e um pdf de verdade, so o cabecalho".getBytes(StandardCharsets.US_ASCII);
+    }
+
+    private static NormalizedBatchDTO batchDaVisao(String description, int latencyMs) {
+        var fields = new LinkedHashMap<String, StagedFieldValueDTO>();
+        fields.put("amount", new StagedFieldValueDTO(new BigDecimal("10.00"), BigDecimal.ONE));
+        fields.put("transaction_date", new StagedFieldValueDTO("2026-08-01", BigDecimal.ONE));
+        fields.put("direction", new StagedFieldValueDTO("debit", BigDecimal.ONE));
+        fields.put("description", new StagedFieldValueDTO(description, BigDecimal.ONE));
+        var transaction = new NormalizedTransactionDTO(null, fields, null, null, BigDecimal.ONE, null, null);
+        return new NormalizedBatchDTO(
+                ImportMode.NEW_TRANSACTIONS, ImportSourceType.IMAGE, "vision_gemini_gemini-2.5-flash", "vision-v1",
+                List.of(transaction), "gemini", "gemini-2.5-flash", latencyMs, null, null);
+    }
+
+    /**
+     * Dublê de {@link TransactionExtractor} SEM Mockito — o `PdfTextExtractor` depende da PORTA,
+     * não da classe concreta {@link VisionExtractor} (mesma razão que faz o `@MockitoBean(name =
+     * "visionExtractor")` de {@code ImportFailureReasonTest} funcionar: o bean é tipado pela
+     * interface). Implementar a interface direto também evita o inline mock maker do Mockito
+     * (self-attach), frágil em alguns sandboxes de execução.
+     */
+    private static final class FakeVisionExtractor implements TransactionExtractor {
+        private final List<ExtractionInput> chamadas = new ArrayList<>();
+        private final Iterator<NormalizedBatchDTO> respostas;
+        private final ExtractionException falha;
+
+        private FakeVisionExtractor(List<NormalizedBatchDTO> respostas, ExtractionException falha) {
+            this.respostas = respostas.iterator();
+            this.falha = falha;
+        }
+
+        static FakeVisionExtractor respondendoCom(NormalizedBatchDTO... respostas) {
+            return new FakeVisionExtractor(List.of(respostas), null);
+        }
+
+        static FakeVisionExtractor falhandoCom(ExtractionException falha) {
+            return new FakeVisionExtractor(List.of(), falha);
+        }
+
+        @Override
+        public NormalizedBatchDTO extract(ExtractionInput input) {
+            chamadas.add(input);
+            if (falha != null) {
+                throw falha;
+            }
+            return respostas.next();
+        }
+
+        @Override
+        public boolean supports(ExtractionInput input) {
+            return true; // não exercitado pelo caminho escaneado — PdfTextExtractor chama extract() direto
+        }
+
+        @Override
+        public ImportSourceType sourceType() {
+            return ImportSourceType.IMAGE;
+        }
+
+        @Override
+        public String extractorVersion() {
+            return "vision-v1-test";
+        }
+
+        int totalDeChamadas() {
+            return chamadas.size();
+        }
     }
 
     @Test
@@ -181,10 +263,78 @@ class PdfTextExtractorTest {
     }
 
     @Test
-    void extractLancaExcecaoExplicitaQuandoPdfNaoTemTextoExtraivel() {
+    void extractLancaExcecaoExplicitaQuandoPdfEscaneadoSemVisionExtractorConfigurado() {
+        // extractor (campo da classe) usa o construtor de compatibilidade — visionExtractor=null,
+        // simulando ambiente sem o caminho escaneado configurado.
         assertThatThrownBy(() -> extractor.extract(input(pdfSemTexto())))
                 .isInstanceOf(ExtractionException.class)
-                .hasMessageContaining("imagem digitalizada");
+                .hasMessageContaining("não está configurada");
+    }
+
+    @Test
+    void extractDelegaParaVisionExtractorQuandoPdfEscaneado() {
+        NormalizedBatchDTO batchDaPagina = batchDaVisao("COMPRA ESCANEADA", 120);
+        FakeVisionExtractor visionExtractor = FakeVisionExtractor.respondendoCom(batchDaPagina);
+        PdfTextExtractor extractorComVisao = new PdfTextExtractor("v1-test", List.of(), visionExtractor, 10, 150);
+
+        NormalizedBatchDTO batch = extractorComVisao.extract(input(pdfSemTexto()));
+
+        assertThat(visionExtractor.totalDeChamadas()).isEqualTo(1);
+        assertThat(batch.sourceType()).isEqualTo(ImportSourceType.PDF_SCANNED);
+        assertThat(batch.extractorUsed()).isEqualTo("vision_pdf_scanned_gemini_gemini-2.5-flash");
+        assertThat(batch.transactions()).hasSize(1);
+        assertThat(batch.transactions().get(0).fields().get("description").value()).isEqualTo("COMPRA ESCANEADA");
+        // requiresReview forçado true independente do que a página de visão sinalizou (staged
+        // rollout, mesmo espírito do caminho de extrato do #194).
+        assertThat(batch.transactions().get(0).requiresReview()).isTrue();
+    }
+
+    @Test
+    void extractAgregaPaginasDePdfEscaneado() {
+        NormalizedBatchDTO primeiraPagina = batchDaVisao("PAGINA UM", 120);
+        NormalizedBatchDTO segundaPagina = batchDaVisao("PAGINA DOIS", 80);
+        FakeVisionExtractor visionExtractor = FakeVisionExtractor.respondendoCom(primeiraPagina, segundaPagina);
+        PdfTextExtractor extractorComVisao = new PdfTextExtractor("v1-test", List.of(), visionExtractor, 10, 150);
+
+        NormalizedBatchDTO batch = extractorComVisao.extract(input(pdfSemTextoComPaginas(2)));
+
+        assertThat(visionExtractor.totalDeChamadas()).isEqualTo(2);
+        assertThat(batch.transactions()).hasSize(2);
+        assertThat(batch.transactions().get(0).fields().get("description").value()).isEqualTo("PAGINA UM");
+        assertThat(batch.transactions().get(1).fields().get("description").value()).isEqualTo("PAGINA DOIS");
+        assertThat(batch.extractionLatencyMs()).isEqualTo(200);
+    }
+
+    @Test
+    void extractFalhaAntesDeChamarVisionQuandoPdfEscaneadoExcedeLimiteDePaginas() {
+        FakeVisionExtractor visionExtractor = FakeVisionExtractor.respondendoCom(batchDaVisao("NAO USADA", 0));
+        PdfTextExtractor extractorComLimiteBaixo =
+                new PdfTextExtractor("v1-test", List.of(), visionExtractor, 1, 150);
+
+        assertThatThrownBy(() -> extractorComLimiteBaixo.extract(input(pdfSemTextoComPaginas(2))))
+                .isInstanceOf(ExtractionException.class)
+                .hasMessageContaining("limite")
+                .hasMessageContaining("1");
+
+        assertThat(visionExtractor.totalDeChamadas()).isZero();
+    }
+
+    @Test
+    void extractPropagaFalhaDaVisionEmQualquerPaginaDoPdfEscaneado() {
+        ExtractionException falhaEsperada = new ExtractionException("Página ilegível");
+        FakeVisionExtractor visionExtractor = FakeVisionExtractor.falhandoCom(falhaEsperada);
+        PdfTextExtractor extractorComVisao = new PdfTextExtractor("v1-test", List.of(), visionExtractor, 10, 150);
+
+        // Reembrulhada em ScannedPdfExtractionException (não a mesma instância) — só pra o
+        // ImportService gravar sourceType=PDF_SCANNED no batch FAILED; mensagem e causa originais
+        // preservadas, é isso que importa pro usuário (#193: mensagem PT-BR nunca se perde).
+        assertThatThrownBy(() -> extractorComVisao.extract(input(pdfSemTextoComPaginas(2))))
+                .isInstanceOf(ScannedPdfExtractionException.class)
+                .hasMessage("Página ilegível")
+                .hasCause(falhaEsperada);
+
+        // Falhou na 1ª página — não tenta a 2ª (all-or-nothing, sem estado parcial).
+        assertThat(visionExtractor.totalDeChamadas()).isEqualTo(1);
     }
 
     @Test

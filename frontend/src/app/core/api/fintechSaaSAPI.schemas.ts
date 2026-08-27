@@ -657,7 +657,7 @@ export interface ImportBatchResponseDTO {
   extractorVersion?: string | null;
   status: ImportBatchStatus;
   /**
-     * Motivo legível da falha, exibível ao usuário. Só preenchido quando status = FAILED — distingue causas que pedem ações diferentes (ex.: imagem com vários lançamentos vs. imagem ilegível).
+     * Motivo legível da falha, exibível ao usuário. Só preenchido quando status = FAILED — distingue causas que pedem ações diferentes (ex.: extrato com mais lançamentos do que o limite suportado vs. imagem ilegível).
      * @nullable
      */
   failureReason?: string | null;
