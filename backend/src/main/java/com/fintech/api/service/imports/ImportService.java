@@ -357,6 +357,14 @@ public class ImportService {
     }
 
     @Transactional(readOnly = true)
+    public List<ImportBatchResponseDTO> listBatches(User user) {
+        return batchRepository.findByTenantOrderByCreatedAtDesc(user.getTenant())
+                .stream()
+                .map(ImportBatchResponseDTO::fromEntity)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<StagedTransactionResponseDTO> listStaged(UUID batchId, User user) {
         // Confirma que o batch existe E pertence ao tenant (404 caso contrário) antes de listar —
         // recurso de outro tenant responde 404, não confirma existência (invariante nº1).

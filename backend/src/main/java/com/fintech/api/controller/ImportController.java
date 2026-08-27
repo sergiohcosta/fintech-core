@@ -80,6 +80,12 @@ public class ImportController implements ImportsApi {
     // --- Fase 0 — mock + consultas ---
 
     @Override
+    @GetMapping
+    public ResponseEntity<List<ImportBatchResponseDTO>> listImports() {
+        return ResponseEntity.ok(importService.listBatches(getAuthenticatedUser()));
+    }
+
+    @Override
     @PostMapping("/mock")
     public ResponseEntity<ImportBatchResponseDTO> createMockImport(@Valid @RequestBody NormalizedBatchDTO body) {
         return ResponseEntity.status(HttpStatus.CREATED)

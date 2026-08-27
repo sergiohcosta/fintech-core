@@ -249,7 +249,40 @@ export class ImportsService {
     );
   }
 /**
- * Multipart: envia o arquivo (file) + o modo de importação. O ExtractionRouter escolhe o extrator por CONTEÚDO (nunca pelo Content-Type do navegador — ele mente, ex.: .ofx chega como application/octet-stream): imagem aciona o VisionExtractor (Spring AI + Ollama), CSV e OFX usam parsers determinísticos, e PDF com camada de texto usa heurística de linha (data + valor) via Apache PDFBox — PDF escaneado (sem texto extraível) falha explicitamente, sem tentar OCR/IA nesta fase. Grava o batch EXTRACTED e as transações em staging (PENDING), derivando requires_review por threshold no backend. Falha de um extrator que RECONHECEU o arquivo mas não conseguiu processá-lo grava o batch como FAILED (o fallback é o formulário manual de transação) — formato que NENHUM extrator reconhece é 400 direto, sem gravar batch. Dedup por arquivo (mesmo tenant): reenviar o mesmo arquivo sem force=true é 409; force=true reimporta mesmo assim.
+ * @summary Histórico de importações do tenant, mais recente primeiro
+ */
+ listImports<TData = ImportBatchResponseDTO[]>( options?: HttpClientBodyOptions): Observable<TData>;
+ listImports<TData = ImportBatchResponseDTO[]>( options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ listImports<TData = ImportBatchResponseDTO[]>( options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  listImports<TData = ImportBatchResponseDTO[]>(
+     options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    if (options?.observe === 'events') {
+      return this.http.get<TData>(
+      `/api/imports`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'events',
+      }
+    );
+    }
+
+    if (options?.observe === 'response') {
+      return this.http.get<TData>(
+      `/api/imports`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'response',
+      }
+    );
+    }
+
+    return this.http.get<TData>(
+      `/api/imports`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'body',
+      }
+    );
+  }
+/**
+ * Multipart: envia o arquivo (file) + o modo de importação. O ExtractionRouter escolhe o extrator por CONTEÚDO (nunca pelo Content-Type do navegador — ele mente, ex.: .ofx chega como application/octet-stream): imagem aciona o VisionExtractor (Spring AI + Ollama), CSV e OFX usam parsers determinísticos, e PDF com camada de texto usa heurística de linha (data + valor) via Apache PDFBox — PDF escaneado (sem texto extraível) falha explicitamente, sem tentar OCR/IA nesta fase. Imagem com um único comprovante extrai uma transação; imagem com múltiplos lançamentos visíveis (print de extrato completo) extrai TODAS as linhas reconhecidas (até um limite configurável), todas marcadas para revisão obrigatória — não é mais recusada. Grava o batch EXTRACTED e as transações em staging (PENDING), derivando requires_review por threshold no backend (ou herdando `true` do extrator, quando ele sinalizar). Falha de um extrator que RECONHECEU o arquivo mas não conseguiu processá-lo grava o batch como FAILED (o fallback é o formulário manual de transação) — formato que NENHUM extrator reconhece é 400 direto, sem gravar batch. Dedup por arquivo (mesmo tenant): reenviar o mesmo arquivo sem force=true é 409; force=true reimporta mesmo assim.
  * @summary Extrai um arquivo (imagem, CSV, OFX ou PDF com texto) e cria um batch com as transações em staging
  */
  createImport<TData = ImportBatchResponseDTO>(createImportBody: CreateImportBody,
