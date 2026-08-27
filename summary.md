@@ -182,6 +182,7 @@ Pipeline de extração multi-mídia (roadmap `docs/roadmap-extracao-e-conciliaca
 
 | Método | Rota | Auth | Descrição |
 |--------|------|------|-----------|
+| GET | `/api/imports` | authenticated | **(histórico)** lista os `ImportBatch` do tenant autenticado, mais recente primeiro — base da tela de histórico (frontend `import-history`), que permite retomar revisão/commit de um batch com staged `PENDING` ou só consultar um batch já `COMMITTED` (readonly) |
 | POST | `/api/imports` | authenticated | multipart (`file` + `importMode`) + query `force` (default `false`) — roteia por conteúdo (imagem/CSV/OFX), grava batch `EXTRACTED` + staged `PENDING`. Falha de um extrator que reconheceu o arquivo → batch `FAILED` (fallback é o formulário manual); formato não reconhecido → 400; arquivo já importado por este tenant sem `force=true` → 409 |
 | PATCH | `/api/imports/{id}/staged/{stagedId}` | authenticated | **(Fase 1)** edita campos de uma staged `PENDING` antes de lançar — grava confiança `1.0` (dado confirmado por humano) e re-deriva `requiresReview` |
 | POST | `/api/imports/{id}/staged/{stagedId}/discard` | authenticated | **(Fase 2B)** descarta uma staged `PENDING` (→ `DISCARDED`): a linha não vira `Transaction` e para de bloquear a revisão. Staged não-`PENDING` → 400 |
