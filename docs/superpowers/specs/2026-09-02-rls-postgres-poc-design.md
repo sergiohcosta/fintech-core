@@ -89,9 +89,12 @@ Nenhum. RLS é interno, não observável pelo frontend nem pelo `openapi.yaml`.
   (inclusive testes existentes — por isso Task 2 vem atrelada, não pode haver gap entre elas
   num mesmo commit/PR).
 - **Task 2 — `TenantRlsAspect`.** `@Around` nos métodos públicos `@Transactional` de
-  `TransactionService`; executa `SET LOCAL app.tenant_id = ?` via `EntityManager`/JDBC
-  (`Session.doWork` ou `jdbcTemplate.execute`, decidir no plano) antes do corpo do método;
-  tenant lido do contexto de autenticação (mesma fonte do `SecurityFilter`).
+  `TransactionService` **e** em `InvoiceService.pay` (achado real de implementação: `pay`
+  grava em `transactions` direto pelo repositório, sem passar por `TransactionService` — sem
+  cobri-lo, pagar fatura em produção quebraria com RLS ativo); executa
+  `SET LOCAL app.tenant_id = ?` via `EntityManager`/JDBC (`Session.doWork`) antes do corpo do
+  método; tenant lido do parâmetro `User` que cada método interceptado já recebe (não do
+  `SecurityContextHolder` — decisão revisada durante a implementação, ver ADR-006).
 - **Task 3 — Teste discriminante.** Query nativa (`EntityManager.createNativeQuery`) que
   **não** aplica `WHERE tenant_id`, executada dentro de uma transação com `app.tenant_id`
   setado para o tenant A, contra dataset com tenant A e tenant B populados — deve retornar

@@ -3,182 +3,184 @@
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development
 > (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use
 > checkbox (`- [ ]`) syntax for tracking.
+>
+> **Status: EXECUTADO (2026-09-02).** Suíte backend completa: 426/426 verdes. Ver "Achados
+> reais" em cada task — o plano original previu a estrutura certa, mas a execução revelou 4
+> achados não previstos (documentados abaixo, cada um com fix aplicado e testado).
 
 **Goal:** provar, com teste discriminante, que uma policy RLS no Postgres bloqueia leitura
 cross-tenant em `transactions` **mesmo quando a aplicação não filtra por tenant** — sem
-quebrar o comportamento existente.
+quebrar o comportamento existente. **Alcançado.**
 
-**Arquitetura:** `ENABLE`/`FORCE ROW LEVEL SECURITY` + policy `USING (tenant_id =
-current_setting('app.tenant_id')::uuid)` na tabela (migration V33). Um `TenantRlsAspect`
-(Spring AOP `@Around`) envolve os métodos públicos `@Transactional` de `TransactionService` e
-executa `SET LOCAL app.tenant_id = '<uuid>'` no início da transação, lendo o tenant do
-contexto de autenticação (mesma fonte que `SecurityFilter` já usa). Racional completo:
-ADR-006 + spec `2026-09-02-rls-postgres-poc-design.md`.
+**Arquitetura (como ficou):** `ENABLE`/`FORCE ROW LEVEL SECURITY` + policy `USING (tenant_id =
+NULLIF(current_setting('app.tenant_id', true), '')::uuid)` em `transactions` (migration V33).
+`TenantRlsAspect` (Spring AOP `@Around`) envolve os métodos públicos de `TransactionService`
+**e** `InvoiceService.pay` (achado #4 abaixo), executando `SET LOCAL app.tenant_id` lido do
+parâmetro `User` de cada método (não do `SecurityContextHolder` — achado #2). Requer role
+Postgres não-superuser como runtime da app (achado #1). Racional completo: ADR-006 + spec
+`2026-09-02-rls-postgres-poc-design.md`.
 
 **Tech Stack:** Java 21, Spring Boot, Spring AOP, Flyway, `@SpringBootTest` contra Postgres
-real (padrão de integração do projeto — confirmar mecanismo exato no Step 1 da Task 1).
+real (dev local, não Testcontainers, confirmado na Task 1).
 
 ## Global Constraints
 
 - Migration V33 e a Task 2 (aspect) entram no **mesmo commit/PR** — nunca fazer merge com a
-  policy ativa e sem o aspect (qualquer request autenticada pararia de funcionar, pois nenhuma
-  sessão teria `app.tenant_id` setado).
+  policy ativa e sem o aspect.
 - Filtros `WHERE tenant_id` existentes em `TransactionRepository`/`TransactionService`
   **não são removidos** — RLS é redundante por design (defesa em profundidade, não
   substituição).
-- Se a Task 4 (regressão) revelar caminho de código que toca `transactions` fora de
-  `@Transactional` do `TransactionService`, **não silenciar** — documentar como achado do PoC
-  no PR e decidir extensão do aspect ali mesmo, não depois.
-- Seeds (`V13`, `seed_base.sql`) rodam antes da policy existir por ordem de migration
-  (V13 < V33) — mas toda vez que a suíte reconstrói o banco do zero, a ordem de aplicação é
-  sequencial, então V33 roda DEPOIS do seed já ter inserido dados. Se o seed usa o mesmo role
-  Postgres da aplicação (a confirmar no Step 1), releituras futuras do seed em banco já
-  existente (não aplicável — Flyway não re-roda migration aplicada) não são um problema; o
-  risco real é runtime da app **depois** que V33 já rodou. Verificar mesmo assim no Step 1.
 - SemVer: **nenhum impacto** — RLS é interno, não toca `openapi.yaml`.
-- `database-schema.md` ganha a linha da V33 (Task 5).
+- `database-schema.md`/`architecture.md` atualizados (Task 5).
 
 ---
 
-### Task 1: Levantamento — confirma premissas antes de escrever a migration
+## Achados reais da execução (fora do previsto no plano original)
 
-**Files:** nenhum arquivo alterado — só leitura/comandos.
+**#1 — `admin` (docker-compose) é superuser Postgres; superuser sempre bypassa RLS, mesmo com
+`FORCE`.** Descoberto no primeiro run do teste discriminante (185 linhas retornadas sem
+`WHERE`, deveria ser 0). Fix: role `fintech_app` (sem `SUPERUSER`/`BYPASSRLS`) criado via
+`.docker/postgres-init/01-app-role.sql`, montado em `docker-compose.yml`
+(`/docker-entrypoint-initdb.d`) para setups futuros e aplicado manualmente no container já
+rodando. `spring.datasource.*` local passa a apontar pra `fintech_app`; `spring.flyway.*`
+(novo, explícito) continua com `admin` (owner, roda migrations). Sem essa separação, RLS
+nunca protegeria nada localmente — achado estrutural, não cosmético.
 
-- [ ] **Step 1: Confirma o role/usuário Postgres usado pela aplicação e pelos testes**
+**#2 — Ler o tenant do `SecurityContextHolder` (design original do ADR) quebraria testes
+`@SpringBootTest` que chamam o service direto sem passar pelo `SecurityFilter`** (ex.:
+`ImportServiceTest`, que aciona `TransactionService.create` de dentro de
+`ImportService.commit` passando um `User` de fixture). Fix: `TenantRlsAspect` lê o tenant do
+parâmetro `User` que cada método interceptado já recebe — mesma fonte de verdade que o resto
+do código já usa. ADR-006 e spec atualizados para refletir essa decisão revisada.
 
-Run:
-```bash
-grep -n "spring.datasource" backend/src/main/resources/application*.properties
-grep -n "spring.datasource" backend/src/test/resources/application*.properties
-grep -n "POSTGRES_USER\|POSTGRES_PASSWORD" docker-compose.yml
-```
-Expected: identificar se o usuário de runtime é o **owner** das tabelas (criado pelas
-migrations) — se sim, `FORCE ROW LEVEL SECURITY` é obrigatório (sem ele, owner ignora a
-policy) e o próprio teste discriminante precisa confirmar que `FORCE` realmente restringe o
-owner também.
+**#3 — `RESET app.tenant_id` numa GUC custom pode voltar para `''` (string vazia), não
+`NULL`** — comportamento real do Postgres para parâmetros não registrados, não hipotético.
+`''::uuid` estoura exceção em vez de "fail-safe deny". Fix: policy usa
+`NULLIF(current_setting(...), '')::uuid`, tratando os dois formatos de "não setado" da mesma
+forma. Também exigiu editar a migration diretamente (V33 nunca havia sido aplicada em
+"ambiente superior" — só nesta iteração local, então não violou a regra de imutabilidade) e
+remover a entrada correspondente de `flyway_schema_history` para reaplicar.
 
-- [ ] **Step 2: Confirma o mecanismo de integração (Postgres real vs. Testcontainers)**
+**#4 — `InvoiceService.pay()` grava a `Transaction` de pagamento direto pelo repositório, sem
+passar por `TransactionService`.** Achado no teste de concorrência (#139) já existente: as 30
+iterações "passavam" mas com 0 pagamentos reais — `racePay()` engole exceções do "perdedor da
+corrida" por design, mascarando que TODAS as chamadas a `pay()` falhavam por RLS (nenhum
+`app.tenant_id` setado nesse caminho). Fix: pointcut do aspect ampliado para cobrir também
+`InvoiceService.pay` especificamente (não a classe inteira — os demais métodos de
+`InvoiceService` não recebem `User` e quebrariam com o `orElseThrow`).
 
-Run: `grep -rn "Testcontainers\|@Container" backend/src/test/java/com/fintech/api/ | head -5`
-Expected: usar o mesmo mecanismo já em uso para a Task 3/4 — não introduzir um novo.
-
-- [ ] **Step 3: Baseline verde**
-
-Run: `./scripts/test-summary.sh backend` (ou `./mvnw test` em background, é a suíte >7min —
-não bloquear a sessão)
-Expected: PASS. Falha pré-existente → abrir issue antes de prosseguir (regra do
-change-control).
+**Achado adicional (só teste, não produção):** 3+1 arquivos de teste gravam/leem/apagam
+`transactions` direto via `JdbcTemplate`/`EntityManager`, fora de qualquer service —
+precisaram de `SET LOCAL` explícito (via `TransactionTemplate` quando o teste não usa
+`@Transactional` de classe, ver `InvoiceServicePaymentConcurrencyTest` e `ImportServiceTest`,
+ou `entityManager.createNativeQuery(...)` quando usa, ver `TenantRlsAspectTest` e
+`DashboardAggregatesRepositoryTest`). Dentro de `@BeforeEach`, `entityManager.flush()`
+explícito é necessário após cada `save()` quando o tenant muda no meio do método — Hibernate
+pode adiar o INSERT físico até o próximo flush, e se isso acontece depois de trocar
+`app.tenant_id`, a linha é rejeitada pelo tenant errado.
 
 ---
 
-### Task 2: Migration V33 — policy RLS em `transactions`
+### Task 1: Levantamento — confirma premissas antes de escrever a migration ✅
+
+- [x] **Step 1:** role único (`admin`) para tudo — runtime, migrations, testes. Confirmou que
+      `FORCE` seria necessário — e revelou o achado #1 (superuser) só na Task 3.
+- [x] **Step 2:** confirmado Postgres real (dev local), não Testcontainers, `@Transactional`
+      (rollback do Spring) é o padrão.
+- [x] **Step 3:** baseline verde — 423/423 antes de qualquer mudança.
+- [x] **Step 4:** achado dos 3 arquivos que gravam direto pelo repositório (ver "Achados
+      reais" acima — o fix real ficou mais elaborado que o previsto aqui).
+
+---
+
+### Task 2: Migration V33 — policy RLS em `transactions` ✅
 
 **Files:**
-- Create: `backend/src/main/resources/db/migration/V33__transactions_rls.sql`
+- Created: `backend/src/main/resources/db/migration/V33__transactions_rls.sql`
 
-- [ ] **Step 1: Escreve a migration**
-
+Versão final (após achado #3):
 ```sql
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions FORCE ROW LEVEL SECURITY;
 
 CREATE POLICY tenant_isolation ON transactions
-    USING (tenant_id = current_setting('app.tenant_id', true)::uuid);
+    USING (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid);
 ```
 
-`current_setting(..., true)` (segundo argumento `missing_ok=true`) evita erro se
-`app.tenant_id` não estiver setado — nesse caso a comparação é `NULL = tenant_id` → `NULL`
-(nenhuma linha visível), fail-safe por padrão em vez de exceção. Confirmar essa escolha
-durante a Task 3 (o teste discriminante deve provar isso, não só assumir).
-
-**Não rodar esta migration isolada** — ela por si só derruba toda a aplicação (nenhuma sessão
-tem `app.tenant_id` setado ainda). Só validar em conjunto com a Task 3.
-
 ---
 
-### Task 3: `TenantRlsAspect`
+### Task 3: `TenantRlsAspect` ✅
 
 **Files:**
-- Create: `backend/src/main/java/com/fintech/api/config/TenantRlsAspect.java`
-- Test: `backend/src/test/java/com/fintech/api/config/TenantRlsAspectTest.java` (ou
-  integrado ao teste discriminante da Task 4 — decidir ao escrever, evitar duplicar setup)
+- Created: `backend/src/main/java/com/fintech/api/config/TenantRlsAspect.java`
+- Created: `backend/src/main/java/com/fintech/api/config/TransactionManagementConfig.java`
+  (não previsto no plano original — necessário para fixar a ordem do advisor de
+  `@Transactional` vs. o aspect; sem isso os dois ficam empatados em
+  `Ordered.LOWEST_PRECEDENCE`, ordem relativa indefinida)
+- Created: `backend/src/test/java/com/fintech/api/config/TenantRlsAspectTest.java`
 
-- [ ] **Step 1: Teste discriminante primeiro (RED)**
+Pointcut final: `TransactionService.*` + `InvoiceService.pay` (achado #4). Tenant lido do
+parâmetro `User` (achado #2), não do `SecurityContextHolder`.
 
-Escrever o teste de integração que:
-1. Popula (ou reusa do seed) 2 tenants com transações.
-2. Executa, dentro de uma transação autenticada como tenant A, uma query nativa
-   **sem** `WHERE tenant_id` contra `transactions`.
-3. Assert: 0 linhas do tenant B retornadas.
-4. Um segundo teste (ou o mesmo, parametrizado) roda a MESMA query nativa numa transação sem
-   `TenantRlsAspect` ativo (ex.: chamando o repositório diretamente via
-   `EntityManager` fora do fluxo do service, ou um profile/flag que desliga o aspect) —
-   assert: N > 0 linhas de outro tenant aparecem, provando que sem o aspect a policy sozinha
-   (com `app.tenant_id` nunca setado) já bloquearia tudo, e é o aspect que faz a app
-   funcionar normalmente.
-
-Run: `./mvnw test -Dtest=TenantRlsAspectTest` (ou nome escolhido)
-Expected: **FAIL** (aspect não existe ainda — RED genuíno).
-
-- [ ] **Step 2: Implementa o aspect (GREEN)**
-
-`@Around` em torno de métodos públicos de `TransactionService` anotados `@Transactional`.
-Lê o tenant do `SecurityContextHolder`/contexto já usado por `SecurityFilter` (reusar o mesmo
-mecanismo, não duplicar). Executa `SET LOCAL app.tenant_id = ?` via
-`entityManager.unwrap(Session.class).doWork(...)` ou `jdbcTemplate.execute(...)` — decidir
-pela opção que já tem precedente no codebase (buscar uso de `doWork`/JDBC direto antes de
-escolher).
-
-Run: `./mvnw test -Dtest=TenantRlsAspectTest`
-Expected: PASS.
-
-- [ ] **Step 3: Aplica a migration V33 real e roda o teste completo junto**
-
-Run: `./mvnw test -Dtest=TenantRlsAspectTest,TransactionServiceTest,TransactionControllerTest`
-Expected: PASS — prova que Task 2 + Task 3 juntas não quebram nada.
+3 testes discriminantes, todos GREEN:
+1. Sem `app.tenant_id` setado → 0 linhas (fail-safe deny).
+2. Com `app.tenant_id` = tenant A → nunca retorna linha do tenant B, mesmo em query nativa
+   sem `WHERE`.
+3. Fluxo real via `TransactionService.findAll` funciona transparente (aspect operando).
 
 ---
 
-### Task 4: Regressão completa
+### Task 4: Regressão completa ✅
 
-**Files:** nenhum arquivo novo — só execução.
+**Files (além do previsto — achado #4 exigiu mais arquivos):**
+- Modified: `backend/src/test/java/com/fintech/api/repository/DashboardAggregatesRepositoryTest.java`
+- Modified: `backend/src/test/java/com/fintech/api/service/InvoiceServicePaymentConcurrencyTest.java`
+- Modified: `backend/src/test/java/com/fintech/api/service/imports/ImportServiceTest.java`
+  (não previsto — só apareceu na suíte completa, não no grep inicial por
+  `transactionRepository.save`, porque o problema era um `DELETE` raw de cleanup, não um save)
+- `BudgetItemServiceTest`: confirmado Mockito puro (`@ExtendWith(MockitoExtension.class)`),
+  sem DB real — **não precisou de ajuste**, ao contrário do previsto no plano original.
 
-- [ ] **Step 1: Suíte backend completa**
-
-Run: `./scripts/test-summary.sh backend`
-Expected: PASS, mesmo resultado da baseline da Task 1 Step 3 (nenhuma regressão).
-
-- [ ] **Step 2: Suíte frontend (não deveria ser afetada, é validação de não-regressão)**
-
-Run: `./scripts/test-summary.sh frontend`
-Expected: PASS, inalterado.
+- [x] **Step 0:** os 3(+1) arquivos ajustados, cada um rodado isolado até verde.
+- [x] **Step 1:** suíte backend completa — **426/426, 0 falhas, 0 erros** (423 baseline + 3
+      testes novos do `TenantRlsAspectTest`).
+- [x] **Step 2:** suíte frontend — não executável nesta worktree (`node_modules` nunca
+      instalado aqui, `npm install` não rodado). Mudança é 100% backend (Java/SQL/
+      docker-compose), zero arquivo em `frontend/` tocado — risco de regressão é nulo por
+      construção, não só por falta de teste. Ver `git diff --stat` do PR antes do merge para
+      confirmar.
 
 ---
 
-### Task 5: Documentação
+### Task 5: Documentação ✅
 
-**Files:**
-- Modify: `database-schema.md` (linha da V33 na tabela de migrations)
-- Modify: `architecture.md` ou seção nova referenciando ADR-006 (decidir o menor diff que
-  torna o mecanismo descobrível)
-
-- [ ] **Step 1: Atualiza `database-schema.md`**
-
-Adiciona a linha V33 seguindo o padrão das demais (ver V22, V25 como exemplos de migration
-"comportamental", não schema de tabela nova).
-
-- [ ] **Step 2: Referencia ADR-006 em `architecture.md`**
-
-Uma linha apontando para o ADR, no mesmo espírito de outras referências cruzadas já
-existentes no arquivo.
+- [x] `database-schema.md`: linha V33 + nota na seção de Constraints sobre RLS ativo em
+      `transactions`.
+- [x] `architecture.md`: referência ao ADR-006 na seção de regras de backend.
+- [x] `docs/adr/ADR-006-rls-postgres-defesa-em-profundidade.md` e a spec de design atualizados
+      durante a execução para refletir os achados #1, #2 e #4 (decisões revisadas, não só o
+      plano original).
 
 ---
 
 ## Fim do PoC — critério de conclusão (issue #116, parcial)
 
 - [x] Decisão registrada em ADR (`ADR-006`).
-- [ ] PoC numa tabela validando que query sem filtro de tenant não retorna dado de outro
-      tenant (Task 3, Step 1).
+- [x] PoC numa tabela validando que query sem filtro de tenant não retorna dado de outro
+      tenant — provado por 3 testes discriminantes + suíte completa verde.
 
 Rollout para as demais tabelas fica para uma spec/plano futuro, fora deste PoC (ver spec,
 seção "Fora de escopo").
+
+## Próximos passos (fora deste PoC, decisão do dev)
+
+- Suíte frontend (Task 4 Step 2, pendente).
+- Push do docker-compose.yml atualizado + init script — hoje só aplicado manualmente no
+  container local rodando; qualquer outro ambiente/clone precisa do `docker compose up`
+  reconhecer o novo `.docker/postgres-init/` (funciona para containers NOVOS; o container
+  atual já tem o role aplicado manualmente).
+- Confirmar se produção (Neon) já usa um role não-superuser — se sim, RLS lá já protegeria
+  mesmo sem esse achado; se não, é um segundo front a resolver antes de confiar em RLS como
+  defesa real em produção.
+- Decidir sobre rollout para as demais tabelas (`accounts`, `categories`, etc.) como próxima
+  spec, quando fizer sentido.
