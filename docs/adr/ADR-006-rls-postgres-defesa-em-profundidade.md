@@ -83,6 +83,22 @@ problema de mecanismo depois.
    mistura descoberta de problema de mecanismo com rollout, viola a prática do projeto de
    commits pequenos e narrativos.
 
+## Verificação nos ambientes do homelab (dev/hmg/prod)
+
+Confirmado com a infra do homelab (k3s, ver ADR-004) após a implementação local: cada
+ambiente tem seu próprio role (`fintech_core_dev_user`/`_hmg_user`/`_prod_user`), **owner do
+próprio banco** — não superuser. Só `postgres` é superuser com `BYPASSRLS`, e a app nunca
+conecta como `postgres`. Isolamento entre ambientes é por banco/usuário
+(`REVOKE CONNECT ... FROM PUBLIC`), ortogonal ao isolamento de tenant dentro de um mesmo
+banco (o problema que este ADR resolve).
+
+Isso muda o achado #1 da execução local: lá, `admin` (docker-compose) é superuser — `FORCE`
+sozinho não bypassa isso, só um role sem `SUPERUSER` resolve (daí o `fintech_app` criado só
+para local). No homelab, os roles são "apenas" owners — `FORCE ROW LEVEL SECURITY` (já em
+V33) é suficiente por si só, sem precisar replicar o split de role. Nenhuma mudança adicional
+de infra é necessária para dev/hmg/prod; a migration se aplica e a policy passa a valer no
+próximo deploy.
+
 ## Consequências
 
 - Toda migration nova em tabela com RLS ativo passa a exigir atenção: `INSERT`/`UPDATE` fora

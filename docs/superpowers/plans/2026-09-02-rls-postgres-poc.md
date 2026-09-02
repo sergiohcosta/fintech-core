@@ -179,8 +179,13 @@ seção "Fora de escopo").
   container local rodando; qualquer outro ambiente/clone precisa do `docker compose up`
   reconhecer o novo `.docker/postgres-init/` (funciona para containers NOVOS; o container
   atual já tem o role aplicado manualmente).
-- Confirmar se produção (Neon) já usa um role não-superuser — se sim, RLS lá já protegeria
-  mesmo sem esse achado; se não, é um segundo front a resolver antes de confiar em RLS como
-  defesa real em produção.
+- ~~Confirmar se produção já usa um role não-superuser~~ — **resolvido**: infra do homelab
+  confirmou que `fintech_core_dev_user`/`_hmg_user`/`_prod_user` são owners do próprio banco,
+  não superuser (só `postgres` tem `BYPASSRLS`, nunca usado pela app). `FORCE` (já em V33) é
+  suficiente nesses ambientes — nenhuma mudança de infra necessária, ao contrário do local
+  (onde `admin` é superuser e exigiu o role `fintech_app` separado). Falta só confirmar que
+  nenhum dos 3 roles tem `BYPASSRLS` concedido à parte (infra não mencionou, mas não foi
+  checado explicitamente): `SELECT rolname, rolsuper, rolbypassrls FROM pg_roles WHERE
+  rolname LIKE 'fintech_core%';` antes do merge.
 - Decidir sobre rollout para as demais tabelas (`accounts`, `categories`, etc.) como próxima
   spec, quando fizer sentido.
