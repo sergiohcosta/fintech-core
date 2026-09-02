@@ -6,7 +6,9 @@ import com.fintech.api.repository.TenantRepository;
 import com.fintech.api.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Answers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -25,6 +27,7 @@ class TenantRegistrationServiceTest {
     @Mock UserRepository userRepository;
     @Mock PasswordEncoder passwordEncoder;
     @Mock DefaultCategorySeeder categorySeeder;
+    @Mock(answer = Answers.RETURNS_DEEP_STUBS) EntityManager entityManager;
     @InjectMocks TenantRegistrationService service;
 
     private TenantRegistrationDTO dto() {
