@@ -159,9 +159,21 @@ que já passava.
 
 ---
 
-## Fim desta fase
+## Fim desta fase ✅ EXECUTADO (2026-09-02)
 
-- [ ] Pointcut genérico, suíte verde.
-- [ ] Duas exceções tratadas e testadas.
+- [x] Pointcut genérico (`within(com.fintech.api.service..*) && @annotation(Transactional)`),
+      resolução `SecurityContextHolder`-primeiro + fallback `User`, suíte verde.
+- [x] Duas exceções tratadas e testadas (`TenantRegistrationService.register`,
+      `InvitationService.accept`) — helper `TenantRlsContext.setLocalTenantId` extraído
+      (evita 3ª cópia do SQL cru; usado pelo aspect e pelas 2 exceções).
+- [x] Suíte completa: 426/426, zero regressão — confirma que o pointcut mais amplo não
+      quebrou nenhum write path existente (todos já estavam cobertos por autenticação real
+      ou pelo fallback `User` em teste).
 - [ ] Próximo passo (fora deste plano): retomar a spec de rollout, tabela por tabela, a
       partir de `staged_transactions` (posição 1 da ordem definida).
+
+**Desvio do plano original:** `TenantRlsContext.setLocalTenantId` usa
+`entityManager.createNativeQuery(...).executeUpdate()`, não `Session.doWork()` como o
+esboço da Task 3 sugeria — mais simples de mockar em teste unitário (`Answers.RETURNS_DEEP_STUBS`
+no `@Mock EntityManager`, sem precisar mockar `Session`/`Connection`/`Statement` em cadeia) e
+não amarra a um tipo específico do Hibernate. Mesma técnica válida, escolha melhor na prática.
