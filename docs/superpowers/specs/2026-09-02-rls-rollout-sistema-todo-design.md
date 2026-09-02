@@ -65,14 +65,28 @@ endpoint público) nem `User` nos argumentos (só o DTO). O aspect genérico nã
 aqui, e como certo (`users` vai entrar no rollout) precisa de `app.tenant_id` setado antes do
 `INSERT` do primeiro `User`.
 
-**Não é bug do aspect — é esperado.** Fluxos de criação de tenant são o único lugar onde o
-tenant nasce dentro do próprio método, não chega pronto de fora. Tratamento: `SET LOCAL`
-manual explícito dentro do `TenantRegistrationService.register`, logo após persistir o
-`Tenant` e antes de persistir o `User` — mesma técnica (`EntityManager`/`Session.doWork`) já
-usada no aspect, só que inline. Mesmo padrão provavelmente serve pra
-`AcceptInviteService`/fluxo de aceite de convite (cria `User` novo pra tenant já existente —
-esse caso É coberto pelo aspect genérico, porque o tenant já existe e vem do convite, não
-precisa de tratamento especial; citado aqui só pra descartar como exceção).
+**Não é bug do aspect — é esperado.** Tratamento: `SET LOCAL` manual explícito dentro do
+método, logo após o tenant ficar disponível e antes do primeiro INSERT que precisa dele —
+mesma técnica (`EntityManager`/`Session.doWork`) já usada no aspect, só que inline. **Duas
+ocorrências confirmadas por leitura de código** (não uma, como uma primeira leitura desta
+spec assumiu):
+
+1. `TenantRegistrationService.register(TenantRegistrationDTO dto)` — cria `Tenant` e o
+   primeiro `User` (ADMIN) na mesma transação. `SET LOCAL` logo após
+   `tenant = tenantRepository.save(tenant)`, antes de `userRepository.save(adminUser)` e de
+   `categorySeeder.seedForTenant(tenant)` (que grava `categories`, rollout #11 — mesma
+   transação, mesma correção resolve os dois).
+2. `InvitationService.accept(AcceptInviteDTO dto)` — endpoint público, sem `User`
+   autenticado nem no argumento. O tenant existe (`invitation.getTenant()`), mas o aspect
+   genérico não tem como alcançá-lo (nem SecurityContextHolder nem parâmetro `User`). `SET
+   LOCAL` logo após `findValidInvitation(dto.token())`, antes de `userRepository.save(user)`
+   e `invitationRepository.save(invitation)`.
+
+Padrão geral pra identificar esses casos: **método `@Transactional` público (endpoint não
+autenticado) que grava em tabela com RLS sem receber `User`/tenant já resolvido no
+argumento.** Vale conferir os dois outros endpoints públicos de auth
+(`TenantController`/`InvitationController`, ver `summary.md` — "Público: POST
+/auth/{login,register,accept-invite}") na Task 1 de execução, não só confiar nesta lista.
 
 ## Escopo — tabelas (ordem de rollout por risco)
 
@@ -169,7 +183,8 @@ padrão dos achados do PoC.
 ## Critério de conclusão
 
 - [ ] `TenantRlsAspect` generalizado, suíte completa verde.
-- [ ] `TenantRegistrationService.register` com `SET LOCAL` manual, testado.
+- [ ] `TenantRegistrationService.register` e `InvitationService.accept` com `SET LOCAL`
+      manual, testados.
 - [ ] 12 tabelas com `ENABLE`+`FORCE`+policy, cada uma com teste discriminante próprio.
 - [ ] `recurrence_exceptions` — decisão registrada e executada (denormalizar ou não).
 - [ ] `database-schema.md` atualizado, uma linha por migration.
