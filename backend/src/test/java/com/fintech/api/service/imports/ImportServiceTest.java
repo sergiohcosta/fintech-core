@@ -41,8 +41,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -77,6 +79,7 @@ class ImportServiceTest {
     @Autowired ImportBatchRepository importBatchRepository;
     @Autowired CreditCardDetailsRepository creditCardDetailsRepository;
     @Autowired JdbcTemplate jdbc;
+    @Autowired PlatformTransactionManager txManager;
 
     private Tenant persistTenant(String name) {
         Tenant t = new Tenant();
@@ -498,7 +501,14 @@ class ImportServiceTest {
         if (tenantId == null) return;
         jdbc.update("DELETE FROM staged_transactions WHERE tenant_id = ?", tenantId);
         jdbc.update("DELETE FROM import_batches WHERE tenant_id = ?", tenantId);
-        jdbc.update("DELETE FROM transactions WHERE tenant_id = ?", tenantId);
+        // RLS (#116, ADR-006): esta chamada não corre dentro de nenhum @Transactional de
+        // negócio (a classe usa Propagation.NOT_SUPPORTED aqui) — sem SET LOCAL nesta mesma
+        // transação, a policy filtra o DELETE para 0 linhas e o FK de installment_groups/
+        // invoices quebra logo abaixo.
+        new TransactionTemplate(txManager).executeWithoutResult(status -> {
+            jdbc.execute("SET LOCAL app.tenant_id = '" + tenantId + "'");
+            jdbc.update("DELETE FROM transactions WHERE tenant_id = ?", tenantId);
+        });
         jdbc.update("DELETE FROM installment_groups WHERE tenant_id = ?", tenantId);
         jdbc.update("DELETE FROM invoices WHERE tenant_id = ?", tenantId);
         jdbc.update("DELETE FROM credit_card_details WHERE account_id IN (SELECT id FROM accounts WHERE tenant_id = ?)", tenantId);
