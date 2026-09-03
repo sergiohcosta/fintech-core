@@ -35,6 +35,15 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
           cache: maven
+      # RLS (#116, ADR-006): spring.profiles.active=local (default) faz o runtime da app
+      # conectar como fintech_app (role sem SUPERUSER — superuser bypassa RLS mesmo com
+      # FORCE). O Postgres do CI nasce vazio, só com o role "admin" definido acima; sem este
+      # passo, todo @SpringBootTest falha na conexão (fintech_app não existe). Mesmo script
+      # que o docker-compose local monta em /docker-entrypoint-initdb.d — fonte única.
+      - name: Cria role fintech_app (runtime não-superuser, ver .docker/postgres-init)
+        env:
+          PGPASSWORD: secret
+        run: psql -h localhost -U admin -d fintech -f ../.docker/postgres-init/01-app-role.sql
       - name: Roda testes e empacota
         run: ./mvnw verify
 
