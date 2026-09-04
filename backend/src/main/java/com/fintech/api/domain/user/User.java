@@ -53,6 +53,11 @@ public class User implements UserDetails {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
+    // Marca a revogação de sessões antigas: JWT emitido antes deste instante para de
+    // autenticar (SecurityFilter compara com o `issuedAt` do token). Null = nunca resetada
+    // via este fluxo, nenhum token é rejeitado por esta checagem.
+    private LocalDateTime passwordChangedAt;
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         if (this.role == UserRole.ADMIN) {
