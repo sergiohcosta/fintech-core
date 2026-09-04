@@ -17,6 +17,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -84,6 +87,43 @@ class SecurityFilterTest {
         securityFilter.doFilterInternal(request, response, filterChain);
 
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+        verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    @DisplayName("não autentica token emitido antes da troca de senha (sessão revogada)")
+    void doFilterInternal_tokenIssuedBeforePasswordChange_doesNotSetAuthentication() throws Exception {
+        User user = buildUser(true);
+        user.setPasswordChangedAt(LocalDateTime.now());
+        Instant issuedAt = Instant.now().minusSeconds(3600);
+
+        when(request.getHeader("Authorization")).thenReturn("Bearer old-token");
+        when(tokenService.validateToken("old-token")).thenReturn(user.getEmail());
+        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(tokenService.getIssuedAt("old-token")).thenReturn(issuedAt);
+
+        securityFilter.doFilterInternal(request, response, filterChain);
+
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+        verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    @DisplayName("autentica token emitido depois da troca de senha")
+    void doFilterInternal_tokenIssuedAfterPasswordChange_setsAuthentication() throws Exception {
+        User user = buildUser(true);
+        LocalDateTime changedAt = LocalDateTime.now().minusHours(2);
+        user.setPasswordChangedAt(changedAt);
+        Instant issuedAt = changedAt.atZone(ZoneId.systemDefault()).toInstant().plusSeconds(60);
+
+        when(request.getHeader("Authorization")).thenReturn("Bearer new-token");
+        when(tokenService.validateToken("new-token")).thenReturn(user.getEmail());
+        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(tokenService.getIssuedAt("new-token")).thenReturn(issuedAt);
+
+        securityFilter.doFilterInternal(request, response, filterChain);
+
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNotNull();
         verify(filterChain).doFilter(request, response);
     }
 }
