@@ -90,13 +90,13 @@ class InvoiceServicePaymentConcurrencyTest {
         if (tenant == null || tenant.getId() == null) return;
         UUID t = tenant.getId();
         // Mesmo motivo do SET LOCAL na fixture: sem app.tenant_id setado NESTA transação, a
-        // policy RLS torna o DELETE em transactions um no-op silencioso (0 linhas), deixando
-        // FK pendente para o DELETE de invoices logo abaixo.
+        // policy RLS torna os DELETEs um no-op silencioso (0 linhas), deixando FK pendente.
+        // transactions antes de invoices (FK transactions.invoice_id → invoices).
         new TransactionTemplate(txManager).executeWithoutResult(status -> {
             jdbc.execute("SET LOCAL app.tenant_id = '" + t + "'");
             jdbc.update("DELETE FROM transactions WHERE tenant_id = ?", t);
+            jdbc.update("DELETE FROM invoices WHERE tenant_id = ?", t);
         });
-        jdbc.update("DELETE FROM invoices WHERE tenant_id = ?", t);
         jdbc.update("DELETE FROM accounts WHERE tenant_id = ?", t);
         jdbc.update("DELETE FROM users WHERE tenant_id = ?", t);
         jdbc.update("DELETE FROM tenants WHERE id = ?", t);
@@ -146,24 +146,27 @@ class InvoiceServicePaymentConcurrencyTest {
     }
 
     private UUID createClosedInvoiceWithPendingTransaction(int iteration) {
-        // ano único por iteração evita colisão no UNIQUE(account, reference_year, reference_month).
-        Invoice invoice = invoiceRepository.save(Invoice.builder()
-                .account(cardAccount).tenant(tenant)
-                .referenceYear(2000 + iteration).referenceMonth(1)
-                .closingDate(LocalDate.of(2026, 1, 28)).dueDate(LocalDate.of(2026, 2, 5))
-                .status(InvoiceStatus.CLOSED).build());
         // Este teste não usa @Transactional (precisa de commits reais entre as threads da
-        // corrida — ver javadoc da classe), então transactionRepository.save() abre e commita
-        // sua PRÓPRIA transação. SET LOCAL sozinho não sobreviveria até esse INSERT (não é a
-        // mesma transação); TransactionTemplate força os dois no mesmo escopo transacional.
+        // corrida — ver javadoc da classe), então cada save() abre e commita sua PRÓPRIA
+        // transação. SET LOCAL sozinho não sobreviveria até o INSERT (não é a mesma
+        // transação); TransactionTemplate força invoice + transaction no mesmo escopo — RLS
+        // (#116) agora cobre as duas tabelas (ciclo 2: transactions; ciclo 3: invoices).
+        UUID[] invoiceId = new UUID[1];
         new TransactionTemplate(txManager).executeWithoutResult(status -> {
             jdbc.execute("SET LOCAL app.tenant_id = '" + tenant.getId() + "'");
+            // ano único por iteração evita colisão no UNIQUE(account, reference_year, reference_month).
+            Invoice invoice = invoiceRepository.save(Invoice.builder()
+                    .account(cardAccount).tenant(tenant)
+                    .referenceYear(2000 + iteration).referenceMonth(1)
+                    .closingDate(LocalDate.of(2026, 1, 28)).dueDate(LocalDate.of(2026, 2, 5))
+                    .status(InvoiceStatus.CLOSED).build());
+            invoiceId[0] = invoice.getId();
             transactionRepository.save(Transaction.builder()
                     .description("Compra").amount(new BigDecimal("100.00")).date(LocalDate.of(2026, 1, 10))
                     .type(TransactionType.EXPENSE).status(TransactionStatus.PENDING)
                     .installmentNumber(1).totalInstallments(1)
                     .tenant(tenant).user(user).account(cardAccount).invoice(invoice).build());
         });
-        return invoice.getId();
+        return invoiceId[0];
     }
 }

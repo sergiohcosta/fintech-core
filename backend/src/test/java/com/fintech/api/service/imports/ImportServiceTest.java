@@ -503,18 +503,19 @@ class ImportServiceTest {
         if (tenantId == null) return;
         // RLS (#116, ADR-006): esta chamada não corre dentro de nenhum @Transactional de
         // negócio (a classe usa Propagation.NOT_SUPPORTED aqui) — sem SET LOCAL nesta mesma
-        // transação, a policy filtra os DELETEs para 0 linhas e o FK de installment_groups/
-        // invoices/import_batches quebra logo abaixo. staged_transactions e import_batches
-        // entraram no rollout (V34/V35) — unificadas aqui com transactions, mesma transação,
-        // ordem que respeita FK (staged referencia batch_id E promoted_transaction_id).
+        // transação, a policy filtra os DELETEs para 0 linhas e a FK de installment_groups/
+        // invoices/import_batches/accounts quebra logo abaixo. Tabelas com RLS unificadas
+        // aqui, mesma transação, ordem que respeita FK: staged_transactions (referencia
+        // batch_id E promoted_transaction_id) → import_batches → transactions (referencia
+        // invoice_id) → invoices (referenciada por accounts via invoices_account_id_fkey).
         new TransactionTemplate(txManager).executeWithoutResult(status -> {
             jdbc.execute("SET LOCAL app.tenant_id = '" + tenantId + "'");
             jdbc.update("DELETE FROM staged_transactions WHERE tenant_id = ?", tenantId);
             jdbc.update("DELETE FROM import_batches WHERE tenant_id = ?", tenantId);
             jdbc.update("DELETE FROM transactions WHERE tenant_id = ?", tenantId);
+            jdbc.update("DELETE FROM invoices WHERE tenant_id = ?", tenantId);
         });
         jdbc.update("DELETE FROM installment_groups WHERE tenant_id = ?", tenantId);
-        jdbc.update("DELETE FROM invoices WHERE tenant_id = ?", tenantId);
         jdbc.update("DELETE FROM credit_card_details WHERE account_id IN (SELECT id FROM accounts WHERE tenant_id = ?)", tenantId);
         jdbc.update("DELETE FROM accounts WHERE tenant_id = ?", tenantId);
         jdbc.update("DELETE FROM users WHERE tenant_id = ?", tenantId);
