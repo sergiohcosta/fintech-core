@@ -1,5 +1,7 @@
 package com.fintech.api.config;
 
+import com.fintech.api.domain.account.Account;
+import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.user.User;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
@@ -25,10 +27,13 @@ import java.util.UUID;
  * <ol>
  *   <li>{@link SecurityUtils#currentUserOrNull()} — cobre todo tráfego HTTP autenticado
  *       (a grande maioria), sem depender da assinatura do método.</li>
- *   <li>Parâmetro {@code User} nos argumentos do método (mecanismo original do PoC) — cobre
- *       testes de integração que chamam o service direto, sem HTTP (ex.: {@code
- *       ImportServiceTest}, que aciona {@code TransactionService.create} de dentro de
- *       {@code ImportService.commit} passando um {@code User} de fixture).</li>
+ *   <li>Primeiro argumento do método que seja {@code User}, {@code Tenant} ou
+ *       {@code Account} (nessa ordem) — cobre testes de integração que chamam o service
+ *       direto, sem HTTP. {@code Tenant}/{@code Account} entraram no ciclo 3 do rollout
+ *       (achado real: {@code InvoiceService.getOrCreate}/{@code createNewInvoice} recebem só
+ *       {@code Account}, e {@code createNewInvoice} roda em
+ *       {@code @Transactional(REQUIRES_NEW)} — transação física separada, o SET LOCAL da
+ *       chamada externa não propaga pra ela; {@code close} recebe só {@code Tenant}).</li>
  * </ol>
  * Se nenhuma das duas resolver, o método segue sem {@code app.tenant_id} setado — sem
  * exceção. Isso é seguro por construção: se o método tocar tabela com RLS, a policy nega
@@ -64,9 +69,18 @@ public class TenantRlsAspect {
         }
 
         return Arrays.stream(joinPoint.getArgs())
-                .filter(User.class::isInstance)
-                .map(User.class::cast)
-                .map(user -> user.getTenant().getId())
+                .map(this::tenantIdFromArg)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
                 .findFirst();
+    }
+
+    private Optional<UUID> tenantIdFromArg(Object arg) {
+        return switch (arg) {
+            case User user -> Optional.of(user.getTenant().getId());
+            case Tenant tenant -> Optional.of(tenant.getId());
+            case Account account -> Optional.of(account.getTenant().getId());
+            case null, default -> Optional.empty();
+        };
     }
 }
