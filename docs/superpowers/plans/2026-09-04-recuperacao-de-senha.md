@@ -1,5 +1,10 @@
 # Recuperação de senha — Implementation Plan
 
+> **Status: EXECUTADO** (2026-09-04, branch `feature/recuperacao-de-senha`). Executado
+> diretamente na sessão (não via subagent-driven-development — dispensada por conflitar com o
+> mandato de mentoria do CLAUDE.md, que pede acompanhamento decisão a decisão numa sessão de
+> desenvolvedor único). Testes: 414/414 backend, 45/45 arquivos frontend, suíte completa verde.
+>
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development
 > (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use
 > checkbox (`- [ ]`) syntax for tracking.
@@ -349,15 +354,24 @@ representativo; aqui a necessidade é negativa por design de segurança).
 
 ## Fim — critério de conclusão
 
-- [ ] Contrato (`openapi.yaml`) + codegen sincronizados.
-- [ ] `V37` aplicada, `password_reset_tokens` + `users.password_changed_at`.
-- [ ] Fluxo completo funcional ponta a ponta (testado manualmente via `docs/http/seed-dataset.http`
-      ou Swagger UI, com SMTP real ou um provedor de teste tipo Mailtrap — decidir na execução
-      se vale configurar um sandbox de SMTP pro dev local).
-- [ ] Sessão antiga (JWT emitido antes do reset) para de autenticar após a troca — validado por
-      teste automatizado (Task 5) e, se possível, manualmente.
-- [ ] Rate limit ativo em `forgot-password`.
-- [ ] Frontend: telas + link, specs verdes.
-- [ ] Regressão completa (back + front) sem quebra.
-- [ ] `database-schema.md`/`summary.md`/`domain.md` atualizados.
-- [ ] SemVer sugerido: MINOR.
+- [x] Contrato (`openapi.yaml`) + codegen sincronizados.
+- [x] `V37` aplicada, `password_reset_tokens` + `users.password_changed_at`.
+- [ ] Fluxo completo testado manualmente ponta a ponta com SMTP real — **não feito nesta
+      sessão** (sem servidor SMTP configurado no ambiente local); coberto por teste automatizado
+      (`PasswordResetServiceTest`, `AuthControllerTest`) com `JavaMailSender` mockado. Pendência
+      pro dev antes de considerar a feature pronta pra uso real.
+- [x] Sessão antiga (JWT emitido antes do reset) para de autenticar após a troca — validado por
+      teste automatizado (`SecurityFilterTest`).
+- [x] Rate limit ativo em `forgot-password` (`ForgotPasswordRateLimiter`).
+- [x] Frontend: telas + link, specs verdes.
+- [x] Regressão completa (back + front) sem quebra — 414 backend, 45 arquivos frontend.
+- [x] `database-schema.md`/`summary.md`/`domain.md` atualizados.
+- [x] SemVer sugerido: **MINOR** (endpoints novos, aditivos ao contrato).
+
+## Desvio do plano — rate limiter
+
+Plano original propunha generalizar `LoginRateLimiter` (construtor + 2 beans qualificados).
+Executado como duplicação isolada (`ForgotPasswordRateLimiter`, mesma lógica, arquivo próprio)
+em vez de refatorar a classe já testada — menor risco, zero touch em `LoginRateLimiterTest`
+(10/10 verde sem alteração). Trade-off consciente: os dois rate limiters podem divergir em
+tuning no futuro sem esforço de descoplar depois.
