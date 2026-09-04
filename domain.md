@@ -2,7 +2,8 @@
 
 ```
 Tenant (UUID, budgetCycleStartDay)
-  ├── User (email, passwordHash, role: ADMIN | MEMBER)
+  ├── User (email, passwordHash, role: ADMIN | MEMBER, passwordChangedAt?)
+  │    └── PasswordResetToken (token, expiresAt, used)  [recuperação de senha; sem tenant_id]
   ├── Account (name, type, color, icon, countInLiquidBalance, countInNetWorth, active)
   │    ├── CreditCardDetails (brand, lastFourDigits, limitAmount, closingDay, dueDay)  [só CREDIT_CARD]
   │    └── Invoice (referenceYear, referenceMonth, closingDate, dueDate, status)        [lazy: 1ª transação do período]
