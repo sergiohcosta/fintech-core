@@ -26,10 +26,26 @@ uso único já provado em `Invitation` (V6): `token UUID` opaco, `expiresAt`, `u
 
 ## Decisões de design
 
-### 1. Envio de email: SMTP (Spring Mail)
+### 1. Envio de email: SMTP (Spring Mail) + relay Resend
 
 Decisão do dev (não IA): `spring-boot-starter-mail` + `JavaMailSender`, credenciais via env var
-(`spring.mail.*`). Sem infra de email hoje no projeto — este é o primeiro uso.
+(`spring.mail.*`). Sem infra de email hoje no projeto — este é o primeiro uso. Código
+agnóstico de provider (só host/porta/usuário/senha); provider escolhido pra dev/hmg/prod é o
+**Resend** (relay SMTP, `smtp.resend.com:587`) — testado inicialmente com Gmail, trocado por
+melhor deliverability sem depender de reputação de IP própria (homelab residencial não tem
+DNS/PTR pra SPF/DKIM confiável). Sem domínio verificado no Resend, o envio só funciona pro
+email da própria conta (modo de teste do provider) — verificar domínio é prova pendente antes
+de considerar a feature pronta pra usuários reais.
+
+**Achado de segurança operacional (não previsto no design original):** `MailSenderAutoConfiguration`
+não é condicional como o `GeminiVisionClient` — declarar `MAIL_HOST` etc **sem default** em
+`application-prod.properties` quebraria o boot inteiro de hmg/prod (ambos rodam perfil `prod`)
+sempre que a env var não estivesse setada, mesmo que ninguém chamasse `/auth/forgot-password`.
+Corrigido: mail herda os defaults de `application.properties` (`localhost`) em todo perfil;
+`PasswordResetService.requestReset` captura `MailException` e não propaga — sem `MAIL_*` real
+configurado, a feature degrada (token gerado, email não sai) em vez de derrubar o backend
+inteiro. Manifests em `homelab-k8s/projects/fintech-core` (`MAIL_HOST/PORT/USERNAME` no
+ConfigMap, `MAIL_PASSWORD` no Secret, todos `optional: true`).
 
 ### 2. Nova entidade `PasswordResetToken`, não reaproveitar `Invitation`
 
