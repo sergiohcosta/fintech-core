@@ -3,6 +3,20 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
+# Mesmo padrão de .env do sonar-scan.sh/sync-tenant.sh — segredos locais (ex: MAIL_*
+# do Gmail SMTP) nunca commitados, exportados pro processo do backend antes de subir.
+load_env() {
+  local env_file="$1"
+  if [ -f "$env_file" ]; then
+    while IFS= read -r line || [ -n "$line" ]; do
+      [[ "$line" =~ ^#.*$ || -z "$line" ]] && continue
+      export "$line"
+    done < "$env_file"
+  fi
+}
+load_env "$ROOT/.env"
+load_env "$ROOT/.env.local"
+
 MODE="${1:-both}"
 
 if [[ "$MODE" != "front" && "$MODE" != "back" && "$MODE" != "both" ]]; then
