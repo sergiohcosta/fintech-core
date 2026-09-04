@@ -8,7 +8,9 @@ import com.fintech.api.exception.BusinessException;
 import com.fintech.api.repository.PasswordResetTokenRepository;
 import com.fintech.api.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.MailException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PasswordResetService {
@@ -46,7 +49,14 @@ public class PasswordResetService {
         tokenRepository.save(token);
 
         String link = frontendUrl + "/reset-password?token=" + token.getToken();
-        emailService.sendPasswordResetEmail(user.getEmail(), link);
+        // Falha de envio (SMTP fora do ar, credencial errada) NUNCA pode virar 500 pro
+        // cliente — quebraria o contrato de "sempre 200" (anti-enumeração) do controller.
+        // O token já foi salvo: usuário pode pedir de novo, ou operador investiga pelo log.
+        try {
+            emailService.sendPasswordResetEmail(user.getEmail(), link);
+        } catch (MailException e) {
+            log.warn("Falha ao enviar email de recuperação de senha [userId={}]", user.getId(), e);
+        }
     }
 
     @Transactional

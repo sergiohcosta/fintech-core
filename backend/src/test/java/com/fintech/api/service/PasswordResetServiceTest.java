@@ -17,6 +17,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mail.MailSendException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -25,11 +26,13 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -89,6 +92,20 @@ class PasswordResetServiceTest {
 
         verify(tokenRepository, never()).save(any());
         verify(emailService, never()).sendPasswordResetEmail(anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("requestReset não propaga exceção quando o envio de email falha (SMTP fora do ar)")
+    void requestReset_emailSendFails_doesNotPropagate() {
+        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        doThrow(new MailSendException("conexão recusada"))
+                .when(emailService).sendPasswordResetEmail(anyString(), anyString());
+
+        assertThatCode(() -> service.requestReset(new ForgotPasswordDTO(user.getEmail())))
+                .doesNotThrowAnyException();
+
+        // Token já foi persistido antes da tentativa de envio — usuário pode pedir de novo.
+        verify(tokenRepository).save(any());
     }
 
     @Test
