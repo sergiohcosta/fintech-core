@@ -10,6 +10,10 @@
 - Repositories com JPQL custom; lógica complexa fica no service.
 - **Anti-pattern evitado:** services nunca lançam exceções de infra (`jakarta.persistence.EntityNotFoundException`) — sempre relançar via `com.fintech.api.exception.EntityNotFoundException` para o `GlobalExceptionHandler` mapear corretamente.
 - Migrations imutáveis: correção sempre via nova versão.
+- Isolamento de tenant: `WHERE tenant_id` em toda query de negócio é a defesa primária. Desde
+  V33, `transactions` tem também Row-Level Security no Postgres como defesa em profundidade
+  (PoC #116 — `docs/adr/ADR-006-rls-postgres-defesa-em-profundidade.md`); rollout pras demais
+  tabelas é trabalho futuro, ainda não feito.
 
 ## Frontend — Feature-Based
 

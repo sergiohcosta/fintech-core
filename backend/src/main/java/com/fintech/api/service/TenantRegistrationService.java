@@ -1,5 +1,6 @@
 package com.fintech.api.service;
 
+import com.fintech.api.config.TenantRlsContext;
 import com.fintech.api.domain.enums.UserRole;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.user.User;
@@ -7,6 +8,7 @@ import com.fintech.api.dto.TenantRegistrationDTO;
 import com.fintech.api.exception.BusinessException;
 import com.fintech.api.repository.TenantRepository;
 import com.fintech.api.repository.UserRepository;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -20,6 +22,7 @@ public class TenantRegistrationService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final DefaultCategorySeeder categorySeeder;
+    private final EntityManager entityManager;
 
     @Transactional // O pulo do gato: Atomicidade (Tudo ou Nada)
     public Tenant register(TenantRegistrationDTO dto) {
@@ -34,6 +37,11 @@ public class TenantRegistrationService {
 
         // O método save atualiza o objeto 'tenant' com o ID gerado pelo banco
         tenant = tenantRepository.save(tenant);
+
+        // RLS (#116, ADR-006): o tenant nasce AQUI, dentro do método — TenantRlsAspect não
+        // tem User autenticado nem no argumento pra resolver (endpoint público de registro).
+        // SET LOCAL manual antes de qualquer INSERT que dependa da policy (users, categories).
+        TenantRlsContext.setLocalTenantId(entityManager, tenant.getId());
 
         // 3. Criar e Salvar o Usuário Admin
         User adminUser = new User();

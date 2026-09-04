@@ -9,6 +9,7 @@ import com.fintech.api.domain.invoice.Invoice;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.transaction.Transaction;
 import com.fintech.api.domain.user.User;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -36,6 +37,7 @@ class DashboardAggregatesRepositoryTest {
     @Autowired UserRepository userRepository;
     @Autowired AccountRepository accountRepository;
     @Autowired InvoiceRepository invoiceRepository;
+    @Autowired EntityManager entityManager;
 
     private static final LocalDate START = LocalDate.of(2026, 6, 1);
     private static final LocalDate END = LocalDate.of(2026, 6, 30);
@@ -55,6 +57,13 @@ class DashboardAggregatesRepositoryTest {
         user.setRole(com.fintech.api.domain.enums.UserRole.ADMIN);
         user.setTenant(tenant);
         user = userRepository.save(user);
+
+        // RLS (#116, ADR-006): este teste grava em transactions direto pelo repositório, fora
+        // do TenantRlsAspect (que só cobre TransactionService) — sem isto, FORCE ROW LEVEL
+        // SECURITY rejeitaria o INSERT de persistTx. Um único tenant no teste todo -> um único
+        // SET LOCAL basta (sem risco de interleaving entre tenants).
+        entityManager.createNativeQuery("SET LOCAL app.tenant_id = '" + tenant.getId() + "'")
+                .executeUpdate();
     }
 
     @Test

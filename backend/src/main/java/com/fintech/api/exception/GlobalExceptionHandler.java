@@ -7,6 +7,7 @@ import com.fintech.api.exception.InviteExpiredException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -97,6 +98,13 @@ public class GlobalExceptionHandler {
         response.put("createdAt", ex.getCreatedAt());
         response.put("filename", ex.getFilename());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    // 5d. Conflito de concorrência (optimistic locking) — 409. O cliente deve recarregar e tentar de novo.
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<Map<String, Object>> handleOptimisticLock(ObjectOptimisticLockingFailureException ex) {
+        log.warn("Conflito de concorrência (optimistic lock): {}", ex.getMessage());
+        return buildErrorResponse(HttpStatus.CONFLICT, "Operação concorrente detectada. Recarregue os dados e tente novamente.", null);
     }
 
     // 6. Trata Convite Já Utilizado (410 Gone)
