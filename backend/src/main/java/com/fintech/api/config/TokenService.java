@@ -25,6 +25,7 @@ public class TokenService {
                     .withClaim("role", user.getRole().name())
                     .withSubject(user.getEmail())
                     .withClaim("tenant_id", user.getTenant().getId().toString())
+                    .withIssuedAt(Instant.now())
                     .withExpiresAt(genExpirationDate())
                     .sign(algorithm);
         } catch (JWTCreationException exception) {
@@ -46,6 +47,21 @@ public class TokenService {
                     .getSubject();
         } catch (Exception exception) {
             return ""; // Se o token for inválido, retorna vazio
+        }
+    }
+
+    // Usado pelo SecurityFilter para rejeitar tokens emitidos antes de uma troca de senha
+    // (revogação de sessão sem blacklist — ver User.passwordChangedAt).
+    public Instant getIssuedAt(String token) {
+        try {
+            Algorithm algorithm = Algorithm.HMAC256(secret);
+            return JWT.require(algorithm)
+                    .withIssuer("fintech-api")
+                    .build()
+                    .verify(token)
+                    .getIssuedAtAsInstant();
+        } catch (Exception exception) {
+            return null;
         }
     }
 }

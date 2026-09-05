@@ -57,6 +57,14 @@ export class AuthService {
       );
   }
 
+  forgotPassword(email: string): Observable<void> {
+    return this.http.post<void>(`${this.API_URL}/forgot-password`, { email });
+  }
+
+  resetPassword(token: string, newPassword: string): Observable<void> {
+    return this.http.post<void>(`${this.API_URL}/reset-password`, { token, newPassword });
+  }
+
   logout() {
     localStorage.removeItem(this.TOKEN_KEY); // Rasga o crachá
     this.currentUser.set(null); // Avisa: "Ninguém logado"

@@ -75,6 +75,22 @@ components:
         token:
           type: string
 
+    ForgotPasswordDTO:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+
+    ResetPasswordDTO:
+      type: object
+      required: [token, newPassword]
+      properties:
+        token:
+          type: string
+        newPassword:
+          type: string
+
     TenantRegistrationDTO:
       type: object
       required: [name, adminName, adminEmail, password]
@@ -1207,6 +1223,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RegisterResponseDTO'
+
+  /auth/forgot-password:
+    post:
+      tags: [auth]
+      operationId: forgotPassword
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordDTO'
+      responses:
+        '200':
+          description: >-
+            Sempre retornado, mesmo se o email não existir (anti-enumeração,
+            mesma postura do /auth/login) — se existir usuário ativo, um email
+            de recuperação é enviado
+
+  /auth/reset-password:
+    post:
+      tags: [auth]
+      operationId: resetPassword
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordDTO'
+      responses:
+        '200':
+          description: Senha alterada; sessões (JWTs) emitidas antes da troca deixam de autenticar
+        '400':
+          description: Token inválido, expirado ou já utilizado
 
   # --- Categories ---
 

@@ -39,6 +39,7 @@ Schema em `db/migration/`. Seed em `db/seed/` (perfil `dev`): `V13` (dados gerai
 | V34 | `ENABLE`/`FORCE ROW LEVEL SECURITY` + policy em `staged_transactions` — rollout RLS ciclo 2 (#116, ADR-006, spec `2026-09-02-rls-rollout-sistema-todo-design.md`). Mesma policy de V33; segunda camada sobre o `tenant_id` denormalizado (V23) que já existia como defesa nº1 desta tabela |
 | V35 | `ENABLE`/`FORCE ROW LEVEL SECURITY` + policy em `import_batches` — rollout RLS ciclo 2, mesmo lote da V34 (único writer em comum: `ImportService`, todos os métodos com `User`) |
 | V36 | `ENABLE`/`FORCE ROW LEVEL SECURITY` + policy em `invoices` — rollout RLS ciclo 3 (#116, ADR-006). Achado: `InvoiceService.getOrCreate`/`createNewInvoice` (este último `@Transactional(REQUIRES_NEW)`) e `close` não recebem `User` — só `Account`/`Tenant`. `TenantRlsAspect` generalizado (fallback aceita `User`, `Tenant` ou `Account` nos argumentos, nessa ordem) |
+| V37 | `password_reset_tokens` (id, user_id FK, token UNIQUE, expires_at, used, created_at) + coluna `users.password_changed_at` nullable — recuperação de senha (spec `2026-09-04-recuperacao-de-senha-design.md`). Espelha `invitations` (V6), mas vinculada a `User`, não a `Tenant` — lookup é sempre por token único, nunca por listagem escopada; por isso **fora do rollout de RLS** (padrão de acesso não é por tenant). `password_changed_at` alimenta a revogação de sessão: `SecurityFilter` rejeita JWT cujo `issuedAt` seja anterior a este campo |
 
 > V10 não existe (seed renomeado para V13 para ficar acima do schema base).
 
@@ -55,6 +56,7 @@ Schema em `db/migration/`. Seed em `db/seed/` (perfil `dev`): `V13` (dados gerai
 - `import_batches`: `import_mode IN (NEW_TRANSACTIONS, RECONCILIATION)`, `source_type IN (IMAGE, PDF_TEXT, PDF_SCANNED, CSV, OFX, AUDIO)`, `status IN (PENDING, EXTRACTED, REVIEWED, COMMITTED, FAILED)`; índice `(tenant_id, status)`; índice `(tenant_id, source_hash)` — dedup por arquivo escopado por tenant (V26).
 - `staged_transactions`: `status IN (PENDING, CONFIRMED, DISCARDED)`; FK `batch_id → import_batches ON DELETE CASCADE`; `tenant_id` denormalizado (FK → tenants); `promoted_transaction_id` FK nullable → `transactions` `ON DELETE SET NULL` (V31); índice `(batch_id)`.
 - `budget_items`: `transaction_id` FK nullable → `transactions`, sem `ON DELETE` (RESTRICT) — `TransactionService.delete` bloqueia com 400 antes de chegar na constraint (ver summary.md).
+- `password_reset_tokens`: FK `user_id → users`; sem `tenant_id` (não é padrão de query por tenant, fora do rollout de RLS — ver V37).
 - `transactions`: `ROW LEVEL SECURITY` + `FORCE` ativos desde V33 — qualquer código (inclusive testes de integração) que grave/leia `transactions` fora de `TransactionService`/`InvoiceService.pay` precisa setar `app.tenant_id` explicitamente na mesma transação, ou a policy filtra/rejeita silenciosamente (nunca lança exceção de "acesso negado" — vira "0 linhas" ou `WITH CHECK` falho no INSERT). Detalhe: ADR-006.
 
 **Invariante:** migrations aplicadas são imutáveis. Correção sempre via nova versão.

@@ -6,7 +6,7 @@
 ## Segurança
 
 ```
-Público:   POST /auth/{login,register,accept-invite} · GET /invites/{token} · /openapi.yaml · /swagger-ui/** · /actuator/health
+Público:   POST /auth/{login,register,accept-invite,forgot-password,reset-password} · GET /invites/{token} · /openapi.yaml · /swagger-ui/** · /actuator/health
 ADMIN:     POST /invites · GET /api/members · PATCH /api/tenant/settings
 Demais:    authenticated (JWT obrigatório)
 ```
@@ -27,6 +27,10 @@ Demais:    authenticated (JWT obrigatório)
 | POST | `/auth/accept-invite` | público | Valida token + cria User(MEMBER) + JWT |
 | POST | `/invites` | ADMIN | Cria convite (email + token + expiresAt) |
 | GET | `/invites/{token}` | público | Retorna { email, tenantName } |
+| POST | `/auth/forgot-password` | público | Sempre 200 (anti-enumeração — mesma postura do login); se existir usuário ativo, gera `PasswordResetToken` (expira em 1h) e envia email com link |
+| POST | `/auth/reset-password` | público | Troca a senha via token de uso único; **400** se token inválido/usado/expirado (mesma mensagem genérica, não distingue qual) |
+
+**Recuperação de senha:** token opaco (`UUID`, sem hash — mesmo padrão de `Invitation.token`), tabela própria `password_reset_tokens` (não reaproveita `Invitation`: convite cria conta nova, reset troca senha de conta existente). **Revogação de sessão sem blacklist:** `TokenService.generateToken` grava `issuedAt` no JWT; `reset()` seta `User.passwordChangedAt = now()`; `SecurityFilter`, depois de resolver o usuário do token, rejeita (mesmo caminho de "token inválido") qualquer JWT cujo `issuedAt` seja anterior a `passwordChangedAt` — todo token emitido antes da troca para de autenticar na próxima requisição, sem storage adicional. Rate limit em `/auth/forgot-password` por email (`ForgotPasswordRateLimiter`, instância separada do `LoginRateLimiter` — mesma lógica, mapas distintos, não competem pelo mesmo teto de tentativas). Envio via SMTP (`spring-boot-starter-mail`, sem provider hardcoded no código — relay Resend em dev/hmg/prod hoje, `MAIL_HOST/PORT/USERNAME/PASSWORD` por env var, `homelab-k8s/projects/fintech-core`). Sem `MAIL_*` configurado, a app sobe normal (defaults de `application.properties` apontam pra `localhost`) — a feature degrada (token gerado, email não sai) em vez de quebrar o boot; `PasswordResetService.requestReset` captura falha de envio (`MailException`) e não propaga, preservando o contrato de sempre-200 do endpoint. Spec: `docs/superpowers/specs/2026-09-04-recuperacao-de-senha-design.md`.
 
 ## Contas (`/api/accounts`)
 

@@ -1,15 +1,20 @@
 package com.fintech.api.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fintech.api.config.ForgotPasswordRateLimiter;
 import com.fintech.api.config.LoginRateLimiter;
 import com.fintech.api.config.TokenService;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.AcceptInviteDTO;
+import com.fintech.api.dto.ForgotPasswordDTO;
 import com.fintech.api.dto.LoginDTO;
+import com.fintech.api.dto.ResetPasswordDTO;
 import com.fintech.api.dto.TenantRegistrationDTO;
+import com.fintech.api.exception.BusinessException;
 import com.fintech.api.repository.UserRepository;
 import com.fintech.api.service.InvitationService;
+import com.fintech.api.service.PasswordResetService;
 import com.fintech.api.service.TenantRegistrationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -27,6 +32,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -60,6 +66,12 @@ class AuthControllerTest {
 
     @MockitoBean
     private LoginRateLimiter loginRateLimiter;
+
+    @MockitoBean
+    private ForgotPasswordRateLimiter forgotPasswordRateLimiter;
+
+    @MockitoBean
+    private PasswordResetService passwordResetService;
 
     private ObjectMapper objectMapper = new ObjectMapper();
 
@@ -233,6 +245,71 @@ class AuthControllerTest {
         mockMvc.perform(post("/auth/accept-invite")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("POST /auth/forgot-password retorna 200 mesmo com email inexistente (anti-enumeração)")
+    void forgotPassword_unknownEmail_returnsOk() throws Exception {
+        ForgotPasswordDTO dto = new ForgotPasswordDTO("naoexiste@test.com");
+
+        mockMvc.perform(post("/auth/forgot-password")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("POST /auth/forgot-password retorna 200 com email existente")
+    void forgotPassword_existingEmail_returnsOk() throws Exception {
+        ForgotPasswordDTO dto = new ForgotPasswordDTO("carlos@costa.com");
+
+        mockMvc.perform(post("/auth/forgot-password")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isOk());
+
+        verify(passwordResetService).requestReset(dto);
+    }
+
+    @Test
+    @DisplayName("POST /auth/forgot-password retorna 429 com Retry-After quando rate limit estoura")
+    void forgotPassword_rateLimited_returns429() throws Exception {
+        ForgotPasswordDTO dto = new ForgotPasswordDTO("carlos@costa.com");
+        when(forgotPasswordRateLimiter.isBlocked(any(String.class))).thenReturn(true);
+        when(forgotPasswordRateLimiter.secondsUntilUnblock(any(String.class))).thenReturn(30L);
+
+        mockMvc.perform(post("/auth/forgot-password")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().string("Retry-After", "30"));
+
+        verify(passwordResetService, never()).requestReset(any());
+    }
+
+    @Test
+    @DisplayName("POST /auth/reset-password retorna 200 com token válido")
+    void resetPassword_validToken_returnsOk() throws Exception {
+        ResetPasswordDTO dto = new ResetPasswordDTO("token-valido", "NovaSenha123");
+
+        mockMvc.perform(post("/auth/reset-password")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isOk());
+
+        verify(passwordResetService).reset(dto);
+    }
+
+    @Test
+    @DisplayName("POST /auth/reset-password retorna 400 com token inválido/expirado")
+    void resetPassword_invalidToken_returns400() throws Exception {
+        ResetPasswordDTO dto = new ResetPasswordDTO("token-invalido", "NovaSenha123");
+        doThrow(new BusinessException("Token inválido")).when(passwordResetService).reset(dto);
+
+        mockMvc.perform(post("/auth/reset-password")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isBadRequest());
     }
 }
