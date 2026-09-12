@@ -53,7 +53,7 @@ public class PasswordResetService {
         // cliente — quebraria o contrato de "sempre 200" (anti-enumeração) do controller.
         // O token já foi salvo: usuário pode pedir de novo, ou operador investiga pelo log.
         try {
-            emailService.sendPasswordResetEmail(user.getEmail(), link);
+            emailService.sendPasswordResetEmail(user.getEmail(), link, token.getToken());
         } catch (MailException e) {
             log.warn("Falha ao enviar email de recuperação de senha [userId={}]", user.getId(), e);
         }

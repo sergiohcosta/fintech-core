@@ -80,7 +80,7 @@ class PasswordResetServiceTest {
         assertThat(saved.getExpiresAt()).isAfter(LocalDateTime.now());
         assertThat(saved.isUsed()).isFalse();
 
-        verify(emailService).sendPasswordResetEmail(eq(user.getEmail()), contains(saved.getToken()));
+        verify(emailService).sendPasswordResetEmail(eq(user.getEmail()), contains(saved.getToken()), eq(saved.getToken()));
     }
 
     @Test
@@ -91,7 +91,7 @@ class PasswordResetServiceTest {
         service.requestReset(new ForgotPasswordDTO("ninguem@teste.com"));
 
         verify(tokenRepository, never()).save(any());
-        verify(emailService, never()).sendPasswordResetEmail(anyString(), anyString());
+        verify(emailService, never()).sendPasswordResetEmail(anyString(), anyString(), anyString());
     }
 
     @Test
@@ -99,7 +99,7 @@ class PasswordResetServiceTest {
     void requestReset_emailSendFails_doesNotPropagate() {
         when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
         doThrow(new MailSendException("conexão recusada"))
-                .when(emailService).sendPasswordResetEmail(anyString(), anyString());
+                .when(emailService).sendPasswordResetEmail(anyString(), anyString(), anyString());
 
         assertThatCode(() -> service.requestReset(new ForgotPasswordDTO(user.getEmail())))
                 .doesNotThrowAnyException();
@@ -117,7 +117,7 @@ class PasswordResetServiceTest {
         service.requestReset(new ForgotPasswordDTO(user.getEmail()));
 
         verify(tokenRepository, never()).save(any());
-        verify(emailService, never()).sendPasswordResetEmail(anyString(), anyString());
+        verify(emailService, never()).sendPasswordResetEmail(anyString(), anyString(), anyString());
     }
 
     private PasswordResetToken buildToken(boolean used, LocalDateTime expiresAt) {
