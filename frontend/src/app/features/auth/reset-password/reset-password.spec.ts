@@ -84,8 +84,29 @@ describe('ResetPasswordComponent', () => {
 
     afterEach(() => httpMock.verify());
 
-    it('mostra estado de link inválido', () => {
-      expect(component.state()).toBe('invalid-link');
+    it('mostra tela de colar token manualmente', () => {
+      expect(component.state()).toBe('enter-token');
+    });
+
+    it('avança pro form ao confirmar o token colado', () => {
+      component.tokenForm.setValue({ manualToken: '  token-colado  ' });
+      component.confirmManualToken();
+
+      expect(component.state()).toBe('form');
+
+      component.form.setValue({ password: 'SenhaForte123', confirmPassword: 'SenhaForte123' });
+      component.onSubmit();
+
+      const req = httpMock.expectOne('/auth/reset-password');
+      expect(req.request.body).toEqual({ token: 'token-colado', newPassword: 'SenhaForte123' });
+      req.flush(null);
+    });
+
+    it('não avança com token manual vazio', () => {
+      component.tokenForm.setValue({ manualToken: '' });
+      component.confirmManualToken();
+
+      expect(component.state()).toBe('enter-token');
     });
   });
 });

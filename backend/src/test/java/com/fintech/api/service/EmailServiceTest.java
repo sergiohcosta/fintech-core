@@ -29,7 +29,7 @@ class EmailServiceTest {
     @Test
     @DisplayName("sendPasswordResetEmail seta From explícito (provider rejeita mensagem sem from válido)")
     void sendPasswordResetEmail_setsFromAddress() {
-        emailService.sendPasswordResetEmail("carlos@costa.com", "http://localhost:4200/reset-password?token=abc");
+        emailService.sendPasswordResetEmail("carlos@costa.com", "http://localhost:4200/reset-password?token=abc", "abc");
 
         ArgumentCaptor<SimpleMailMessage> captor = ArgumentCaptor.forClass(SimpleMailMessage.class);
         verify(mailSender).send(captor.capture());
@@ -37,5 +37,16 @@ class EmailServiceTest {
         SimpleMailMessage sent = captor.getValue();
         assertThat(sent.getFrom()).isEqualTo("onboarding@resend.dev");
         assertThat(sent.getTo()).containsExactly("carlos@costa.com");
+    }
+
+    @Test
+    @DisplayName("sendPasswordResetEmail inclui o token separado do link (rede sem acesso ao link cola o token)")
+    void sendPasswordResetEmail_includesTokenSeparateFromLink() {
+        emailService.sendPasswordResetEmail("carlos@costa.com", "http://localhost:4200/reset-password?token=abc123", "abc123");
+
+        ArgumentCaptor<SimpleMailMessage> captor = ArgumentCaptor.forClass(SimpleMailMessage.class);
+        verify(mailSender).send(captor.capture());
+
+        assertThat(captor.getValue().getText()).contains("abc123");
     }
 }

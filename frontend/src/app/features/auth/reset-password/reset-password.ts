@@ -7,7 +7,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { AuthService } from '../../../core/services/auth';
 
-type PageState = 'form' | 'submitting' | 'success' | 'invalid-link';
+type PageState = 'enter-token' | 'form' | 'submitting' | 'success';
 
 // Validator de nível de FormGroup: as duas senhas precisam ser iguais.
 function passwordsMatchValidator(control: AbstractControl): ValidationErrors | null {
@@ -53,11 +53,27 @@ export class ResetPasswordComponent implements OnInit {
     { validators: passwordsMatchValidator },
   );
 
+  // Fallback quando o link do email não abre (rede sem acesso ao host do frontend —
+  // o email sempre aponta pra um único host, não dá pra cobrir todo acesso possível).
+  // O token em si é portável entre hosts, só o link não é.
+  tokenForm = this.fb.group({
+    manualToken: ['', [Validators.required]],
+  });
+
   ngOnInit(): void {
-    this.token = this.route.snapshot.queryParamMap.get('token');
-    if (!this.token) {
-      this.state.set('invalid-link');
+    const queryToken = this.route.snapshot.queryParamMap.get('token');
+    if (queryToken) {
+      this.token = queryToken;
+      this.state.set('form');
+    } else {
+      this.state.set('enter-token');
     }
+  }
+
+  confirmManualToken(): void {
+    if (this.tokenForm.invalid) return;
+    this.token = this.tokenForm.value.manualToken!.trim();
+    this.state.set('form');
   }
 
   onSubmit(): void {
@@ -70,7 +86,7 @@ export class ResetPasswordComponent implements OnInit {
       },
       error: (err) => {
         this.errorMessage.set(
-          err.status === 400 ? 'Link inválido ou expirado. Solicite um novo.' : 'Erro ao redefinir senha.',
+          err.status === 400 ? 'Token inválido ou expirado. Solicite um novo.' : 'Erro ao redefinir senha.',
         );
         this.state.set('form');
       },
