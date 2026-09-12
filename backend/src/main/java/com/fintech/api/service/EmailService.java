@@ -19,12 +19,20 @@ public class EmailService {
     @Value("${app.mail.from:onboarding@resend.dev}")
     private String from;
 
-    public void sendPasswordResetEmail(String to, String resetLink) {
+    // Link E token separados no corpo: o link só funciona se o destinatário conseguir
+    // resolver o host do frontend (Tailscale hoje) — quem abre o email numa rede sem
+    // acesso (LAN local, celular sem VPN) não consegue clicar, mas pode colar o token
+    // manualmente em qualquer frontend que alcançar (tela de reset aceita os dois).
+    public void sendPasswordResetEmail(String to, String resetLink, String token) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(from);
         message.setTo(to);
         message.setSubject("Recuperação de senha");
-        message.setText("Clique no link para redefinir sua senha (válido por 1 hora):\n" + resetLink);
+        message.setText(
+                "Clique no link para redefinir sua senha (válido por 1 hora):\n" + resetLink
+                        + "\n\nSe o link não abrir, copie o código abaixo e cole na tela de redefinição de senha:\n"
+                        + token
+        );
         mailSender.send(message);
     }
 }
