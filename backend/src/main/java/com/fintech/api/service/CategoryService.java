@@ -95,8 +95,12 @@ public class CategoryService {
         }
 
         if (dto.parentId() != null) {
+            if (dto.parentId().equals(id)) {
+                throw new BusinessException("Uma categoria não pode ser pai de si mesma.");
+            }
             Category parent = repository.findByIdAndTenantIdAndDeletedAtIsNull(dto.parentId(), user.getTenant().getId())
                     .orElseThrow(() -> new EntityNotFoundException("Categoria pai não encontrada."));
+            validateNoCycle(id, parent);
             category.setParent(parent);
         } else {
             category.setParent(null);
@@ -179,6 +183,22 @@ public class CategoryService {
             child.setIcon(icon);
             child.setColor(color);
             propagateToDescendants(child, icon, color);
+        }
+    }
+
+    /**
+     * Percorre a cadeia de ancestrais a partir de {@code candidate} e lança exceção se
+     * {@code categoryId} aparecer — impede referência circular na árvore.
+     * ponytail: O(profundidade) — árvores de categorias são rasas (<10 níveis).
+     */
+    private void validateNoCycle(UUID categoryId, Category candidate) {
+        Category current = candidate;
+        while (current != null) {
+            if (current.getId().equals(categoryId)) {
+                throw new BusinessException(
+                        "Referência circular detectada: a categoria de destino é descendente da categoria sendo movida.");
+            }
+            current = current.getParent();
         }
     }
 }

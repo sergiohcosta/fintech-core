@@ -41,8 +41,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import jakarta.persistence.EntityManager;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -77,6 +80,8 @@ class ImportServiceTest {
     @Autowired ImportBatchRepository importBatchRepository;
     @Autowired CreditCardDetailsRepository creditCardDetailsRepository;
     @Autowired JdbcTemplate jdbc;
+    @Autowired PlatformTransactionManager txManager;
+    @Autowired EntityManager entityManager;
 
     private Tenant persistTenant(String name) {
         Tenant t = new Tenant();
@@ -496,11 +501,21 @@ class ImportServiceTest {
      */
     private void cleanupTenant(UUID tenantId) {
         if (tenantId == null) return;
-        jdbc.update("DELETE FROM staged_transactions WHERE tenant_id = ?", tenantId);
-        jdbc.update("DELETE FROM import_batches WHERE tenant_id = ?", tenantId);
-        jdbc.update("DELETE FROM transactions WHERE tenant_id = ?", tenantId);
+        // RLS (#116, ADR-006): esta chamada não corre dentro de nenhum @Transactional de
+        // negócio (a classe usa Propagation.NOT_SUPPORTED aqui) — sem SET LOCAL nesta mesma
+        // transação, a policy filtra os DELETEs para 0 linhas e a FK de installment_groups/
+        // invoices/import_batches/accounts quebra logo abaixo. Tabelas com RLS unificadas
+        // aqui, mesma transação, ordem que respeita FK: staged_transactions (referencia
+        // batch_id E promoted_transaction_id) → import_batches → transactions (referencia
+        // invoice_id) → invoices (referenciada por accounts via invoices_account_id_fkey).
+        new TransactionTemplate(txManager).executeWithoutResult(status -> {
+            jdbc.execute("SET LOCAL app.tenant_id = '" + tenantId + "'");
+            jdbc.update("DELETE FROM staged_transactions WHERE tenant_id = ?", tenantId);
+            jdbc.update("DELETE FROM import_batches WHERE tenant_id = ?", tenantId);
+            jdbc.update("DELETE FROM transactions WHERE tenant_id = ?", tenantId);
+            jdbc.update("DELETE FROM invoices WHERE tenant_id = ?", tenantId);
+        });
         jdbc.update("DELETE FROM installment_groups WHERE tenant_id = ?", tenantId);
-        jdbc.update("DELETE FROM invoices WHERE tenant_id = ?", tenantId);
         jdbc.update("DELETE FROM credit_card_details WHERE account_id IN (SELECT id FROM accounts WHERE tenant_id = ?)", tenantId);
         jdbc.update("DELETE FROM accounts WHERE tenant_id = ?", tenantId);
         jdbc.update("DELETE FROM users WHERE tenant_id = ?", tenantId);
@@ -904,6 +919,16 @@ class ImportServiceTest {
 
         // Hash é o MESMO arquivo — mas o dedup é escopado por tenant (invariante nº1): os dois aceitam.
         ImportBatchResponseDTO batchA = importService.createFromFile(csvInput("extrato-comum.csv"), false, userA);
+        // RLS (#116): flush força o INSERT da staged de A a completar com app.tenant_id=A
+        // ainda ativo, antes do TenantRlsAspect trocar pra B na chamada seguinte. clear()
+        // detacha os entities de A logo em seguida — sem isso, StagedTransaction (tem
+        // @Version) continua gerenciado e pode ser re-flushado (dirty-check) sob o tenant
+        // errado mais adiante, e a policy o esconde do próprio UPDATE de versionamento
+        // otimista (vira OptimisticLockException em vez do 404 esperado). Só acontece porque
+        // este teste, de propósito, grava 2 tenants na MESMA transação — em produção cada
+        // request é sua própria transação, este cenário não existe.
+        entityManager.flush();
+        entityManager.clear();
         ImportBatchResponseDTO batchB = importService.createFromFile(csvInput("extrato-comum.csv"), false, userB);
 
         assertThat(batchA.status()).isEqualTo(ImportBatchStatus.EXTRACTED);

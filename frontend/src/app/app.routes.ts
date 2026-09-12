@@ -17,6 +17,16 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/auth/accept-invite/accept-invite').then(m => m.AcceptInviteComponent)
   },
+  {
+    path: 'forgot-password',
+    loadComponent: () =>
+      import('./features/auth/forgot-password/forgot-password').then(m => m.ForgotPasswordComponent)
+  },
+  {
+    path: 'reset-password',
+    loadComponent: () =>
+      import('./features/auth/reset-password/reset-password').then(m => m.ResetPasswordComponent)
+  },
 
   // Rota de layout: path vazio + canActivate aqui protege TODOS os filhos de uma vez.
   // O ShellComponent renderiza toolbar + sidenav e tem seu próprio <router-outlet>.

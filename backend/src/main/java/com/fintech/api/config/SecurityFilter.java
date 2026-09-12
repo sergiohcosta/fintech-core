@@ -16,6 +16,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.time.Instant;
+import java.time.ZoneId;
 
 @Slf4j
 @Component
@@ -43,6 +45,8 @@ public class SecurityFilter extends OncePerRequestFilter {
                     log.warn("Token válido mas usuário não encontrado [email={}]", email);
                 } else if (!userDetails.isEnabled()) {
                     log.warn("Token válido mas usuário está inativo [email={}]", email);
+                } else if (isIssuedBeforePasswordChange(token, (User) userDetails)) {
+                    log.warn("Token emitido antes da última troca de senha, sessão revogada [email={}]", email);
                 } else {
                     var authentication = new UsernamePasswordAuthenticationToken(
                             userDetails, null, userDetails.getAuthorities());
@@ -57,6 +61,17 @@ public class SecurityFilter extends OncePerRequestFilter {
             }
         }
         filterChain.doFilter(request, response);
+    }
+
+    // Revogação de sessão sem blacklist (ver PasswordResetService): compara o `iat` do JWT
+    // contra o instante da última troca de senha. Sem `passwordChangedAt` (usuário nunca
+    // resetou por este fluxo) ou sem `issuedAt` decodificável, não há o que comparar.
+    private boolean isIssuedBeforePasswordChange(String token, User user) {
+        if (user.getPasswordChangedAt() == null) return false;
+        Instant issuedAt = tokenService.getIssuedAt(token);
+        if (issuedAt == null) return false;
+        Instant passwordChangedAt = user.getPasswordChangedAt().atZone(ZoneId.systemDefault()).toInstant();
+        return issuedAt.isBefore(passwordChangedAt);
     }
 
     private String recoverToken(HttpServletRequest request) {

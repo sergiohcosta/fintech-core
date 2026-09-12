@@ -78,6 +78,10 @@ public class StagedTransaction {
     @Column(nullable = false, length = 20)
     private StagedTransactionStatus status;
 
+    // Optimistic locking: impede promoção dupla em commits concorrentes (#code-review).
+    @Version
+    private Long version;
+
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;

@@ -8,6 +8,7 @@ import { MAT_DATE_LOCALE, provideNativeDateAdapter } from '@angular/material/cor
 
 import { routes } from './app.routes';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
+import { authErrorInterceptor } from './core/interceptors/auth-error.interceptor';
 import { apiUrlInterceptor } from './core/interceptors/api-url.interceptor';
 
 // Registra os dados de formatação do locale pt-BR (moeda, datas, números)
@@ -19,7 +20,7 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     provideHttpClient(
       withFetch(),
-      withInterceptors([apiUrlInterceptor, authInterceptor])
+      withInterceptors([apiUrlInterceptor, authInterceptor, authErrorInterceptor])
     ),
     provideAnimationsAsync(),
     // DateAdapter global: o popup do datepicker dentro de um MatDialog resolve via

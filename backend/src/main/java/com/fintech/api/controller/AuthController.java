@@ -1,16 +1,20 @@
 package com.fintech.api.controller;
 
+import com.fintech.api.config.ForgotPasswordRateLimiter;
 import com.fintech.api.config.LoginRateLimiter;
 import com.fintech.api.config.TokenService;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.dto.AcceptInviteDTO;
+import com.fintech.api.dto.ForgotPasswordDTO;
 import com.fintech.api.dto.LoginDTO;
 import com.fintech.api.dto.LoginResponseDTO;
 import com.fintech.api.dto.RegisterResponseDTO;
+import com.fintech.api.dto.ResetPasswordDTO;
 import com.fintech.api.dto.TenantRegistrationDTO;
 import com.fintech.api.openapi.AuthApi;
 import com.fintech.api.repository.UserRepository;
 import com.fintech.api.service.InvitationService;
+import com.fintech.api.service.PasswordResetService;
 import com.fintech.api.service.TenantRegistrationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +36,8 @@ public class AuthController implements AuthApi {
     private final TokenService tokenService;
     private final InvitationService invitationService;
     private final LoginRateLimiter loginRateLimiter;
+    private final PasswordResetService passwordResetService;
+    private final ForgotPasswordRateLimiter forgotPasswordRateLimiter;
 
     @Override
     @PostMapping("/register")
@@ -77,5 +83,29 @@ public class AuthController implements AuthApi {
     public ResponseEntity<LoginResponseDTO> acceptInvite(@RequestBody @Valid AcceptInviteDTO dto) {
         String token = invitationService.accept(dto);
         return ResponseEntity.ok(new LoginResponseDTO(token));
+    }
+
+    @Override
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Void> forgotPassword(@RequestBody @Valid ForgotPasswordDTO dto) {
+        // Mesmo padrão de chave do login (#144): email apenas, não IP.
+        if (forgotPasswordRateLimiter.isBlocked(dto.email())) {
+            long retryAfter = forgotPasswordRateLimiter.secondsUntilUnblock(dto.email());
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .header("Retry-After", String.valueOf(retryAfter))
+                    .build();
+        }
+        // Toda tentativa conta, não só as que efetivamente enviam email — a resposta é sempre
+        // 200 (anti-enumeração), não há um "sucesso" observável daqui pra diferenciar.
+        forgotPasswordRateLimiter.registerFailure(dto.email());
+        passwordResetService.requestReset(dto);
+        return ResponseEntity.ok().build();
+    }
+
+    @Override
+    @PostMapping("/reset-password")
+    public ResponseEntity<Void> resetPassword(@RequestBody @Valid ResetPasswordDTO dto) {
+        passwordResetService.reset(dto); // BusinessException -> GlobalExceptionHandler mapeia pra 400
+        return ResponseEntity.ok().build();
     }
 }

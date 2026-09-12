@@ -83,6 +83,10 @@
 			<artifactId>spring-boot-starter-webmvc</artifactId>
 		</dependency>
 		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-mail</artifactId>
+		</dependency>
+		<dependency>
 			<groupId>org.flywaydb</groupId>
 			<artifactId>flyway-database-postgresql</artifactId>
 		</dependency>
@@ -250,6 +254,8 @@
 							<importMappings>
 								<importMapping>LoginDTO=com.fintech.api.dto.LoginDTO</importMapping>
 								<importMapping>LoginResponseDTO=com.fintech.api.dto.LoginResponseDTO</importMapping>
+								<importMapping>ForgotPasswordDTO=com.fintech.api.dto.ForgotPasswordDTO</importMapping>
+								<importMapping>ResetPasswordDTO=com.fintech.api.dto.ResetPasswordDTO</importMapping>
 								<importMapping>TenantRegistrationDTO=com.fintech.api.dto.TenantRegistrationDTO</importMapping>
 								<importMapping>RegisterResponseDTO=com.fintech.api.dto.RegisterResponseDTO</importMapping>
 								<importMapping>CategoryCreateDTO=com.fintech.api.dto.category.CategoryCreateDTO</importMapping>

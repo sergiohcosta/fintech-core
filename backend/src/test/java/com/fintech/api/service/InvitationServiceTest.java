@@ -19,7 +19,9 @@ import com.fintech.api.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Answers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -45,6 +47,7 @@ class InvitationServiceTest {
     @Mock UserRepository userRepository;
     @Mock TokenService tokenService;
     @Mock PasswordEncoder passwordEncoder;
+    @Mock(answer = Answers.RETURNS_DEEP_STUBS) EntityManager entityManager;
     @InjectMocks InvitationService service;
 
     private User admin;

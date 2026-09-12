@@ -12,6 +12,9 @@ Fintech Core is a multi-tenant SaaS personal/family finance management platform.
 - **Invoices** — lazy-created per credit card billing cycle; close → pay lifecycle
 - **Budget planning** — recurring items, cycles, tenant settings
 - **Dashboard** — period-based financial summary with liquid balance tracking
+- **Recurrence rules** — RFC 5545 RRULE-based definitions with exceptions/overrides; projected occurrences for planning
+- **Import & extraction** — multi-format ingestion pipeline (CSV, OFX, PDF, image/scan) with AI vision extraction (Gemini primary, Ollama fallback); staged transactions for user review before promotion
+- **Android app** — Kotlin/Gradle companion mobile client
 
 ## Key Business Rules
 
@@ -21,6 +24,8 @@ Fintech Core is a multi-tenant SaaS personal/family finance management platform.
 - All external IDs are UUIDs (anti-enumeration)
 - Credit card transactions route through invoice lifecycle; payment creates real cash outflow
 - `countInLiquidBalance` / `countInNetWorth` flags distinguish available cash from total wealth
+- Import pipeline: file → ExtractionRouter → extractor (CSV/OFX/PDF/Vision) → staged transactions → user confirms → promoted to real transactions
+- Recurrence rules expand server-side (lib-recur) and client-side (rrule) for projection previews
 
 ## Language
 

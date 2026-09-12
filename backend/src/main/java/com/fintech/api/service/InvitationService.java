@@ -1,5 +1,6 @@
 package com.fintech.api.service;
 
+import com.fintech.api.config.TenantRlsContext;
 import com.fintech.api.config.TokenService;
 import com.fintech.api.domain.enums.InvitationStatus;
 import com.fintech.api.domain.invitation.Invitation;
@@ -16,6 +17,7 @@ import com.fintech.api.exception.InviteAlreadyUsedException;
 import com.fintech.api.exception.InviteExpiredException;
 import com.fintech.api.repository.InvitationRepository;
 import com.fintech.api.repository.UserRepository;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -34,6 +36,7 @@ public class InvitationService {
     private final UserRepository userRepository;
     private final TokenService tokenService;
     private final PasswordEncoder passwordEncoder;
+    private final EntityManager entityManager;
 
     @Value("${app.frontend.url:http://localhost:4200}")
     private String frontendUrl;
@@ -72,6 +75,11 @@ public class InvitationService {
         if (userRepository.existsByEmail(invitation.getEmail())) {
             throw new BusinessConflictException("Este email já possui uma conta");
         }
+
+        // RLS (#116, ADR-006): endpoint público, sem User autenticado nem no argumento — o
+        // tenant existe (do convite), mas TenantRlsAspect não tem como alcançá-lo. SET LOCAL
+        // manual antes do INSERT em users.
+        TenantRlsContext.setLocalTenantId(entityManager, invitation.getTenant().getId());
 
         User user = new User();
         user.setName(dto.name());

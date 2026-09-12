@@ -30,4 +30,15 @@ public final class SecurityUtils {
         }
         return user;
     }
+
+    /**
+     * Variante tolerante de {@link #currentUser()} — {@code null} em vez de lançar quando não
+     * há usuário autenticado. Uso restrito a código de infraestrutura (ex.:
+     * {@code TenantRlsAspect}) para o qual "não autenticado" é um caso normal (endpoint
+     * público), não um erro de acesso.
+     */
+    public static User currentUserOrNull() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication != null && authentication.getPrincipal() instanceof User user ? user : null;
+    }
 }

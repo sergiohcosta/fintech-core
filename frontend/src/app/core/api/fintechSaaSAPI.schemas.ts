@@ -100,6 +100,15 @@ export interface LoginResponseDTO {
   token?: string;
 }
 
+export interface ForgotPasswordDTO {
+  email: string;
+}
+
+export interface ResetPasswordDTO {
+  token: string;
+  newPassword: string;
+}
+
 export interface TenantRegistrationDTO {
   name: string;
   /** @nullable */

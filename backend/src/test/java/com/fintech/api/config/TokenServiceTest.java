@@ -77,4 +77,24 @@ class TokenServiceTest {
             TimeZone.setDefault(original);
         }
     }
+
+    @Test
+    @DisplayName("getIssuedAt retorna o instante de emissão de um token válido")
+    void getIssuedAt_returnsIssuedInstant_forValidToken() {
+        Instant before = Instant.now();
+        User user = buildUser(UserRole.USER);
+        String token = tokenService.generateToken(user);
+
+        Instant issuedAt = tokenService.getIssuedAt(token);
+
+        assertThat(issuedAt).isNotNull();
+        long diffSeconds = Math.abs(issuedAt.getEpochSecond() - before.getEpochSecond());
+        assertThat(diffSeconds).isLessThan(5);
+    }
+
+    @Test
+    @DisplayName("getIssuedAt retorna null para token inválido")
+    void getIssuedAt_returnsNull_forInvalidToken() {
+        assertThat(tokenService.getIssuedAt("token-invalido")).isNull();
+    }
 }
