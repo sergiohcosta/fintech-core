@@ -43,9 +43,9 @@ hardware 2 GPUs/Pascal/disco) e registra que a escolha de modelo é decidida pel
 
 Commits: `docs(spec): ...` → `docs(plan): ...` → `docs(adr): reescreve ADR-007 ...`
 
-- [ ] Spec commitada
-- [ ] Plano commitado
-- [ ] ADR-007 commitada
+- [x] Spec commitada
+- [x] Plano commitado
+- [x] ADR-007 commitada
 
 ---
 
@@ -66,12 +66,30 @@ Commits: `docs(spec): ...` → `docs(plan): ...` → `docs(adr): reescreve ADR-0
 Run: `ollama ps` (após carregar cada modelo) → `PROCESSOR` deve conter GPU.
 Expected: todos os modelos carregam em GPU e cabem em VRAM.
 
-- [ ] Backup do override
-- [ ] Lista de remoção aprovada + disco liberado
-- [ ] `CUDA_VISIBLE_DEVICES=0,1` aplicado
-- [ ] Modelos puxados
-- [ ] Runner validado em GPU
-- [ ] Smoke-test ok
+- [x] Backup do override
+- [x] Lista de remoção aprovada + disco liberado
+- [x] `CUDA_VISIBLE_DEVICES=0,1` aplicado
+- [x] Modelos puxados
+- [x] Runner validado em GPU
+- [x] Smoke-test sintético (comprovante real na Task 2)
+
+**Achados empíricos (2026-10-08):**
+
+- Override do systemd exige o cabeçalho `[Service]`; sem ele o systemd ignora as linhas
+  `Environment=` e o Ollama sobe com defaults (`127.0.0.1:11434`, pasta de modelos default),
+  derrubando o acesso do backend no k8s. Arquivo correto versionado fora do repo em
+  `/home/sergio/ollama-host-backup/override.conf.new`.
+- Removidos 10 modelos ociosos: disco `18 GB → 87 GB` livres (93% → 63%).
+- Puxados: `glm-ocr:latest` (2,2 GB), `qwen3-vl:8b` (6,1 GB), `openbmb/minicpm-v4.5:8b` (6,1 GB).
+- **Runner Pascal OK**: todos carregam com `PROCESSOR = 100% GPU`.
+- **8B cabe em 1 GPU** com `OLLAMA_NUM_PARALLEL=1` (a leitura de 10,5 GB do `qwen2.5vl:3b` vinha
+  do paralelismo default, não dos pesos). A 2ª GPU serve para rodar dois modelos simultâneos ou
+  contexto/paralelismo maior, não para um 8B.
+- Teste com comprovante sintético (valor/data/origem): `glm-ocr` ✅ 6,5 s / 3,8 GB; `qwen3-vl:8b`
+  ✅ 26,2 s / 6,9 GB; `openbmb/minicpm-v4.5:8b` ✅ 12,6 s / 6,3 GB (carregou `CONTEXT 4096`);
+  `llama3.2-vision` ❌ alucinou código Python (22,3 s / 8,9 GB); `qwen2.5vl:3b` resposta vazia.
+- **Correção à spec:** a coluna "1×11 GB" da spec §3 (8B = "⚠️ apertado") é empiricamente **✅** com
+  `NUM_PARALLEL=1`; corrigir na ADR quando a decisão for finalizada (Fase 3).
 
 ---
 
