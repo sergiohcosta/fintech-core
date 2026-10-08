@@ -10,6 +10,11 @@ modelo local e a inversão do funil são **gateadas pelo experimento de acuráci
 spec `2026-10-08-extracao-visao-local-first-design.md`. Nenhuma linha de código Java muda para o
 preparo de ambiente (é configuração), mas a inversão do funil é mudança de comportamento.
 
+**Resultado do experimento (2026-10-08) — NÃO inverter ainda.** Nenhum modelo local se mostrou
+pronto para assumir o caminho primário sem trabalho de engenharia (ver "Evidência do
+experimento"). O Gemini **permanece primário** e o Ollama, fallback. A política local-first
+segue como alvo, bloqueada até que o extrator local seja endurecido e reavaliado.
+
 Depende do pipeline de importação existente (porta `VisionModelClient`, `VisionExtractor`,
 funil Gemini→Ollama) e do homelab descrito no ADR-004.
 
@@ -182,3 +187,38 @@ disco. Risco de reversão baixo.
   da política escolhida pós-experimento.
 - A ADR passa a declarar metas mensuráveis e a **ausência de economia direta atual**, corrigindo a
   expectativa criada pela versão anterior.
+
+## Evidência do experimento (2026-10-08)
+
+Corpus: 12 comprovantes BR sintéticos (gabarito conhecido) + 12 recibos reais de Portugal (proxy
+de OCR/robustez, fotos full-res 12MP). Harness `benchmark.py` replicando o prompt/schema do
+`VisionExtractor`; Ollama 0.24.0, 2× GTX 1080 Ti, `NUM_PARALLEL=1`, ctx 12288.
+
+**Comprovantes BR sintéticos (12 docs):**
+
+| modelo | valor | data | descrição | direção | pgto | exato | falhas | p50 | p95 |
+|---|---|---|---|---|---|---|---|---|---|
+| `qwen3-vl:8b` (sem teto) | 100 | 100 | 100 | 100 | 100 | 100 | **3/12** | 44s | >300s |
+| `openbmb/minicpm-v4.5:8b` | 100 | 66,7 | 83,3 | 100 | 50 | 41,7 | 0/12 | 5s | 6s |
+| `glm-ocr` | 25 | 25 | 41,7 | 75 | 8,3 | 0 | 0/12 | 2s | 2s |
+| `llama3.2-vision` | 100 | 28,6 | 28,6 | 85,7 | 57,1 | 14,3 | **5/12** | 11s | 81s |
+
+- **`qwen3-vl`**: acerta 100% **quando responde**, mas o modo *thinking* estoura o timeout
+  (3/12 acima de 300s) e é lento (p50 44s) — intermitente, impróprio para produção.
+- **`minicpm-v4.5`**: o mais **confiável** (0 falhas), mas troca dia/mês (data 66,7%) e erra pgto.
+- **`glm-ocr`**: rápido e estável, mas **mangleia números** (`1.234,56`→`123456`; 25% em valor) —
+  inaceitável num app financeiro.
+- **`llama3.2-vision`**: 5/12 respostas não-JSON (markdown/Python) e datas/direção ruins.
+
+**Recibos PT reais (proxy, full-res 12MP):**
+- `glm-ocr` **quebra em full-res** (emite lixo; só funciona reduzido ≤1600px) — e o pipeline
+  **não redimensiona** a imagem.
+- `llama3.2-vision` alucinou código Python.
+- `qwen3-vl` leu corretamente as amostras (mas ~78–283s por foto full-res).
+
+**Conclusão:** nenhum modelo local está pronto para substituir o Gemini como primário sem
+trabalho de engenharia (desligar *thinking* no `qwen3-vl`, normalizar data, redimensionar a
+imagem). **A inversão do funil fica bloqueada.** Próximos passos sugeridos, se a prioridade for
+retomada: (1) desligar thinking ou usar variante sem thinking / Ollama mais novo; (2) normalizar
+data no prompt/schema; (3) redimensionar imagens grandes antes do envio; (4) re-testar; (5)
+avaliar `minicpm-v4.5` como fallback de melhor qualidade com revisão forçada.
