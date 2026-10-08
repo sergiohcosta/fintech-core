@@ -149,3 +149,22 @@ Abrir issue para preservar a extração inicial × valor final aceito por campo 
 com os cuidados da spec §5. **Não** implementar neste ciclo.
 
 - [ ] Issue aberta
+
+---
+
+## Resultados (2026-10-08)
+
+- **Task 1** concluída (ambiente validado; achados no topo deste plano).
+- **Tasks 2/3** concluídas: corpus híbrido (12 BR sintéticos com gabarito + 12 recibos reais de
+  Portugal como proxy), harness `benchmark.py`, pré-rótulo + cross-check com `glm-ocr`.
+- **Task 4** concluída para o BR sintético (resultado completo na seção "Evidência do experimento"
+  da ADR-007). Recibos PT full-res: teste pontual (glm-ocr quebra em full-res; llama3.2 alucina;
+  qwen3-vl lê, mas ~78–283s/foto).
+- **Task 5 — decisão: NÃO inverter o funil.** Nenhum modelo local pronto para primário sem
+  engenharia (thinking off, normalizar data, redimensionar imagem). Gemini permanece primário;
+  Ollama, fallback.
+- **Task 6** — follow-up (instrumentação prospectiva) a abrir.
+
+**Pendências / próximos passos, se retomado:** desligar *thinking* no `qwen3-vl` (ou variante sem
+thinking / Ollama mais novo); normalizar data no schema; redimensionar imagens grandes antes do
+envio; re-testar; considerar `minicpm-v4.5` como fallback de melhor qualidade com revisão forçada.
