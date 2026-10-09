@@ -28,6 +28,8 @@ import {
 import type {
   DeleteInstallmentResultDTO,
   DeleteTransactionParams,
+  InstallmentPreviewDTO,
+  InstallmentPreviewRequestDTO,
   ListTransactionsParams,
   TransactionRequestDTO,
   TransactionResponseDTO,
@@ -204,6 +206,42 @@ export class TransactionsService {
     return this.http.post<TData>(
       `/api/transactions`,
       transactionRequestDTO,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'body',
+      }
+    );
+  }
+/**
+ * Preview read-only do parcelamento — mostra, por parcela, a fatura de destino e se ela seria criada (willCreate=false quando a fatura existe fechada/paga). Não grava nada.
+ */
+ installmentPreview<TData = InstallmentPreviewDTO[]>(installmentPreviewRequestDTO: InstallmentPreviewRequestDTO, options?: HttpClientBodyOptions): Observable<TData>;
+ installmentPreview<TData = InstallmentPreviewDTO[]>(installmentPreviewRequestDTO: InstallmentPreviewRequestDTO, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ installmentPreview<TData = InstallmentPreviewDTO[]>(installmentPreviewRequestDTO: InstallmentPreviewRequestDTO, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  installmentPreview<TData = InstallmentPreviewDTO[]>(
+    installmentPreviewRequestDTO: InstallmentPreviewRequestDTO, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    if (options?.observe === 'events') {
+      return this.http.post<TData>(
+      `/api/transactions/installment-preview`,
+      installmentPreviewRequestDTO,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'events',
+      }
+    );
+    }
+
+    if (options?.observe === 'response') {
+      return this.http.post<TData>(
+      `/api/transactions/installment-preview`,
+      installmentPreviewRequestDTO,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'response',
+      }
+    );
+    }
+
+    return this.http.post<TData>(
+      `/api/transactions/installment-preview`,
+      installmentPreviewRequestDTO,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'body',
       }

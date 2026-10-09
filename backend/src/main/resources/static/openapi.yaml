@@ -208,6 +208,8 @@ components:
         totalInstallments:
           type: integer
           nullable: true
+          minimum: 1
+          maximum: 120
         categoryId:
           type: string
           format: uuid
@@ -250,6 +252,58 @@ components:
           items:
             type: string
           nullable: true
+
+    InstallmentPreviewRequestDTO:
+      type: object
+      required: [amount, date, accountId]
+      properties:
+        amount:
+          type: number
+          format: double
+          minimum: 0.01
+        date:
+          type: string
+          format: date
+        totalInstallments:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 120
+        accountId:
+          type: string
+          format: uuid
+
+    InstallmentPreviewDTO:
+      type: object
+      required: [installmentNumber, totalInstallments, amount, referenceYear, referenceMonth, closingDate, dueDate, willCreate]
+      properties:
+        installmentNumber:
+          type: integer
+        totalInstallments:
+          type: integer
+        amount:
+          type: number
+          format: double
+        referenceYear:
+          type: integer
+        referenceMonth:
+          type: integer
+        closingDate:
+          type: string
+          format: date
+        dueDate:
+          type: string
+          format: date
+        invoiceId:
+          type: string
+          format: uuid
+          nullable: true
+        invoiceStatus:
+          $ref: '#/components/schemas/InvoiceStatus'
+          nullable: true
+        willCreate:
+          type: boolean
+          description: false quando a fatura de destino existe fechada/paga — a parcela seria descartada no create
 
     TransactionResponseDTO:
       type: object
@@ -1464,6 +1518,31 @@ paths:
                 items:
                   $ref: '#/components/schemas/TransactionResponseDTO'
 
+  /api/transactions/installment-preview:
+    post:
+      tags: [transactions]
+      operationId: installmentPreview
+      description: Preview read-only do parcelamento — mostra, por parcela, a fatura de destino e se ela seria criada (willCreate=false quando a fatura existe fechada/paga). Não grava nada.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InstallmentPreviewRequestDTO'
+      responses:
+        '200':
+          description: Preview das parcelas (uma linha por parcela)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InstallmentPreviewDTO'
+        '400':
+          description: Conta não é cartão de crédito ou dados inválidos
+        '404':
+          description: Conta não encontrada (ou detalhes do cartão ausentes)
+
   /api/transactions/{id}:
     get:
       tags: [transactions]
@@ -2280,6 +2359,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TransactionResponseDTO'
+        '409':
+          description: Fatura de destino da ocorrência está fechada/paga (cartão de crédito) — não é possível lançar
 
   /api/recurrence-rules/{id}/occurrences/{date}/skip:
     post:

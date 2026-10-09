@@ -71,9 +71,28 @@ public class InvoiceService {
         var details = creditCardDetailsRepository.findByAccount(account)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Detalhes do cartão não encontrados para a conta."));
-        int closingDay = details.getClosingDay();
-        int dueDay = details.getDueDay();
+        InvoiceSchedule schedule = scheduleFor(
+                referenceYear, referenceMonth, details.getClosingDay(), details.getDueDay());
 
+        return repository.save(Invoice.builder()
+                .account(account)
+                .tenant(account.getTenant())
+                .referenceYear(referenceYear)
+                .referenceMonth(referenceMonth)
+                .closingDate(schedule.closingDate())
+                .dueDate(schedule.dueDate())
+                .status(InvoiceStatus.OPEN)
+                .build());
+    }
+
+    /**
+     * Par (closingDate, dueDate) de uma fatura de referência, extraído de {@code createNewInvoice}
+     * para reuso no preview de parcelas (D5) — o preview precisa exibir o mesmo vencimento que a
+     * fatura teria, sem materializar nada no banco.
+     */
+    public record InvoiceSchedule(LocalDate closingDate, LocalDate dueDate) {}
+
+    static InvoiceSchedule scheduleFor(int referenceYear, int referenceMonth, int closingDay, int dueDay) {
         // A fatura de referenceMonth fecha no mês seguinte (ex: fatura de junho fecha em 02/julho).
         // #137: capar o dia ao tamanho do mês evita DateTimeException (ex: closingDay=31 em
         // fevereiro). A comparação dueDay >= closingDay abaixo permanece sobre os dias
@@ -83,16 +102,17 @@ public class InvoiceService {
         LocalDate dueDate = dueDay >= closingDay
                 ? atDayCapped(closingDate, dueDay)
                 : atDayCapped(closingDate.plusMonths(1), dueDay);
+        return new InvoiceSchedule(closingDate, dueDate);
+    }
 
-        return repository.save(Invoice.builder()
-                .account(account)
-                .tenant(account.getTenant())
-                .referenceYear(referenceYear)
-                .referenceMonth(referenceMonth)
-                .closingDate(closingDate)
-                .dueDate(dueDate)
-                .status(InvoiceStatus.OPEN)
-                .build());
+    /**
+     * Leitura sem materialização: devolve a fatura se existir, sem criá-la (D2). Usado pelo
+     * descarte de parcelas em fatura fechada e pelo preview — ambos precisam saber o status
+     * atual sem o efeito colateral de {@code getOrCreate}.
+     */
+    @Transactional(readOnly = true)
+    public Optional<Invoice> findExisting(Account account, int referenceYear, int referenceMonth) {
+        return repository.findByAccountAndReferenceYearAndReferenceMonth(account, referenceYear, referenceMonth);
     }
 
     // #137: "dia N ou o último dia do mês, o que vier primeiro" — mesma semântica do

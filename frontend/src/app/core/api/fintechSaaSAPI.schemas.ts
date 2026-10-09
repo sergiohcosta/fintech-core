@@ -169,7 +169,11 @@ export interface TransactionRequestDTO {
   date: string;
   type: TransactionType;
   status?: TransactionStatus | null;
-  /** @nullable */
+  /**
+     * @minimum 1
+     * @maximum 120
+     * @nullable
+     */
   totalInstallments?: number | null;
   /** @nullable */
   categoryId?: string | null;
@@ -194,6 +198,34 @@ export interface TransactionUpdateDTO {
   accountId?: string | null;
   /** @nullable */
   propagate?: string[] | null;
+}
+
+export interface InstallmentPreviewRequestDTO {
+  /** @minimum 0.01 */
+  amount: number;
+  date: string;
+  /**
+     * @minimum 1
+     * @maximum 120
+     * @nullable
+     */
+  totalInstallments?: number | null;
+  accountId: string;
+}
+
+export interface InstallmentPreviewDTO {
+  installmentNumber: number;
+  totalInstallments: number;
+  amount: number;
+  referenceYear: number;
+  referenceMonth: number;
+  closingDate: string;
+  dueDate: string;
+  /** @nullable */
+  invoiceId?: string | null;
+  invoiceStatus?: InvoiceStatus | null;
+  /** false quando a fatura de destino existe fechada/paga — a parcela seria descartada no create */
+  willCreate: boolean;
 }
 
 export interface TransactionResponseDTO {

@@ -5,6 +5,8 @@ import com.fintech.api.domain.enums.TransactionStatus;
 import com.fintech.api.domain.enums.TransactionType;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.installment.DeleteInstallmentResultDTO;
+import com.fintech.api.dto.transaction.InstallmentPreviewDTO;
+import com.fintech.api.dto.transaction.InstallmentPreviewRequestDTO;
 import com.fintech.api.dto.transaction.TransactionRequestDTO;
 import com.fintech.api.dto.transaction.TransactionResponseDTO;
 import com.fintech.api.dto.transaction.TransactionUpdateDTO;
@@ -56,6 +58,15 @@ public class TransactionController implements TransactionsApi {
         // O service agora retorna uma Lista, pois uma compra em 12x gera 12 registros
         List<TransactionResponseDTO> newTransactions = service.create(transactionRequestDTO, getAuthenticatedUser());
         return ResponseEntity.status(HttpStatus.CREATED).body(newTransactions);
+    }
+
+    // Preview read-only do parcelamento (D5): informa o create de quais parcelas seriam
+    // descartadas por fatura fechada/paga.
+    @Override
+    @PostMapping("/installment-preview")
+    public ResponseEntity<List<InstallmentPreviewDTO>> installmentPreview(
+            @RequestBody @Valid InstallmentPreviewRequestDTO installmentPreviewRequestDTO) {
+        return ResponseEntity.ok(service.previewInstallments(installmentPreviewRequestDTO, getAuthenticatedUser()));
     }
 
     @PutMapping("/{id}")
