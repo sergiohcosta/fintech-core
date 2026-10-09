@@ -148,7 +148,7 @@ Finalizar a ADR-007 (ou abrir `ADR-008` para a política de provider).
 Abrir issue para preservar a extração inicial × valor final aceito por campo (atribuído por V28),
 com os cuidados da spec §5. **Não** implementar neste ciclo.
 
-- [ ] Issue aberta
+- [x] Issue aberta (#240)
 
 ---
 
@@ -158,13 +158,16 @@ com os cuidados da spec §5. **Não** implementar neste ciclo.
 - **Tasks 2/3** concluídas: corpus híbrido (12 BR sintéticos com gabarito + 12 recibos reais de
   Portugal como proxy), harness `benchmark.py`, pré-rótulo + cross-check com `glm-ocr`.
 - **Task 4** concluída para o BR sintético (resultado completo na seção "Evidência do experimento"
-  da ADR-007). Recibos PT full-res: teste pontual (glm-ocr quebra em full-res; llama3.2 alucina;
-  qwen3-vl lê, mas ~78–283s/foto).
-- **Task 5 — decisão: NÃO inverter o funil.** Nenhum modelo local pronto para primário sem
-  engenharia (thinking off, normalizar data, redimensionar imagem). Gemini permanece primário;
-  Ollama, fallback.
-- **Task 6** — follow-up (instrumentação prospectiva) a abrir.
+  da ADR-007). Recibos PT full-res: teste pontual.
+- **Task 5 — decisão: NÃO inverter ainda; caminho viável encontrado.** A tag default `qwen3-vl:8b`
+  era a variante *thinking* (causa da intermitência). Com **`qwen3-vl:8b-instruct`**: 0 falhas,
+  100% em valor/data/descrição/direção no BR sintético (p50 5,3s) e foto real 12MP lida em ~12s.
+  A inversão segue bloqueada por falta de corpus real maior (único + lista) e robustez — não por
+  inviabilidade. Gemini permanece primário.
+- **Task 6** — follow-ups abertos: **#240** (instrumentação de acurácia) e **#241** (endurecimento
+  do extrator local).
 
-**Pendências / próximos passos, se retomado:** desligar *thinking* no `qwen3-vl` (ou variante sem
-thinking / Ollama mais novo); normalizar data no schema; redimensionar imagens grandes antes do
-envio; re-testar; considerar `minicpm-v4.5` como fallback de melhor qualidade com revisão forçada.
+**Pendências / próximos passos:** validar `qwen3-vl:8b-instruct` em corpus real rotulado (único +
+lista, com revisão humana); vocabulário fechado + validação determinística (data/direção/pgto);
+revisão forçada efetiva para resultado local; descartar `llama3.2-vision` e `glm-ocr` como
+extrator de valor.
