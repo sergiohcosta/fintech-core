@@ -54,3 +54,11 @@ ImportSourceType        : IMAGE | PDF_TEXT | PDF_SCANNED | CSV | OFX | AUDIO
 ImportBatchStatus       : PENDING | EXTRACTED | REVIEWED | COMMITTED | FAILED
 StagedTransactionStatus : PENDING | CONFIRMED | DISCARDED
 ```
+
+## Regras de domínio — faturas e parcelamento
+
+- **Parcela só nasce em fatura aberta (compra parcelada N>1 e recorrência).** Compra parcelada manual e materialização de recorrência criam transação somente quando a fatura de destino existe `OPEN` ou não existe (nasce via lazy create). Fatura `CLOSED`/`PAID` → a parcela é **descartada**: sem transação, sem materializar fatura, sem renumeração (`installmentNumber`/`totalInstallments` preservam os valores pedidos — a parcela já foi paga fora do sistema). **Transação avulsa no cartão (N=1) não descarta** — anexa à fatura mesmo fechada/paga (comportamento histórico). A importação é a exceção: a âncora explícita da fatura-alvo do documento prevalece sobre o status.
+- **Invariante `soma(parcelas) == totalAmount` vale apenas sem descarte.** `InstallmentGroup.totalAmount`/`totalInstallments` continuam sendo os valores pedidos na compra (a verdade da compra), mesmo com menos parcelas persistidas.
+- **Grupo nasce na primeira parcela efetivamente criada.** Se todas as parcelas forem descartadas, não existe `InstallmentGroup` (nada de grupo órfão sem transações).
+- **Recorrência em fatura fechada recusa, não descarta.** Materializar uma ocorrência cuja fatura existe `CLOSED`/`PAID` gera conflito (409) — materializar é ação explícita do usuário, não há "próxima parcela" para pular em silêncio.
+- **Preview de parcelamento é somente leitura.** O cálculo de "qual fatura cada parcela cai e se será criada" existe como endpoint read-only (`willCreate` por parcela), sem efeito colateral — contrato em `summary.md` e `api-spec/openapi.yaml`.

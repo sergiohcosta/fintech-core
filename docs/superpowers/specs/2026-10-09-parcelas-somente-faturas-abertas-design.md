@@ -58,15 +58,19 @@ A importação (`create(dto, user, anchor)`) permanece inalterada (`skipClosedIn
   com `(null, true)`; a de 3 args (importação/testes) chama com `(anchor, false)`.
   *Alternativa descartada — chavear por `anchor == null`:* a importação sem fatura-alvo no
   documento passa `null` e mudaria de comportamento sem intenção.
+  *Escopo (pós-revisão):* o descarte vale **só para compra parcelada (N>1)** — transação
+  avulsa no cartão (N=1) não consulta status e anexa à fatura mesmo `CLOSED`/`PAID`
+  (comportamento histórico preservado).
 
 - **D2 — Definição de "fatura aberta".** Existe com `status == OPEN`, **ou** não existe (o
   `getOrCreate` a cria `OPEN`). `CLOSED`/`PAID` → descarta. O descarte **não** chama `getOrCreate`
   (não materializa fatura).
 
 - **D3 — `InstallmentGroup` mantém a verdade da compra.** `totalAmount` e `totalInstallments`
-  continuam os valores pedidos (N), mesmo com menos transações persistidas. Para a UI não ficar
-  inconsistente, `InstallmentGroupResponseDTO` ganha `skippedInstallments`
-  (`= totalInstallments − quantidade de transações existentes`).
+  continuam os valores pedidos (N), mesmo com menos transações persistidas.
+  *(Atualização pós-revisão: a proposta original de expor `skippedInstallments` no
+  `InstallmentGroupResponseDTO` foi **removida** — a UI calcula a contagem a partir das
+  transações existentes se precisar.)*
   *Alternativa descartada — reduzir `totalInstallments` do grupo ao número criado:* o rótulo
   `3/6` brigaria com um total de 4 parcelas.
 
@@ -206,8 +210,15 @@ desta spec além do contrato acima.
 - Fazer `close()` bloquear novas transações (a fatura `CLOSED` continua aceitando atrasadas
   **fora** deste fluxo manual/recorrência).
 - Coluna materializada `effective_date` / paginação server-side (#85).
+- **Transação avulsa no cartão (N=1):** mantém o comportamento antigo — anexa à fatura mesmo
+  `CLOSED`/`PAID`. O descarte é exclusivo de compra parcelada (N>1) e de materialização de
+  recorrência.
+- **Corrida checagem×close/pay (limitação conhecida):** a checagem de status (`findExisting`)
+  e a gravação da parcela não são atômicas em relação a `close`/`pay` — não há lock. Janela
+  pequena (mesma transação `@Transactional`); correção via lock é follow-up (issue fica a
+  cargo do orquestrador).
 
 ## Impacto SemVer
 
-**MINOR** — novo endpoint de preview e novo campo `skippedInstallments` no contrato
-(`api-spec/openapi.yaml`); fronteira de compatibilidade preservada (adições).
+**MINOR** — novo endpoint de preview no contrato (`api-spec/openapi.yaml`);
+fronteira de compatibilidade preservada (adições).

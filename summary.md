@@ -59,7 +59,7 @@ GET `?includeArchived=` (árvore) · POST (com `parentId?`) · GET/{id} · PUT/{
 
 ## Transações (`/api/transactions`)
 
-GET (filtros) · GET/{id} · POST (1..N, parcelamento gera N) · PUT/{id} (com `propagate`) · DELETE/{id} `?scope=`
+GET (filtros) · GET/{id} · POST (1..N, parcelamento gera N) · POST/installment-preview (preview read-only) · PUT/{id} (com `propagate`) · DELETE/{id} `?scope=`
 
 **Filtros (opcionais, combináveis):** `invoiceId` · `accountIds` (plural — singular `accountId` é ignorado) · `status` · `type` · `startDate`+`endDate` (juntos ou 400).
 
@@ -76,6 +76,12 @@ para i=0..N-1:
 ```
 `resolveInvoiceMonth`: `day <= closingDay` → mês corrente; senão → mês seguinte.
 `parcela(i)`: `total/N` truncado (DOWN, 2 casas) nas N−1 primeiras; a **última absorve o resíduo** (`total − (N−1)·parcela`) para que `soma(parcelas) == total` exatamente (#136).
+
+**Parcelas só em fatura aberta (manual e recorrência, só N>1):** para cada parcela de uma compra PARCELADA, se a fatura de destino já existe com status `CLOSED`/`PAID`, a parcela é **descartada** — não cria transação, não materializa fatura, não renumera (`installmentNumber`/`totalInstallments` preservam os valores pedidos; a parcela "já foi paga fora do sistema"). "Fatura aberta" = existe `OPEN` ou não existe (nasce via `getOrCreate`). **Transação avulsa no cartão (N=1) não descarta** — anexa à fatura mesmo fechada/paga, como sempre fez. Consequências: com descarte, `soma(parcelas criadas) != total` é esperado (a igualdade do #136 vale só sem descarte); se **todas** forem descartadas, o POST retorna lista vazia e nenhum `InstallmentGroup` é criado (o grupo nasce na primeira parcela efetivamente criada). A importação **não** descarta — a âncora explícita do documento prevalece (V30, ver Importação).
+
+**Limitação conhecida (descarte):** a checagem de status (`findExisting`) e a gravação não são atômicas em relação a `close`/`pay` de uma fatura — entre a checagem e o `save` da parcela, a fatura pode transicionar (janela pequena, mesma transação @Transactional). Correção via lock é follow-up; o pior caso é uma parcela criada numa fatura que acabou de fechar, nunca o contrário (gravar sem checar).
+
+**Preview (`POST /installment-preview`):** read-only (não chama `getOrCreate`, zero efeito colateral). Recebe `{ amount, date, totalInstallments?, accountId }` e devolve, por parcela, `referenceYear`/`referenceMonth`, `closingDate`/`dueDate`, `invoiceId`/`invoiceStatus` (null quando a fatura ainda não existe) e `willCreate` (false quando a fatura de destino existe `CLOSED`/`PAID` — a parcela seria descartada no create). Fatura existente: `closingDate`/`dueDate` vêm **persistidos** da fatura (não recalculados — closingDay/dueDay do cartão podem ter mudado). Conta não-cartão → 400; conta inexistente → 404. O frontend usa o preview para pedir confirmação antes de gravar; a autoridade na gravação continua sendo o POST.
 
 **DELETE `?scope=`:** SINGLE · THIS_AND_NEXT (próximas PENDING) · ALL (todas PENDING do grupo). Protege PAID. Retorna `{ deleted, skippedPaid }`.
 
@@ -105,7 +111,7 @@ GET (lista ativas) · POST (valida RRULE) · GET/{id} · PATCH/{id} (`descriptio
 
 **`GET /api/transactions?includeProjected=true`:** mescla reais + fantasmas no período (default `false`, retrocompatível). Fantasma: `projected=true`, `id=null`, status `PENDING`, `recurrenceRuleId`+`occurrenceDate` preenchidos. Ordenação compartilha a regra `effectiveSortDate`. Filtro por `invoiceId` **não** projeta.
 
-**Confirmar:** materializa a ocorrência reusando o caminho de criação de transação (`materializeFromRule` → se cartão, fatura resolvida por `resolveInvoiceMonth`/`getOrCreate`). Body opcional `{amount?, date?}` (override — ajuste pontual; a regra segue projetando o `baseAmount`). Índice único parcial `(recurrence_rule_id, recurrence_occurrence)` + guard → **409** ao confirmar a mesma ocorrência 2x.
+**Confirmar:** materializa a ocorrência reusando o caminho de criação de transação (`materializeFromRule` → se cartão, fatura resolvida por `resolveInvoiceMonth`/`getOrCreate`). Fatura da ocorrência existente `CLOSED`/`PAID` → **409** (`BusinessConflictException`) — materializar é ação explícita do usuário, então recusa em vez de gravar em silêncio ou descartar (diferente do create manual, que descarta: ali há "próximas parcelas" para pular). Body opcional `{amount?, date?}` (override — ajuste pontual; a regra segue projetando o `baseAmount`). Índice único parcial `(recurrence_rule_id, recurrence_occurrence)` + guard → **409** ao confirmar a mesma ocorrência 2x.
 - **Validação de slot (#146):** só confirma/pula regra `ACTIVE` (senão **422**), com `occurrence` ∈ expansão da RRULE no mês (`RecurrenceProjectionService.occursOn`); confirmar exige `occurrence` ∉ EXDATE. Sem isso, confirmar um não-slot convivia com o fantasma real → pagamento 2×.
 - **Vínculo automático ao planejamento (#140):** após materializar, `RecurrenceRuleService.confirmOccurrence` chama `BudgetItemService.linkRecurringOccurrence` — vincula a transação ao item RECURRING PENDENTE do ciclo aberto (se houver), pelo caminho unificado do #141. Sem isso, a transação apareceria como avulsa e o resumo contaria item planejado + avulsa (dupla contagem). Orquestrado no planejamento — `TransactionService` não conhece o domínio de budget.
 
@@ -127,7 +133,7 @@ GET `?accountId=` · GET/{id} · POST/{id}/close · POST/{id}/pay `{ sourceAccou
 **`totalAmount` (lista e detalhe) — líquido, não bruto:** `SUM(CASE WHEN type=EXPENSE THEN amount ELSE -amount END) WHERE status<>CANCELLED` (`sumAmountByInvoice`/`findByAccountWithTotals`). INCOME (estorno/reembolso) abate o total em vez de somar — mesma convenção de sinal do dashboard/saldo de conta. É o valor usado como base do pagamento em `pay()`.
 
 **Ciclo:** `OPEN → [close] CLOSED → [pay] PAID`
-- **close:** só muda status. Novas transações ainda aceitas (cobranças atrasadas).
+- **close:** só muda status. Novas transações ainda aceitas (cobranças atrasadas) — exceto compra parcelada manual (N>1) e materialização de recorrência, que descartam/recusam parcela em fatura fechada (ver Transações e Recorrência).
 - **pay** (`@Transactional` única): **claim atômico** `UPDATE ... SET status=PAID WHERE id=:id AND status=CLOSED` (`markAsPaidIfClosed`) ANTES de qualquer efeito — 0 linhas afetadas → `IllegalStateException` (pagamento concorrente já venceu, #139). Só o vencedor: PENDING→PAID via `@Modifying` batch; se total>0 cria EXPENSE na origem (`date=paymentDate` — **#199**: campo opcional do request, sugerido como hoje no modal do frontend; ausência vira `LocalDate.now()` no service; `description="Pagamento fatura {acc} {MM}/{yyyy}"`). Fecha o ciclo de caixa do cartão (`countInLiquidBalance=false`).
 - **Validações pay:** origem do tenant (404), origem ≠ CREDIT_CARD (422), fatura CLOSED (422), `paymentDate` não pode ser futuro (**400**, `BusinessException` — #199: o pagamento nasce `PAID` e `totalAccountBalance` não filtra período, então data futura rebaixaria hoje um caixa que ainda não saiu). Ordem: validações → claim atômico → efeitos.
 - **Lazy create** (`getOrCreate`): automático na 1ª transação do período. `UNIQUE(account, year, month)`. Race condition resolvida com `@Transactional(REQUIRES_NEW)` + retry (ADR-001 #83).
@@ -136,6 +142,8 @@ GET `?accountId=` · GET/{id} · POST/{id}/close · POST/{id}/pay `{ sourceAccou
 ## Grupos de Parcelamento (`/api/installment-groups`)
 
 GET · GET/{id} · DELETE/{id} (remove PENDING do grupo) · PATCH/{id} (metadados).
+
+`totalAmount`/`totalInstallments` do grupo seguem os valores pedidos na compra (a verdade da compra), mesmo com parcelas descartadas na criação — a contagem de transações existentes é `paidInstallments + pendingInstallments`.
 
 ## Dashboard (`/api/dashboard/summary?period=YYYY-MM`)
 
@@ -217,7 +225,7 @@ Pipeline de extração multi-mídia (roadmap `docs/roadmap-extracao-e-conciliaca
 
 **Seções "produtos e serviços" e "internacional" (Itaú, spec `2026-08-10-itau-internacional-produtos-servicos`):** além de "Lançamentos: compras e saques", o `ItauFaturaTemplate` também extrai "Lançamentos: produtos e serviços" por transação (taxas do cartão, ex. "Anuidade Diferenciada") — mas **nunca** popula `installment_number`/`installment_total`, mesmo quando a linha traz o marcador `NN/NN` de parcela: no corpus real essa "parcela" é uma taxa recorrente cobrada e estornada quase no mês seguinte, não uma compra parcelada, e criar um `InstallmentGroup` completo projetaria cobranças futuras fantasmas. Também extrai "Lançamentos internacionais", mas **consolidado** — no máximo 1 transação sintética por fatura (não por lançamento), lida direto da linha de subtotal já impressa (que soma tudo certo, incluindo IOF) — o formato por linha individual é frágil (amostra pequena do corpus, 9/21 faturas).
 
-**Fatura-alvo do documento ancora o commit (V30, spec `2026-08-09-itau-fatura-ancora-por-documento`):** quando o batch tem fatura-alvo (`import_batches.target_invoice_reference_year/month`, hoje só populado pelo `ItauFaturaTemplate` a partir do vencimento impresso), o commit **não** recalcula por `resolveInvoiceMonth(dto.date(), closingDay)` — a transação ANCORA direto na fatura que o próprio documento representa, via `TransactionService.create(dto, user, YearMonth)`. Vale para TODA linha do documento (avulsa, parcela 1 ou parcela `>1/N` em andamento): o Itaú já decidiu em que fatura aquela linha caiu, e recalcular pelo `closingDay` configurado na conta reintroduz a mesma fragilidade que causava o roteamento errado de parcelas em andamento (data de compra antiga). Batches sem fatura-alvo (CSV/OFX/imagem/heurística genérica) seguem no caminho existente, sem mudança de comportamento.
+**Fatura-alvo do documento ancora o commit (V30, spec `2026-08-09-itau-fatura-ancora-por-documento`):** quando o batch tem fatura-alvo (`import_batches.target_invoice_reference_year/month`, hoje só populado pelo `ItauFaturaTemplate` a partir do vencimento impresso), o commit **não** recalcula por `resolveInvoiceMonth(dto.date(), closingDay)` — a transação ANCORA direto na fatura que o próprio documento representa, via `TransactionService.create(dto, user, YearMonth)`. Vale para TODA linha do documento (avulsa, parcela 1 ou parcela `>1/N` em andamento): o Itaú já decidiu em que fatura aquela linha caiu, e recalcular pelo `closingDay` configurado na conta reintroduz a mesma fragilidade que causava o roteamento errado de parcelas em andamento (data de compra antiga). Batches sem fatura-alvo (CSV/OFX/imagem/heurística genérica) seguem no caminho existente, sem mudança de comportamento. O commit também **não** descarta parcelas em fatura fechada (sobrecarga de criação com âncora) — ver descarte em Transações.
 
 **Descarte (`POST .../staged/{stagedId}/discard`, Fase 2 metade B):** transição de estado (`PENDING → DISCARDED`), por isso verbo como sub-recurso e não um `status` no `PATCH` (que é, por contrato, correção de campos). Sem corpo; 200 com a staged atualizada. O gate "não sobra nenhuma staged `PENDING` no batch ⇒ batch `COMMITTED`" é um método privado ÚNICO do `ImportService`, chamado tanto pelo `commit()` quanto pelo `discardStaged()` — descartar a última pendente sem nunca chamar `commit` deixaria o batch preso em `EXTRACTED` para sempre. Não é idempotente: descartar de novo → 400.
 
