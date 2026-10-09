@@ -49,7 +49,10 @@ public record LlmReceiptExtractionDTO(
         @JsonPropertyDescription("Confiança de 0.0 a 1.0 na leitura da direção.")
         Double directionConfidence,
 
-        @JsonPropertyDescription("Método de pagamento se visível: pix, credito, debito, dinheiro, boleto. null se não identificado.")
+        // #241: o vocabulário do schema tem que bater com o do PROMPT — o Spring AI injeta estas
+        // descrições como JSON Schema do lado do modelo; divergir do prompt (ex.: sem
+        // "transferencia") faria o modelo receber duas listas de valores diferentes.
+        @JsonPropertyDescription("Método de pagamento, EXATAMENTE um destes valores em minúsculas e sem acento: pix, credito, debito, dinheiro, boleto ou transferencia. null se não identificado. Nunca texto livre (ex.: 'Cartão de Crédito' está errado; escreva 'credito').")
         String paymentMethod,
 
         @JsonPropertyDescription("Confiança de 0.0 a 1.0 na leitura do método de pagamento.")
