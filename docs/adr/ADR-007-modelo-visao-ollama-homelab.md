@@ -224,6 +224,22 @@ de OCR/robustez, fotos full-res 12MP). Harness `benchmark.py` replicando o promp
 - `qwen3-vl:8b` (thinking) leu corretamente as amostras, mas 78–283s/foto full-res;
   `qwen3-vl:8b-instruct` leu a foto full-res corretamente em **~12s** (sem redimensionar).
 
+**PoC — 70 docs (30 WildReceipt reais + 40 sintéticos BR), `qwen3-vl:8b-instruct`, 2026-10-09:**
+
+| campo | acerto | leitura |
+|---|---|---|
+| valor | **98,6%** | 1 erro real (`wr_007`: 2,24→5,0) |
+| data | 92,9% | 5 erros, **todos +2 dias** (suspeita de artefato da anotação do WildReceipt, a verificar) |
+| direção | 97,1% | 2 erros em "RECIBO" sintético (modelo disse `credit`) |
+| estabelecimento | 58,6% | **falso baixo**: o modelo lê o nome melhor que a anotação ruidosa (`HATOFF'SGAS,1`→`HATOFF'S GAS`) |
+| pagamento | 65,0% | **formato**: devolve `"Cartao de Credito"` em vez do enum `credito` |
+| exato (todos) | 34,3% | dominado por estabelecimento/pgto (**normalização**, não leitura) |
+| falhas / latência | **0/70** | p50 5,6s · p95 11,0s |
+
+Leitura: os campos **críticos** (valor/data/direção) ficam em 93–99% e não houve falha de JSON;
+o "exato" baixo é sobretudo **vocabulário/normalização**. O `qwen3-vl:8b-instruct` é viável;
+faltam o vocabulário fechado (pgto/direção), a validação de data e a revisão forçada.
+
 **Conclusão (revisada):** o bloqueio principal era a **tag** `qwen3-vl:8b` (thinking), não o
 hardware. Com **`qwen3-vl:8b-instruct`** há um caminho local viável: 0 falhas e 100% em
 valor/data/descrição/direção no BR sintético (p50 5,3s) e leitura correta de foto real 12MP em
