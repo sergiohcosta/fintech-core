@@ -957,6 +957,22 @@ Content-Type: application/json
   "totalInstallments": 6
 }
 
+### 6.3 Preview do parcelamento (read-only) — mesmo Notebook 12x do 6.1
+# willCreate=false nas parcelas cuja fatura de destino já existe CLOSED/PAID
+# (seriam descartadas no POST /api/transactions). Nada é gravado.
+POST http://localhost:8080/api/transactions/installment-preview
+Authorization: Bearer {{token_carlos}}
+Content-Type: application/json
+
+{
+  "amount": 350.00,
+  "date": "2026-02-02",
+  "totalInstallments": 12,
+  "accountId": "{{id_nubank}}"
+}
+
+###
+
 ### ── Bloco 7: Transferências (Bradesco → XP, Jan–Jun) ────────────────────
 ### Execute para cada mês trocando "date" (2026-01-10 até 2026-06-10)
 

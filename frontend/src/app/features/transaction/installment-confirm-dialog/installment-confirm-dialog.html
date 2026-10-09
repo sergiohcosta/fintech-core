@@ -1,0 +1,64 @@
+<section class="dialog-shell" aria-labelledby="dialog-title">
+  <header class="dialog-header">
+    <span class="header-icon" aria-hidden="true"><mat-icon>receipt_long</mat-icon></span>
+    <div>
+      <p class="eyebrow">Compra parcelada</p>
+      <h2 id="dialog-title" mat-dialog-title>Confira as parcelas</h2>
+    </div>
+  </header>
+
+  <mat-dialog-content>
+    @if (allSkipped()) {
+      <div class="all-skipped-notice" role="alert">
+        <mat-icon aria-hidden="true">info</mat-icon>
+        <div>
+          <strong>Nenhuma parcela será criada</strong>
+          <span>Todas cairiam em faturas fechadas ou pagas. Você pode cancelar e revisar o lançamento.</span>
+        </div>
+      </div>
+    } @else if (skippedCount() === 1) {
+      <p class="intro">
+        Uma parcela cairia em uma fatura fechada ou paga e não será lançada. Confira o que será
+        criado antes de continuar.
+      </p>
+    } @else {
+      <p class="intro">
+        {{ skippedCount() }} parcelas cairiam em faturas fechadas ou pagas e não serão lançadas.
+        Confira o que será criado antes de continuar.
+      </p>
+    }
+
+    <div class="installment-list" role="list" aria-label="Prévia das parcelas">
+      @for (row of rows(); track row.installmentNumber) {
+        <article class="installment-row" [class.is-skipped]="!row.willCreate" role="listitem">
+          <div class="number-cell">
+            <span class="number">{{ row.installmentNumber }}/{{ row.totalInstallments }}</span>
+            <span class="row-caption">parcela</span>
+          </div>
+
+          <div class="details-cell">
+            <strong class="amount">{{ row.amount }}</strong>
+            <span class="invoice-label">Fatura de {{ row.invoice }}</span>
+          </div>
+
+          <div class="due-cell">
+            <span class="due-caption">Vencimento</span>
+            <span>{{ row.dueDate }}</span>
+          </div>
+
+          <span class="status" [class.status-skipped]="!row.willCreate">
+            <mat-icon aria-hidden="true">{{ row.willCreate ? 'check_circle' : 'block' }}</mat-icon>
+            {{ row.status }}
+          </span>
+        </article>
+      }
+    </div>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="cancel()">Cancelar</button>
+    <button mat-flat-button color="primary" type="button" (click)="confirm()" [disabled]="allSkipped()">
+      {{ allSkipped() ? 'Nada para salvar' : 'Confirmar e salvar' }}
+    </button>
+  </mat-dialog-actions>
+</section>

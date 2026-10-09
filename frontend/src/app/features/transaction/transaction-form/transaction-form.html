@@ -11,7 +11,7 @@
   </header>
 
   <div class="form-card mat-elevation-z2" [ngClass]="formCardClass()">
-    <form [formGroup]="form" (ngSubmit)="onSubmit()">
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" [attr.aria-busy]="saving()">
 
       @if (!isEditMode()) {
         <div class="form-row mode-toggle-row">
@@ -168,7 +168,7 @@
 
               <mat-form-field appearance="outline">
                 <mat-label>Número de parcelas</mat-label>
-                <input matInput type="number" formControlName="totalInstallments" min="2" max="48">
+                <input matInput type="number" formControlName="totalInstallments" min="2" max="120">
               </mat-form-field>
 
               @if (installmentPreview().length > 0) {
@@ -334,7 +334,7 @@
           } @else {
             <mat-progress-spinner diameter="18" mode="indeterminate" class="btn-spinner" />
           }
-          {{ saving() ? 'Salvando...' : 'Salvar' }}
+          {{ saving() ? 'Processando...' : 'Salvar' }}
         </button>
       </div>
     </form>

@@ -1,6 +1,7 @@
 import { Component, ElementRef, inject, OnInit, signal, computed, effect, ViewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { Observable, finalize, switchMap } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
+import { EMPTY, Observable, catchError, finalize, switchMap } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
@@ -19,13 +20,22 @@ import { MatRadioModule } from '@angular/material/radio';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 
 import { TransactionsService } from '../../../core/api/transactions/transactions.service';
 import { TransfersService } from '../../../core/api/transfers/transfers.service';
 import { CategoriesService } from '../../../core/api/categories/categories.service';
 import { AccountsService } from '../../../core/api/accounts/accounts.service';
-import { CategoryResponseDTO, AccountResponse } from '../../../core/api/fintechSaaSAPI.schemas';
+import {
+  AccountResponse,
+  CategoryResponseDTO,
+  InstallmentPreviewDTO,
+  TransactionRequestDTO,
+} from '../../../core/api/fintechSaaSAPI.schemas';
 import { buildInstallmentPreview, CreditCardPreviewConfig } from './installment-preview';
+import { summarizeInstallmentCreation } from './installment-result.utils';
+import { hasSkippedInstallments } from '../installment-confirm-dialog/installment-confirm-dialog.utils';
+import { InstallmentConfirmDialog } from '../installment-confirm-dialog/installment-confirm-dialog';
 import { evaluateMathExpression } from './amount-math';
 import { parseAmountInput, formatLocalDate } from './transaction-form.utils';
 import { RruleEditor } from '../../recurrence/rrule-editor/rrule-editor';
@@ -62,6 +72,7 @@ interface TransactionCategoryOption {
     MatCheckboxModule,
     MatDividerModule,
     MatProgressSpinnerModule,
+    MatDialogModule,
     RruleEditor,
   ],
   templateUrl: './transaction-form.html',
@@ -77,6 +88,7 @@ export class TransactionForm implements OnInit {
   private accountService = inject(AccountsService);
   private recurrenceService = inject(RecurrenceService);
   private snackBar = inject(MatSnackBar);
+  private dialog = inject(MatDialog);
 
   @ViewChild('picker') private picker?: MatDatepicker<Date>;
   @ViewChild('transferPicker') private transferPicker?: MatDatepicker<Date>;
@@ -103,7 +115,7 @@ export class TransactionForm implements OnInit {
     date: [new Date(), Validators.required],
     type: ['EXPENSE', Validators.required],
     status: ['PENDING'],
-    totalInstallments: [1, [Validators.min(1), Validators.max(48)]],
+    totalInstallments: [1, [Validators.min(1), Validators.max(120)]],
     categoryId: [null as string | null],
     accountId: [null as string | null, Validators.required],
     fromAccountId: [null as string | null],
@@ -363,7 +375,7 @@ export class TransactionForm implements OnInit {
     return null;
   }
 
-  private doSave(): Observable<any> {
+  private doSave(): Observable<unknown> {
     const raw = this.form.getRawValue();
 
     if (this.isEditMode()) {
@@ -410,7 +422,7 @@ export class TransactionForm implements OnInit {
       ? rawAmount * (raw.totalInstallments ?? 1)
       : rawAmount;
 
-    return this.transactionService.createTransaction({
+    const request: TransactionRequestDTO = {
       description: raw.description!,
       amount: totalAmount,
       date: this.toDateString(raw.date as Date),
@@ -419,15 +431,78 @@ export class TransactionForm implements OnInit {
       categoryId: raw.categoryId ?? undefined,
       accountId: raw.accountId!,
       totalInstallments: this.isInstallment() ? (raw.totalInstallments ?? 1) : 1
-    });
+    };
+
+    if (!this.isInstallment() || !this.isCreditCard()) {
+      return this.transactionService.createTransaction(request);
+    }
+
+    return this.transactionService
+      .installmentPreview({
+        amount: totalAmount,
+        date: request.date,
+        totalInstallments: request.totalInstallments,
+        accountId: request.accountId,
+      })
+      .pipe(
+        catchError((error: unknown) => {
+          this.snackBar.open(
+            this.getErrorMessage(error, 'Não foi possível conferir as faturas das parcelas.'),
+            'Fechar',
+            { duration: 5000 },
+          );
+          return EMPTY;
+        }),
+        switchMap((installments: InstallmentPreviewDTO[]) => {
+          if (!hasSkippedInstallments(installments)) {
+            return this.transactionService.createTransaction(request);
+          }
+
+          return this.dialog
+            .open(InstallmentConfirmDialog, {
+              width: 'min(760px, calc(100vw - 32px))',
+              maxWidth: '760px',
+              data: installments,
+            })
+            .afterClosed()
+            .pipe(
+              switchMap((confirmed) =>
+                confirmed === true ? this.transactionService.createTransaction(request) : EMPTY,
+              ),
+            );
+        }),
+      );
+  }
+
+  private getErrorMessage(error: unknown, fallback: string): string {
+    if (!(error instanceof HttpErrorResponse)) return fallback;
+    const body: unknown = error.error;
+    if (typeof body !== 'object' || body === null || !('message' in body)) return fallback;
+    return typeof body.message === 'string' && body.message.trim() ? body.message : fallback;
   }
 
   onSubmit(): void {
     if (!this.formValid()) return;
+    const isInstallmentSubmission = this.isInstallment();
+    const requestedInstallments = this.form.controls.totalInstallments.value ?? 1;
     this.saving.set(true);
 
     this.doSave().pipe(finalize(() => this.saving.set(false))).subscribe({
       next: (result) => {
+        const installmentSummary = this.getInstallmentSummary(
+          result,
+          isInstallmentSubmission,
+          requestedInstallments,
+        );
+        if (installmentSummary) {
+          this.snackBar.open(installmentSummary.message, 'OK', {
+            duration: installmentSummary.kind === 'complete' ? 3000 : 6000,
+          });
+          if (installmentSummary.kind === 'none') return;
+          this.router.navigate(['/transactions']);
+          return;
+        }
+
         let msg: string;
         if (this.isEditMode()) {
           msg = 'Transação atualizada com sucesso!';
@@ -449,10 +524,26 @@ export class TransactionForm implements OnInit {
 
   onSaveAndAddMore(): void {
     if (!this.formValid() || this.isEditMode()) return;
+    const isInstallmentSubmission = this.isInstallment();
+    const requestedInstallments = this.form.controls.totalInstallments.value ?? 1;
     this.saving.set(true);
 
     this.doSave().pipe(finalize(() => this.saving.set(false))).subscribe({
       next: (result) => {
+        const installmentSummary = this.getInstallmentSummary(
+          result,
+          isInstallmentSubmission,
+          requestedInstallments,
+        );
+        if (installmentSummary) {
+          this.snackBar.open(installmentSummary.message, 'OK', {
+            duration: installmentSummary.kind === 'complete' ? 3000 : 6000,
+          });
+          if (installmentSummary.kind === 'none') return;
+          this.partialReset();
+          return;
+        }
+
         const msg = Array.isArray(result) && result.length > 1
           ? `${result.length} parcelas criadas com sucesso!`
           : 'Transação criada com sucesso!';
@@ -463,6 +554,15 @@ export class TransactionForm implements OnInit {
         this.snackBar.open('Erro ao salvar transação.', 'Fechar', { duration: 5000 });
       }
     });
+  }
+
+  private getInstallmentSummary(
+    result: unknown,
+    isInstallmentSubmission: boolean,
+    requestedInstallments: number,
+  ) {
+    if (!isInstallmentSubmission || !Array.isArray(result)) return null;
+    return summarizeInstallmentCreation(result.length, requestedInstallments);
   }
 
   private partialReset(): void {

@@ -4,6 +4,7 @@ import com.fintech.api.domain.account.Account;
 import com.fintech.api.domain.category.Category;
 import com.fintech.api.domain.enums.AccountType;
 import com.fintech.api.domain.enums.DeleteInstallmentScope;
+import com.fintech.api.domain.enums.InvoiceStatus;
 import com.fintech.api.domain.enums.TransactionStatus;
 import com.fintech.api.domain.enums.TransactionType;
 import com.fintech.api.domain.installment.InstallmentGroup;
@@ -13,11 +14,14 @@ import com.fintech.api.domain.transaction.Transaction;
 import com.fintech.api.service.recurrence.RecurrenceProjectionService;
 import com.fintech.api.domain.user.User;
 import com.fintech.api.dto.installment.DeleteInstallmentResultDTO;
+import com.fintech.api.dto.transaction.InstallmentPreviewDTO;
+import com.fintech.api.dto.transaction.InstallmentPreviewRequestDTO;
 import com.fintech.api.dto.transaction.TransactionRequestDTO;
 import com.fintech.api.dto.transaction.TransactionResponseDTO;
 import com.fintech.api.dto.transaction.TransactionUpdateDTO;
 import com.fintech.api.dto.transfer.TransferRequestDTO;
 import com.fintech.api.dto.transfer.TransferResponseDTO;
+import com.fintech.api.exception.BusinessConflictException;
 import com.fintech.api.exception.BusinessException;
 import com.fintech.api.exception.EntityNotFoundException;
 import com.fintech.api.repository.AccountRepository;
@@ -131,7 +135,10 @@ public class TransactionService {
 
     @Transactional
     public List<TransactionResponseDTO> create(TransactionRequestDTO dto, User user) {
-        return create(dto, user, null);
+        // Manual: compra PARCELADA descarta parcelas que cairiam em fatura fechada/paga
+        // (D1/D2). Transação avulsa (N=1) mantém o comportamento antigo — anexa à fatura
+        // mesmo fechada/paga.
+        return create(dto, user, null, true);
     }
 
     /**
@@ -142,10 +149,24 @@ public class TransactionService {
      * compra reintroduz a mesma fragilidade que causou o roteamento errado de parcelas em
      * andamento (spec 2026-08-09-itau-fatura-ancora-por-documento). Parcelas futuras de um
      * parcelamento novo (i=1..N-1) seguem cascata normal a partir da âncora.
+     * A âncora explícita do documento prevalece sobre o status da fatura: a importação NÃO
+     * descarta parcelas (skipClosedInvoices=false, D1).
      */
     @Transactional
     public List<TransactionResponseDTO> create(
             TransactionRequestDTO dto, User user, YearMonth anchorInvoiceMonth) {
+        return create(dto, user, anchorInvoiceMonth, false);
+    }
+
+    /**
+     * Caminho único de criação (D1). {@code skipClosedInvoices=true} (manual e recorrência)
+     * descarta parcelas que roteariam para fatura existente com status != OPEN — somente
+     * quando há parcelamento (N>1); transação avulsa no cartão preserva o comportamento
+     * histórico de anexar à fatura existente. A importação passa {@code false} e mantém o
+     * roteamento do documento intacto.
+     */
+    private List<TransactionResponseDTO> create(TransactionRequestDTO dto, User user,
+            YearMonth anchorInvoiceMonth, boolean skipClosedInvoices) {
         Category category = resolveCategory(dto.categoryId(), user);
         Account account = resolveAccount(dto.accountId(), user);
 
@@ -174,18 +195,6 @@ public class TransactionService {
         final int finalClosingDay = closingDay;
 
         InstallmentGroup group = null;
-        if (installments > 1) {
-            group = installmentGroupRepository.save(InstallmentGroup.builder()
-                    .description(dto.description())
-                    .totalAmount(dto.amount())
-                    .totalInstallments(installments)
-                    .account(account)
-                    .category(category)
-                    .tenant(user.getTenant())
-                    .build());
-        }
-
-        final InstallmentGroup finalGroup = group;
         List<Transaction> created = new ArrayList<>();
         for (int i = 0; i < installments; i++) {
             Invoice invoice = null;
@@ -195,10 +204,36 @@ public class TransactionService {
                 YearMonth invoiceMonth = (anchorInvoiceMonth != null
                         ? anchorInvoiceMonth
                         : resolveInvoiceMonth(dto.date(), finalClosingDay)).plusMonths(i);
+                if (skipClosedInvoices && installments > 1) {
+                    // Descarte SÓ em compra parcelada (N>1): avulsa em fatura fechada/paga
+                    // continua anexando, como antes da feature. Leitura sem materialização:
+                    // o descarte não pode nem criar a fatura (D2).
+                    Invoice existing = invoiceService
+                            .findExisting(account, invoiceMonth.getYear(), invoiceMonth.getMonthValue())
+                            .orElse(null);
+                    if (existing != null && existing.getStatus() != InvoiceStatus.OPEN) {
+                        // Parcela descartada (D3): mantém a numeração original (i+1), não
+                        // renumera nem cria transação — a parcela já foi paga fora do sistema.
+                        continue;
+                    }
+                }
                 invoice = invoiceService.getOrCreate(account, invoiceMonth.getYear(), invoiceMonth.getMonthValue());
                 transactionDate = dto.date(); // data de compra igual em todas as parcelas
             } else {
                 transactionDate = dto.date().plusMonths(i);
+            }
+
+            // Grupo criado lazy na primeira parcela efetivamente criada (D4): se todas forem
+            // descartadas, nenhum grupo órfão fica no banco.
+            if (group == null && installments > 1) {
+                group = installmentGroupRepository.save(InstallmentGroup.builder()
+                        .description(dto.description())
+                        .totalAmount(dto.amount())
+                        .totalInstallments(installments)
+                        .account(account)
+                        .category(category)
+                        .tenant(user.getTenant())
+                        .build());
             }
 
             created.add(repository.save(Transaction.builder()
@@ -209,7 +244,7 @@ public class TransactionService {
                     .status(dto.status() != null ? dto.status() : TransactionStatus.PENDING)
                     .installmentNumber(i + 1)
                     .totalInstallments(installments)
-                    .installmentGroup(finalGroup)
+                    .installmentGroup(group)
                     .invoice(invoice)
                     .tenant(user.getTenant())
                     .user(user)
@@ -218,6 +253,71 @@ public class TransactionService {
                     .build()));
         }
         return created.stream().map(TransactionResponseDTO::fromEntity).toList();
+    }
+
+    /**
+     * Preview server-side do parcelamento (D5): devolve, por parcela, a fatura de destino
+     * (mês/ano, fechamento, vencimento), o status atual e se o create a criaria
+     * ({@code willCreate}). Read-only de propósito — não chama {@code getOrCreate}, não salva
+     * nada. O frontend usa para pedir confirmação quando houver descarte; o backend continua
+     * sendo a autoridade na gravação.
+     */
+    @Transactional(readOnly = true)
+    public List<InstallmentPreviewDTO> previewInstallments(InstallmentPreviewRequestDTO dto, User user) {
+        Account account = resolveAccount(dto.accountId(), user);
+        if (!AccountType.CREDIT_CARD.equals(account.getType())) {
+            throw new BusinessException(
+                    "O preview de parcelamento só se aplica a contas de cartão de crédito.");
+        }
+        var cardDetails = creditCardDetailsRepository.findByAccount(account)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Detalhes do cartão não encontrados para a conta."));
+        int closingDay = cardDetails.getClosingDay();
+        int dueDay = cardDetails.getDueDay();
+
+        int installments = (dto.totalInstallments() != null && dto.totalInstallments() > 1)
+                ? dto.totalInstallments() : 1;
+        // Mesma divisão de centavos do create (#136): o preview deve mostrar exatamente o
+        // valor que cada parcela teria se criada.
+        BigDecimal installmentAmount = dto.amount()
+                .divide(BigDecimal.valueOf(installments), 2, RoundingMode.DOWN);
+        BigDecimal lastInstallmentAmount = dto.amount()
+                .subtract(installmentAmount.multiply(BigDecimal.valueOf(installments - 1L)));
+
+        List<InstallmentPreviewDTO> preview = new ArrayList<>();
+        for (int i = 0; i < installments; i++) {
+            YearMonth invoiceMonth = resolveInvoiceMonth(dto.date(), closingDay).plusMonths(i);
+            Invoice existing = invoiceService
+                    .findExisting(account, invoiceMonth.getYear(), invoiceMonth.getMonthValue())
+                    .orElse(null);
+            // Fatura existente: usar as datas PERSISTIDAS — closingDay/dueDay do cartão
+            // podem ter mudado desde a criação e o schedule recalculado divergiria da
+            // fatura real. Só calcula quando a fatura ainda não existe.
+            LocalDate closingDate;
+            LocalDate dueDate;
+            if (existing != null) {
+                closingDate = existing.getClosingDate();
+                dueDate = existing.getDueDate();
+            } else {
+                InvoiceService.InvoiceSchedule schedule = InvoiceService.scheduleFor(
+                        invoiceMonth.getYear(), invoiceMonth.getMonthValue(), closingDay, dueDay);
+                closingDate = schedule.closingDate();
+                dueDate = schedule.dueDate();
+            }
+            boolean willCreate = existing == null || existing.getStatus() == InvoiceStatus.OPEN;
+            preview.add(new InstallmentPreviewDTO(
+                    i + 1,
+                    installments,
+                    i == installments - 1 ? lastInstallmentAmount : installmentAmount,
+                    invoiceMonth.getYear(),
+                    invoiceMonth.getMonthValue(),
+                    closingDate,
+                    dueDate,
+                    existing != null ? existing.getId() : null,
+                    existing != null ? existing.getStatus() : null,
+                    willCreate));
+        }
+        return preview;
     }
 
     // Materializa UMA ocorrência de regra como transação real. Reusa a resolução de fatura
@@ -237,6 +337,16 @@ public class TransactionService {
                             "Detalhes do cartão não encontrados para a conta."))
                     .getClosingDay();
             YearMonth invoiceMonth = resolveInvoiceMonth(date, closingDay);
+            // D6: materializar é ação explícita do usuário — se a fatura da ocorrência já
+            // fechou/pagou, recusar com 409 em vez de gravar silenciosamente (como o create
+            // manual, que descarta; aqui não há "próxima parcela" para pular).
+            Invoice existing = invoiceService
+                    .findExisting(account, invoiceMonth.getYear(), invoiceMonth.getMonthValue())
+                    .orElse(null);
+            if (existing != null && existing.getStatus() != InvoiceStatus.OPEN) {
+                throw new BusinessConflictException("A fatura de " + invoiceMonth + " está "
+                        + existing.getStatus() + "; não é possível lançar nesta ocorrência.");
+            }
             invoice = invoiceService.getOrCreate(account, invoiceMonth.getYear(), invoiceMonth.getMonthValue());
         }
 
