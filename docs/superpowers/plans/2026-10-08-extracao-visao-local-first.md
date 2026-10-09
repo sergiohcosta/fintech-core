@@ -157,12 +157,14 @@ com os cuidados da spec §5. **Não** implementar neste ciclo.
 - **Task 1** concluída (ambiente validado; achados no topo deste plano).
 - **Tasks 2/3** concluídas: corpus híbrido (12 BR sintéticos com gabarito + 12 recibos reais de
   Portugal como proxy), harness `benchmark.py`, pré-rótulo + cross-check com `glm-ocr`.
-- **Task 4** concluída para o BR sintético (resultado completo na seção "Evidência do experimento"
-  da ADR-007). Recibos PT full-res: teste pontual.
+- **Task 4** concluída. BR sintético (12) e **PoC em 70 docs** (30 WildReceipt reais + 40
+  sintéticos ampliados) — resultado completo na seção "Evidência do experimento" da ADR-007.
+  Recibos PT full-res: teste pontual.
 - **Task 5 — decisão: NÃO inverter ainda; caminho viável encontrado.** A tag default `qwen3-vl:8b`
-  era a variante *thinking* (causa da intermitência). Com **`qwen3-vl:8b-instruct`**: 0 falhas,
-  100% em valor/data/descrição/direção no BR sintético (p50 5,3s) e foto real 12MP lida em ~12s.
-  A inversão segue bloqueada por falta de corpus real maior (único + lista) e robustez — não por
+  era a variante *thinking*. Com **`qwen3-vl:8b-instruct`** no PoC (70 docs): **0 falhas**,
+  valor 98,6% / data 92,9% / direção 97,1%, p50 5,6s. O "exato" baixo (34,3%) é **normalização**
+  (estabelecimento vs anotação ruidosa do WildReceipt; pgto não mapeado ao enum). A inversão segue
+  bloqueada por falta de corpus BR real (único + lista) e dos ajustes de robustez — não por
   inviabilidade. Gemini permanece primário.
 - **Task 6** — follow-ups abertos: **#240** (instrumentação de acurácia) e **#241** (endurecimento
   do extrator local).
