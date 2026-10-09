@@ -196,7 +196,9 @@ extrator de valor.
 **Worktree:** `feature/vision-local-hardening` de `develop`. **SemVer:** MINOR (comportamento
 observável muda sem alterar contrato).
 
-- [ ] Worktree criada
-- [ ] Mudanças 1–5 implementadas
-- [ ] Testes verdes
-- [ ] Diff revisado e merge em `develop`
+- [x] Worktree criada
+- [x] Mudanças 1–5 implementadas (commit `cd92980`)
+- [x] Testes verdes (suíte completa: 478 tests, 0 falhas)
+- [x] Diff revisado e merge em `develop` (`979cf3e`)
+
+**Follow-up aberto:** #242 (régua de `requires_review` não cobre data/direção/método).
