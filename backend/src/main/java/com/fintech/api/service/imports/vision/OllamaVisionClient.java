@@ -38,7 +38,9 @@ public class OllamaVisionClient implements VisionModelClient {
 
     public OllamaVisionClient(
             @Qualifier("ollamaVisionChatClient") ChatClient chatClient,
-            @Value("${spring.ai.ollama.chat.options.model:llama3.2-vision}") String model) {
+            // Fallback espelha o default de application.properties (#241) — se um dia a property
+            // sumir, cair no modelo DESCARTADO (llama3.2-vision) seria regressão silenciosa.
+            @Value("${spring.ai.ollama.chat.options.model:qwen3-vl:8b-instruct}") String model) {
         this.chatClient = chatClient;
         this.model = model;
     }

@@ -18,14 +18,20 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.MimeType;
 import org.springframework.util.MimeTypeUtils;
 
+import javax.imageio.ImageIO;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
 
 /**
  * Extrator de visão — implementação da porta {@link TransactionExtractor}. A partir da Onda 1
@@ -75,6 +81,9 @@ public class VisionExtractor implements TransactionExtractor {
     private static final byte[] GIF = {0x47, 0x49, 0x46};
     private static final byte[] WEBP_RIFF = {0x52, 0x49, 0x46, 0x46};
 
+    // #241 — teto do maior lado da imagem enviada ao provider (ver prepareImage).
+    private static final int MAX_IMAGE_SIDE_PX = 2048;
+
     private final List<VisionModelClient> visionModelClients;
     private final String extractorVersion;
     // #194 — limites do caminho de EXTRATO (spec §6.4/§2.e): checados DEPOIS da extração (não dá
@@ -83,12 +92,12 @@ public class VisionExtractor implements TransactionExtractor {
     private final int statementMaxLines;
     private final int statementMaxOutputTokens;
 
-    // Formato pt-BR de data — fallback quando o modelo devolve dd/MM/yyyy apesar do pedido de ISO.
-    private static final DateTimeFormatter BR_DATE = DateTimeFormatter.ofPattern("dd/MM/uuuu");
-
     // Prompt fixo. Português alinhado ao domínio (comprovantes/recibos BR). Pedimos confiança
     // por campo E agregada — é o que alimenta o requires_review derivado depois. As instruções
     // de formato/schema JSON são anexadas automaticamente pelo Spring AI via .entity(...).
+    // #241: vocabulário FECHADO para direction/paymentMethod e ISO obrigatório para a data —
+    // instrução melhora a adesão, mas a garantia de fato vem do pós-processamento determinístico
+    // (VisionFieldNormalizer) aplicado em toNormalizedBatch.
     private static final String PROMPT = """
             Você é um assistente que extrai dados de comprovantes financeiros (recibos, notas,
             comprovantes de PIX, faturas de compra). Analise a imagem e extraia APENAS os dados
@@ -102,13 +111,19 @@ public class VisionExtractor implements TransactionExtractor {
               e o ponto é separador de milhar: converta removendo os separadores de milhar e
               trocando a vírgula decimal por ponto. Leia os dígitos da imagem; nunca invente nem
               copie números deste texto.
-            - transactionDate: a data da transação no formato ISO yyyy-MM-dd. Copie a data EXATA
-              da imagem, INCLUSIVE o ano — nunca altere nem presuma o ano.
+            - transactionDate: a data da transação EXCLUSIVAMENTE no formato ISO yyyy-MM-dd
+              (ex.: 2026-06-28). Copie a data EXATA da imagem, INCLUSIVE o ano — nunca altere
+              nem presuma o ano. NUNCA use dd/mm/aaaa, dd.mm.aa nem qualquer separador de data.
             - description: o nome do RECEBEDOR/estabelecimento (a empresa ou pessoa), NÃO o tipo
               da transação (não use "Pix Enviado", "Pagamento", "Compra aprovada" e afins).
-            - direction: "debit" para saída de dinheiro (compra, despesa, pagamento, Pix enviado);
-              "credit" para entrada (recebimento, estorno, Pix recebido). Compra é "debit".
-            - paymentMethod: pix, credito, debito, dinheiro ou boleto, conforme a imagem.
+            - direction: EXATAMENTE uma destas duas palavras, nada além: "debit" para saída de
+              dinheiro (compra, despesa, pagamento, Pix enviado); "credit" para entrada
+              (recebimento, estorno, Pix recebido). Compra é "debit". Não escreva "saída",
+              "entrada", "Crédito" nem texto livre.
+            - paymentMethod: EXATAMENTE um destes valores, em minúsculas e sem acento: "pix",
+              "credito", "debito", "dinheiro", "boleto" ou "transferencia". Se a imagem não
+              indicar o método de pagamento, use null. NUNCA escreva texto livre — "Cartão de
+              Crédito" está ERRADO; o certo é "credito".
             - Para cada campo, informe uma confiança de 0.0 a 1.0 na sua leitura.
             - overallConfidence: sua confiança agregada na extração completa.
             - multipleTransactionsDetected: true SOMENTE se a imagem mostrar uma LISTA de vários
@@ -134,12 +149,14 @@ public class VisionExtractor implements TransactionExtractor {
               valor), como número decimal com ponto. No Brasil a vírgula é o separador decimal
               e o ponto é separador de milhar: converta removendo os separadores de milhar e
               trocando a vírgula decimal por ponto.
-            - transactionDate: a data da transação no formato ISO yyyy-MM-dd. Copie a data EXATA
-              de cada linha, inclusive o ano quando visível — nunca presuma um ano que não está
-              na imagem.
-            - direction: "debit" para saída/despesa, "credit" para entrada/receita — leia pela
-              seção/rótulo da linha (ex.: "Total de entradas"/"Total de saídas" da seção onde a
-              linha está), nunca infira só pelo sinal do valor impresso.
+            - transactionDate: a data da transação EXCLUSIVAMENTE no formato ISO yyyy-MM-dd
+              (ex.: 2026-06-28). Copie a data EXATA de cada linha, inclusive o ano quando
+              visível — nunca presuma um ano que não está na imagem. NUNCA use dd/mm/aaaa nem
+              variações com barra/ponto.
+            - direction: EXATAMENTE uma destas duas palavras, nada além: "debit" para
+              saída/despesa, "credit" para entrada/receita — leia pela seção/rótulo da linha
+              (ex.: "Total de entradas"/"Total de saídas" da seção onde a linha está), nunca
+              infira só pelo sinal do valor impresso.
             - declaredTotalDebits/declaredTotalCredits: só preencha se a imagem mostrar
               EXPLICITAMENTE um total impresso de débitos ou créditos do período (ex.: "Total de
               saídas: R$ 1.234,56"). Nunca calcule nem estime — deixe null se não houver total
@@ -178,6 +195,106 @@ public class VisionExtractor implements TransactionExtractor {
         return true;
     }
 
+    /**
+     * #241 — resize provider-agnóstico, ANTES do envio: reduz a imagem proporcionalmente quando
+     * o maior lado excede {@value #MAX_IMAGE_SIDE_PX}px.
+     *
+     * <p>Por quê: foto de celular moderna sai com ~12MP (4000×3000) e o custo de processamento
+     * cresce com a ÁREA de pixels, não com a resolução que o OCR de fato usa — acima de ~2048px
+     * só se paga contexto/latência (e VRAM, no Ollama local) sem ganho de acurácia; modelos como
+     * o {@code glm-ocr} trabalham com {@code image_size 336} (patches de 14px), então pixel
+     * excedente é puro desperdício. Viver AQUI (e não dentro de cada client) mantém uma única
+     * política, igual para Gemini, Ollama e para a 2ª chamada do caminho de extrato (#194).
+     *
+     * <p>Decisões não óbvias:
+     * <ul>
+     *   <li>Imagem já pequena ou não-decodificável → devolve os bytes ORIGINAIS sem re-encode
+     *       (re-encodar JPEG é lossy sem necessidade; e bytes que o {@code ImageIO} não lê são
+     *       repassados crus — degradar para "enviar como está" é melhor que derrubar a
+     *       extração inteira por causa do resize).</li>
+     *   <li>O mime ACOMPANHA os bytes re-encodados: escrever JPEG declarando image/png (ou o
+     *       contrário) faria o client montar o Resource com Content-Type errado. O formato é
+     *       decidido pelo MAGIC NUMBER real dos bytes (o mimeType do cliente é só um hint —
+     *       mesmo argumento do {@link #supports}); quando o JDK não tem writer para o formato
+     *       (não existe writer de WebP no ImageIO), re-encoda em PNG e declara image/png.</li>
+     * </ul>
+     */
+    private PreparedImage prepareImage(byte[] imageBytes, MimeType declaredMime) {
+        PreparedImage original = new PreparedImage(new ByteArrayResource(imageBytes), declaredMime);
+
+        BufferedImage image;
+        try {
+            image = ImageIO.read(new ByteArrayInputStream(imageBytes));
+        } catch (IOException e) {
+            // Header bate com um formato que o reader conhece mas os dados estão truncados/
+            // corrompidos — não é erro do usuário (supports() já validou que "parece imagem").
+            log.debug("Resize ignorado: ImageIO não conseguiu decodificar a imagem ({}); "
+                    + "enviando os bytes originais", e.getMessage());
+            return original;
+        }
+        if (image == null) {
+            // Nenhum reader do JDK reivindica o conteúdo (ex.: WebP, HEIC) — mesmo degradação.
+            return original;
+        }
+
+        int longestSide = Math.max(image.getWidth(), image.getHeight());
+        if (longestSide <= MAX_IMAGE_SIDE_PX) {
+            return original;
+        }
+
+        double scale = (double) MAX_IMAGE_SIDE_PX / longestSide;
+        int width = Math.max(1, (int) Math.round(image.getWidth() * scale));
+        int height = Math.max(1, (int) Math.round(image.getHeight() * scale));
+
+        // TYPE_INT_RGB de propósito (não cópia da imagem original): o writer de JPEG/GIF não
+        // lida com alpha, e a conversão implícita de pixel TRANSPARENTE é PRETA — pintar de
+        // branco ANTES de desenhar evita que screenshot PNG com fundo transparente vire fundo
+        // preto no comprovante.
+        BufferedImage resized = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        Graphics2D graphics = resized.createGraphics();
+        try {
+            graphics.setColor(Color.WHITE);
+            graphics.fillRect(0, 0, width, height);
+            graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                    RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            graphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+            graphics.drawImage(image, 0, 0, width, height, null);
+        } finally {
+            graphics.dispose();
+        }
+
+        String format;
+        MimeType resizedMime;
+        if (startsWith(imageBytes, JPEG)) {
+            format = "jpeg";
+            resizedMime = MimeTypeUtils.IMAGE_JPEG;
+        } else if (startsWith(imageBytes, GIF)) {
+            format = "gif";
+            resizedMime = MimeTypeUtils.IMAGE_GIF;
+        } else {
+            // PNG, WebP e qualquer outro (magic não reconhecido acima) viram PNG: é o único
+            // formato da lista com writer garantido no JDK para imagem com "qualquer origem".
+            format = "png";
+            resizedMime = MimeTypeUtils.IMAGE_PNG;
+        }
+
+        ByteArrayOutputStream output = new ByteArrayOutputStream((int) (imageBytes.length / 2));
+        try {
+            if (!ImageIO.write(resized, format, output)) {
+                // Guarda defensivo: writer ausente para o formato escolhido → devolve o original.
+                return original;
+            }
+        } catch (IOException e) {
+            log.warn("Resize ignorado: falha ao re-encodar a imagem como {} ({}); "
+                    + "enviando os bytes originais", format, e.getMessage());
+            return original;
+        }
+        return new PreparedImage(new ByteArrayResource(output.toByteArray()), resizedMime);
+    }
+
+    /** Par (recurso de imagem, mime) que descreve EXATAMENTE os bytes do recurso — nunca um sem o outro. */
+    private record PreparedImage(Resource resource, MimeType mimeType) {}
+
     @Override
     public ImportSourceType sourceType() {
         return ImportSourceType.IMAGE;
@@ -201,8 +318,12 @@ public class VisionExtractor implements TransactionExtractor {
         // mimeType do cliente é só um HINT pro client montar o Resource — quem decide se é
         // imagem de verdade é o supports() por magic number, chamado antes pelo router.
         String mimeType = input.mimeType() != null ? input.mimeType() : "image/jpeg";
-        MimeType mime = MimeTypeUtils.parseMimeType(mimeType);
-        Resource imageResource = new ByteArrayResource(imageBytes);
+        // #241 — resize provider-agnóstico ANTES de qualquer chamada (ver prepareImage). Resource
+        // e mime saem de lá juntos: o mime nunca descreve bytes diferentes dos realmente enviados,
+        // e a 2ª chamada do caminho de extrato (#194) reusa o MESMO par já reduzido.
+        PreparedImage prepared = prepareImage(imageBytes, MimeTypeUtils.parseMimeType(mimeType));
+        Resource imageResource = prepared.resource();
+        MimeType mime = prepared.mimeType();
 
         VisionModelClient winner = null;
         LlmReceiptExtractionDTO raw = null;
@@ -365,13 +486,17 @@ public class VisionExtractor implements TransactionExtractor {
         }
         fields.put("amount", new StagedFieldValueDTO(amount, amountConfidence));
 
-        NormalizedDate date = normalizeDate(line.transactionDate(), line.transactionDateConfidence());
-        fields.put("transaction_date", new StagedFieldValueDTO(date.isoValue(), date.confidence()));
+        // #241 — mesmas regras determinísticas do caminho de comprovante (ver normalizeToField):
+        // linha de extrato vem do MESMO modelo e devolve os mesmos formatos fora do padrão.
+        fields.put("transaction_date",
+                normalizeToField(line.transactionDate(), line.transactionDateConfidence(),
+                        VisionFieldNormalizer::normalizeDate));
 
         fields.put("description",
                 new StagedFieldValueDTO(blankToNull(line.description()), clampConfidence(line.descriptionConfidence())));
         fields.put("direction",
-                new StagedFieldValueDTO(normalizeDirection(line.direction()), clampConfidence(line.directionConfidence())));
+                normalizeToField(line.direction(), line.directionConfidence(),
+                        VisionFieldNormalizer::normalizeDirection));
 
         return new NormalizedTransactionDTO(
                 null,
@@ -401,7 +526,12 @@ public class VisionExtractor implements TransactionExtractor {
             return;
         }
         BigDecimal sum = lines.stream()
-                .filter(line -> direction.equalsIgnoreCase(normalizeDirection(line.direction())))
+                // normalizeDirection devolve null quando não reconhece (#241); equalsIgnoreCase
+                // com null é false, então linha de direção NÃO reconhecida fica FORA da soma —
+                // contar como "debit" (o default antigo) inflaria o total de débitos em erro
+                // de leitura. Mismatch aqui é só log, nunca gate (ver reconcileTotals).
+                .filter(line -> direction.equalsIgnoreCase(
+                        VisionFieldNormalizer.normalizeDirection(line.direction())))
                 .map(LlmStatementExtractionDTO.Line::amount)
                 .filter(Objects::nonNull)
                 .map(BigDecimal::abs)
@@ -423,8 +553,9 @@ public class VisionExtractor implements TransactionExtractor {
      * GUARDA-CORPO (§2.g) + mapeamento do caminho de COMPROVANTE único. Revalida a
      * plausibilidade e converte a saída plana do modelo para o schema normalizado da Fase 0. O
      * {@code amount} é obrigatório e plausível (&gt; 0) — sem ele não há transação a lançar,
-     * então falha a extração. Data ilegível não derruba a extração (o usuário completa na
-     * revisão), mas zera a confiança para exigir olho.
+     * então falha a extração. Data/direção/método ilegíveis não derrubam a extração (o usuário
+     * completa na revisão): o valor ORIGINAL fica no staged com confiança 0.0 (#241, ver
+     * {@link #normalizeToField}).
      *
      * <p>Só chamado quando {@code multipleTransactionsDetected != true} — o caso "é extrato" já
      * foi desviado em {@link #extract(ExtractionInput)} para {@link #extractStatement}
@@ -441,16 +572,24 @@ public class VisionExtractor implements TransactionExtractor {
         Map<String, StagedFieldValueDTO> fields = new LinkedHashMap<>();
         fields.put("amount", new StagedFieldValueDTO(raw.amount(), clampConfidence(raw.amountConfidence())));
 
-        NormalizedDate date = normalizeDate(raw.transactionDate(), raw.transactionDateConfidence());
-        fields.put("transaction_date", new StagedFieldValueDTO(date.isoValue(), date.confidence()));
+        // #241 — pós-processamento determinístico dos campos categóricos: o modelo local devolve
+        // data em dd/mm/aaaa e paymentMethod/direction em texto livre apesar do prompt. Quando o
+        // normalizador RECONHECE, o staged recebe o valor canônico com a confiança do modelo;
+        // quando não, o valor ORIGINAL permanece (o revisor vê o que a imagem devolveu) com
+        // confiança 0.0 — mesma filosofia da sanidade central do ImportService ("nunca apaga o
+        // valor", só zera a confiança).
+        fields.put("transaction_date", normalizeToField(
+                raw.transactionDate(), raw.transactionDateConfidence(), VisionFieldNormalizer::normalizeDate));
 
         fields.put("description",
                 new StagedFieldValueDTO(blankToNull(raw.description()), clampConfidence(raw.descriptionConfidence())));
-        fields.put("direction",
-                new StagedFieldValueDTO(normalizeDirection(raw.direction()), clampConfidence(raw.directionConfidence())));
+        fields.put("direction", normalizeToField(
+                raw.direction(), raw.directionConfidence(), VisionFieldNormalizer::normalizeDirection));
+        // O campo só entra no mapa se o MODELO preencheu algo (sem o que normalizar não há o que
+        // revisar) — null/ausente continua sendo "campo não informado", não "campo desconhecido".
         if (blankToNull(raw.paymentMethod()) != null) {
-            fields.put("payment_method",
-                    new StagedFieldValueDTO(raw.paymentMethod(), clampConfidence(raw.paymentMethodConfidence())));
+            fields.put("payment_method", normalizeToField(
+                    raw.paymentMethod(), raw.paymentMethodConfidence(), VisionFieldNormalizer::normalizePaymentMethod));
         }
 
         NormalizedTransactionDTO tx = new NormalizedTransactionDTO(
@@ -474,32 +613,30 @@ public class VisionExtractor implements TransactionExtractor {
                 client.providerId(), client.modelId(), (int) latencyMs, fallbackFrom, fallbackReason);
     }
 
-    /** Normaliza para "debit"/"credit"; qualquer coisa não reconhecida cai em "debit" (compra é o caso comum). */
-    private String normalizeDirection(String raw) {
-        return "credit".equalsIgnoreCase(raw != null ? raw.trim() : null) ? "credit" : "debit";
-    }
-
     /**
-     * Parseia a data ISO. Se ausente/ilegível, devolve valor null com confiança 0.0 — força a
-     * revisão sem derrubar a extração inteira (o usuário completa a data na tela de revisão).
+     * #241 — regra ÚNICA de pós-processamento dos campos categóricos e de data. Se o
+     * {@code normalizador} RECONHECE o valor, o staged leva o valor normalizado com a confiança
+     * que o modelo declarou; se NÃO reconhece (devolve null), o VALOR ORIGINAL permanece no
+     * staged com confiança 0.0 — nunca descartamos o que foi lido (o revisor precisa ver o que
+     * a imagem devolveu para corrigir, e a sanidade central do ImportService segue o mesmo
+     * "nunca apaga o valor"). Valor ausente em branco vira (null, 0.0) mesmo antes do
+     * normalizador.
+     *
+     * <p>Observação honesta sobre o "forçar revisão": hoje o {@code deriveRequiresReview} do
+     * {@code ImportService} só olha a confiança AGREGADA e a do amount — confiança 0.0 em data/
+     * direção/método sinaliza dúvida no staged, mas por si só ainda não vira {@code requires_review}
+     * quando as outras confianças estão altas.
      */
-    private NormalizedDate normalizeDate(String rawDate, Double rawConfidence) {
-        String trimmed = blankToNull(rawDate);
+    private StagedFieldValueDTO normalizeToField(
+            String rawValue, Double rawConfidence, Function<String, String> normalizer) {
+        String trimmed = blankToNull(rawValue);
         if (trimmed == null) {
-            return new NormalizedDate(null, BigDecimal.ZERO);
+            return new StagedFieldValueDTO(null, BigDecimal.ZERO);
         }
-        // O modelo às vezes devolve a data em pt-BR (dd/MM/yyyy) apesar do pedido de ISO.
-        // Tenta ISO e depois o formato brasileiro — recuperar a data é melhor que descartá-la;
-        // só zera a confiança quando NENHUM formato conhecido casa (aí o usuário completa na revisão).
-        for (DateTimeFormatter fmt : List.of(DateTimeFormatter.ISO_LOCAL_DATE, BR_DATE)) {
-            try {
-                LocalDate parsed = LocalDate.parse(trimmed, fmt);
-                return new NormalizedDate(parsed.toString(), clampConfidence(rawConfidence));
-            } catch (DateTimeParseException ignored) {
-                // tenta o próximo formato
-            }
-        }
-        return new NormalizedDate(null, BigDecimal.ZERO);
+        String normalized = normalizer.apply(trimmed);
+        return normalized != null
+                ? new StagedFieldValueDTO(normalized, clampConfidence(rawConfidence))
+                : new StagedFieldValueDTO(trimmed, BigDecimal.ZERO);
     }
 
     /** Confiança em [0,1]; null vira 0.0 (ausência = duvidoso). */
@@ -514,6 +651,4 @@ public class VisionExtractor implements TransactionExtractor {
     private String blankToNull(String value) {
         return (value == null || value.isBlank()) ? null : value.trim();
     }
-
-    private record NormalizedDate(String isoValue, BigDecimal confidence) {}
 }

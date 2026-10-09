@@ -137,12 +137,59 @@ class VisionExtractorTest {
                 .extract(input(IMAGE, "image/png"))
                 .transactions().get(0);
 
-        // Data ilegível → valor null + confiança 0 (força revisão), mas a extração segue.
-        assertThat(tx.fields().get("transaction_date").value()).isNull();
+        // Data ilegível (#241): o valor ORIGINAL fica no staged (o revisor vê o que o modelo
+        // devolveu — mesma "nunca apaga o valor" da sanidade central do ImportService) com
+        // confiança 0 (força revisão), mas a extração segue.
+        assertThat(tx.fields().get("transaction_date").value()).isEqualTo("sem-data");
         assertThat(tx.fields().get("transaction_date").confidence()).isEqualByComparingTo("0");
         // "credit" preservado; payment_method null é OMITIDO do mapa.
         assertThat(tx.fields().get("direction").value()).isEqualTo("credit");
         assertThat(tx.fields()).doesNotContainKey("payment_method");
+    }
+
+    // --- #241 — pós-processamento determinístico no ponto de mapeamento (comprovante) ---
+
+    @Test
+    void camposEmTextoLivreSaoNormalizadosParaVocabularioFechado() {
+        // Exatamente o padrão observado no PoC do qwen3-vl:8b-instruct: data em dd/mm/aaaa,
+        // direction com acento/caixa e paymentMethod como frase — tudo fora do vocabulário,
+        // mas RECONHECÍVEL. O normalizador deve canonicalizar preservando a confiança do modelo.
+        LlmReceiptExtractionDTO textoLivre = new LlmReceiptExtractionDTO(
+                new BigDecimal("127.50"), 0.98,
+                "28/06/2026", 0.90,
+                "PADARIA SAO JOSE", 0.90,
+                "Crédito", 0.85,
+                "Cartao de Credito", 0.80,
+                0.94, false);
+
+        NormalizedTransactionDTO tx = visionReturning(textoLivre)
+                .extract(input(IMAGE, "image/jpeg"))
+                .transactions().get(0);
+
+        assertThat(tx.fields().get("transaction_date").value()).isEqualTo("2026-06-28");
+        assertThat(tx.fields().get("transaction_date").confidence()).isEqualByComparingTo("0.90");
+        assertThat(tx.fields().get("direction").value()).isEqualTo("credit");
+        assertThat(tx.fields().get("payment_method").value()).isEqualTo("credito");
+        assertThat(tx.fields().get("payment_method").confidence()).isEqualByComparingTo("0.80");
+    }
+
+    @Test
+    void campoNaoReconhecidoFicaComValorOriginalEConfiancaZero() {
+        // Fora do vocabulário (não RECONHECÍVEL): o valor original permanece no staged — o
+        // revisor precisa ver o que a imagem devolveu — e a confiança do campo cai a 0.0.
+        LlmReceiptExtractionDTO foraDoVocabulario = new LlmReceiptExtractionDTO(
+                new BigDecimal("50.00"), 0.9,
+                "28/06/2026", 0.9, "MERCADO", 0.9,
+                "saída", 0.9, "vale-refeicao", 0.9, 0.9, false);
+
+        NormalizedTransactionDTO tx = visionReturning(foraDoVocabulario)
+                .extract(input(IMAGE, "image/jpeg"))
+                .transactions().get(0);
+
+        assertThat(tx.fields().get("direction").value()).isEqualTo("saída");
+        assertThat(tx.fields().get("direction").confidence()).isEqualByComparingTo("0");
+        assertThat(tx.fields().get("payment_method").value()).isEqualTo("vale-refeicao");
+        assertThat(tx.fields().get("payment_method").confidence()).isEqualByComparingTo("0");
     }
 
     // --- #194 — caminho de EXTRATO: 2ª chamada ao MESMO winner quando a 1ª sinaliza
