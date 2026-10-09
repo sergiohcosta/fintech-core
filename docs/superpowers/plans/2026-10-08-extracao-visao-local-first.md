@@ -173,3 +173,30 @@ com os cuidados da spec §5. **Não** implementar neste ciclo.
 lista, com revisão humana); vocabulário fechado + validação determinística (data/direção/pgto);
 revisão forçada efetiva para resultado local; descartar `llama3.2-vision` e `glm-ocr` como
 extrator de valor.
+
+---
+
+## Task 7 — Endurecimento (#241) — aprovado 2026-10-09
+
+**Objetivo:** tornar `qwen3-vl:8b-instruct` viável em produção (subir o "exato" de 34% → ~90%+).
+
+**Mudanças:**
+1. Modelo (config): default `OLLAMA_MODEL` → `qwen3-vl:8b-instruct` em `application.properties` e
+   `application-prod.properties`; no ConfigMap `fintech-config` do repo `homelab-k8s`.
+2. `VisionExtractor.PROMPT`: vocabulário fechado — `direction ∈ {debit, credit}`;
+   `paymentMethod ∈ {pix, credito, debito, dinheiro, boleto, transferencia, null}`; data ISO.
+3. Pós-processamento determinístico (em `VisionExtractor`): normalizar `transactionDate`
+   (`dd/mm/aaaa`, `dd.mm.aa`, `dd-mm-aaaa` → ISO; inválida → mantém + força `requires_review`);
+   mapear `paymentMethod` de texto livre → enum.
+4. Resize de imagem (provider-agnóstico, antes do envio): lado maior ≤ 2048px via `ImageIO`.
+5. Testes: unit tests puros p/ normalização de data e mapeamento de `paymentMethod`.
+
+**Fora de escopo:** inverter `@Order`, remover Gemini, caminho de lista (#194), roteamento.
+
+**Worktree:** `feature/vision-local-hardening` de `develop`. **SemVer:** MINOR (comportamento
+observável muda sem alterar contrato).
+
+- [ ] Worktree criada
+- [ ] Mudanças 1–5 implementadas
+- [ ] Testes verdes
+- [ ] Diff revisado e merge em `develop`
