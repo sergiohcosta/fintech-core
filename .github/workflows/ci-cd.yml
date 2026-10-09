@@ -136,6 +136,60 @@ jobs:
             APP_SHA=${{ github.sha }}
           tags: ${{ env.REGISTRY }}/fintech-core-frontend:${{ env.SHA_TAG }}
 
+  # Scan de CVE/SBOM das imagens buildadas (#166). Roda DEPOIS do push pro GHCR
+  # (needs: build-and-push) para escanear a imagem exata que será deployada.
+  #
+  # Política: BLOQUEAR crítico. `severity: CRITICAL,HIGH` filtra o que é reportado e
+  # `exit-code: 1` faz o job FALHAR quando há CVE nesses níveis — a imagem contaminada
+  # fica visível no log (tabela de CVEs) e o pipeline acusa o erro. `ignore-unfixed: true`
+  # não falha em vulnerabilidade sem fix publicado (reporta, mas não trava o pipeline
+  # refém do fornecedor — bloquear sem remediar disponível só geraria ruído).
+  #
+  # Pin por SHA imutável (57a97c7... = v0.35.0): a tag "0.28.0" foi force-pushada com
+  # infostealer no ataque de supply chain de mar/2026 (GHSA-69fq-xp46-6x23 /
+  # CVE-2026-33634) e removida na remediação — não existe mais. v0.35.0 é a ÚNICA tag
+  # que nunca foi comprometida (imutável desde 04/mar/2026); pinar por SHA elimina o
+  # risco de tag hijacking num passo cuja função é justamente segurança.
+  trivy-scan:
+    name: Scan de CVE (Trivy)
+    needs: build-and-push
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      REGISTRY: ghcr.io/sergiohcosta
+      SHA_TAG: sha-${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      # Login no GHCR pra o Trivy autenticar o pull das imagens (mesmo padrão do
+      # build-and-push; packages do repo público também permitem pull anônimo, mas
+      # autenticar evita rate-limit e é a prática padrão de CI).
+      - name: Login no GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Scan backend (Trivy)
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        with:
+          scan-type: image
+          image-ref: ${{ env.REGISTRY }}/fintech-core-backend:${{ env.SHA_TAG }}
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+          ignore-unfixed: true
+          format: table
+      - name: Scan frontend (Trivy)
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        with:
+          scan-type: image
+          image-ref: ${{ env.REGISTRY }}/fintech-core-frontend:${{ env.SHA_TAG }}
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+          ignore-unfixed: true
+          format: table
+
   # Deploy verificado via reusable workflow (.github/workflows/deploy-env.yml):
   # cada ambiente faz apply + gate de rollout + smoke test + rollback automático.
   # Roda no runner self-hosted (InClusterConfig + RBAC do gha-runner por namespace).

@@ -212,8 +212,10 @@ public class CsvExtractor implements TransactionExtractor {
         if (amount != null) {
             return amount.signum() < 0 ? "debit" : "credit";
         }
-        // Sem sinal e sem coluna de tipo legível: cai no caso mais comum (compra), mesma
-        // convenção conservadora da Fase 1 (VisionExtractor.normalizeDirection).
+        // Sem sinal e sem coluna de tipo legível: cai no caso mais comum (compra). Convenção
+        // conservadora da Fase 1 — no caminho de VISÃO o default "debit" saiu em #241 (direção
+        // fabricada era pior que ausente), mas aqui o CSV determinístico segue assumindo compra
+        // quando a fonte não diz nada.
         return "debit";
     }
 
