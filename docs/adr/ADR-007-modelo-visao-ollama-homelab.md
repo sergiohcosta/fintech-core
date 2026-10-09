@@ -240,6 +240,20 @@ Leitura: os campos **críticos** (valor/data/direção) ficam em 93–99% e não
 o "exato" baixo é sobretudo **vocabulário/normalização**. O `qwen3-vl:8b-instruct` é viável;
 faltam o vocabulário fechado (pgto/direção), a validação de data e a revisão forçada.
 
+**PoC endurecido (#241, 2026-10-09):** com o pipeline endurecido (prompt de vocabulário fechado +
+`VisionFieldNormalizer`), no mesmo corpus de 70 docs:
+
+| campo | antes | depois |
+|---|---|---|
+| pagamento | 65,0% | **100%** |
+| exato (todos) | 34,3% | **54,3%** |
+| valor / data / direção | 98,6 / 92,9 / 97,1 | iguais |
+
+Separando por dataset, o **BR sintético (40 docs)** fica **100% em valor/data/descrição/pgto e 95%
+em direção**; o `WildReceipt` real (30) tem **descrição 3,3%** — **falso baixo por anotação
+ruidosa** (o modelo lê `COSTCO WHOLESALE` onde a anotação diz `COSTCO`) — e data 83,3% (offset de
++2 dias, artefato da anotação). No **domínio BR**, o extrator endurecido é praticamente exato.
+
 **Conclusão (revisada):** o bloqueio principal era a **tag** `qwen3-vl:8b` (thinking), não o
 hardware. Com **`qwen3-vl:8b-instruct`** há um caminho local viável: 0 falhas e 100% em
 valor/data/descrição/direção no BR sintético (p50 5,3s) e leitura correta de foto real 12MP em
