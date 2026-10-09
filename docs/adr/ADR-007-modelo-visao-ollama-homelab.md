@@ -10,10 +10,13 @@ modelo local e a inversão do funil são **gateadas pelo experimento de acuráci
 spec `2026-10-08-extracao-visao-local-first-design.md`. Nenhuma linha de código Java muda para o
 preparo de ambiente (é configuração), mas a inversão do funil é mudança de comportamento.
 
-**Resultado do experimento (2026-10-08) — NÃO inverter ainda.** Nenhum modelo local se mostrou
-pronto para assumir o caminho primário sem trabalho de engenharia (ver "Evidência do
-experimento"). O Gemini **permanece primário** e o Ollama, fallback. A política local-first
-segue como alvo, bloqueada até que o extrator local seja endurecido e reavaliado.
+**Resultado do experimento (2026-10-08) — caminho viável encontrado, ainda não aprovado.** A
+intermitência do `qwen3-vl:8b` era o modo *thinking* (a tag default é a variante thinking;
+`think:false`/`/no_think` são ignorados nela). Com **`qwen3-vl:8b-instruct`** o mesmo corpus BR
+deu **0 falhas, 100% em valor/data/descrição/direção, p50 5,3s**, e uma foto real full-res (12MP)
+foi lida corretamente em ~12s. O bloqueio era a **tag**, não o hardware. O Gemini **permanece
+primário** até (a) validação em corpus real maior (único + lista) e (b) o endurecimento
+(normalizar data, vocabulário fechado, revisão forçada).
 
 Depende do pipeline de importação existente (porta `VisionModelClient`, `VisionExtractor`,
 funil Gemini→Ollama) e do homelab descrito no ADR-004.
@@ -198,13 +201,17 @@ de OCR/robustez, fotos full-res 12MP). Harness `benchmark.py` replicando o promp
 
 | modelo | valor | data | descrição | direção | pgto | exato | falhas | p50 | p95 |
 |---|---|---|---|---|---|---|---|---|---|
-| `qwen3-vl:8b` (sem teto) | 100 | 100 | 100 | 100 | 100 | 100 | **3/12** | 44s | >300s |
+| `qwen3-vl:8b` (thinking, sem teto) | 100 | 100 | 100 | 100 | 100 | 100 | **3/12** | 44s | >300s |
+| **`qwen3-vl:8b-instruct`** | 100 | 100 | 100 | 100 | 75 | 75 | **0/12** | **5,3s** | 5,4s |
 | `openbmb/minicpm-v4.5:8b` | 100 | 66,7 | 83,3 | 100 | 50 | 41,7 | 0/12 | 5s | 6s |
 | `glm-ocr` | 25 | 25 | 41,7 | 75 | 8,3 | 0 | 0/12 | 2s | 2s |
 | `llama3.2-vision` | 100 | 28,6 | 28,6 | 85,7 | 57,1 | 14,3 | **5/12** | 11s | 81s |
 
-- **`qwen3-vl`**: acerta 100% **quando responde**, mas o modo *thinking* estoura o timeout
-  (3/12 acima de 300s) e é lento (p50 44s) — intermitente, impróprio para produção.
+- **`qwen3-vl:8b` (thinking)**: acerta 100% **quando responde**, mas o modo *thinking* estoura o
+  timeout (3/12 acima de 300s) e é lento (p50 44s) — impróprio para produção.
+- **`qwen3-vl:8b-instruct`** (sem thinking): **0 falhas**, 100% em valor/data/descrição/direção,
+  p50 5,3s. A tag default era a causa da intermitência (`think:false`/`/no_think` são ignorados
+  na variante thinking).
 - **`minicpm-v4.5`**: o mais **confiável** (0 falhas), mas troca dia/mês (data 66,7%) e erra pgto.
 - **`glm-ocr`**: rápido e estável, mas **mangleia números** (`1.234,56`→`123456`; 25% em valor) —
   inaceitável num app financeiro.
@@ -214,11 +221,15 @@ de OCR/robustez, fotos full-res 12MP). Harness `benchmark.py` replicando o promp
 - `glm-ocr` **quebra em full-res** (emite lixo; só funciona reduzido ≤1600px) — e o pipeline
   **não redimensiona** a imagem.
 - `llama3.2-vision` alucinou código Python.
-- `qwen3-vl` leu corretamente as amostras (mas ~78–283s por foto full-res).
+- `qwen3-vl:8b` (thinking) leu corretamente as amostras, mas 78–283s/foto full-res;
+  `qwen3-vl:8b-instruct` leu a foto full-res corretamente em **~12s** (sem redimensionar).
 
-**Conclusão:** nenhum modelo local está pronto para substituir o Gemini como primário sem
-trabalho de engenharia (desligar *thinking* no `qwen3-vl`, normalizar data, redimensionar a
-imagem). **A inversão do funil fica bloqueada.** Próximos passos sugeridos, se a prioridade for
-retomada: (1) desligar thinking ou usar variante sem thinking / Ollama mais novo; (2) normalizar
-data no prompt/schema; (3) redimensionar imagens grandes antes do envio; (4) re-testar; (5)
-avaliar `minicpm-v4.5` como fallback de melhor qualidade com revisão forçada.
+**Conclusão (revisada):** o bloqueio principal era a **tag** `qwen3-vl:8b` (thinking), não o
+hardware. Com **`qwen3-vl:8b-instruct`** há um caminho local viável: 0 falhas e 100% em
+valor/data/descrição/direção no BR sintético (p50 5,3s) e leitura correta de foto real 12MP em
+~12s. **A inversão do funil segue não aprovada**, mas por falta de evidência em corpus real maior
+(único + lista) e dos ajustes de robustez — não por inviabilidade. Próximos passos: (1) validar
+`-instruct` em corpus real rotulado (único + lista, com revisão humana); (2) vocabulário fechado
+e validação determinística (data `DD/MM/AAAA`, direção, pgto — hoje 75%); (3) revisão forçada
+efetiva para resultado local; (4) redimensionar só se necessário (no `qwen3-vl` quase não muda:
+11,7s→10,8s; ajuda o `glm-ocr`). Descartar `llama3.2-vision` e `glm-ocr` como extrator de valor.
