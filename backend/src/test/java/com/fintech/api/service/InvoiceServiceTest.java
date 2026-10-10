@@ -187,6 +187,74 @@ class InvoiceServiceTest {
         verify(repository).save(any());
     }
 
+    // ---- findExisting ----
+
+    @Test
+    @DisplayName("findExisting: retorna vazio quando não existe — e não materializa fatura")
+    void findExistingReturnsEmptyWithoutCreating() {
+        Account account = buildAccount();
+
+        when(repository.findByAccountAndReferenceYearAndReferenceMonth(account, 2026, 7))
+                .thenReturn(Optional.empty());
+
+        Optional<Invoice> result = service.findExisting(account, 2026, 7);
+
+        assertThat(result).isEmpty();
+        // Contrato da leitura sem materialização (D2): findExisting nunca cria fatura.
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("findExisting: retorna a fatura existente sem alterá-la")
+    void findExistingReturnsExisting() {
+        Account account = buildAccount();
+        Invoice existing = Invoice.builder()
+                .id(UUID.randomUUID()).account(account)
+                .referenceYear(2026).referenceMonth(7)
+                .closingDate(LocalDate.of(2026, 8, 5))
+                .dueDate(LocalDate.of(2026, 8, 15))
+                .status(InvoiceStatus.CLOSED).build();
+
+        when(repository.findByAccountAndReferenceYearAndReferenceMonth(account, 2026, 7))
+                .thenReturn(Optional.of(existing));
+
+        Optional<Invoice> result = service.findExisting(account, 2026, 7);
+
+        assertThat(result).containsSame(existing);
+        verify(repository, never()).save(any());
+    }
+
+    // ---- scheduleFor ----
+
+    @Test
+    @DisplayName("scheduleFor: dueDay >= closingDay → vencimento no mesmo mês do fechamento")
+    void scheduleForDueSameMonthAsClosing() {
+        InvoiceService.InvoiceSchedule schedule = InvoiceService.scheduleFor(2026, 6, 5, 15);
+
+        // fatura jun/2026 fecha em jul/2026; 15 >= 5 → vence 15/jul
+        assertThat(schedule.closingDate()).isEqualTo(LocalDate.of(2026, 7, 5));
+        assertThat(schedule.dueDate()).isEqualTo(LocalDate.of(2026, 7, 15));
+    }
+
+    @Test
+    @DisplayName("scheduleFor: dueDay < closingDay → vencimento no mês seguinte ao fechamento")
+    void scheduleForDueNextMonthAfterClosing() {
+        InvoiceService.InvoiceSchedule schedule = InvoiceService.scheduleFor(2026, 12, 25, 5);
+
+        // fatura dez/2026 fecha em jan/2027 dia 25; 5 < 25 → vence 05/fev/2027
+        assertThat(schedule.closingDate()).isEqualTo(LocalDate.of(2027, 1, 25));
+        assertThat(schedule.dueDate()).isEqualTo(LocalDate.of(2027, 2, 5));
+    }
+
+    @Test
+    @DisplayName("scheduleFor: closingDay=31 fechando em fevereiro → capa no último dia (#137)")
+    void scheduleForCapsDayToMonthLength() {
+        InvoiceService.InvoiceSchedule schedule = InvoiceService.scheduleFor(2026, 1, 31, 31);
+
+        assertThat(schedule.closingDate()).isEqualTo(LocalDate.of(2026, 2, 28));
+        assertThat(schedule.dueDate()).isEqualTo(LocalDate.of(2026, 2, 28));
+    }
+
     // ---- listDTOs ----
 
     @Test

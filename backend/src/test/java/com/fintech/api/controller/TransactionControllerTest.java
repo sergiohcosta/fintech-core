@@ -3,12 +3,17 @@ package com.fintech.api.controller;
 import com.fintech.api.config.SecurityConfigurations;
 import com.fintech.api.config.SecurityFilter;
 import com.fintech.api.config.TokenService;
+import com.fintech.api.domain.enums.InvoiceStatus;
 import com.fintech.api.domain.enums.TransactionStatus;
+import com.fintech.api.domain.invoice.Invoice;
 import com.fintech.api.domain.tenant.Tenant;
 import com.fintech.api.domain.user.User;
+import com.fintech.api.dto.transaction.InstallmentPreviewDTO;
+import com.fintech.api.dto.transaction.InstallmentPreviewRequestDTO;
 import com.fintech.api.dto.transaction.TransactionRequestDTO;
 import com.fintech.api.dto.transaction.TransactionResponseDTO;
 import com.fintech.api.domain.enums.TransactionType;
+import com.fintech.api.exception.BusinessException;
 import com.fintech.api.service.TransactionService;
 import com.fintech.api.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -177,5 +182,66 @@ class TransactionControllerTest {
                                 .content(objectMapper.writeValueAsString(requestDTO)))
                                 .andExpect(status().isCreated())
                                 .andExpect(jsonPath("$[0].description").value("New Transaction"));
+        }
+
+        @Test
+        @DisplayName("POST /installment-preview retorna 200 com a lista de parcelas")
+        void shouldReturnInstallmentPreview() throws Exception {
+                UUID accountId = UUID.randomUUID();
+                InstallmentPreviewRequestDTO requestDTO = new InstallmentPreviewRequestDTO(
+                                new BigDecimal("300.00"), LocalDate.of(2026, 7, 8), 2, accountId);
+
+                Invoice julhoFechada = Invoice.builder().id(UUID.randomUUID())
+                                .referenceYear(2026).referenceMonth(7)
+                                .closingDate(LocalDate.of(2026, 8, 2)).dueDate(LocalDate.of(2026, 8, 10))
+                                .status(InvoiceStatus.PAID).build();
+
+                when(transactionService.previewInstallments(any(InstallmentPreviewRequestDTO.class), any(User.class)))
+                                .thenReturn(List.of(
+                                                new InstallmentPreviewDTO(1, 2, new BigDecimal("150.00"), 2026, 7,
+                                                                LocalDate.of(2026, 8, 2), LocalDate.of(2026, 8, 10),
+                                                                julhoFechada.getId(), InvoiceStatus.PAID, false),
+                                                new InstallmentPreviewDTO(2, 2, new BigDecimal("150.00"), 2026, 8,
+                                                                LocalDate.of(2026, 9, 2), LocalDate.of(2026, 9, 10),
+                                                                null, null, true)));
+
+                mockMvc.perform(post("/api/transactions/installment-preview")
+                                .header("Authorization", "Bearer " + token)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(requestDTO)))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$[0].installmentNumber").value(1))
+                                .andExpect(jsonPath("$[0].willCreate").value(false))
+                                .andExpect(jsonPath("$[0].invoiceStatus").value("PAID"))
+                                .andExpect(jsonPath("$[0].referenceMonth").value(7))
+                                .andExpect(jsonPath("$[0].dueDate").value("2026-08-10"))
+                                .andExpect(jsonPath("$[1].installmentNumber").value(2))
+                                .andExpect(jsonPath("$[1].willCreate").value(true));
+        }
+
+        @Test
+        @DisplayName("POST /installment-preview retorna 400 para conta não-cartão")
+        void shouldReturn400ForNonCreditCardPreview() throws Exception {
+                InstallmentPreviewRequestDTO requestDTO = new InstallmentPreviewRequestDTO(
+                                new BigDecimal("300.00"), LocalDate.of(2026, 7, 8), 2, UUID.randomUUID());
+
+                when(transactionService.previewInstallments(any(InstallmentPreviewRequestDTO.class), any(User.class)))
+                                .thenThrow(new BusinessException("O preview de parcelamento só se aplica a contas de cartão de crédito."));
+
+                mockMvc.perform(post("/api/transactions/installment-preview")
+                                .header("Authorization", "Bearer " + token)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(requestDTO)))
+                                .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("POST /installment-preview sem body válido → 400")
+        void shouldReturn400ForInvalidPreviewRequest() throws Exception {
+                mockMvc.perform(post("/api/transactions/installment-preview")
+                                .header("Authorization", "Bearer " + token)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{}"))
+                                .andExpect(status().isBadRequest());
         }
 }

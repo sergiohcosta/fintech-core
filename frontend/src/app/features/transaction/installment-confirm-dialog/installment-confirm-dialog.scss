@@ -1,0 +1,209 @@
+:host {
+  display: block;
+  color: var(--mat-sys-on-surface, #18231f);
+}
+
+.dialog-shell {
+  width: min(100%, 760px);
+}
+
+.dialog-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 26px 28px 4px;
+}
+
+.header-icon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border-radius: 16px;
+  color: var(--mat-sys-primary, #176b50);
+  background: var(--mat-sys-primary-container, #d5f1e2);
+
+  mat-icon {
+    width: 25px;
+    height: 25px;
+    font-size: 25px;
+  }
+}
+
+.eyebrow {
+  margin: 0 0 3px;
+  color: var(--mat-sys-primary, #176b50);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+h2[mat-dialog-title] {
+  margin: 0;
+  padding: 0;
+  font-size: 1.45rem;
+  font-weight: 650;
+  letter-spacing: -0.025em;
+}
+
+mat-dialog-content {
+  max-height: min(65vh, 560px);
+  padding: 16px 28px 20px;
+}
+
+.intro {
+  margin: 4px 0 18px;
+  color: var(--mat-sys-on-surface-variant, #59635e);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.all-skipped-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 4px 0 18px;
+  padding: 14px 16px;
+  border: 1px solid #e7c9a6;
+  border-radius: 12px;
+  color: #75430f;
+  background: #fff4e2;
+
+  > mat-icon {
+    flex: 0 0 auto;
+    margin-top: 1px;
+  }
+
+  > div {
+    display: grid;
+    gap: 4px;
+  }
+
+  strong {
+    font-size: 0.9rem;
+  }
+
+  span {
+    font-size: 0.82rem;
+    line-height: 1.45;
+  }
+}
+
+.installment-list {
+  display: grid;
+  gap: 8px;
+}
+
+.installment-row {
+  display: grid;
+  grid-template-columns: 76px minmax(130px, 1fr) 112px minmax(180px, auto);
+  align-items: center;
+  gap: 14px;
+  min-height: 76px;
+  padding: 12px 16px;
+  border: 1px solid var(--mat-sys-outline-variant, #d9e1dc);
+  border-radius: 14px;
+  background: var(--mat-sys-surface-container-low, #f7faf8);
+  transition: background-color 160ms ease, border-color 160ms ease;
+
+  &.is-skipped {
+    border-color: #e7c9a6;
+    background: #fff7eb;
+  }
+}
+
+.number-cell,
+.details-cell,
+.due-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.number {
+  color: var(--mat-sys-primary, #176b50);
+  font-size: 1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.row-caption,
+.due-caption {
+  color: var(--mat-sys-on-surface-variant, #69736d);
+  font-size: 0.7rem;
+}
+
+.amount {
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.invoice-label,
+.due-cell > span:last-child {
+  color: var(--mat-sys-on-surface-variant, #59635e);
+  font-size: 0.78rem;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  justify-self: end;
+  gap: 6px;
+  color: #176b50;
+  font-size: 0.78rem;
+  font-weight: 650;
+  white-space: nowrap;
+
+  mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.status-skipped {
+  color: #925314;
+}
+
+mat-dialog-actions {
+  gap: 8px;
+  padding: 8px 28px 24px;
+}
+
+@media (max-width: 640px) {
+  .dialog-header {
+    padding: 22px 20px 4px;
+  }
+
+  mat-dialog-content {
+    padding: 14px 20px 18px;
+  }
+
+  .installment-row {
+    grid-template-columns: 54px minmax(0, 1fr) auto;
+    gap: 8px 12px;
+    padding: 12px;
+  }
+
+  .due-cell {
+    grid-column: 2;
+  }
+
+  .status {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+    max-width: 120px;
+    white-space: normal;
+  }
+
+  mat-dialog-actions {
+    padding: 8px 20px 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .installment-row {
+    transition: none;
+  }
+}

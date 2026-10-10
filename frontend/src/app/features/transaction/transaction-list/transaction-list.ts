@@ -1,4 +1,5 @@
 import { Component, inject, OnInit, signal, computed, effect, untracked } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { MatTableModule } from '@angular/material/table';
@@ -305,7 +306,8 @@ export class TransactionList implements OnInit {
     // (dialog) fica para um refinamento — o usuário pode editar a transação materializada.
     this.recurrenceService.confirm(t.recurrenceRuleId, t.occurrenceDate, {}).subscribe({
       next: () => { this.snackBar.open('Ocorrência confirmada.', 'OK', { duration: 3000 }); this.loadTransactions(); },
-      error: () => this.snackBar.open('Erro ao confirmar ocorrência.', 'Fechar', { duration: 5000 }),
+      error: (error: unknown) =>
+        this.snackBar.open(this.getOccurrenceErrorMessage(error), 'Fechar', { duration: 5000 }),
     });
   }
 
@@ -315,6 +317,20 @@ export class TransactionList implements OnInit {
       next: () => { this.snackBar.open('Ocorrência pulada.', 'OK', { duration: 3000 }); this.loadTransactions(); },
       error: () => this.snackBar.open('Erro ao pular ocorrência.', 'Fechar', { duration: 5000 }),
     });
+  }
+
+  private getOccurrenceErrorMessage(error: unknown): string {
+    if (!(error instanceof HttpErrorResponse) || error.status !== 409) {
+      return 'Erro ao confirmar ocorrência.';
+    }
+
+    const body: unknown = error.error;
+    if (typeof body !== 'object' || body === null || !('message' in body)) {
+      return 'Não foi possível confirmar: a fatura da ocorrência não está aberta.';
+    }
+    return typeof body.message === 'string' && body.message.trim()
+      ? body.message
+      : 'Não foi possível confirmar: a fatura da ocorrência não está aberta.';
   }
 
   toggleExpand(id: string): void {
