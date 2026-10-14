@@ -1,0 +1,32 @@
+// Breakpoints do projeto.
+//   compact:  smartphones em portrait (<720px)
+//   medium:    smartphones em landscape + tablets (720-1023px)
+//   expanded:  desktop (>=1024px)
+//
+// Uso:
+//   @use './styles/breakpoints' as bp;
+//   .foo {
+//     @include bp.compact { ... }
+//     @include bp.expanded { ... }
+//   }
+//
+// Por que 3 zonas e nao 4 (Material default 600/840/1200/1600):
+// o app e single-user por sessao, nao dashboard denso de BI.
+// 3 zonas cobrem o corte "compact | expanded" sem granularity ociosa.
+
+// Limites superiores em .98px para evitar sub-pixel rendering off-by-one
+// entre Chrome, Safari e Firefox. 719.98px == 719px na pratica.
+$bp-compact-max: 719.98px;
+$bp-medium-max: 1023.98px;
+
+@mixin compact {
+  @media (max-width: $bp-compact-max) { @content; }
+}
+
+@mixin medium {
+  @media (min-width: 720px) and (max-width: $bp-medium-max) { @content; }
+}
+
+@mixin expanded {
+  @media (min-width: 1024px) { @content; }
+}

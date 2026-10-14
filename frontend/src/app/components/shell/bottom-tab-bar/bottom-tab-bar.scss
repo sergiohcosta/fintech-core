@@ -1,0 +1,82 @@
+@use '../../../../styles/breakpoints' as bp;
+
+:host {
+  display: none;
+}
+
+.tab-bar {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 1000;
+  display: flex;
+  justify-content: space-around;
+  padding: var(--space-xs, 4px) var(--space-sm, 8px) env(safe-area-inset-bottom);
+  background: var(--mat-sys-surface);
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  box-shadow: 0 -4px 16px rgb(0 0 0 / 8%);
+  animation: tab-bar-appear 150ms ease-out both;
+}
+
+.tab-item {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  min-height: var(--touch-target-min, 48px);
+  padding: 4px 2px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--mat-sys-on-surface-variant);
+  font: inherit;
+  font-size: 0.6875rem;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 120ms ease, color 120ms ease;
+
+  mat-icon {
+    width: 22px;
+    height: 22px;
+    font-size: 22px;
+  }
+
+  &.active {
+    color: var(--mat-sys-primary);
+    font-weight: 600;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: -2px;
+  }
+
+  &:hover { background: color-mix(in srgb, var(--mat-sys-primary) 8%, transparent); }
+  &:active { background: color-mix(in srgb, var(--mat-sys-primary) 14%, transparent); }
+}
+
+.quick-entry {
+  font-family: inherit;
+}
+
+@keyframes tab-bar-appear {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-bar { animation: none; }
+  .tab-item { transition: none; }
+}
+
+@include bp.compact {
+  :host { display: block; }
+}
+
+@include bp.expanded {
+  :host { display: none; }
+}
