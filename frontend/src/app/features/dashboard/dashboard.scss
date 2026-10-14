@@ -36,7 +36,8 @@
 
 .summary-cards {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  // 3 cards no template (Receita / Despesa / Saldo do periodo); 4 colunas deixa uma vaga.
+  grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
 }
 
