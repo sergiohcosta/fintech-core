@@ -10,7 +10,7 @@
 
 @if (loading()) {
   <div class="loading-center">
-    <mat-spinner diameter="40" />
+    <mat-spinner diameter="40" aria-label="Carregando" />
   </div>
 } @else if (error()) {
   <div class="error-state">

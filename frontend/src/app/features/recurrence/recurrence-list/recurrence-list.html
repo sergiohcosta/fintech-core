@@ -74,7 +74,7 @@
   }
 
   @if (loading()) {
-    <mat-spinner diameter="32" />
+    <mat-spinner diameter="32" aria-label="Carregando" />
   } @else if (rules().length === 0) {
     <p class="empty">Nenhuma recorrência ativa. Crie a primeira com "Nova recorrência".</p>
   } @else {

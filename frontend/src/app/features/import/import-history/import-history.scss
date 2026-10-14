@@ -25,7 +25,9 @@ table { width: 100%; }
   flex-direction: column;
   align-items: center;
   padding: 48px;
-  color: #999;
+  // Cor #999 -> #595959: contraste 2.8:1 -> 7:1 sobre branco.
+  // shortcut: quando o app ganhar um shared <empty-state> component, mover para lá.
+  color: #595959;
   mat-icon { font-size: 48px; height: 48px; width: 48px; margin-bottom: 16px; }
   p { margin: 0; font-size: 16px; }
 }

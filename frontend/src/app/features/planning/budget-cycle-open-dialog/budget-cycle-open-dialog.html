@@ -3,7 +3,7 @@
 <mat-dialog-content>
   @if (loadingPreview()) {
     <div class="loading-center">
-      <mat-spinner diameter="40"></mat-spinner>
+      <mat-spinner diameter="40" aria-label="Carregando"></mat-spinner>
     </div>
   } @else if (previewError()) {
     <p class="error-msg">{{ previewError() }}</p>
