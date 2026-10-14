@@ -115,7 +115,9 @@ table {
 .empty-state {
   text-align: center;
   padding: 3rem !important;
-  color: #888;
+  // Cor #888 -> #595959: contraste 3.5:1 -> 7:1 sobre branco (WCAG AA).
+  // shortcut: idem invoice-list; unificar em shared <empty-state> depois.
+  color: #595959;
 
   mat-icon {
     font-size: 48px;
