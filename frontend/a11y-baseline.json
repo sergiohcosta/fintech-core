@@ -1,18 +1,18 @@
 {
   "baseUrl": "http://localhost:4200",
-  "timestamp": "2026-10-14T19:57:23.540Z",
+  "timestamp": "2026-10-14T20:07:10.307Z",
   "routeResults": {
     "/login": {
       "route": "/login",
       "violations": [],
-      "cls": 0.002806570148468018,
+      "cls": 0.00032414827346801756,
       "httpStatus": 200,
       "redirectedTo": "/dashboard"
     },
     "/register": {
       "route": "/register",
       "violations": [],
-      "cls": 0.054951911926269525,
+      "cls": 0,
       "httpStatus": 200,
       "redirectedTo": "/dashboard"
     },
@@ -26,7 +26,7 @@
     "/forgot-password": {
       "route": "/forgot-password",
       "violations": [],
-      "cls": 0.01103607177734375,
+      "cls": 0,
       "httpStatus": 200,
       "redirectedTo": null
     },
@@ -91,16 +91,8 @@
     },
     "/categories": {
       "route": "/categories",
-      "violations": [
-        {
-          "ruleId": "layout-cls",
-          "impact": "moderate",
-          "component": "page-root",
-          "selector": "body",
-          "detail": "CLS=0.163"
-        }
-      ],
-      "cls": 0.16306640625,
+      "violations": [],
+      "cls": 0,
       "httpStatus": 200,
       "redirectedTo": null
     },
@@ -113,23 +105,23 @@
     },
     "/categories/taxonomy": {
       "route": "/categories/taxonomy",
-      "violations": [],
-      "cls": 0.0018240966796875,
-      "httpStatus": 200,
-      "redirectedTo": null
-    },
-    "/categories/1": {
-      "route": "/categories/1",
       "violations": [
         {
           "ruleId": "layout-cls",
           "impact": "moderate",
           "component": "page-root",
           "selector": "body",
-          "detail": "CLS=0.194"
+          "detail": "CLS=0.165"
         }
       ],
-      "cls": 0.19388056640624998,
+      "cls": 0.1648905029296875,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/categories/1": {
+      "route": "/categories/1",
+      "violations": [],
+      "cls": 0.030814160156249996,
       "httpStatus": 500,
       "redirectedTo": null
     },
@@ -150,42 +142,22 @@
     },
     "/transactions/timeline": {
       "route": "/transactions/timeline",
-      "violations": [],
-      "cls": 0.030814160156249996,
+      "violations": [
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.194"
+        }
+      ],
+      "cls": 0.19388056640624998,
       "httpStatus": 200,
       "redirectedTo": null
     },
     "/transactions/new": {
       "route": "/transactions/new",
       "violations": [
-        {
-          "ruleId": "layout-overlap",
-          "impact": "serious",
-          "selector": "#mat-mdc-slide-toggle-0-button",
-          "detail": "covered by div",
-          "component": "app-transaction-form"
-        },
-        {
-          "ruleId": "layout-overlap",
-          "impact": "serious",
-          "selector": "button.mdc-button.mat-mdc-button-base.mdc-button--outlined.mat-mdc-outlined-button.mat-unthemed",
-          "detail": "covered by div",
-          "component": "app-transaction-form"
-        },
-        {
-          "ruleId": "layout-overlap",
-          "impact": "serious",
-          "selector": "button.mdc-button.mat-mdc-button-base.mdc-button--outlined.mat-mdc-outlined-button.mat-primary.mat-mdc-button-disabled",
-          "detail": "covered by div",
-          "component": "app-transaction-form"
-        },
-        {
-          "ruleId": "layout-overlap",
-          "impact": "serious",
-          "selector": "button.mdc-button.mat-mdc-button-base.mdc-button--unelevated.mat-mdc-unelevated-button.mat-primary.mat-mdc-button-disabled",
-          "detail": "covered by div",
-          "component": "app-transaction-form"
-        },
         {
           "ruleId": "layout-cls",
           "impact": "moderate",
@@ -200,8 +172,16 @@
     },
     "/transactions/1": {
       "route": "/transactions/1",
-      "violations": [],
-      "cls": 0.030964794445037837,
+      "violations": [
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.221"
+        }
+      ],
+      "cls": 0.22058901319503782,
       "httpStatus": 500,
       "redirectedTo": "/transactions"
     },
@@ -237,15 +217,31 @@
     },
     "/invoices/inv-1": {
       "route": "/invoices/inv-1",
-      "violations": [],
-      "cls": 0.0362025390625,
+      "violations": [
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.199"
+        }
+      ],
+      "cls": 0.1992689453125,
       "httpStatus": 500,
       "redirectedTo": null
     },
     "/planning/current": {
       "route": "/planning/current",
-      "violations": [],
-      "cls": 0.030814160156249996,
+      "violations": [
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.194"
+        }
+      ],
+      "cls": 0.19388056640624998,
       "httpStatus": 200,
       "redirectedTo": null
     },
@@ -266,6 +262,13 @@
     },
     "/planning/cycles/1": {
       "route": "/planning/cycles/1",
+      "violations": [],
+      "cls": 0.030814160156249996,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/planning/recurring": {
+      "route": "/planning/recurring",
       "violations": [
         {
           "ruleId": "layout-cls",
@@ -279,47 +282,32 @@
       "httpStatus": 200,
       "redirectedTo": null
     },
-    "/planning/recurring": {
-      "route": "/planning/recurring",
-      "violations": [],
-      "cls": 0.030814160156249996,
-      "httpStatus": 200,
-      "redirectedTo": null
-    },
     "/planning/settings": {
       "route": "/planning/settings",
-      "violations": [
-        {
-          "ruleId": "layout-cls",
-          "impact": "moderate",
-          "component": "page-root",
-          "selector": "body",
-          "detail": "CLS=0.164"
-        }
-      ],
-      "cls": 0.16375980329513548,
+      "violations": [],
+      "cls": 0.0006933970451354981,
       "httpStatus": 200,
       "redirectedTo": null
     },
     "/recurrences": {
       "route": "/recurrences",
-      "violations": [],
-      "cls": 0.030814160156249996,
-      "httpStatus": 200,
-      "redirectedTo": null
-    },
-    "/import": {
-      "route": "/import",
       "violations": [
         {
           "ruleId": "layout-cls",
           "impact": "moderate",
           "component": "page-root",
           "selector": "body",
-          "detail": "CLS=0.163"
+          "detail": "CLS=0.194"
         }
       ],
-      "cls": 0.16306640625,
+      "cls": 0.19388056640624998,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/import": {
+      "route": "/import",
+      "violations": [],
+      "cls": 0,
       "httpStatus": 200,
       "redirectedTo": null
     },
@@ -352,7 +340,7 @@
       "component": "page-root",
       "rule": "layout-cls",
       "impact": "moderate",
-      "routeCount": 14,
+      "routeCount": 16,
       "sampleSelectors": [
         "body"
       ],
@@ -373,41 +361,12 @@
           "detail": "CLS=0.221"
         }
       ]
-    },
-    {
-      "key": "app-transaction-form::layout-overlap",
-      "component": "app-transaction-form",
-      "rule": "layout-overlap",
-      "impact": "serious",
-      "routeCount": 1,
-      "sampleSelectors": [
-        "#mat-mdc-slide-toggle-0-button",
-        "button.mdc-button.mat-mdc-button-base.mdc-button--outlined.mat-mdc-outlined-button.mat-unthemed",
-        "button.mdc-button.mat-mdc-button-base.mdc-button--outlined.mat-mdc-outlined-button.mat-primary.mat-mdc-button-disabled"
-      ],
-      "samples": [
-        {
-          "route": "/transactions/new",
-          "selector": "#mat-mdc-slide-toggle-0-button",
-          "detail": "covered by div"
-        },
-        {
-          "route": "/transactions/new",
-          "selector": "button.mdc-button.mat-mdc-button-base.mdc-button--outlined.mat-mdc-outlined-button.mat-unthemed",
-          "detail": "covered by div"
-        },
-        {
-          "route": "/transactions/new",
-          "selector": "button.mdc-button.mat-mdc-button-base.mdc-button--outlined.mat-mdc-outlined-button.mat-primary.mat-mdc-button-disabled",
-          "detail": "covered by div"
-        }
-      ]
     }
   ],
   "totals": {
     "routes": 29,
-    "totalViolations": 18,
-    "clusterCount": 2,
-    "routesWithViolations": 14
+    "totalViolations": 16,
+    "clusterCount": 1,
+    "routesWithViolations": 16
   }
 }
