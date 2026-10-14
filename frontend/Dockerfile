@@ -16,6 +16,14 @@ RUN npx ng build --configuration=homelab
 # Stage 2: Imagem final leve com Nginx Alpine
 FROM nginx:alpine
 
+# #246 (residual, pós-bump Spring/Jackson/tomcat): Trivy apontou 3 HIGH no Alpine
+# baked-in do nginx:alpine (libexpat CVE-2026-93990, pcre2 CVE-2026-103111, tiff
+# CVE-2026-4775). Pinar a tag não resolve — todas as tags nginx:alpine* foram
+# rebuildadas em 2026-10-14 sobre alpine 3.24.2 com os packages vulneráveis. O
+# `apk upgrade --no-cache` puxa as versões patched (libexpat 2.8.5-r0, pcre2
+# 10.49-r0, tiff 4.7.2-r0) sem trocar a base. Custo: 1 layer de poucos MB.
+RUN apk upgrade --no-cache
+
 # Remove a configuração padrão do Nginx e adiciona a nossa customizada para SPA
 RUN rm /etc/nginx/conf.d/default.conf
 COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
