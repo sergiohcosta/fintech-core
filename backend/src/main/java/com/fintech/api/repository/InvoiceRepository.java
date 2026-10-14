@@ -3,7 +3,9 @@ package com.fintech.api.repository;
 import com.fintech.api.domain.account.Account;
 import com.fintech.api.domain.enums.InvoiceStatus;
 import com.fintech.api.domain.invoice.Invoice;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -16,6 +18,27 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
 
     Optional<Invoice> findByAccountAndReferenceYearAndReferenceMonth(
             Account account, int referenceYear, int referenceMonth);
+
+    // #244: variante com lock pessimista (SELECT ... FOR UPDATE no Postgres). Adquirido dentro
+    // da MESMA transação do caller (InvoiceService.getOrCreate/close/pay ou TransactionService
+    // create/materializeFromRule via getOrCreate) — serializa duas transações que disputam a
+    // MESMA fatura; faturas diferentes não se bloqueiam. Necessário porque o `findBy` simples
+    // acima não impede que um close/pay concorrente mude o status entre o read e a gravação da
+    // parcela filha (race do #244).
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT i FROM Invoice i WHERE i.account = :account "
+            + "AND i.referenceYear = :referenceYear AND i.referenceMonth = :referenceMonth")
+    Optional<Invoice> findByAccountAndReferenceYearAndReferenceMonthForUpdate(
+            @Param("account") Account account,
+            @Param("referenceYear") int referenceYear,
+            @Param("referenceMonth") int referenceMonth);
+
+    // #244: variante de findById com lock pessimista — usada por InvoiceService.close/pay para
+    // serializar contra getOrCreate concorrente. findById simples não é anotado com @Lock
+    // porque a maioria dos callers (ex.: buildDTO/listDTOs) só quer leitura consistente.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT i FROM Invoice i WHERE i.id = :id")
+    Optional<Invoice> findByIdForUpdate(@Param("id") UUID id);
 
     List<Invoice> findByAccountOrderByReferenceYearDescReferenceMonthDesc(Account account);
 
