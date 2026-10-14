@@ -636,8 +636,8 @@ class TransactionServiceTest {
         when(accountRepository.findByIdAndTenant(account.getId(), user.getTenant()))
                 .thenReturn(Optional.of(account));
         when(creditCardDetailsRepository.findByAccount(account)).thenReturn(Optional.of(details));
-        when(invoiceService.findExisting(account, 2026, 5)).thenReturn(Optional.empty());
-        when(invoiceService.findExisting(account, 2026, 6)).thenReturn(Optional.of(junhoPaga));
+        when(invoiceService.findExistingForUpdate(account, 2026, 5)).thenReturn(Optional.empty());
+        when(invoiceService.findExistingForUpdate(account, 2026, 6)).thenReturn(Optional.of(junhoPaga));
         when(invoiceService.getOrCreate(account, 2026, 5)).thenReturn(
                 Invoice.builder().id(UUID.randomUUID()).account(account)
                         .referenceYear(2026).referenceMonth(5)
@@ -678,8 +678,8 @@ class TransactionServiceTest {
         when(accountRepository.findByIdAndTenant(account.getId(), user.getTenant()))
                 .thenReturn(Optional.of(account));
         when(creditCardDetailsRepository.findByAccount(account)).thenReturn(Optional.of(details));
-        when(invoiceService.findExisting(account, 2026, 5)).thenReturn(Optional.of(maioFechada));
-        when(invoiceService.findExisting(account, 2026, 6)).thenReturn(Optional.empty());
+        when(invoiceService.findExistingForUpdate(account, 2026, 5)).thenReturn(Optional.of(maioFechada));
+        when(invoiceService.findExistingForUpdate(account, 2026, 6)).thenReturn(Optional.empty());
         when(invoiceService.getOrCreate(account, 2026, 6)).thenReturn(
                 Invoice.builder().id(UUID.randomUUID()).account(account)
                         .referenceYear(2026).referenceMonth(6)
@@ -715,13 +715,13 @@ class TransactionServiceTest {
         when(creditCardDetailsRepository.findByAccount(account)).thenReturn(Optional.of(details));
         // set..dez não existem (stub genérico PRIMEIRO; os específicos de jul/ago abaixo
         // sobrescrevem — em Mockito o último stub que casa vence).
-        when(invoiceService.findExisting(eq(account), eq(2026), anyInt())).thenReturn(Optional.empty());
-        when(invoiceService.findExisting(account, 2026, 7)).thenReturn(Optional.of(
+        when(invoiceService.findExistingForUpdate(eq(account), eq(2026), anyInt())).thenReturn(Optional.empty());
+        when(invoiceService.findExistingForUpdate(account, 2026, 7)).thenReturn(Optional.of(
                 Invoice.builder().id(UUID.randomUUID()).account(account)
                         .referenceYear(2026).referenceMonth(7)
                         .closingDate(LocalDate.of(2026, 8, 2)).dueDate(LocalDate.of(2026, 8, 10))
                         .status(InvoiceStatus.PAID).build()));
-        when(invoiceService.findExisting(account, 2026, 8)).thenReturn(Optional.of(
+        when(invoiceService.findExistingForUpdate(account, 2026, 8)).thenReturn(Optional.of(
                 Invoice.builder().id(UUID.randomUUID()).account(account)
                         .referenceYear(2026).referenceMonth(8)
                         .closingDate(LocalDate.of(2026, 9, 2)).dueDate(LocalDate.of(2026, 9, 10))
@@ -765,7 +765,7 @@ class TransactionServiceTest {
         when(accountRepository.findByIdAndTenant(account.getId(), user.getTenant()))
                 .thenReturn(Optional.of(account));
         when(creditCardDetailsRepository.findByAccount(account)).thenReturn(Optional.of(details));
-        when(invoiceService.findExisting(eq(account), anyInt(), anyInt())).thenReturn(Optional.of(
+        when(invoiceService.findExistingForUpdate(eq(account), anyInt(), anyInt())).thenReturn(Optional.of(
                 Invoice.builder().id(UUID.randomUUID()).account(account)
                         .referenceYear(2026).referenceMonth(5)
                         .closingDate(LocalDate.of(2026, 6, 5)).dueDate(LocalDate.of(2026, 6, 15))
@@ -795,7 +795,7 @@ class TransactionServiceTest {
 
         service.create(dto, user);
 
-        verify(invoiceService, never()).findExisting(any(), anyInt(), anyInt());
+        verify(invoiceService, never()).findExistingForUpdate(any(), anyInt(), anyInt());
         verify(repository, times(3)).save(any());
     }
 
@@ -828,7 +828,7 @@ class TransactionServiceTest {
         assertThat(result).hasSize(1);
         verify(invoiceService).getOrCreate(account, 2026, 7);
         // A âncora explícita do documento manda: a importação nunca consulta status.
-        verify(invoiceService, never()).findExisting(any(), anyInt(), anyInt());
+        verify(invoiceService, never()).findExistingForUpdate(any(), anyInt(), anyInt());
     }
 
     // ---- regressão do escopo: avulsa no cartão NÃO descarta (só N>1) ----
@@ -863,7 +863,7 @@ class TransactionServiceTest {
         assertThat(result).hasSize(1);
         verify(invoiceService).getOrCreate(account, 2026, 5);
         // Avulsa (N=1) não consulta status: o descarte é exclusivo de compra parcelada.
-        verify(invoiceService, never()).findExisting(any(), anyInt(), anyInt());
+        verify(invoiceService, never()).findExistingForUpdate(any(), anyInt(), anyInt());
     }
 
     // ---- bordas de fatura existente OPEN e descarte intermediário ----
@@ -889,8 +889,8 @@ class TransactionServiceTest {
         when(accountRepository.findByIdAndTenant(account.getId(), user.getTenant()))
                 .thenReturn(Optional.of(account));
         when(creditCardDetailsRepository.findByAccount(account)).thenReturn(Optional.of(details));
-        when(invoiceService.findExisting(account, 2026, 5)).thenReturn(Optional.of(maioAberta));
-        when(invoiceService.findExisting(account, 2026, 6)).thenReturn(Optional.empty());
+        when(invoiceService.findExistingForUpdate(account, 2026, 5)).thenReturn(Optional.of(maioAberta));
+        when(invoiceService.findExistingForUpdate(account, 2026, 6)).thenReturn(Optional.empty());
         when(invoiceService.getOrCreate(account, 2026, 5)).thenReturn(maioAberta);
         when(invoiceService.getOrCreate(account, 2026, 6)).thenReturn(
                 Invoice.builder().id(UUID.randomUUID()).account(account)
@@ -926,13 +926,13 @@ class TransactionServiceTest {
         when(accountRepository.findByIdAndTenant(account.getId(), user.getTenant()))
                 .thenReturn(Optional.of(account));
         when(creditCardDetailsRepository.findByAccount(account)).thenReturn(Optional.of(details));
-        when(invoiceService.findExisting(account, 2026, 7)).thenReturn(Optional.empty());
-        when(invoiceService.findExisting(account, 2026, 8)).thenReturn(Optional.of(
+        when(invoiceService.findExistingForUpdate(account, 2026, 7)).thenReturn(Optional.empty());
+        when(invoiceService.findExistingForUpdate(account, 2026, 8)).thenReturn(Optional.of(
                 Invoice.builder().id(UUID.randomUUID()).account(account)
                         .referenceYear(2026).referenceMonth(8)
                         .closingDate(LocalDate.of(2026, 9, 2)).dueDate(LocalDate.of(2026, 9, 10))
                         .status(InvoiceStatus.CLOSED).build()));
-        when(invoiceService.findExisting(account, 2026, 9)).thenReturn(Optional.empty());
+        when(invoiceService.findExistingForUpdate(account, 2026, 9)).thenReturn(Optional.empty());
         when(invoiceService.getOrCreate(any(), anyInt(), anyInt()))
                 .thenAnswer(i -> Invoice.builder()
                         .id(UUID.randomUUID()).account(account)
@@ -973,8 +973,8 @@ class TransactionServiceTest {
         when(accountRepository.findByIdAndTenant(account.getId(), user.getTenant()))
                 .thenReturn(Optional.of(account));
         when(creditCardDetailsRepository.findByAccount(account)).thenReturn(Optional.of(details));
-        when(invoiceService.findExisting(eq(account), eq(2026), anyInt())).thenReturn(Optional.empty());
-        when(invoiceService.findExisting(account, 2026, 7)).thenReturn(Optional.of(
+        when(invoiceService.findExistingForUpdate(eq(account), eq(2026), anyInt())).thenReturn(Optional.empty());
+        when(invoiceService.findExistingForUpdate(account, 2026, 7)).thenReturn(Optional.of(
                 Invoice.builder().id(UUID.randomUUID()).account(account)
                         .referenceYear(2026).referenceMonth(7)
                         .closingDate(LocalDate.of(2026, 8, 5)).dueDate(LocalDate.of(2026, 8, 15))
@@ -1040,7 +1040,7 @@ class TransactionServiceTest {
         assertThat(result).hasSize(2);
         verify(invoiceService).getOrCreate(account, 2026, 6);
         verify(invoiceService).getOrCreate(account, 2026, 7);
-        verify(invoiceService, never()).findExisting(any(), anyInt(), anyInt());
+        verify(invoiceService, never()).findExistingForUpdate(any(), anyInt(), anyInt());
         // sanity: a fatura de junho existia fechada e mesmo assim recebeu a parcela
         assertThat(junhoFechada.getStatus()).isEqualTo(InvoiceStatus.CLOSED);
     }
@@ -1074,7 +1074,7 @@ class TransactionServiceTest {
                 .status(closedStatus).build();
 
         when(creditCardDetailsRepository.findByAccount(account)).thenReturn(Optional.of(details));
-        when(invoiceService.findExisting(account, 2026, 5)).thenReturn(Optional.of(fechada));
+        when(invoiceService.findExistingForUpdate(account, 2026, 5)).thenReturn(Optional.of(fechada));
 
         assertThatThrownBy(() -> service.materializeFromRule(
                 rule, LocalDate.of(2026, 5, 8), null, null, user))
@@ -1105,7 +1105,7 @@ class TransactionServiceTest {
                 .build();
 
         when(creditCardDetailsRepository.findByAccount(account)).thenReturn(Optional.of(details));
-        when(invoiceService.findExisting(account, 2026, 5)).thenReturn(Optional.empty());
+        when(invoiceService.findExistingForUpdate(account, 2026, 5)).thenReturn(Optional.empty());
         when(invoiceService.getOrCreate(account, 2026, 5)).thenReturn(
                 Invoice.builder().id(UUID.randomUUID()).account(account)
                         .referenceYear(2026).referenceMonth(5)
@@ -1145,7 +1145,7 @@ class TransactionServiceTest {
                 .status(InvoiceStatus.OPEN).build();
 
         when(creditCardDetailsRepository.findByAccount(account)).thenReturn(Optional.of(details));
-        when(invoiceService.findExisting(account, 2026, 5)).thenReturn(Optional.of(maioAberta));
+        when(invoiceService.findExistingForUpdate(account, 2026, 5)).thenReturn(Optional.of(maioAberta));
         when(invoiceService.getOrCreate(account, 2026, 5)).thenReturn(maioAberta);
         when(repository.save(any(Transaction.class))).thenAnswer(i -> i.getArgument(0));
 

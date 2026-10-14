@@ -49,14 +49,34 @@ public class InvoiceService {
 
     @Transactional
     public Invoice getOrCreate(Account account, int referenceYear, int referenceMonth) {
-        Optional<Invoice> existing = repository.findByAccountAndReferenceYearAndReferenceMonth(
-                account, referenceYear, referenceMonth);
+        // #244: lock pessimista (SELECT ... FOR UPDATE) serializa contra close/pay concorrentes.
+        // Sem ele, um close() entre esta leitura e o save() da parcela filha muda o status
+        // debaixo dos nossos pés e a parcela fica anexada a uma fatura CLOSED/PAID — exatamente
+        // a janela de corrida que o issue #244 documenta. Faturas diferentes não disputam o
+        // mesmo lock, então não introduzimos contenção entre faturas.
+        // Importante: este método NÃO revalida o status ao devolver a fatura existente — isso
+        // é responsabilidade do caller (TransactionService.create/materializeFromRule fazem
+        // findExistingForUpdate ANTES e descartam/recusam se != OPEN; o caminho de importação
+        // com âncora skipClosedInvoices=false usa getOrCreate direto e aceita fatura
+        // CLOSED/PAID por design). A revalidação aqui quebraria o import (que precisa anexar
+        // parcelas à fatura-alvo do documento mesmo que ela já esteja fechada) e duplicaria
+        // o check que o caller já fez no caminho manual/recorrência.
+        Optional<Invoice> existing = repository
+                .findByAccountAndReferenceYearAndReferenceMonthForUpdate(
+                        account, referenceYear, referenceMonth);
         if (existing.isPresent()) return existing.get();
 
         try {
             return self.createNewInvoice(account, referenceYear, referenceMonth);
         } catch (DataIntegrityViolationException e) {
             // Race condition: outra thread ganhou a corrida — retorna a fatura vencedora.
+            // O retry aqui cobre o caso de duas inserções simultâneas da MESMA fatura (UNIQUE
+            // constraint na V9); com o lock acima, duas getOrCreate simultâneas serializam e
+            // a vencedora cria; a perdedora bloqueia no SELECT FOR UPDATE, depois da vencedora
+            // commitar lê a fatura já criada via existing.isPresent() e segue. O catch
+            // DataIntegrityViolationException é a rede de segurança para a janela minúscula
+            // entre a leitura do locked finder (que retorna empty porque a linha não existe)
+            // e o INSERT da fatura (que outra thread pode ter ganhado).
             return repository.findByAccountAndReferenceYearAndReferenceMonth(
                             account, referenceYear, referenceMonth)
                     .orElseThrow(() -> new IllegalStateException(
@@ -115,6 +135,21 @@ public class InvoiceService {
         return repository.findByAccountAndReferenceYearAndReferenceMonth(account, referenceYear, referenceMonth);
     }
 
+    /**
+     * #244: variante com lock pessimista — mesma semântica de {@link #findExisting}, mas
+     * dentro de uma transação que disputa o lock de linha da fatura com {@link #close},
+     * {@link #pay} e outros callers de {@link #getOrCreate}. Usada por
+     * {@code TransactionService.create}/{@code materializeFromRule} antes de gravar a parcela
+     * filha — sem o lock, o status lido aqui pode divergir do status que {@code getOrCreate}
+     * (também sob lock) vai ver, e a parcela acaba anexada a uma fatura que fechou entre
+     * as duas leituras. O lock serializa as duas operações na MESMA transação lógica.
+     */
+    @Transactional
+    public Optional<Invoice> findExistingForUpdate(Account account, int referenceYear, int referenceMonth) {
+        return repository.findByAccountAndReferenceYearAndReferenceMonthForUpdate(
+                account, referenceYear, referenceMonth);
+    }
+
     // #137: "dia N ou o último dia do mês, o que vier primeiro" — mesma semântica do
     // BYMONTHDAY=-1 do motor de recorrência. Evita withDayOfMonth(31) estourar em meses curtos.
     private static LocalDate atDayCapped(LocalDate base, int day) {
@@ -134,6 +169,18 @@ public class InvoiceService {
     private Invoice loadByIdAndTenant(UUID id, Tenant tenant) {
         // Comparação por ID evita Lombok canEqual() em proxy detached do SecurityContext
         return repository.findById(id)
+                .filter(inv -> inv.getAccount().getTenant().getId().equals(tenant.getId()))
+                .orElseThrow(() -> new EntityNotFoundException("Fatura não encontrada."));
+    }
+
+    // #244: variante com lock pessimista para close/pay. Adquire SELECT ... FOR UPDATE na
+    // fatura-alvo — serializa contra getOrCreate concorrente (que adquire o mesmo lock na
+    // MESMA linha). Sem o lock, duas pay() simultâneas leem CLOSED, ambas passam pelo guard
+    // `if (status != CLOSED)` antes do markAsPaidIfClosed — só o markAsPaidIfClosed atômico
+    // barra a duplicação (rede final do #139). Com o lock, o close também serializa, e a
+    // janela "leitura status → gravação parcela" do #244 fica fechada ponta-a-ponta.
+    private Invoice loadByIdAndTenantForUpdate(UUID id, Tenant tenant) {
+        return repository.findByIdForUpdate(id)
                 .filter(inv -> inv.getAccount().getTenant().getId().equals(tenant.getId()))
                 .orElseThrow(() -> new EntityNotFoundException("Fatura não encontrada."));
     }
@@ -162,7 +209,10 @@ public class InvoiceService {
 
     @Transactional
     public InvoiceResponseDTO close(UUID id, Tenant tenant) {
-        Invoice invoice = loadByIdAndTenant(id, tenant);
+        // #244: lock pessimista antes de ler o status — serializa contra getOrCreate concorrente
+        // (que disputa o mesmo lock). Sem o lock, a checagem `status != OPEN` poderia ver OPEN
+        // enquanto um getOrCreate simultâneo, no momento de gravar a parcela, vê CLOSED.
+        Invoice invoice = loadByIdAndTenantForUpdate(id, tenant);
         if (invoice.getStatus() != InvoiceStatus.OPEN) {
             throw new IllegalStateException(
                     "Só é possível fechar faturas com status OPEN. Status atual: " + invoice.getStatus());
@@ -175,7 +225,11 @@ public class InvoiceService {
 
     @Transactional
     public InvoiceResponseDTO pay(UUID id, Tenant tenant, User user, UUID sourceAccountId, LocalDate paymentDate) {
-        Invoice invoice = loadByIdAndTenant(id, tenant);
+        // #244: lock pessimista aqui também — serializa contra getOrCreate concorrente. O
+        // markAsPaidIfClosed abaixo (UPDATE atômico, herança do #139) já é a rede final contra
+        // dois pay() simultâneos, mas o lock fecha a janela entre a leitura do status e o
+        // markAsPaidIfClosed para qualquer getOrCreate que esteja no meio do caminho.
+        Invoice invoice = loadByIdAndTenantForUpdate(id, tenant);
         if (invoice.getStatus() != InvoiceStatus.CLOSED) {
             throw new IllegalStateException(
                     "Só é possível pagar faturas com status CLOSED. Status atual: " + invoice.getStatus());

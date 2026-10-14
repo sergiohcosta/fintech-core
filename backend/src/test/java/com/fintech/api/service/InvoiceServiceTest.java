@@ -64,7 +64,7 @@ class InvoiceServiceTest {
         Account account = buildAccount();
         CreditCardDetails details = buildDetails(account, 5, 15);
 
-        when(repository.findByAccountAndReferenceYearAndReferenceMonth(account, 2026, 12))
+        when(repository.findByAccountAndReferenceYearAndReferenceMonthForUpdate(account, 2026, 12))
                 .thenReturn(Optional.empty());
         when(creditCardDetailsRepository.findByAccount(account))
                 .thenReturn(Optional.of(details));
@@ -95,7 +95,7 @@ class InvoiceServiceTest {
                 .dueDate(LocalDate.of(2026, 12, 15))
                 .status(InvoiceStatus.CLOSED).build();
 
-        when(repository.findByAccountAndReferenceYearAndReferenceMonth(account, 2026, 12))
+        when(repository.findByAccountAndReferenceYearAndReferenceMonthForUpdate(account, 2026, 12))
                 .thenReturn(Optional.of(existing));
 
         Invoice result = service.getOrCreate(account, 2026, 12);
@@ -110,7 +110,7 @@ class InvoiceServiceTest {
         Account account = buildAccount();
         CreditCardDetails details = buildDetails(account, 25, 5); // fecha dia 25, vence dia 5
 
-        when(repository.findByAccountAndReferenceYearAndReferenceMonth(account, 2026, 12))
+        when(repository.findByAccountAndReferenceYearAndReferenceMonthForUpdate(account, 2026, 12))
                 .thenReturn(Optional.empty());
         when(creditCardDetailsRepository.findByAccount(account)).thenReturn(Optional.of(details));
         when(repository.save(any(Invoice.class))).thenAnswer(i -> i.getArgument(0));
@@ -130,7 +130,7 @@ class InvoiceServiceTest {
         Account account = buildAccount();
         CreditCardDetails details = buildDetails(account, 10, 10);
 
-        when(repository.findByAccountAndReferenceYearAndReferenceMonth(account, 2026, 6))
+        when(repository.findByAccountAndReferenceYearAndReferenceMonthForUpdate(account, 2026, 6))
                 .thenReturn(Optional.empty());
         when(creditCardDetailsRepository.findByAccount(account)).thenReturn(Optional.of(details));
         when(repository.save(any(Invoice.class))).thenAnswer(i -> i.getArgument(0));
@@ -153,7 +153,7 @@ class InvoiceServiceTest {
         Account account = buildAccount();
         CreditCardDetails details = buildDetails(account, 31, 31); // fecha e vence dia 31
 
-        when(repository.findByAccountAndReferenceYearAndReferenceMonth(account, 2026, 1))
+        when(repository.findByAccountAndReferenceYearAndReferenceMonthForUpdate(account, 2026, 1))
                 .thenReturn(Optional.empty());
         when(creditCardDetailsRepository.findByAccount(account)).thenReturn(Optional.of(details));
         when(repository.save(any(Invoice.class))).thenAnswer(i -> i.getArgument(0));
@@ -174,8 +174,12 @@ class InvoiceServiceTest {
         Invoice winner = buildInvoice(InvoiceStatus.OPEN);
         CreditCardDetails details = buildDetails(account, 5, 15);
 
+        // #244: getOrCreate chama o finder LOCKED uma vez (read inicial); ao cair no catch do
+        // DataIntegrityViolationException, o retry usa o finder NÃO-LOCKED (a linha agora
+        // existe — UNIQUE constraint V9 — e o SELECT sem FOR UPDATE basta para lê-la).
+        when(repository.findByAccountAndReferenceYearAndReferenceMonthForUpdate(account, 2026, 6))
+                .thenReturn(Optional.empty());
         when(repository.findByAccountAndReferenceYearAndReferenceMonth(account, 2026, 6))
-                .thenReturn(Optional.empty())
                 .thenReturn(Optional.of(winner));
         when(creditCardDetailsRepository.findByAccount(account)).thenReturn(Optional.of(details));
         when(repository.save(any(Invoice.class))).thenThrow(DataIntegrityViolationException.class);
@@ -183,7 +187,8 @@ class InvoiceServiceTest {
         Invoice result = service.getOrCreate(account, 2026, 6);
 
         assertThat(result).isSameAs(winner);
-        verify(repository, times(2)).findByAccountAndReferenceYearAndReferenceMonth(account, 2026, 6);
+        verify(repository).findByAccountAndReferenceYearAndReferenceMonthForUpdate(account, 2026, 6);
+        verify(repository).findByAccountAndReferenceYearAndReferenceMonth(account, 2026, 6);
         verify(repository).save(any());
     }
 
@@ -298,7 +303,7 @@ class InvoiceServiceTest {
     @DisplayName("close: transiciona OPEN para CLOSED")
     void closesOpenInvoice() {
         Invoice invoice = buildInvoice(InvoiceStatus.OPEN);
-        when(repository.findById(invoice.getId())).thenReturn(Optional.of(invoice));
+        when(repository.findByIdForUpdate(invoice.getId())).thenReturn(Optional.of(invoice));
         when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
         when(transactionRepository.sumAmountByInvoice(any(), any())).thenReturn(BigDecimal.ZERO);
         when(transactionRepository.countByInvoice(any())).thenReturn(0L);
@@ -312,7 +317,7 @@ class InvoiceServiceTest {
     @DisplayName("close: lança IllegalStateException se status não for OPEN")
     void closeRejectsNonOpen() {
         Invoice invoice = buildInvoice(InvoiceStatus.PAID);
-        when(repository.findById(invoice.getId())).thenReturn(Optional.of(invoice));
+        when(repository.findByIdForUpdate(invoice.getId())).thenReturn(Optional.of(invoice));
 
         assertThatThrownBy(() -> service.close(invoice.getId(), buildTenant(invoice)))
                 .isInstanceOf(IllegalStateException.class)
@@ -328,7 +333,7 @@ class InvoiceServiceTest {
         Account source = buildNonCreditCardAccount(invoice.getTenant());
         User user = buildUser();
 
-        when(repository.findById(invoice.getId())).thenReturn(Optional.of(invoice));
+        when(repository.findByIdForUpdate(invoice.getId())).thenReturn(Optional.of(invoice));
         when(accountRepository.findByIdAndTenant(source.getId(), invoice.getTenant()))
                 .thenReturn(Optional.of(source));
         when(transactionRepository.sumAmountByInvoice(any(), any())).thenReturn(BigDecimal.ZERO);
@@ -348,7 +353,7 @@ class InvoiceServiceTest {
         User user = buildUser();
         UUID sourceId = UUID.randomUUID();
 
-        when(repository.findById(invoice.getId())).thenReturn(Optional.of(invoice));
+        when(repository.findByIdForUpdate(invoice.getId())).thenReturn(Optional.of(invoice));
 
         assertThatThrownBy(() -> service.pay(invoice.getId(), invoice.getTenant(), user, sourceId, null))
                 .isInstanceOf(IllegalStateException.class)
@@ -363,7 +368,7 @@ class InvoiceServiceTest {
         User user = buildUser();
         BigDecimal total = new BigDecimal("350.00");
 
-        when(repository.findById(invoice.getId())).thenReturn(Optional.of(invoice));
+        when(repository.findByIdForUpdate(invoice.getId())).thenReturn(Optional.of(invoice));
         when(accountRepository.findByIdAndTenant(source.getId(), invoice.getTenant()))
                 .thenReturn(Optional.of(source));
         when(transactionRepository.sumAmountByInvoice(eq(invoice), eq(TransactionStatus.CANCELLED)))
@@ -396,7 +401,7 @@ class InvoiceServiceTest {
         Account source = buildNonCreditCardAccount(invoice.getTenant());
         User user = buildUser();
 
-        when(repository.findById(invoice.getId())).thenReturn(Optional.of(invoice));
+        when(repository.findByIdForUpdate(invoice.getId())).thenReturn(Optional.of(invoice));
         when(accountRepository.findByIdAndTenant(source.getId(), invoice.getTenant()))
                 .thenReturn(Optional.of(source));
         when(transactionRepository.sumAmountByInvoice(any(), any())).thenReturn(BigDecimal.ZERO);
@@ -417,7 +422,7 @@ class InvoiceServiceTest {
         Account source = buildNonCreditCardAccount(invoice.getTenant());
         User user = buildUser();
 
-        when(repository.findById(invoice.getId())).thenReturn(Optional.of(invoice));
+        when(repository.findByIdForUpdate(invoice.getId())).thenReturn(Optional.of(invoice));
         when(accountRepository.findByIdAndTenant(source.getId(), invoice.getTenant()))
                 .thenReturn(Optional.of(source));
         when(transactionRepository.sumAmountByInvoice(any(), any())).thenReturn(BigDecimal.ZERO);
@@ -439,7 +444,7 @@ class InvoiceServiceTest {
         creditCard.setType(AccountType.CREDIT_CARD);
         User user = buildUser();
 
-        when(repository.findById(invoice.getId())).thenReturn(Optional.of(invoice));
+        when(repository.findByIdForUpdate(invoice.getId())).thenReturn(Optional.of(invoice));
         when(accountRepository.findByIdAndTenant(creditCard.getId(), invoice.getTenant()))
                 .thenReturn(Optional.of(creditCard));
 
@@ -455,7 +460,7 @@ class InvoiceServiceTest {
         User user = buildUser();
         UUID unknownId = UUID.randomUUID();
 
-        when(repository.findById(invoice.getId())).thenReturn(Optional.of(invoice));
+        when(repository.findByIdForUpdate(invoice.getId())).thenReturn(Optional.of(invoice));
         when(accountRepository.findByIdAndTenant(unknownId, invoice.getTenant()))
                 .thenReturn(Optional.empty());
 
@@ -473,7 +478,7 @@ class InvoiceServiceTest {
         Account source = buildNonCreditCardAccount(invoice.getTenant());
         User user = buildUser();
 
-        when(repository.findById(invoice.getId())).thenReturn(Optional.of(invoice));
+        when(repository.findByIdForUpdate(invoice.getId())).thenReturn(Optional.of(invoice));
         when(accountRepository.findByIdAndTenant(source.getId(), invoice.getTenant()))
                 .thenReturn(Optional.of(source));
         when(repository.markAsPaidIfClosed(any(), any(), any())).thenReturn(0);
@@ -497,7 +502,7 @@ class InvoiceServiceTest {
         User user = buildUser();
         LocalDate paymentDate = LocalDate.now().minusDays(5);
 
-        when(repository.findById(invoice.getId())).thenReturn(Optional.of(invoice));
+        when(repository.findByIdForUpdate(invoice.getId())).thenReturn(Optional.of(invoice));
         when(accountRepository.findByIdAndTenant(source.getId(), invoice.getTenant()))
                 .thenReturn(Optional.of(source));
         when(transactionRepository.sumAmountByInvoice(any(), any())).thenReturn(new BigDecimal("100.00"));
@@ -519,7 +524,7 @@ class InvoiceServiceTest {
         Account source = buildNonCreditCardAccount(invoice.getTenant());
         User user = buildUser();
 
-        when(repository.findById(invoice.getId())).thenReturn(Optional.of(invoice));
+        when(repository.findByIdForUpdate(invoice.getId())).thenReturn(Optional.of(invoice));
         when(accountRepository.findByIdAndTenant(source.getId(), invoice.getTenant()))
                 .thenReturn(Optional.of(source));
         when(transactionRepository.sumAmountByInvoice(any(), any())).thenReturn(new BigDecimal("100.00"));
@@ -544,7 +549,7 @@ class InvoiceServiceTest {
         User user = buildUser();
         LocalDate futureDate = LocalDate.now().plusDays(1);
 
-        when(repository.findById(invoice.getId())).thenReturn(Optional.of(invoice));
+        when(repository.findByIdForUpdate(invoice.getId())).thenReturn(Optional.of(invoice));
         when(accountRepository.findByIdAndTenant(source.getId(), invoice.getTenant()))
                 .thenReturn(Optional.of(source));
 
