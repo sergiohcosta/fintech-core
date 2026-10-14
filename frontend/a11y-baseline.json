@@ -1,6 +1,6 @@
 {
   "baseUrl": "http://localhost:4200",
-  "timestamp": "2026-10-14T18:36:02.812Z",
+  "timestamp": "2026-10-14T18:39:58.545Z",
   "routeResults": {
     "/login": {
       "route": "/login",
@@ -13,7 +13,7 @@
           "detail": "Fix any of the following:"
         }
       ],
-      "cls": 0.002806570148468018,
+      "cls": 0.00032414827346801756,
       "httpStatus": 200,
       "redirectedTo": "/dashboard"
     },
@@ -28,28 +28,28 @@
           "detail": "Fix any of the following:"
         }
       ],
-      "cls": 0.054951911926269525,
+      "cls": 0,
       "httpStatus": 200,
       "redirectedTo": "/dashboard"
     },
     "/accept-invite?token=demo": {
       "route": "/accept-invite?token=demo",
       "violations": [],
-      "cls": 0.003401947021484375,
+      "cls": 0,
       "httpStatus": 200,
       "redirectedTo": null
     },
     "/forgot-password": {
       "route": "/forgot-password",
       "violations": [],
-      "cls": 0.01103607177734375,
+      "cls": 0,
       "httpStatus": 200,
       "redirectedTo": null
     },
     "/reset-password?token=demo": {
       "route": "/reset-password?token=demo",
       "violations": [],
-      "cls": 0.015607086181640624,
+      "cls": 0,
       "httpStatus": 200,
       "redirectedTo": null
     },
@@ -84,16 +84,9 @@
           "component": "unknown",
           "selector": "td > p",
           "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "layout-cls",
-          "impact": "moderate",
-          "component": "page-root",
-          "selector": "body",
-          "detail": "CLS=0.194"
         }
       ],
-      "cls": 0.19388056640624998,
+      "cls": 0.030814160156249996,
       "httpStatus": 500,
       "redirectedTo": null
     },
@@ -128,16 +121,9 @@
           "component": "unknown",
           "selector": "td > p",
           "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "layout-cls",
-          "impact": "moderate",
-          "component": "page-root",
-          "selector": "body",
-          "detail": "CLS=0.194"
         }
       ],
-      "cls": 0.19408142814636228,
+      "cls": 0.0310150218963623,
       "httpStatus": 500,
       "redirectedTo": "/accounts"
     },
@@ -188,132 +174,6 @@
     "/categories/taxonomy": {
       "route": "/categories/taxonomy",
       "violations": [
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(1) > .taxonomy-info > .taxonomy-code",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(1) > .taxonomy-info > .taxonomy-label",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(2) > .taxonomy-info > .taxonomy-code",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(2) > .taxonomy-info > .taxonomy-label",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(3) > .taxonomy-info > .taxonomy-code",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(3) > .taxonomy-info > .taxonomy-label",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(4) > .taxonomy-info > .taxonomy-code",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(4) > .taxonomy-info > .taxonomy-label",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(5) > .taxonomy-info > .taxonomy-code",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(5) > .taxonomy-info > .taxonomy-label",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(6) > .taxonomy-info > .taxonomy-code",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(6) > .taxonomy-info > .taxonomy-label",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(7) > .taxonomy-info > .taxonomy-code",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(7) > .taxonomy-info > .taxonomy-label",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(8) > .taxonomy-info > .taxonomy-code",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(8) > .taxonomy-info > .taxonomy-label",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(9) > .taxonomy-info > .taxonomy-code",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(9) > .taxonomy-info > .taxonomy-label",
-          "detail": "Fix any of the following:"
-        },
         {
           "ruleId": "scrollable-region-focusable",
           "impact": "serious",
@@ -857,16 +717,9 @@
           "component": "unknown",
           "selector": "td > p",
           "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "layout-cls",
-          "impact": "moderate",
-          "component": "page-root",
-          "selector": "body",
-          "detail": "CLS=0.221"
         }
       ],
-      "cls": 0.22058901319503782,
+      "cls": 0.05752260694503783,
       "httpStatus": 500,
       "redirectedTo": "/transactions"
     },
@@ -894,9 +747,16 @@
           "component": "unknown",
           "selector": ".empty-state > p",
           "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.194"
         }
       ],
-      "cls": 0,
+      "cls": 0.19388056640624998,
       "httpStatus": 200,
       "redirectedTo": null
     },
@@ -908,55 +768,31 @@
           "impact": "moderate",
           "component": "page-root",
           "selector": "body",
-          "detail": "CLS=0.163"
+          "detail": "CLS=0.199"
         }
       ],
-      "cls": 0.16306640625,
+      "cls": 0.1992689453125,
       "httpStatus": 500,
       "redirectedTo": null
     },
     "/planning/current": {
       "route": "/planning/current",
-      "violations": [
-        {
-          "ruleId": "layout-cls",
-          "impact": "moderate",
-          "component": "page-root",
-          "selector": "body",
-          "detail": "CLS=0.194"
-        }
-      ],
-      "cls": 0.19388056640624998,
+      "violations": [],
+      "cls": 0.030814160156249996,
       "httpStatus": 200,
       "redirectedTo": null
     },
     "/planning/cycles": {
       "route": "/planning/cycles",
-      "violations": [
-        {
-          "ruleId": "layout-cls",
-          "impact": "moderate",
-          "component": "page-root",
-          "selector": "body",
-          "detail": "CLS=0.194"
-        }
-      ],
-      "cls": 0.19388056640624998,
+      "violations": [],
+      "cls": 0.030814160156249996,
       "httpStatus": 200,
       "redirectedTo": null
     },
     "/planning/cycles/1": {
       "route": "/planning/cycles/1",
-      "violations": [
-        {
-          "ruleId": "layout-cls",
-          "impact": "moderate",
-          "component": "page-root",
-          "selector": "body",
-          "detail": "CLS=0.194"
-        }
-      ],
-      "cls": 0.19388056640624998,
+      "violations": [],
+      "cls": 0.030814160156249996,
       "httpStatus": 200,
       "redirectedTo": null
     },
@@ -1007,31 +843,15 @@
     },
     "/import": {
       "route": "/import",
-      "violations": [
-        {
-          "ruleId": "layout-cls",
-          "impact": "moderate",
-          "component": "page-root",
-          "selector": "body",
-          "detail": "CLS=0.163"
-        }
-      ],
-      "cls": 0.16306640625,
+      "violations": [],
+      "cls": 0,
       "httpStatus": 200,
       "redirectedTo": null
     },
     "/import/1": {
       "route": "/import/1",
-      "violations": [
-        {
-          "ruleId": "layout-cls",
-          "impact": "moderate",
-          "component": "page-root",
-          "selector": "body",
-          "detail": "CLS=0.194"
-        }
-      ],
-      "cls": 0.19388056640624998,
+      "violations": [],
+      "cls": 0.030814160156249996,
       "httpStatus": 200,
       "redirectedTo": null
     },
@@ -1064,7 +884,7 @@
       "component": "page-root",
       "rule": "layout-cls",
       "impact": "moderate",
-      "routeCount": 23,
+      "routeCount": 16,
       "sampleSelectors": [
         "body"
       ],
@@ -1075,12 +895,12 @@
           "detail": "CLS=0.163"
         },
         {
-          "route": "/accounts",
+          "route": "/accounts/new",
           "selector": "body",
-          "detail": "CLS=0.194"
+          "detail": "CLS=0.163"
         },
         {
-          "route": "/accounts/new",
+          "route": "/categories",
           "selector": "body",
           "detail": "CLS=0.163"
         }
@@ -1091,11 +911,11 @@
       "component": "unknown",
       "rule": "color-contrast",
       "impact": "serious",
-      "routeCount": 9,
+      "routeCount": 8,
       "sampleSelectors": [
         "td > p",
-        ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(1) > .taxonomy-info > .taxonomy-code",
-        ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(1) > .taxonomy-info > .taxonomy-label"
+        ".active-chips-label",
+        ".chip-period"
       ],
       "samples": [
         {
@@ -1266,8 +1086,8 @@
   ],
   "totals": {
     "routes": 29,
-    "totalViolations": 118,
+    "totalViolations": 93,
     "clusterCount": 8,
-    "routesWithViolations": 26
+    "routesWithViolations": 21
   }
 }
