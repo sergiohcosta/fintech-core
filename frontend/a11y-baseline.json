@@ -1,6 +1,6 @@
 {
   "baseUrl": "http://localhost:4200",
-  "timestamp": "2026-10-14T18:29:23.107Z",
+  "timestamp": "2026-10-14T18:36:02.812Z",
   "routeResults": {
     "/login": {
       "route": "/login",
@@ -11,16 +11,9 @@
           "component": "unknown",
           "selector": "mat-spinner",
           "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".app-version-watermark",
-          "detail": "Fix any of the following:"
         }
       ],
-      "cls": 0.00032414827346801756,
+      "cls": 0.002806570148468018,
       "httpStatus": 200,
       "redirectedTo": "/dashboard"
     },
@@ -33,13 +26,6 @@
           "component": "unknown",
           "selector": "mat-spinner",
           "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".app-version-watermark",
-          "detail": "Fix any of the following:"
         }
       ],
       "cls": 0.054951911926269525,
@@ -48,45 +34,21 @@
     },
     "/accept-invite?token=demo": {
       "route": "/accept-invite?token=demo",
-      "violations": [
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".app-version-watermark",
-          "detail": "Fix any of the following:"
-        }
-      ],
+      "violations": [],
       "cls": 0.003401947021484375,
       "httpStatus": 200,
       "redirectedTo": null
     },
     "/forgot-password": {
       "route": "/forgot-password",
-      "violations": [
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".app-version-watermark",
-          "detail": "Fix any of the following:"
-        }
-      ],
+      "violations": [],
       "cls": 0.01103607177734375,
       "httpStatus": 200,
       "redirectedTo": null
     },
     "/reset-password?token=demo": {
       "route": "/reset-password?token=demo",
-      "violations": [
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".app-version-watermark",
-          "detail": "Fix any of the following:"
-        }
-      ],
+      "violations": [],
       "cls": 0.015607086181640624,
       "httpStatus": 200,
       "redirectedTo": null
@@ -99,13 +61,6 @@
           "impact": "serious",
           "component": "unknown",
           "selector": "mat-spinner",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".app-version-watermark",
           "detail": "Fix any of the following:"
         },
         {
@@ -131,21 +86,14 @@
           "detail": "Fix any of the following:"
         },
         {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".app-version-watermark",
-          "detail": "Fix any of the following:"
-        },
-        {
           "ruleId": "layout-cls",
           "impact": "moderate",
           "component": "page-root",
           "selector": "body",
-          "detail": "CLS=0.163"
+          "detail": "CLS=0.194"
         }
       ],
-      "cls": 0.16306640625,
+      "cls": 0.19388056640624998,
       "httpStatus": 500,
       "redirectedTo": null
     },
@@ -157,13 +105,6 @@
           "impact": "critical",
           "component": "unknown",
           "selector": ".icon-picker-trigger",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".app-version-watermark",
           "detail": "Fix any of the following:"
         },
         {
@@ -189,21 +130,14 @@
           "detail": "Fix any of the following:"
         },
         {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".app-version-watermark",
-          "detail": "Fix any of the following:"
-        },
-        {
           "ruleId": "layout-cls",
           "impact": "moderate",
           "component": "page-root",
           "selector": "body",
-          "detail": "CLS=0.221"
+          "detail": "CLS=0.194"
         }
       ],
-      "cls": 0.22063924064636228,
+      "cls": 0.19408142814636228,
       "httpStatus": 500,
       "redirectedTo": "/accounts"
     },
@@ -218,14 +152,14 @@
           "detail": "Fix any of the following:"
         },
         {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".app-version-watermark",
-          "detail": "Fix any of the following:"
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.163"
         }
       ],
-      "cls": 0,
+      "cls": 0.16306640625,
       "httpStatus": 200,
       "redirectedTo": null
     },
@@ -237,13 +171,6 @@
           "impact": "critical",
           "component": "unknown",
           "selector": ".icon-picker-trigger",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".app-version-watermark",
           "detail": "Fix any of the following:"
         },
         {
@@ -388,13 +315,6 @@
           "detail": "Fix any of the following:"
         },
         {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".app-version-watermark",
-          "detail": "Fix any of the following:"
-        },
-        {
           "ruleId": "scrollable-region-focusable",
           "impact": "serious",
           "component": "unknown",
@@ -421,13 +341,6 @@
           "impact": "critical",
           "component": "unknown",
           "selector": ".icon-picker-trigger",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".app-version-watermark",
           "detail": "Fix any of the following:"
         },
         {
@@ -478,13 +391,6 @@
           "impact": "serious",
           "component": "unknown",
           "selector": "td > p",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".app-version-watermark",
           "detail": "Fix any of the following:"
         },
         {
@@ -853,13 +759,6 @@
           "detail": "Fix any of the following:"
         },
         {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".app-version-watermark",
-          "detail": "Fix any of the following:"
-        },
-        {
           "ruleId": "layout-cls",
           "impact": "moderate",
           "component": "page-root",
@@ -879,13 +778,6 @@
           "impact": "serious",
           "component": "unknown",
           "selector": ".section-divider > span[_ngcontent-ng-c538935380=\"\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".app-version-watermark",
           "detail": "Fix any of the following:"
         },
         {
@@ -967,21 +859,14 @@
           "detail": "Fix any of the following:"
         },
         {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".app-version-watermark",
-          "detail": "Fix any of the following:"
-        },
-        {
           "ruleId": "layout-cls",
           "impact": "moderate",
           "component": "page-root",
           "selector": "body",
-          "detail": "CLS=0.194"
+          "detail": "CLS=0.221"
         }
       ],
-      "cls": 0.19403120069503782,
+      "cls": 0.22058901319503782,
       "httpStatus": 500,
       "redirectedTo": "/transactions"
     },
@@ -989,14 +874,14 @@
       "route": "/team",
       "violations": [
         {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".app-version-watermark",
-          "detail": "Fix any of the following:"
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.163"
         }
       ],
-      "cls": 0,
+      "cls": 0.16306640625,
       "httpStatus": 200,
       "redirectedTo": null
     },
@@ -1009,23 +894,9 @@
           "component": "unknown",
           "selector": ".empty-state > p",
           "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".app-version-watermark",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "layout-cls",
-          "impact": "moderate",
-          "component": "page-root",
-          "selector": "body",
-          "detail": "CLS=0.194"
         }
       ],
-      "cls": 0.19388056640624998,
+      "cls": 0,
       "httpStatus": 200,
       "redirectedTo": null
     },
@@ -1033,34 +904,20 @@
       "route": "/invoices/inv-1",
       "violations": [
         {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".app-version-watermark",
-          "detail": "Fix any of the following:"
-        },
-        {
           "ruleId": "layout-cls",
           "impact": "moderate",
           "component": "page-root",
           "selector": "body",
-          "detail": "CLS=0.199"
+          "detail": "CLS=0.163"
         }
       ],
-      "cls": 0.1992689453125,
+      "cls": 0.16306640625,
       "httpStatus": 500,
       "redirectedTo": null
     },
     "/planning/current": {
       "route": "/planning/current",
       "violations": [
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".app-version-watermark",
-          "detail": "Fix any of the following:"
-        },
         {
           "ruleId": "layout-cls",
           "impact": "moderate",
@@ -1077,27 +934,20 @@
       "route": "/planning/cycles",
       "violations": [
         {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".app-version-watermark",
-          "detail": "Fix any of the following:"
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.194"
         }
       ],
-      "cls": 0.030814160156249996,
+      "cls": 0.19388056640624998,
       "httpStatus": 200,
       "redirectedTo": null
     },
     "/planning/cycles/1": {
       "route": "/planning/cycles/1",
       "violations": [
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".app-version-watermark",
-          "detail": "Fix any of the following:"
-        },
         {
           "ruleId": "layout-cls",
           "impact": "moderate",
@@ -1114,13 +964,6 @@
       "route": "/planning/recurring",
       "violations": [
         {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".app-version-watermark",
-          "detail": "Fix any of the following:"
-        },
-        {
           "ruleId": "layout-cls",
           "impact": "moderate",
           "component": "page-root",
@@ -1135,13 +978,6 @@
     "/planning/settings": {
       "route": "/planning/settings",
       "violations": [
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".app-version-watermark",
-          "detail": "Fix any of the following:"
-        },
         {
           "ruleId": "layout-cls",
           "impact": "moderate",
@@ -1158,13 +994,6 @@
       "route": "/recurrences",
       "violations": [
         {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".app-version-watermark",
-          "detail": "Fix any of the following:"
-        },
-        {
           "ruleId": "layout-cls",
           "impact": "moderate",
           "component": "page-root",
@@ -1180,13 +1009,6 @@
       "route": "/import",
       "violations": [
         {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".app-version-watermark",
-          "detail": "Fix any of the following:"
-        },
-        {
           "ruleId": "layout-cls",
           "impact": "moderate",
           "component": "page-root",
@@ -1201,13 +1023,6 @@
     "/import/1": {
       "route": "/import/1",
       "violations": [
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".app-version-watermark",
-          "detail": "Fix any of the following:"
-        },
         {
           "ruleId": "layout-cls",
           "impact": "moderate",
@@ -1231,13 +1046,6 @@
           "detail": "Fix any of the following:"
         },
         {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".app-version-watermark",
-          "detail": "Fix any of the following:"
-        },
-        {
           "ruleId": "layout-cls",
           "impact": "moderate",
           "component": "page-root",
@@ -1252,40 +1060,11 @@
   },
   "clusters": [
     {
-      "key": "unknown::color-contrast",
-      "component": "unknown",
-      "rule": "color-contrast",
-      "impact": "serious",
-      "routeCount": 29,
-      "sampleSelectors": [
-        ".app-version-watermark",
-        "td > p",
-        ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(1) > .taxonomy-info > .taxonomy-code"
-      ],
-      "samples": [
-        {
-          "route": "/login",
-          "selector": ".app-version-watermark",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "route": "/register",
-          "selector": ".app-version-watermark",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "route": "/accept-invite?token=demo",
-          "selector": ".app-version-watermark",
-          "detail": "Fix any of the following:"
-        }
-      ]
-    },
-    {
       "key": "page-root::layout-cls",
       "component": "page-root",
       "rule": "layout-cls",
       "impact": "moderate",
-      "routeCount": 21,
+      "routeCount": 23,
       "sampleSelectors": [
         "body"
       ],
@@ -1298,12 +1077,41 @@
         {
           "route": "/accounts",
           "selector": "body",
-          "detail": "CLS=0.163"
+          "detail": "CLS=0.194"
         },
         {
           "route": "/accounts/new",
           "selector": "body",
           "detail": "CLS=0.163"
+        }
+      ]
+    },
+    {
+      "key": "unknown::color-contrast",
+      "component": "unknown",
+      "rule": "color-contrast",
+      "impact": "serious",
+      "routeCount": 9,
+      "sampleSelectors": [
+        "td > p",
+        ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(1) > .taxonomy-info > .taxonomy-code",
+        ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(1) > .taxonomy-info > .taxonomy-label"
+      ],
+      "samples": [
+        {
+          "route": "/accounts",
+          "selector": "td > p",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "route": "/accounts/1",
+          "selector": "td > p",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "route": "/categories",
+          "selector": "td > p",
+          "detail": "Fix any of the following:"
         }
       ]
     },
@@ -1458,8 +1266,8 @@
   ],
   "totals": {
     "routes": 29,
-    "totalViolations": 145,
+    "totalViolations": 118,
     "clusterCount": 8,
-    "routesWithViolations": 29
+    "routesWithViolations": 26
   }
 }
