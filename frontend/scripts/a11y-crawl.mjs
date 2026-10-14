@@ -110,24 +110,29 @@ async function crawlRoute(context, route) {
     return { route, error: err.message, violations: [], cls: 0, httpStatus, redirectedTo };
   }
 
-  const cls = await page.evaluate(() => {
-    return new Promise((resolve) => {
-      let total = 0;
-      try {
-        const po = new PerformanceObserver((list) => {
-          for (const e of list.getEntries()) if (!e.hadRecentInput) total += e.value;
-        });
-        po.observe({ type: 'layout-shift', buffered: true });
-      } catch {}
-      setTimeout(() => resolve(total), 800);
+  // O redirect pos-auth (de /login para /dashboard quando ha token) pode destruir
+  // o contexto de pagina entre o goto e o evaluate. Envolve tudo num try/catch
+  // para que a falha de uma rota nao derrube o crawler inteiro.
+  let cls = 0, axe = { violations: [] }, scan = { issues: [], componentMap: {} };
+  try {
+    cls = await page.evaluate(() => {
+      return new Promise((resolve) => {
+        let total = 0;
+        try {
+          const po = new PerformanceObserver((list) => {
+            for (const e of list.getEntries()) if (!e.hadRecentInput) total += e.value;
+          });
+          po.observe({ type: 'layout-shift', buffered: true });
+        } catch {}
+        setTimeout(() => resolve(total), 800);
+      });
     });
-  });
 
-  const axe = await new AxeBuilder({ page })
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-    .analyze();
+    axe = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .analyze();
 
-  const scan = await page.evaluate((clsLimit) => {
+    scan = await page.evaluate((clsLimit) => {
     function selectorFor(el) {
       if (el.id) return `#${el.id}`;
       const tag = el.tagName.toLowerCase();
@@ -186,8 +191,11 @@ async function crawlRoute(context, route) {
 
     return { issues, componentMap };
   }, CLS_LIMIT);
-
-  await page.close();
+  } catch (err) {
+    // Falha pos-evaluate (redirect mid-flight). cls/axe/scan ficam com defaults.
+  } finally {
+    await page.close().catch(() => {});
+  }
 
   function componentFor(selector) {
     // Try direct lookup first.

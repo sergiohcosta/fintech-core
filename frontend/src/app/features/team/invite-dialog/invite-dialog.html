@@ -25,7 +25,7 @@
       (click)="submit()"
     >
       @if (state() === 'submitting') {
-        <mat-spinner diameter="20" />
+        <mat-spinner diameter="20" aria-label="Carregando" />
       } @else {
         Convidar
       }
