@@ -44,6 +44,12 @@
 		     Nenhum Boot 4.0.x ou 4.1.x atualiza isso (todos pinam 2.21.5). Gotcha conhecido
 		     do par-BOM do Boot 4: sempre bumpar jackson-bom e jackson-2-bom em conjunto. -->
 		<jackson-2-bom.version>2.22.3</jackson-2-bom.version>
+		<!-- #246 (residual, pós-bump Spring/Jackson): Trivy apontou 3 CRITICAL no tomcat-embed-core
+		     11.0.24 (CVE-2026-65182 security constraint bypass, CVE-2026-65905 DIGEST auth
+		     bypass, CVE-2026-68525 FORM auth bypass). Override para 11.0.25 (patch do próprio
+		     tomcat, sem breaking change na API de servlet). Boot 4.0.x não tem release novo
+		     atualizando o tomcat. -->
+		<tomcat.version>11.0.25</tomcat.version>
 		<!-- SonarQube: chave do projeto e caminho do relatório JaCoCo.
 		     Manter a chave aqui também é onde o MCP do Sonar resolve o projeto. -->
 		<sonar.projectKey>fintech-core-backend</sonar.projectKey>
