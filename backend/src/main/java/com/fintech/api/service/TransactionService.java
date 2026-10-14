@@ -208,8 +208,14 @@ public class TransactionService {
                     // Descarte SÓ em compra parcelada (N>1): avulsa em fatura fechada/paga
                     // continua anexando, como antes da feature. Leitura sem materialização:
                     // o descarte não pode nem criar a fatura (D2).
+                    // #244: usar findExistingForUpdate (lock pessimista) em vez de findExisting.
+                    // O lock serializa esta leitura com InvoiceService.close/pay — sem ele, a
+                    // checagem de status aqui e a getOrCreate lá (que também adquire o lock)
+                    // poderiam ler status divergentes e a parcela acabaria anexada a uma fatura
+                    // que fechou entre as duas leituras. Mesma transação REQUIRED — o lock é
+                    // segurado até o final do @Transactional do create().
                     Invoice existing = invoiceService
-                            .findExisting(account, invoiceMonth.getYear(), invoiceMonth.getMonthValue())
+                            .findExistingForUpdate(account, invoiceMonth.getYear(), invoiceMonth.getMonthValue())
                             .orElse(null);
                     if (existing != null && existing.getStatus() != InvoiceStatus.OPEN) {
                         // Parcela descartada (D3): mantém a numeração original (i+1), não
@@ -340,8 +346,11 @@ public class TransactionService {
             // D6: materializar é ação explícita do usuário — se a fatura da ocorrência já
             // fechou/pagou, recusar com 409 em vez de gravar silenciosamente (como o create
             // manual, que descarta; aqui não há "próxima parcela" para pular).
+            // #244: usar findExistingForUpdate em vez de findExisting — mesmo lock do create:
+            // a leitura do status aqui e a getOrCreate abaixo rodam sob o mesmo lock de linha
+            // da fatura, fechando a janela de corrida que a checagem+gravação sofria antes.
             Invoice existing = invoiceService
-                    .findExisting(account, invoiceMonth.getYear(), invoiceMonth.getMonthValue())
+                    .findExistingForUpdate(account, invoiceMonth.getYear(), invoiceMonth.getMonthValue())
                     .orElse(null);
             if (existing != null && existing.getStatus() != InvoiceStatus.OPEN) {
                 throw new BusinessConflictException("A fatura de " + invoiceMonth + " está "

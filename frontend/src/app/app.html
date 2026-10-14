@@ -1,2 +1,3 @@
 <router-outlet />
-<div class="app-version-watermark" [title]="versionTooltip">{{ versionLabel }}</div>
+<!-- Marca d'água decorativa: oculta de leitores de tela (não é conteúdo informacional) e escondida do foco. -->
+<div class="app-version-watermark" aria-hidden="true" tabindex="-1" [title]="versionTooltip">{{ versionLabel }}</div>

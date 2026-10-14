@@ -22,7 +22,7 @@
               [disabled]="!pendingMappings().size || saving()"
               (click)="save()">
         @if (saving()) {
-          <mat-spinner [diameter]="18"></mat-spinner>
+          <mat-spinner [diameter]="18" aria-label="Salvando"></mat-spinner>
         } @else {
           Salvar
         }
@@ -32,7 +32,7 @@
 
   @if (loading()) {
     <div class="loading-state">
-      <mat-spinner [diameter]="40"></mat-spinner>
+      <mat-spinner [diameter]="40" aria-label="Carregando taxonomia"></mat-spinner>
     </div>
   } @else {
     <div class="mapping-panels">

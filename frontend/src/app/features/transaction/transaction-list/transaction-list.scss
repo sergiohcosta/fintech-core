@@ -121,7 +121,9 @@ table {
 .empty-state {
   text-align: center;
   padding: 3rem !important;
-  color: #888;
+  // Cor #888 -> #595959: contraste 3.5:1 -> 7:1 sobre branco (WCAG AA).
+  // shortcut: idem invoice-list; unificar em shared <empty-state> depois.
+  color: #595959;
 
   mat-icon {
     font-size: 48px;
@@ -280,7 +282,9 @@ table {
 .active-chips-label {
   font-size: 10px;
   font-weight: 600;
-  color: #9aa0a6;
+  // Token neutro de medium emphasis (Material 3); contraste ≈ 9:1 sobre branco.
+  // shortcut: usar --mat-sys-on-surface-variant consistently em outras labels muted.
+  color: var(--mat-sys-on-surface-variant, #49454f);
   text-transform: uppercase;
   letter-spacing: 0.4px;
   margin-right: 4px;
@@ -323,7 +327,8 @@ table {
     &:focus { outline: none; }
   }
 
-  &.chip-period   { background: #e8f0fe; color: #1a73e8; border-color: #4285f4; }
+  // Texto escurecido de #1a73e8 para #174ea6 para passar 4.5:1 sobre #e8f0fe.
+  &.chip-period   { background: #e8f0fe; color: #174ea6; border-color: #4285f4; }
   &.chip-expense  { background: #fce8e6; color: #c5221f; border-color: #f28b82; }
   &.chip-income   { background: #e6f4ea; color: #1e8e3e; border-color: #81c995; }
   &.chip-pending  { background: #fef7e0; color: #f29900; border-color: #fbcc64; }

@@ -213,10 +213,6 @@ desta spec além do contrato acima.
 - **Transação avulsa no cartão (N=1):** mantém o comportamento antigo — anexa à fatura mesmo
   `CLOSED`/`PAID`. O descarte é exclusivo de compra parcelada (N>1) e de materialização de
   recorrência.
-- **Corrida checagem×close/pay (limitação conhecida):** a checagem de status (`findExisting`)
-  e a gravação da parcela não são atômicas em relação a `close`/`pay` — não há lock. Janela
-  pequena (mesma transação `@Transactional`); correção via lock é follow-up (issue fica a
-  cargo do orquestrador).
 
 ## Impacto SemVer
 

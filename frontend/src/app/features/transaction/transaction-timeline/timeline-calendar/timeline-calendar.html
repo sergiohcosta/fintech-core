@@ -9,30 +9,39 @@
     </button>
   </header>
 
-  <div class="calendar-grid" role="grid">
-    @for (wd of weekdayLabels; track wd) {
-      <div class="weekday" role="columnheader">{{ wd }}</div>
-    }
-    @for (cell of grid(); track $index) {
-      <div
-        class="day-cell"
-        role="gridcell"
-        [class.empty]="!cell.date"
-        [class.has-tx]="cell.transactions.length > 0"
-        [class.expanded]="cell.date === expandedDay()"
-        [attr.aria-label]="cell.date || null"
-        (click)="toggleDay(cell)">
-        @if (cell.date) {
-          <span class="day-number">{{ cell.dayOfMonth }}</span>
-          @if (cell.transactions.length > 0) {
-            <span class="day-net" [class.positive]="cell.totals.net >= 0" [class.negative]="cell.totals.net < 0">
-              {{ cell.totals.net | currency: 'BRL' }}
-            </span>
-          }
+  <table class="calendar-grid">
+    <thead>
+      <tr>
+        @for (wd of weekdayLabels; track wd) {
+          <th class="weekday">{{ wd }}</th>
         }
-      </div>
-    }
-  </div>
+      </tr>
+    </thead>
+    <tbody>
+      @for (weekIdx of [0,1,2,3,4,5]; track weekIdx) {
+        <tr>
+          @for (cell of grid().slice(weekIdx * 7, weekIdx * 7 + 7); track $index) {
+            <td
+              class="day-cell"
+              [class.empty]="!cell.date"
+              [class.has-tx]="cell.transactions.length > 0"
+              [class.expanded]="cell.date === expandedDay()"
+              [attr.aria-label]="cell.date || null"
+              (click)="toggleDay(cell)">
+              @if (cell.date) {
+                <span class="day-number">{{ cell.dayOfMonth }}</span>
+                @if (cell.transactions.length > 0) {
+                  <span class="day-net" [class.positive]="cell.totals.net >= 0" [class.negative]="cell.totals.net < 0">
+                    {{ cell.totals.net | currency: 'BRL' }}
+                  </span>
+                }
+              }
+            </td>
+          }
+        </tr>
+      }
+    </tbody>
+  </table>
 
   @if (expandedDay(); as day) {
     <div class="day-detail">

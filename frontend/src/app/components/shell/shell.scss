@@ -11,6 +11,10 @@
   position: sticky;
   top: 0;
   z-index: 10;
+  // Forca altura estavel para evitar CLS quando o userName carrega assincronamente.
+  // Sem isso o mat-toolbar inicia com a altura minima (sem conteudo do signal) e
+  // cresce quando auth.currentUser() resolve, empurrando o mat-sidenav-container.
+  height: 64px;
 }
 
 .toolbar-title {
@@ -32,6 +36,10 @@
 .sidenav-container {
   flex: 1;       // ocupa o espaço restante após a toolbar
   overflow: hidden;
+  // Trava tamanho antes da renderização final para evitar que o mat-sidenav-content
+  // reflow durante a animação interna do Material (~600ms pós-load). Reserva 100%
+  // do espaço disponivel apos a toolbar fixa de 64px.
+  height: calc(100vh - 64px);
 }
 
 .sidenav {
