@@ -1,6 +1,6 @@
 {
   "baseUrl": "http://localhost:4200",
-  "timestamp": "2026-10-14T19:42:55.682Z",
+  "timestamp": "2026-10-14T19:57:23.540Z",
   "routeResults": {
     "/login": {
       "route": "/login",
@@ -12,21 +12,21 @@
     "/register": {
       "route": "/register",
       "violations": [],
-      "cls": 0,
+      "cls": 0.054951911926269525,
       "httpStatus": 200,
       "redirectedTo": "/dashboard"
     },
     "/accept-invite?token=demo": {
       "route": "/accept-invite?token=demo",
       "violations": [],
-      "cls": 0.003401947021484375,
+      "cls": 0,
       "httpStatus": 200,
       "redirectedTo": null
     },
     "/forgot-password": {
       "route": "/forgot-password",
       "violations": [],
-      "cls": 0,
+      "cls": 0.01103607177734375,
       "httpStatus": 200,
       "redirectedTo": null
     },
@@ -39,13 +39,6 @@
     },
     "/dashboard": {
       "route": "/dashboard",
-      "violations": [],
-      "cls": 0,
-      "httpStatus": 200,
-      "redirectedTo": null
-    },
-    "/accounts": {
-      "route": "/accounts",
       "violations": [
         {
           "ruleId": "layout-cls",
@@ -56,6 +49,13 @@
         }
       ],
       "cls": 0.16306640625,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/accounts": {
+      "route": "/accounts",
+      "violations": [],
+      "cls": 0.030814160156249996,
       "httpStatus": 500,
       "redirectedTo": null
     },
@@ -91,38 +91,30 @@
     },
     "/categories": {
       "route": "/categories",
-      "violations": [],
-      "cls": 0,
+      "violations": [
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.163"
+        }
+      ],
+      "cls": 0.16306640625,
       "httpStatus": 200,
       "redirectedTo": null
     },
     "/categories/new": {
       "route": "/categories/new",
-      "violations": [
-        {
-          "ruleId": "layout-cls",
-          "impact": "moderate",
-          "component": "page-root",
-          "selector": "body",
-          "detail": "CLS=0.194"
-        }
-      ],
-      "cls": 0.19388056640624998,
+      "violations": [],
+      "cls": 0.030814160156249996,
       "httpStatus": 200,
       "redirectedTo": null
     },
     "/categories/taxonomy": {
       "route": "/categories/taxonomy",
-      "violations": [
-        {
-          "ruleId": "layout-cls",
-          "impact": "moderate",
-          "component": "page-root",
-          "selector": "body",
-          "detail": "CLS=0.165"
-        }
-      ],
-      "cls": 0.1648905029296875,
+      "violations": [],
+      "cls": 0.0018240966796875,
       "httpStatus": 200,
       "redirectedTo": null
     },
@@ -158,51 +150,8 @@
     },
     "/transactions/timeline": {
       "route": "/transactions/timeline",
-      "violations": [
-        {
-          "ruleId": "aria-required-children",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[role=\"row\"][_ngcontent-ng-c3295874281=\"\"]:nth-child(2)",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-children",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[role=\"row\"][_ngcontent-ng-c3295874281=\"\"]:nth-child(3)",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-children",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[role=\"row\"][_ngcontent-ng-c3295874281=\"\"]:nth-child(4)",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-children",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[role=\"row\"][_ngcontent-ng-c3295874281=\"\"]:nth-child(5)",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-children",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[role=\"row\"][_ngcontent-ng-c3295874281=\"\"]:nth-child(6)",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "layout-cls",
-          "impact": "moderate",
-          "component": "page-root",
-          "selector": "body",
-          "detail": "CLS=0.194"
-        }
-      ],
-      "cls": 0.19388056640624998,
+      "violations": [],
+      "cls": 0.030814160156249996,
       "httpStatus": 200,
       "redirectedTo": null
     },
@@ -236,58 +185,43 @@
           "selector": "button.mdc-button.mat-mdc-button-base.mdc-button--unelevated.mat-mdc-unelevated-button.mat-primary.mat-mdc-button-disabled",
           "detail": "covered by div",
           "component": "app-transaction-form"
+        },
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.163"
         }
       ],
-      "cls": 0.0001506342887878418,
+      "cls": 0.16321704053878783,
       "httpStatus": 200,
       "redirectedTo": null
     },
     "/transactions/1": {
       "route": "/transactions/1",
-      "violations": [
-        {
-          "ruleId": "layout-cls",
-          "impact": "moderate",
-          "component": "page-root",
-          "selector": "body",
-          "detail": "CLS=0.221"
-        }
-      ],
-      "cls": 0.22058901319503782,
+      "violations": [],
+      "cls": 0.030964794445037837,
       "httpStatus": 500,
       "redirectedTo": "/transactions"
     },
     "/team": {
       "route": "/team",
-      "violations": [],
-      "cls": 0,
-      "httpStatus": 200,
-      "redirectedTo": null
-    },
-    "/invoices": {
-      "route": "/invoices",
-      "violations": [],
-      "cls": 0.030814160156249996,
-      "httpStatus": 200,
-      "redirectedTo": null
-    },
-    "/invoices/inv-1": {
-      "route": "/invoices/inv-1",
       "violations": [
         {
           "ruleId": "layout-cls",
           "impact": "moderate",
           "component": "page-root",
           "selector": "body",
-          "detail": "CLS=0.199"
+          "detail": "CLS=0.163"
         }
       ],
-      "cls": 0.1992689453125,
-      "httpStatus": 500,
+      "cls": 0.16306640625,
+      "httpStatus": 200,
       "redirectedTo": null
     },
-    "/planning/current": {
-      "route": "/planning/current",
+    "/invoices": {
+      "route": "/invoices",
       "violations": [
         {
           "ruleId": "layout-cls",
@@ -298,6 +232,20 @@
         }
       ],
       "cls": 0.19388056640624998,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/invoices/inv-1": {
+      "route": "/invoices/inv-1",
+      "violations": [],
+      "cls": 0.0362025390625,
+      "httpStatus": 500,
+      "redirectedTo": null
+    },
+    "/planning/current": {
+      "route": "/planning/current",
+      "violations": [],
+      "cls": 0.030814160156249996,
       "httpStatus": 200,
       "redirectedTo": null
     },
@@ -333,38 +281,30 @@
     },
     "/planning/recurring": {
       "route": "/planning/recurring",
-      "violations": [
-        {
-          "ruleId": "layout-cls",
-          "impact": "moderate",
-          "component": "page-root",
-          "selector": "body",
-          "detail": "CLS=0.194"
-        }
-      ],
-      "cls": 0.19388056640624998,
+      "violations": [],
+      "cls": 0.030814160156249996,
       "httpStatus": 200,
       "redirectedTo": null
     },
     "/planning/settings": {
       "route": "/planning/settings",
-      "violations": [],
-      "cls": 0.0006933970451354981,
-      "httpStatus": 200,
-      "redirectedTo": null
-    },
-    "/recurrences": {
-      "route": "/recurrences",
       "violations": [
         {
           "ruleId": "layout-cls",
           "impact": "moderate",
           "component": "page-root",
           "selector": "body",
-          "detail": "CLS=0.194"
+          "detail": "CLS=0.164"
         }
       ],
-      "cls": 0.19388056640624998,
+      "cls": 0.16375980329513548,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/recurrences": {
+      "route": "/recurrences",
+      "violations": [],
+      "cls": 0.030814160156249996,
       "httpStatus": 200,
       "redirectedTo": null
     },
@@ -412,13 +352,13 @@
       "component": "page-root",
       "rule": "layout-cls",
       "impact": "moderate",
-      "routeCount": 17,
+      "routeCount": 14,
       "sampleSelectors": [
         "body"
       ],
       "samples": [
         {
-          "route": "/accounts",
+          "route": "/dashboard",
           "selector": "body",
           "detail": "CLS=0.163"
         },
@@ -462,41 +402,12 @@
           "detail": "covered by div"
         }
       ]
-    },
-    {
-      "key": "unknown::aria-required-children",
-      "component": "unknown",
-      "rule": "aria-required-children",
-      "impact": "critical",
-      "routeCount": 1,
-      "sampleSelectors": [
-        "div[role=\"row\"][_ngcontent-ng-c3295874281=\"\"]:nth-child(2)",
-        "div[role=\"row\"][_ngcontent-ng-c3295874281=\"\"]:nth-child(3)",
-        "div[role=\"row\"][_ngcontent-ng-c3295874281=\"\"]:nth-child(4)"
-      ],
-      "samples": [
-        {
-          "route": "/transactions/timeline",
-          "selector": "div[role=\"row\"][_ngcontent-ng-c3295874281=\"\"]:nth-child(2)",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "route": "/transactions/timeline",
-          "selector": "div[role=\"row\"][_ngcontent-ng-c3295874281=\"\"]:nth-child(3)",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "route": "/transactions/timeline",
-          "selector": "div[role=\"row\"][_ngcontent-ng-c3295874281=\"\"]:nth-child(4)",
-          "detail": "Fix any of the following:"
-        }
-      ]
     }
   ],
   "totals": {
     "routes": 29,
-    "totalViolations": 26,
-    "clusterCount": 3,
-    "routesWithViolations": 18
+    "totalViolations": 18,
+    "clusterCount": 2,
+    "routesWithViolations": 14
   }
 }
