@@ -15,7 +15,9 @@
     font-family: "Roboto Mono", ui-monospace, monospace;
     font-size: 11px;
     letter-spacing: 0.3px;
-    color: rgba(0, 0, 0, 0.45);
+    // Alpha 0.65 → ~#595959 sobre branco; contraste ≈ 6.3:1 (WCAG AA 4.5:1).
+    // shortcut: ajuste pontual no watermark; quando o app ganhar tema dark próprio, trocar pelos tokens --mat-sys-on-surface-variant.
+    color: rgba(0, 0, 0, 0.65);
     background: rgba(0, 0, 0, 0.04);
     pointer-events: none;
     user-select: none;
@@ -23,7 +25,8 @@
 
 @media (prefers-color-scheme: dark) {
     .app-version-watermark {
-        color: rgba(255, 255, 255, 0.5);
+        // Alpha 0.75 sobre superfície escura do Material; contraste ≈ 8:1 (AAA).
+        color: rgba(255, 255, 255, 0.75);
         background: rgba(255, 255, 255, 0.08);
     }
 }

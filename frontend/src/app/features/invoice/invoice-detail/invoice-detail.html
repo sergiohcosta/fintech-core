@@ -14,7 +14,7 @@
       </div>
       <div class="header-actions">
         <span [class]="statusChipClass(inv.status)">{{ statusLabel(inv.status) }}</span>
-        <button mat-icon-button (click)="exportCsv()" matTooltip="Exportar CSV">
+        <button mat-icon-button (click)="exportCsv()" aria-label="Exportar CSV" matTooltip="Exportar CSV">
           <mat-icon>download</mat-icon>
         </button>
         @if (inv.status === InvoiceStatus.OPEN) {

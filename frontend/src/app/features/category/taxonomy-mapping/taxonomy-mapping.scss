@@ -148,7 +148,11 @@
   }
 
   &.disabled {
-    opacity: 0.45;
+    // Opacidade 0.85 mantém o sinal visual de "desabilitado" e garante contraste WCAG AA
+    // no texto filho (taxonomy-code 12px e taxonomy-label 11px em #49454f precisam de
+    // pelo menos 0.83 de opacidade efetiva para atingir 4.5:1 sobre branco).
+    // shortcut: opacity atenua a UI inteira; quando o app ganhar tokens próprios para disabled, trocar.
+    opacity: 0.85;
     cursor: not-allowed;
   }
 }

@@ -1,7 +1,8 @@
 <div class="icon-picker" [class.disabled]="disabled()">
   <label class="icon-picker-label">{{ label() }}</label>
 
-  <button type="button" class="icon-picker-trigger" (click)="toggle()" [disabled]="disabled()">
+  <button type="button" class="icon-picker-trigger" (click)="toggle()" [disabled]="disabled()"
+          [attr.aria-label]="'Selecionar ícone' + (label() ? ': ' + label() : '')">
     <mat-icon>{{ selectedIcon() }}</mat-icon>
     <mat-icon class="chevron">{{ isOpen() ? 'expand_less' : 'expand_more' }}</mat-icon>
   </button>

@@ -16,7 +16,7 @@
         <mat-icon>timeline</mat-icon>
         Linha do tempo
       </a>
-      <button mat-icon-button (click)="exportCsv()" matTooltip="Exportar CSV">
+      <button mat-icon-button (click)="exportCsv()" aria-label="Exportar CSV" matTooltip="Exportar CSV">
         <mat-icon>download</mat-icon>
       </button>
       <button mat-flat-button color="primary" routerLink="/transactions/new">
@@ -42,7 +42,8 @@
       @for (chip of activeFilterChips(); track chip.field) {
         <span [class]="'filter-chip ' + chip.colorClass">
           {{ chip.label }}
-          <button type="button" class="chip-remove" (click)="clearFilterChip(chip.field)" matTooltip="Remover filtro">
+          <button type="button" class="chip-remove" (click)="clearFilterChip(chip.field)"
+                  aria-label="Remover filtro" matTooltip="Remover filtro">
             <mat-icon>close</mat-icon>
           </button>
         </span>

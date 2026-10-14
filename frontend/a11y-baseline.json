@@ -1,0 +1,388 @@
+{
+  "baseUrl": "http://localhost:4200",
+  "timestamp": "2026-10-14T20:35:51.461Z",
+  "routeResults": {
+    "/login": {
+      "route": "/login",
+      "violations": [
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.161"
+        }
+      ],
+      "cls": 0.16115647678375244,
+      "httpStatus": 200,
+      "redirectedTo": "/dashboard"
+    },
+    "/register": {
+      "route": "/register",
+      "violations": [],
+      "cls": 0,
+      "httpStatus": 200,
+      "redirectedTo": "/dashboard"
+    },
+    "/accept-invite?token=demo": {
+      "route": "/accept-invite?token=demo",
+      "violations": [],
+      "cls": 0.003401947021484375,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/forgot-password": {
+      "route": "/forgot-password",
+      "violations": [],
+      "cls": 0.01103607177734375,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/reset-password?token=demo": {
+      "route": "/reset-password?token=demo",
+      "violations": [],
+      "cls": 0,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/dashboard": {
+      "route": "/dashboard",
+      "violations": [
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.158"
+        }
+      ],
+      "cls": 0.15812500000000002,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/accounts": {
+      "route": "/accounts",
+      "violations": [
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.189"
+        }
+      ],
+      "cls": 0.18893916015625,
+      "httpStatus": 500,
+      "redirectedTo": null
+    },
+    "/accounts/new": {
+      "route": "/accounts/new",
+      "violations": [],
+      "cls": 0.00020086174011230468,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/accounts/1": {
+      "route": "/accounts/1",
+      "violations": [],
+      "cls": 0.057572834396362293,
+      "httpStatus": 500,
+      "redirectedTo": "/accounts"
+    },
+    "/categories": {
+      "route": "/categories",
+      "violations": [
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.158"
+        }
+      ],
+      "cls": 0.15812500000000002,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/categories/new": {
+      "route": "/categories/new",
+      "violations": [
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.189"
+        }
+      ],
+      "cls": 0.18893916015625,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/categories/taxonomy": {
+      "route": "/categories/taxonomy",
+      "violations": [],
+      "cls": 0.0018240966796875,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/categories/1": {
+      "route": "/categories/1",
+      "violations": [
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.189"
+        }
+      ],
+      "cls": 0.18893916015625,
+      "httpStatus": 500,
+      "redirectedTo": null
+    },
+    "/transactions": {
+      "route": "/transactions",
+      "violations": [],
+      "cls": 0.030814160156249996,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/transactions/timeline": {
+      "route": "/transactions/timeline",
+      "violations": [
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.189"
+        }
+      ],
+      "cls": 0.18893916015625,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/transactions/new": {
+      "route": "/transactions/new",
+      "violations": [
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.158"
+        }
+      ],
+      "cls": 0.15827563428878785,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/transactions/1": {
+      "route": "/transactions/1",
+      "violations": [
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.216"
+        }
+      ],
+      "cls": 0.21564760694503785,
+      "httpStatus": 500,
+      "redirectedTo": "/transactions"
+    },
+    "/team": {
+      "route": "/team",
+      "violations": [
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.158"
+        }
+      ],
+      "cls": 0.15812500000000002,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/invoices": {
+      "route": "/invoices",
+      "violations": [
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.189"
+        }
+      ],
+      "cls": 0.18893916015625,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/invoices/inv-1": {
+      "route": "/invoices/inv-1",
+      "violations": [
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.158"
+        }
+      ],
+      "cls": 0.15812500000000002,
+      "httpStatus": 500,
+      "redirectedTo": null
+    },
+    "/planning/current": {
+      "route": "/planning/current",
+      "violations": [],
+      "cls": 0.030814160156249996,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/planning/cycles": {
+      "route": "/planning/cycles",
+      "violations": [
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.189"
+        }
+      ],
+      "cls": 0.18893916015625,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/planning/cycles/1": {
+      "route": "/planning/cycles/1",
+      "violations": [
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.189"
+        }
+      ],
+      "cls": 0.18893916015625,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/planning/recurring": {
+      "route": "/planning/recurring",
+      "violations": [],
+      "cls": 0.030814160156249996,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/planning/settings": {
+      "route": "/planning/settings",
+      "violations": [],
+      "cls": 0.0006933970451354981,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/recurrences": {
+      "route": "/recurrences",
+      "violations": [
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.189"
+        }
+      ],
+      "cls": 0.18893916015625,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/import": {
+      "route": "/import",
+      "violations": [
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.158"
+        }
+      ],
+      "cls": 0.15812500000000002,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/import/1": {
+      "route": "/import/1",
+      "violations": [
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.189"
+        }
+      ],
+      "cls": 0.18893916015625,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/imports": {
+      "route": "/imports",
+      "violations": [
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.158"
+        }
+      ],
+      "cls": 0.15812500000000002,
+      "httpStatus": 500,
+      "redirectedTo": null
+    }
+  },
+  "clusters": [
+    {
+      "key": "page-root::layout-cls",
+      "component": "page-root",
+      "rule": "layout-cls",
+      "impact": "moderate",
+      "routeCount": 18,
+      "sampleSelectors": [
+        "body"
+      ],
+      "samples": [
+        {
+          "route": "/login",
+          "selector": "body",
+          "detail": "CLS=0.161"
+        },
+        {
+          "route": "/dashboard",
+          "selector": "body",
+          "detail": "CLS=0.158"
+        },
+        {
+          "route": "/accounts",
+          "selector": "body",
+          "detail": "CLS=0.189"
+        }
+      ]
+    }
+  ],
+  "totals": {
+    "routes": 29,
+    "totalViolations": 18,
+    "clusterCount": 1,
+    "routesWithViolations": 18
+  }
+}
