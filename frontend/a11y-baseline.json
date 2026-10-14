@@ -1,18 +1,26 @@
 {
   "baseUrl": "http://localhost:4200",
-  "timestamp": "2026-10-14T20:32:33.420Z",
+  "timestamp": "2026-10-14T20:35:51.461Z",
   "routeResults": {
     "/login": {
       "route": "/login",
-      "violations": [],
-      "cls": 0.00032414827346801756,
+      "violations": [
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.161"
+        }
+      ],
+      "cls": 0.16115647678375244,
       "httpStatus": 200,
       "redirectedTo": "/dashboard"
     },
     "/register": {
       "route": "/register",
       "violations": [],
-      "cls": 0.054951911926269525,
+      "cls": 0,
       "httpStatus": 200,
       "redirectedTo": "/dashboard"
     },
@@ -33,7 +41,7 @@
     "/reset-password?token=demo": {
       "route": "/reset-password?token=demo",
       "violations": [],
-      "cls": 0.015607086181640624,
+      "cls": 0,
       "httpStatus": 200,
       "redirectedTo": null
     },
@@ -69,31 +77,15 @@
     },
     "/accounts/new": {
       "route": "/accounts/new",
-      "violations": [
-        {
-          "ruleId": "layout-cls",
-          "impact": "moderate",
-          "component": "page-root",
-          "selector": "body",
-          "detail": "CLS=0.158"
-        }
-      ],
-      "cls": 0.15832586174011232,
+      "violations": [],
+      "cls": 0.00020086174011230468,
       "httpStatus": 200,
       "redirectedTo": null
     },
     "/accounts/1": {
       "route": "/accounts/1",
-      "violations": [
-        {
-          "ruleId": "layout-cls",
-          "impact": "moderate",
-          "component": "page-root",
-          "selector": "body",
-          "detail": "CLS=0.216"
-        }
-      ],
-      "cls": 0.2156978343963623,
+      "violations": [],
+      "cls": 0.057572834396362293,
       "httpStatus": 500,
       "redirectedTo": "/accounts"
     },
@@ -129,16 +121,8 @@
     },
     "/categories/taxonomy": {
       "route": "/categories/taxonomy",
-      "violations": [
-        {
-          "ruleId": "layout-cls",
-          "impact": "moderate",
-          "component": "page-root",
-          "selector": "body",
-          "detail": "CLS=0.160"
-        }
-      ],
-      "cls": 0.1599490966796875,
+      "violations": [],
+      "cls": 0.0018240966796875,
       "httpStatus": 200,
       "redirectedTo": null
     },
@@ -159,16 +143,8 @@
     },
     "/transactions": {
       "route": "/transactions",
-      "violations": [
-        {
-          "ruleId": "layout-cls",
-          "impact": "moderate",
-          "component": "page-root",
-          "selector": "body",
-          "detail": "CLS=0.189"
-        }
-      ],
-      "cls": 0.18893916015625,
+      "violations": [],
+      "cls": 0.030814160156249996,
       "httpStatus": 200,
       "redirectedTo": null
     },
@@ -249,13 +225,6 @@
     },
     "/invoices/inv-1": {
       "route": "/invoices/inv-1",
-      "violations": [],
-      "cls": 0,
-      "httpStatus": 500,
-      "redirectedTo": null
-    },
-    "/planning/current": {
-      "route": "/planning/current",
       "violations": [
         {
           "ruleId": "layout-cls",
@@ -266,6 +235,13 @@
         }
       ],
       "cls": 0.15812500000000002,
+      "httpStatus": 500,
+      "redirectedTo": null
+    },
+    "/planning/current": {
+      "route": "/planning/current",
+      "violations": [],
+      "cls": 0.030814160156249996,
       "httpStatus": 200,
       "redirectedTo": null
     },
@@ -301,31 +277,15 @@
     },
     "/planning/recurring": {
       "route": "/planning/recurring",
-      "violations": [
-        {
-          "ruleId": "layout-cls",
-          "impact": "moderate",
-          "component": "page-root",
-          "selector": "body",
-          "detail": "CLS=0.189"
-        }
-      ],
-      "cls": 0.18893916015625,
+      "violations": [],
+      "cls": 0.030814160156249996,
       "httpStatus": 200,
       "redirectedTo": null
     },
     "/planning/settings": {
       "route": "/planning/settings",
-      "violations": [
-        {
-          "ruleId": "layout-cls",
-          "impact": "moderate",
-          "component": "page-root",
-          "selector": "body",
-          "detail": "CLS=0.159"
-        }
-      ],
-      "cls": 0.1588183970451355,
+      "violations": [],
+      "cls": 0.0006933970451354981,
       "httpStatus": 200,
       "redirectedTo": null
     },
@@ -361,8 +321,16 @@
     },
     "/import/1": {
       "route": "/import/1",
-      "violations": [],
-      "cls": 0.030814160156249996,
+      "violations": [
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.189"
+        }
+      ],
+      "cls": 0.18893916015625,
       "httpStatus": 200,
       "redirectedTo": null
     },
@@ -388,11 +356,16 @@
       "component": "page-root",
       "rule": "layout-cls",
       "impact": "moderate",
-      "routeCount": 22,
+      "routeCount": 18,
       "sampleSelectors": [
         "body"
       ],
       "samples": [
+        {
+          "route": "/login",
+          "selector": "body",
+          "detail": "CLS=0.161"
+        },
         {
           "route": "/dashboard",
           "selector": "body",
@@ -402,19 +375,14 @@
           "route": "/accounts",
           "selector": "body",
           "detail": "CLS=0.189"
-        },
-        {
-          "route": "/accounts/new",
-          "selector": "body",
-          "detail": "CLS=0.158"
         }
       ]
     }
   ],
   "totals": {
     "routes": 29,
-    "totalViolations": 22,
+    "totalViolations": 18,
     "clusterCount": 1,
-    "routesWithViolations": 22
+    "routesWithViolations": 18
   }
 }

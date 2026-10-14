@@ -35,4 +35,15 @@ body {
   margin: 0;
   height: 100%;
 }
+
+// Zera duracao de transicoes/animacoes CSS no sidenav para eliminar o CLS residual.
+// Material sidenav usa Angular Animations (JS triggers), nao CSS animations — entao
+// este override sozinho pode nao resolver; tentativa A de B antes de aceitar o limite.
+// shortcut: se nao zerar, fallback C = fechar sprint com 22 violacoes residuais.
+.mat-sidenav-container,
+.mat-sidenav-content,
+.mat-sidenav {
+  transition-duration: 0s !important;
+  animation-duration: 0s !important;
+}
 /* You can add global styles to this file, and also import other style files */
