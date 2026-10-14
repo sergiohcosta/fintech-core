@@ -13,7 +13,11 @@
 </mat-toolbar>
 
 <mat-sidenav-container class="sidenav-container">
-  <mat-sidenav [opened]="sidenavOpened()" mode="side" class="sidenav">
+  <mat-sidenav
+    [mode]="sidenavMode()"
+    [opened]="sidenavOpened() || sidenavOpen()"
+    (openedChange)="sidenavOpen.set($event)"
+    class="sidenav">
     <mat-nav-list>
       @for (item of navItems; track item.route) {
         @if (!item.adminOnly || isAdmin()) {
@@ -32,5 +36,6 @@
     <div class="content" tabindex="0">
       <router-outlet />
     </div>
+    <app-bottom-tab-bar />
   </mat-sidenav-content>
 </mat-sidenav-container>

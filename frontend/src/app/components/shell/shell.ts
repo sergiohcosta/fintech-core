@@ -1,4 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { BreakpointObserver } from '@angular/cdk/layout';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatSidenavModule } from '@angular/material/sidenav';
@@ -7,6 +9,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../../core/services/auth';
+import { BottomTabBarComponent } from './bottom-tab-bar/bottom-tab-bar';
 
 interface NavItem {
   label: string;
@@ -27,14 +30,29 @@ interface NavItem {
     MatIconModule,
     MatButtonModule,
     MatTooltipModule,
+    BottomTabBarComponent,
   ],
   templateUrl: './shell.html',
   styleUrl: './shell.scss',
 })
 export class ShellComponent {
   private authService = inject(AuthService);
+  private breakpointObserver = inject(BreakpointObserver);
 
-  sidenavOpened = signal(true);
+  isCompact = signal(false);
+  sidenavOpen = signal(false);
+  sidenavMode = computed<'over' | 'side'>(() => this.isCompact() ? 'over' : 'side');
+  sidenavOpened = computed(() => !this.isCompact());
+
+  constructor() {
+    // Mantém o drawer alinhado ao breakpoint compartilhado com os estilos do app.
+    this.breakpointObserver.observe('(max-width: 719.98px)')
+      .pipe(takeUntilDestroyed())
+      .subscribe(({ matches }) => {
+        this.isCompact.set(matches);
+        if (matches) this.sidenavOpen.set(false);
+      });
+  }
 
   // computed() relê o signal do AuthService automaticamente.
   // No modelo Zoneless, isso garante que a toolbar atualiza sem zone.js.
@@ -54,7 +72,8 @@ export class ShellComponent {
   ];
 
   toggleSidenav() {
-    this.sidenavOpened.update(opened => !opened);
+    if (!this.isCompact()) return;
+    this.sidenavOpen.set(!this.sidenavOpen());
   }
 
   logout() {
