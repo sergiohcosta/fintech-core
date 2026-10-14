@@ -1,0 +1,1465 @@
+{
+  "baseUrl": "http://localhost:4200",
+  "timestamp": "2026-10-14T18:29:23.107Z",
+  "routeResults": {
+    "/login": {
+      "route": "/login",
+      "violations": [
+        {
+          "ruleId": "aria-progressbar-name",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": "mat-spinner",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".app-version-watermark",
+          "detail": "Fix any of the following:"
+        }
+      ],
+      "cls": 0.00032414827346801756,
+      "httpStatus": 200,
+      "redirectedTo": "/dashboard"
+    },
+    "/register": {
+      "route": "/register",
+      "violations": [
+        {
+          "ruleId": "aria-progressbar-name",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": "mat-spinner",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".app-version-watermark",
+          "detail": "Fix any of the following:"
+        }
+      ],
+      "cls": 0.054951911926269525,
+      "httpStatus": 200,
+      "redirectedTo": "/dashboard"
+    },
+    "/accept-invite?token=demo": {
+      "route": "/accept-invite?token=demo",
+      "violations": [
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".app-version-watermark",
+          "detail": "Fix any of the following:"
+        }
+      ],
+      "cls": 0.003401947021484375,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/forgot-password": {
+      "route": "/forgot-password",
+      "violations": [
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".app-version-watermark",
+          "detail": "Fix any of the following:"
+        }
+      ],
+      "cls": 0.01103607177734375,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/reset-password?token=demo": {
+      "route": "/reset-password?token=demo",
+      "violations": [
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".app-version-watermark",
+          "detail": "Fix any of the following:"
+        }
+      ],
+      "cls": 0.015607086181640624,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/dashboard": {
+      "route": "/dashboard",
+      "violations": [
+        {
+          "ruleId": "aria-progressbar-name",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": "mat-spinner",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".app-version-watermark",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.163"
+        }
+      ],
+      "cls": 0.16306640625,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/accounts": {
+      "route": "/accounts",
+      "violations": [
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": "td > p",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".app-version-watermark",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.163"
+        }
+      ],
+      "cls": 0.16306640625,
+      "httpStatus": 500,
+      "redirectedTo": null
+    },
+    "/accounts/new": {
+      "route": "/accounts/new",
+      "violations": [
+        {
+          "ruleId": "button-name",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": ".icon-picker-trigger",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".app-version-watermark",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.163"
+        }
+      ],
+      "cls": 0.1632672679901123,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/accounts/1": {
+      "route": "/accounts/1",
+      "violations": [
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": "td > p",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".app-version-watermark",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.221"
+        }
+      ],
+      "cls": 0.22063924064636228,
+      "httpStatus": 500,
+      "redirectedTo": "/accounts"
+    },
+    "/categories": {
+      "route": "/categories",
+      "violations": [
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": "td > p",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".app-version-watermark",
+          "detail": "Fix any of the following:"
+        }
+      ],
+      "cls": 0,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/categories/new": {
+      "route": "/categories/new",
+      "violations": [
+        {
+          "ruleId": "button-name",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": ".icon-picker-trigger",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".app-version-watermark",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.194"
+        }
+      ],
+      "cls": 0.19388056640624998,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/categories/taxonomy": {
+      "route": "/categories/taxonomy",
+      "violations": [
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(1) > .taxonomy-info > .taxonomy-code",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(1) > .taxonomy-info > .taxonomy-label",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(2) > .taxonomy-info > .taxonomy-code",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(2) > .taxonomy-info > .taxonomy-label",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(3) > .taxonomy-info > .taxonomy-code",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(3) > .taxonomy-info > .taxonomy-label",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(4) > .taxonomy-info > .taxonomy-code",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(4) > .taxonomy-info > .taxonomy-label",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(5) > .taxonomy-info > .taxonomy-code",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(5) > .taxonomy-info > .taxonomy-label",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(6) > .taxonomy-info > .taxonomy-code",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(6) > .taxonomy-info > .taxonomy-label",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(7) > .taxonomy-info > .taxonomy-code",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(7) > .taxonomy-info > .taxonomy-label",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(8) > .taxonomy-info > .taxonomy-code",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(8) > .taxonomy-info > .taxonomy-label",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(9) > .taxonomy-info > .taxonomy-code",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(9) > .taxonomy-info > .taxonomy-label",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".app-version-watermark",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "scrollable-region-focusable",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".content",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.165"
+        }
+      ],
+      "cls": 0.1648905029296875,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/categories/1": {
+      "route": "/categories/1",
+      "violations": [
+        {
+          "ruleId": "button-name",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": ".icon-picker-trigger",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".app-version-watermark",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.194"
+        }
+      ],
+      "cls": 0.19388056640624998,
+      "httpStatus": 500,
+      "redirectedTo": null
+    },
+    "/transactions": {
+      "route": "/transactions",
+      "violations": [
+        {
+          "ruleId": "button-name",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": "button[mattooltip=\"Exportar CSV\"]",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "button-name",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": ".chip-remove",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".active-chips-label",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".chip-period",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": "td > p",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".app-version-watermark",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.194"
+        }
+      ],
+      "cls": 0.19388056640624998,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/transactions/timeline": {
+      "route": "/transactions/timeline",
+      "violations": [
+        {
+          "ruleId": "aria-required-children",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": ".calendar-grid",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": ".weekday[role=\"columnheader\"][_ngcontent-ng-c1471129531=\"\"]:nth-child(1)",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": ".weekday[role=\"columnheader\"][_ngcontent-ng-c1471129531=\"\"]:nth-child(2)",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": ".weekday[role=\"columnheader\"][_ngcontent-ng-c1471129531=\"\"]:nth-child(3)",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": ".weekday[role=\"columnheader\"][_ngcontent-ng-c1471129531=\"\"]:nth-child(4)",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": ".weekday[role=\"columnheader\"][_ngcontent-ng-c1471129531=\"\"]:nth-child(5)",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": ".weekday[role=\"columnheader\"][_ngcontent-ng-c1471129531=\"\"]:nth-child(6)",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": ".weekday[role=\"columnheader\"][_ngcontent-ng-c1471129531=\"\"]:nth-child(7)",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": ".empty.expanded.day-cell:nth-child(8)",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": ".empty.expanded.day-cell:nth-child(9)",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": ".empty.expanded.day-cell:nth-child(10)",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": ".empty.expanded.day-cell:nth-child(11)",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": "div[aria-label=\"2026-10-01\"]",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": "div[aria-label=\"2026-10-02\"]",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": "div[aria-label=\"2026-10-03\"]",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": "div[aria-label=\"2026-10-04\"]",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": "div[aria-label=\"2026-10-05\"]",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": "div[aria-label=\"2026-10-06\"]",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": "div[aria-label=\"2026-10-07\"]",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": "div[aria-label=\"2026-10-08\"]",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": "div[aria-label=\"2026-10-09\"]",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": "div[aria-label=\"2026-10-10\"]",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": "div[aria-label=\"2026-10-11\"]",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": "div[aria-label=\"2026-10-12\"]",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": "div[aria-label=\"2026-10-13\"]",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": "div[aria-label=\"2026-10-14\"]",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": "div[aria-label=\"2026-10-15\"]",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": "div[aria-label=\"2026-10-16\"]",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": "div[aria-label=\"2026-10-17\"]",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": "div[aria-label=\"2026-10-18\"]",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": "div[aria-label=\"2026-10-19\"]",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": "div[aria-label=\"2026-10-20\"]",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": "div[aria-label=\"2026-10-21\"]",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": "div[aria-label=\"2026-10-22\"]",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": "div[aria-label=\"2026-10-23\"]",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": "div[aria-label=\"2026-10-24\"]",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": "div[aria-label=\"2026-10-25\"]",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": "div[aria-label=\"2026-10-26\"]",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": "div[aria-label=\"2026-10-27\"]",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": "div[aria-label=\"2026-10-28\"]",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": "div[aria-label=\"2026-10-29\"]",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": "div[aria-label=\"2026-10-30\"]",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": "div[aria-label=\"2026-10-31\"]",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": ".empty.expanded.day-cell:nth-child(43)",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": ".empty.expanded.day-cell:nth-child(44)",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": ".empty.expanded.day-cell:nth-child(45)",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": ".empty.expanded.day-cell:nth-child(46)",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": ".empty.expanded.day-cell:nth-child(47)",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": ".empty.expanded.day-cell:nth-child(48)",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "aria-required-parent",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": ".empty.expanded.day-cell:nth-child(49)",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".app-version-watermark",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.194"
+        }
+      ],
+      "cls": 0.19388056640624998,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/transactions/new": {
+      "route": "/transactions/new",
+      "violations": [
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".section-divider > span[_ngcontent-ng-c538935380=\"\"]",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".app-version-watermark",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "layout-overlap",
+          "impact": "serious",
+          "selector": "#mat-mdc-slide-toggle-0-button",
+          "detail": "covered by div",
+          "component": "app-transaction-form"
+        },
+        {
+          "ruleId": "layout-overlap",
+          "impact": "serious",
+          "selector": "button.mdc-button.mat-mdc-button-base.mdc-button--outlined.mat-mdc-outlined-button.mat-unthemed",
+          "detail": "covered by div",
+          "component": "app-transaction-form"
+        },
+        {
+          "ruleId": "layout-overlap",
+          "impact": "serious",
+          "selector": "button.mdc-button.mat-mdc-button-base.mdc-button--outlined.mat-mdc-outlined-button.mat-primary.mat-mdc-button-disabled",
+          "detail": "covered by div",
+          "component": "app-transaction-form"
+        },
+        {
+          "ruleId": "layout-overlap",
+          "impact": "serious",
+          "selector": "button.mdc-button.mat-mdc-button-base.mdc-button--unelevated.mat-mdc-unelevated-button.mat-primary.mat-mdc-button-disabled",
+          "detail": "covered by div",
+          "component": "app-transaction-form"
+        },
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.163"
+        }
+      ],
+      "cls": 0.16321704053878783,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/transactions/1": {
+      "route": "/transactions/1",
+      "violations": [
+        {
+          "ruleId": "button-name",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": "button[mattooltip=\"Exportar CSV\"]",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "button-name",
+          "impact": "critical",
+          "component": "unknown",
+          "selector": ".chip-remove",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".active-chips-label",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".chip-period",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": "td > p",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".app-version-watermark",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.194"
+        }
+      ],
+      "cls": 0.19403120069503782,
+      "httpStatus": 500,
+      "redirectedTo": "/transactions"
+    },
+    "/team": {
+      "route": "/team",
+      "violations": [
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".app-version-watermark",
+          "detail": "Fix any of the following:"
+        }
+      ],
+      "cls": 0,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/invoices": {
+      "route": "/invoices",
+      "violations": [
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".empty-state > p",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".app-version-watermark",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.194"
+        }
+      ],
+      "cls": 0.19388056640624998,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/invoices/inv-1": {
+      "route": "/invoices/inv-1",
+      "violations": [
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".app-version-watermark",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.199"
+        }
+      ],
+      "cls": 0.1992689453125,
+      "httpStatus": 500,
+      "redirectedTo": null
+    },
+    "/planning/current": {
+      "route": "/planning/current",
+      "violations": [
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".app-version-watermark",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.194"
+        }
+      ],
+      "cls": 0.19388056640624998,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/planning/cycles": {
+      "route": "/planning/cycles",
+      "violations": [
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".app-version-watermark",
+          "detail": "Fix any of the following:"
+        }
+      ],
+      "cls": 0.030814160156249996,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/planning/cycles/1": {
+      "route": "/planning/cycles/1",
+      "violations": [
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".app-version-watermark",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.194"
+        }
+      ],
+      "cls": 0.19388056640624998,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/planning/recurring": {
+      "route": "/planning/recurring",
+      "violations": [
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".app-version-watermark",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.194"
+        }
+      ],
+      "cls": 0.19388056640624998,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/planning/settings": {
+      "route": "/planning/settings",
+      "violations": [
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".app-version-watermark",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.164"
+        }
+      ],
+      "cls": 0.16375980329513548,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/recurrences": {
+      "route": "/recurrences",
+      "violations": [
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".app-version-watermark",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.194"
+        }
+      ],
+      "cls": 0.19388056640624998,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/import": {
+      "route": "/import",
+      "violations": [
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".app-version-watermark",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.163"
+        }
+      ],
+      "cls": 0.16306640625,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/import/1": {
+      "route": "/import/1",
+      "violations": [
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".app-version-watermark",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.194"
+        }
+      ],
+      "cls": 0.19388056640624998,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/imports": {
+      "route": "/imports",
+      "violations": [
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".empty-state > p",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "color-contrast",
+          "impact": "serious",
+          "component": "unknown",
+          "selector": ".app-version-watermark",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.163"
+        }
+      ],
+      "cls": 0.16306640625,
+      "httpStatus": 500,
+      "redirectedTo": null
+    }
+  },
+  "clusters": [
+    {
+      "key": "unknown::color-contrast",
+      "component": "unknown",
+      "rule": "color-contrast",
+      "impact": "serious",
+      "routeCount": 29,
+      "sampleSelectors": [
+        ".app-version-watermark",
+        "td > p",
+        ".taxonomy-item.disabled.mat-mdc-tooltip-trigger:nth-child(1) > .taxonomy-info > .taxonomy-code"
+      ],
+      "samples": [
+        {
+          "route": "/login",
+          "selector": ".app-version-watermark",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "route": "/register",
+          "selector": ".app-version-watermark",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "route": "/accept-invite?token=demo",
+          "selector": ".app-version-watermark",
+          "detail": "Fix any of the following:"
+        }
+      ]
+    },
+    {
+      "key": "page-root::layout-cls",
+      "component": "page-root",
+      "rule": "layout-cls",
+      "impact": "moderate",
+      "routeCount": 21,
+      "sampleSelectors": [
+        "body"
+      ],
+      "samples": [
+        {
+          "route": "/dashboard",
+          "selector": "body",
+          "detail": "CLS=0.163"
+        },
+        {
+          "route": "/accounts",
+          "selector": "body",
+          "detail": "CLS=0.163"
+        },
+        {
+          "route": "/accounts/new",
+          "selector": "body",
+          "detail": "CLS=0.163"
+        }
+      ]
+    },
+    {
+      "key": "unknown::button-name",
+      "component": "unknown",
+      "rule": "button-name",
+      "impact": "critical",
+      "routeCount": 5,
+      "sampleSelectors": [
+        ".icon-picker-trigger",
+        "button[mattooltip=\"Exportar CSV\"]",
+        ".chip-remove"
+      ],
+      "samples": [
+        {
+          "route": "/accounts/new",
+          "selector": ".icon-picker-trigger",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "route": "/categories/new",
+          "selector": ".icon-picker-trigger",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "route": "/categories/1",
+          "selector": ".icon-picker-trigger",
+          "detail": "Fix any of the following:"
+        }
+      ]
+    },
+    {
+      "key": "unknown::aria-progressbar-name",
+      "component": "unknown",
+      "rule": "aria-progressbar-name",
+      "impact": "serious",
+      "routeCount": 3,
+      "sampleSelectors": [
+        "mat-spinner"
+      ],
+      "samples": [
+        {
+          "route": "/login",
+          "selector": "mat-spinner",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "route": "/register",
+          "selector": "mat-spinner",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "route": "/dashboard",
+          "selector": "mat-spinner",
+          "detail": "Fix any of the following:"
+        }
+      ]
+    },
+    {
+      "key": "app-transaction-form::layout-overlap",
+      "component": "app-transaction-form",
+      "rule": "layout-overlap",
+      "impact": "serious",
+      "routeCount": 1,
+      "sampleSelectors": [
+        "#mat-mdc-slide-toggle-0-button",
+        "button.mdc-button.mat-mdc-button-base.mdc-button--outlined.mat-mdc-outlined-button.mat-unthemed",
+        "button.mdc-button.mat-mdc-button-base.mdc-button--outlined.mat-mdc-outlined-button.mat-primary.mat-mdc-button-disabled"
+      ],
+      "samples": [
+        {
+          "route": "/transactions/new",
+          "selector": "#mat-mdc-slide-toggle-0-button",
+          "detail": "covered by div"
+        },
+        {
+          "route": "/transactions/new",
+          "selector": "button.mdc-button.mat-mdc-button-base.mdc-button--outlined.mat-mdc-outlined-button.mat-unthemed",
+          "detail": "covered by div"
+        },
+        {
+          "route": "/transactions/new",
+          "selector": "button.mdc-button.mat-mdc-button-base.mdc-button--outlined.mat-mdc-outlined-button.mat-primary.mat-mdc-button-disabled",
+          "detail": "covered by div"
+        }
+      ]
+    },
+    {
+      "key": "unknown::aria-required-children",
+      "component": "unknown",
+      "rule": "aria-required-children",
+      "impact": "critical",
+      "routeCount": 1,
+      "sampleSelectors": [
+        ".calendar-grid"
+      ],
+      "samples": [
+        {
+          "route": "/transactions/timeline",
+          "selector": ".calendar-grid",
+          "detail": "Fix any of the following:"
+        }
+      ]
+    },
+    {
+      "key": "unknown::aria-required-parent",
+      "component": "unknown",
+      "rule": "aria-required-parent",
+      "impact": "critical",
+      "routeCount": 1,
+      "sampleSelectors": [
+        ".weekday[role=\"columnheader\"][_ngcontent-ng-c1471129531=\"\"]:nth-child(1)",
+        ".weekday[role=\"columnheader\"][_ngcontent-ng-c1471129531=\"\"]:nth-child(2)",
+        ".weekday[role=\"columnheader\"][_ngcontent-ng-c1471129531=\"\"]:nth-child(3)"
+      ],
+      "samples": [
+        {
+          "route": "/transactions/timeline",
+          "selector": ".weekday[role=\"columnheader\"][_ngcontent-ng-c1471129531=\"\"]:nth-child(1)",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "route": "/transactions/timeline",
+          "selector": ".weekday[role=\"columnheader\"][_ngcontent-ng-c1471129531=\"\"]:nth-child(2)",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "route": "/transactions/timeline",
+          "selector": ".weekday[role=\"columnheader\"][_ngcontent-ng-c1471129531=\"\"]:nth-child(3)",
+          "detail": "Fix any of the following:"
+        }
+      ]
+    },
+    {
+      "key": "unknown::scrollable-region-focusable",
+      "component": "unknown",
+      "rule": "scrollable-region-focusable",
+      "impact": "serious",
+      "routeCount": 1,
+      "sampleSelectors": [
+        ".content"
+      ],
+      "samples": [
+        {
+          "route": "/categories/taxonomy",
+          "selector": ".content",
+          "detail": "Fix any of the following:"
+        }
+      ]
+    }
+  ],
+  "totals": {
+    "routes": 29,
+    "totalViolations": 145,
+    "clusterCount": 8,
+    "routesWithViolations": 29
+  }
+}
