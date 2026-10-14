@@ -1,33 +1,17 @@
 {
   "baseUrl": "http://localhost:4200",
-  "timestamp": "2026-10-14T18:45:12.178Z",
+  "timestamp": "2026-10-14T19:42:55.682Z",
   "routeResults": {
     "/login": {
       "route": "/login",
-      "violations": [
-        {
-          "ruleId": "aria-progressbar-name",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": "mat-spinner",
-          "detail": "Fix any of the following:"
-        }
-      ],
+      "violations": [],
       "cls": 0.002806570148468018,
       "httpStatus": 200,
       "redirectedTo": "/dashboard"
     },
     "/register": {
       "route": "/register",
-      "violations": [
-        {
-          "ruleId": "aria-progressbar-name",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": "mat-spinner",
-          "detail": "Fix any of the following:"
-        }
-      ],
+      "violations": [],
       "cls": 0,
       "httpStatus": 200,
       "redirectedTo": "/dashboard"
@@ -42,7 +26,7 @@
     "/forgot-password": {
       "route": "/forgot-password",
       "violations": [],
-      "cls": 0.01103607177734375,
+      "cls": 0,
       "httpStatus": 200,
       "redirectedTo": null
     },
@@ -55,15 +39,7 @@
     },
     "/dashboard": {
       "route": "/dashboard",
-      "violations": [
-        {
-          "ruleId": "aria-progressbar-name",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": "mat-spinner",
-          "detail": "Fix any of the following:"
-        }
-      ],
+      "violations": [],
       "cls": 0,
       "httpStatus": 200,
       "redirectedTo": null
@@ -76,23 +52,16 @@
           "impact": "moderate",
           "component": "page-root",
           "selector": "body",
-          "detail": "CLS=0.194"
+          "detail": "CLS=0.163"
         }
       ],
-      "cls": 0.19388056640624998,
+      "cls": 0.16306640625,
       "httpStatus": 500,
       "redirectedTo": null
     },
     "/accounts/new": {
       "route": "/accounts/new",
       "violations": [
-        {
-          "ruleId": "button-name",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": ".icon-picker-trigger",
-          "detail": "Fix any of the following:"
-        },
         {
           "ruleId": "layout-cls",
           "impact": "moderate",
@@ -122,16 +91,8 @@
     },
     "/categories": {
       "route": "/categories",
-      "violations": [
-        {
-          "ruleId": "layout-cls",
-          "impact": "moderate",
-          "component": "page-root",
-          "selector": "body",
-          "detail": "CLS=0.163"
-        }
-      ],
-      "cls": 0.16306640625,
+      "violations": [],
+      "cls": 0,
       "httpStatus": 200,
       "redirectedTo": null
     },
@@ -139,14 +100,14 @@
       "route": "/categories/new",
       "violations": [
         {
-          "ruleId": "button-name",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": ".icon-picker-trigger",
-          "detail": "Fix any of the following:"
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.194"
         }
       ],
-      "cls": 0.030814160156249996,
+      "cls": 0.19388056640624998,
       "httpStatus": 200,
       "redirectedTo": null
     },
@@ -154,27 +115,20 @@
       "route": "/categories/taxonomy",
       "violations": [
         {
-          "ruleId": "scrollable-region-focusable",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".content",
-          "detail": "Fix any of the following:"
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.165"
         }
       ],
-      "cls": 0.0018240966796875,
+      "cls": 0.1648905029296875,
       "httpStatus": 200,
       "redirectedTo": null
     },
     "/categories/1": {
       "route": "/categories/1",
       "violations": [
-        {
-          "ruleId": "button-name",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": ".icon-picker-trigger",
-          "detail": "Fix any of the following:"
-        },
         {
           "ruleId": "layout-cls",
           "impact": "moderate",
@@ -191,28 +145,14 @@
       "route": "/transactions",
       "violations": [
         {
-          "ruleId": "button-name",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "button[mattooltip=\"Exportar CSV\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "button-name",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": ".chip-remove",
-          "detail": "Fix any of the following:"
-        },
-        {
           "ruleId": "layout-cls",
           "impact": "moderate",
           "component": "page-root",
           "selector": "body",
-          "detail": "CLS=0.163"
+          "detail": "CLS=0.194"
         }
       ],
-      "cls": 0.16306640625,
+      "cls": 0.19388056640624998,
       "httpStatus": 200,
       "redirectedTo": null
     },
@@ -223,350 +163,35 @@
           "ruleId": "aria-required-children",
           "impact": "critical",
           "component": "unknown",
-          "selector": ".calendar-grid",
+          "selector": "div[role=\"row\"][_ngcontent-ng-c3295874281=\"\"]:nth-child(2)",
           "detail": "Fix any of the following:"
         },
         {
-          "ruleId": "aria-required-parent",
+          "ruleId": "aria-required-children",
           "impact": "critical",
           "component": "unknown",
-          "selector": ".weekday[role=\"columnheader\"][_ngcontent-ng-c1471129531=\"\"]:nth-child(1)",
+          "selector": "div[role=\"row\"][_ngcontent-ng-c3295874281=\"\"]:nth-child(3)",
           "detail": "Fix any of the following:"
         },
         {
-          "ruleId": "aria-required-parent",
+          "ruleId": "aria-required-children",
           "impact": "critical",
           "component": "unknown",
-          "selector": ".weekday[role=\"columnheader\"][_ngcontent-ng-c1471129531=\"\"]:nth-child(2)",
+          "selector": "div[role=\"row\"][_ngcontent-ng-c3295874281=\"\"]:nth-child(4)",
           "detail": "Fix any of the following:"
         },
         {
-          "ruleId": "aria-required-parent",
+          "ruleId": "aria-required-children",
           "impact": "critical",
           "component": "unknown",
-          "selector": ".weekday[role=\"columnheader\"][_ngcontent-ng-c1471129531=\"\"]:nth-child(3)",
+          "selector": "div[role=\"row\"][_ngcontent-ng-c3295874281=\"\"]:nth-child(5)",
           "detail": "Fix any of the following:"
         },
         {
-          "ruleId": "aria-required-parent",
+          "ruleId": "aria-required-children",
           "impact": "critical",
           "component": "unknown",
-          "selector": ".weekday[role=\"columnheader\"][_ngcontent-ng-c1471129531=\"\"]:nth-child(4)",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": ".weekday[role=\"columnheader\"][_ngcontent-ng-c1471129531=\"\"]:nth-child(5)",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": ".weekday[role=\"columnheader\"][_ngcontent-ng-c1471129531=\"\"]:nth-child(6)",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": ".weekday[role=\"columnheader\"][_ngcontent-ng-c1471129531=\"\"]:nth-child(7)",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": ".empty.expanded.day-cell:nth-child(8)",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": ".empty.expanded.day-cell:nth-child(9)",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": ".empty.expanded.day-cell:nth-child(10)",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": ".empty.expanded.day-cell:nth-child(11)",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[aria-label=\"2026-10-01\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[aria-label=\"2026-10-02\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[aria-label=\"2026-10-03\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[aria-label=\"2026-10-04\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[aria-label=\"2026-10-05\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[aria-label=\"2026-10-06\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[aria-label=\"2026-10-07\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[aria-label=\"2026-10-08\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[aria-label=\"2026-10-09\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[aria-label=\"2026-10-10\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[aria-label=\"2026-10-11\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[aria-label=\"2026-10-12\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[aria-label=\"2026-10-13\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[aria-label=\"2026-10-14\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[aria-label=\"2026-10-15\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[aria-label=\"2026-10-16\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[aria-label=\"2026-10-17\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[aria-label=\"2026-10-18\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[aria-label=\"2026-10-19\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[aria-label=\"2026-10-20\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[aria-label=\"2026-10-21\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[aria-label=\"2026-10-22\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[aria-label=\"2026-10-23\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[aria-label=\"2026-10-24\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[aria-label=\"2026-10-25\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[aria-label=\"2026-10-26\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[aria-label=\"2026-10-27\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[aria-label=\"2026-10-28\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[aria-label=\"2026-10-29\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[aria-label=\"2026-10-30\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "div[aria-label=\"2026-10-31\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": ".empty.expanded.day-cell:nth-child(43)",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": ".empty.expanded.day-cell:nth-child(44)",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": ".empty.expanded.day-cell:nth-child(45)",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": ".empty.expanded.day-cell:nth-child(46)",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": ".empty.expanded.day-cell:nth-child(47)",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": ".empty.expanded.day-cell:nth-child(48)",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "aria-required-parent",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": ".empty.expanded.day-cell:nth-child(49)",
+          "selector": "div[role=\"row\"][_ngcontent-ng-c3295874281=\"\"]:nth-child(6)",
           "detail": "Fix any of the following:"
         },
         {
@@ -611,36 +236,15 @@
           "selector": "button.mdc-button.mat-mdc-button-base.mdc-button--unelevated.mat-mdc-unelevated-button.mat-primary.mat-mdc-button-disabled",
           "detail": "covered by div",
           "component": "app-transaction-form"
-        },
-        {
-          "ruleId": "layout-cls",
-          "impact": "moderate",
-          "component": "page-root",
-          "selector": "body",
-          "detail": "CLS=0.163"
         }
       ],
-      "cls": 0.16321704053878783,
+      "cls": 0.0001506342887878418,
       "httpStatus": 200,
       "redirectedTo": null
     },
     "/transactions/1": {
       "route": "/transactions/1",
       "violations": [
-        {
-          "ruleId": "button-name",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": "button[mattooltip=\"Exportar CSV\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "button-name",
-          "impact": "critical",
-          "component": "unknown",
-          "selector": ".chip-remove",
-          "detail": "Fix any of the following:"
-        },
         {
           "ruleId": "layout-cls",
           "impact": "moderate",
@@ -655,31 +259,15 @@
     },
     "/team": {
       "route": "/team",
-      "violations": [
-        {
-          "ruleId": "layout-cls",
-          "impact": "moderate",
-          "component": "page-root",
-          "selector": "body",
-          "detail": "CLS=0.163"
-        }
-      ],
-      "cls": 0.16306640625,
+      "violations": [],
+      "cls": 0,
       "httpStatus": 200,
       "redirectedTo": null
     },
     "/invoices": {
       "route": "/invoices",
-      "violations": [
-        {
-          "ruleId": "layout-cls",
-          "impact": "moderate",
-          "component": "page-root",
-          "selector": "body",
-          "detail": "CLS=0.194"
-        }
-      ],
-      "cls": 0.19388056640624998,
+      "violations": [],
+      "cls": 0.030814160156249996,
       "httpStatus": 200,
       "redirectedTo": null
     },
@@ -715,8 +303,16 @@
     },
     "/planning/cycles": {
       "route": "/planning/cycles",
-      "violations": [],
-      "cls": 0.030814160156249996,
+      "violations": [
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.194"
+        }
+      ],
+      "cls": 0.19388056640624998,
       "httpStatus": 200,
       "redirectedTo": null
     },
@@ -752,16 +348,8 @@
     },
     "/planning/settings": {
       "route": "/planning/settings",
-      "violations": [
-        {
-          "ruleId": "layout-cls",
-          "impact": "moderate",
-          "component": "page-root",
-          "selector": "body",
-          "detail": "CLS=0.164"
-        }
-      ],
-      "cls": 0.16375980329513548,
+      "violations": [],
+      "cls": 0.0006933970451354981,
       "httpStatus": 200,
       "redirectedTo": null
     },
@@ -797,23 +385,23 @@
     },
     "/import/1": {
       "route": "/import/1",
-      "violations": [],
-      "cls": 0.030814160156249996,
-      "httpStatus": 200,
-      "redirectedTo": null
-    },
-    "/imports": {
-      "route": "/imports",
       "violations": [
         {
           "ruleId": "layout-cls",
           "impact": "moderate",
           "component": "page-root",
           "selector": "body",
-          "detail": "CLS=0.163"
+          "detail": "CLS=0.194"
         }
       ],
-      "cls": 0.16306640625,
+      "cls": 0.19388056640624998,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/imports": {
+      "route": "/imports",
+      "violations": [],
+      "cls": 0,
       "httpStatus": 500,
       "redirectedTo": null
     }
@@ -824,7 +412,7 @@
       "component": "page-root",
       "rule": "layout-cls",
       "impact": "moderate",
-      "routeCount": 19,
+      "routeCount": 17,
       "sampleSelectors": [
         "body"
       ],
@@ -832,7 +420,7 @@
         {
           "route": "/accounts",
           "selector": "body",
-          "detail": "CLS=0.194"
+          "detail": "CLS=0.163"
         },
         {
           "route": "/accounts/new",
@@ -843,62 +431,6 @@
           "route": "/accounts/1",
           "selector": "body",
           "detail": "CLS=0.221"
-        }
-      ]
-    },
-    {
-      "key": "unknown::button-name",
-      "component": "unknown",
-      "rule": "button-name",
-      "impact": "critical",
-      "routeCount": 5,
-      "sampleSelectors": [
-        ".icon-picker-trigger",
-        "button[mattooltip=\"Exportar CSV\"]",
-        ".chip-remove"
-      ],
-      "samples": [
-        {
-          "route": "/accounts/new",
-          "selector": ".icon-picker-trigger",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "route": "/categories/new",
-          "selector": ".icon-picker-trigger",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "route": "/categories/1",
-          "selector": ".icon-picker-trigger",
-          "detail": "Fix any of the following:"
-        }
-      ]
-    },
-    {
-      "key": "unknown::aria-progressbar-name",
-      "component": "unknown",
-      "rule": "aria-progressbar-name",
-      "impact": "serious",
-      "routeCount": 3,
-      "sampleSelectors": [
-        "mat-spinner"
-      ],
-      "samples": [
-        {
-          "route": "/login",
-          "selector": "mat-spinner",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "route": "/register",
-          "selector": "mat-spinner",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "route": "/dashboard",
-          "selector": "mat-spinner",
-          "detail": "Fix any of the following:"
         }
       ]
     },
@@ -938,58 +470,24 @@
       "impact": "critical",
       "routeCount": 1,
       "sampleSelectors": [
-        ".calendar-grid"
+        "div[role=\"row\"][_ngcontent-ng-c3295874281=\"\"]:nth-child(2)",
+        "div[role=\"row\"][_ngcontent-ng-c3295874281=\"\"]:nth-child(3)",
+        "div[role=\"row\"][_ngcontent-ng-c3295874281=\"\"]:nth-child(4)"
       ],
       "samples": [
         {
           "route": "/transactions/timeline",
-          "selector": ".calendar-grid",
-          "detail": "Fix any of the following:"
-        }
-      ]
-    },
-    {
-      "key": "unknown::aria-required-parent",
-      "component": "unknown",
-      "rule": "aria-required-parent",
-      "impact": "critical",
-      "routeCount": 1,
-      "sampleSelectors": [
-        ".weekday[role=\"columnheader\"][_ngcontent-ng-c1471129531=\"\"]:nth-child(1)",
-        ".weekday[role=\"columnheader\"][_ngcontent-ng-c1471129531=\"\"]:nth-child(2)",
-        ".weekday[role=\"columnheader\"][_ngcontent-ng-c1471129531=\"\"]:nth-child(3)"
-      ],
-      "samples": [
-        {
-          "route": "/transactions/timeline",
-          "selector": ".weekday[role=\"columnheader\"][_ngcontent-ng-c1471129531=\"\"]:nth-child(1)",
+          "selector": "div[role=\"row\"][_ngcontent-ng-c3295874281=\"\"]:nth-child(2)",
           "detail": "Fix any of the following:"
         },
         {
           "route": "/transactions/timeline",
-          "selector": ".weekday[role=\"columnheader\"][_ngcontent-ng-c1471129531=\"\"]:nth-child(2)",
+          "selector": "div[role=\"row\"][_ngcontent-ng-c3295874281=\"\"]:nth-child(3)",
           "detail": "Fix any of the following:"
         },
         {
           "route": "/transactions/timeline",
-          "selector": ".weekday[role=\"columnheader\"][_ngcontent-ng-c1471129531=\"\"]:nth-child(3)",
-          "detail": "Fix any of the following:"
-        }
-      ]
-    },
-    {
-      "key": "unknown::scrollable-region-focusable",
-      "component": "unknown",
-      "rule": "scrollable-region-focusable",
-      "impact": "serious",
-      "routeCount": 1,
-      "sampleSelectors": [
-        ".content"
-      ],
-      "samples": [
-        {
-          "route": "/categories/taxonomy",
-          "selector": ".content",
+          "selector": "div[role=\"row\"][_ngcontent-ng-c3295874281=\"\"]:nth-child(4)",
           "detail": "Fix any of the following:"
         }
       ]
@@ -997,8 +495,8 @@
   ],
   "totals": {
     "routes": 29,
-    "totalViolations": 84,
-    "clusterCount": 7,
-    "routesWithViolations": 24
+    "totalViolations": 26,
+    "clusterCount": 3,
+    "routesWithViolations": 18
   }
 }
