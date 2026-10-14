@@ -8,6 +8,11 @@ export const planningRoutes: Routes = [
     children: [
       { path: '', redirectTo: 'current', pathMatch: 'full' },
       {
+        path: 'breakdown/:id',
+        loadComponent: () =>
+          import('./breakdown-detail/breakdown-detail').then(m => m.BreakdownDetailComponent),
+      },
+      {
         path: 'current',
         loadComponent: () =>
           import('./budget-cycle-current/budget-cycle-current').then(m => m.BudgetCycleCurrentComponent),
