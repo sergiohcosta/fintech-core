@@ -82,10 +82,13 @@ public class GeminiVisionClient implements VisionModelClient {
             // 2026-08-25: extrato Itaú truncava mesmo em 8192 tokens). Tarefa é extração estruturada
             // de texto visível, não requer raciocínio — LOW maximiza o espaço pro payload real.
             if (maxOutputTokens != null) {
+                // #246: Spring AI 2.0.0-M2→2.0.1 mudou ChatClientRequestSpec.options() de
+                // aceitar o ChatOptions pronto para aceitar o BUILDER (assinatura
+                // genérica B extends ChatOptions.Builder<?>). Chamar .build() aqui
+                // produz o tipo errado e o compilador rejeita — passa o builder direto.
                 spec = spec.options(GoogleGenAiChatOptions.builder()
                         .maxOutputTokens(maxOutputTokens)
-                        .thinkingLevel(GoogleGenAiThinkingLevel.LOW)
-                        .build());
+                        .thinkingLevel(GoogleGenAiThinkingLevel.LOW));
             }
             return spec.call().entity(responseType);
         } catch (Exception e) {
