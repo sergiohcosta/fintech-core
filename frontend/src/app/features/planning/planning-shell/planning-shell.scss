@@ -1,0 +1,14 @@
+@use '../../../../styles/breakpoints' as bp;
+
+@include bp.compact {
+  .planning-tabs { display: flex; width: 100%; }
+
+  .planning-tabs a[mat-tab-link] {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: var(--touch-target-min, 48px);
+    padding-inline: var(--space-xs, 4px);
+    font-size: 0.75rem;
+    white-space: nowrap;
+  }
+}
