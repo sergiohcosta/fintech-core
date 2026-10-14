@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>4.0.1</version>
+		<version>4.0.8</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.fintech</groupId>
@@ -29,9 +29,21 @@
 	<properties>
 		<java.version>21</java.version>
 		<!-- Spring AI 2.0: linha que suporta Spring Boot 4 / Framework 7. É a camada agnóstica
-		     de LLM (ChatClient) usada pela extração de imagem (Fase 1). Pinado numa milestone
-		     (2.0.0 ainda não é GA na data) — ver <repositories> abaixo. -->
-		<spring-ai.version>2.0.0-M2</spring-ai.version>
+		     de LLM (ChatClient) usada pela extração de imagem (Fase 1). Bump M2→GA em #246:
+		     2.0.0-M2 era milestone pré-GA; o Boot 4.0.8 já exige Spring AI alinhado com
+		     Jackson 3 e Boot 4.1+, e a linha GA cristalizou a API de Options/builder. -->
+		<spring-ai.version>2.0.1</spring-ai.version>
+		<!-- #246: override do jackson-bom gerenciado pelo Boot 4 (4.0.8 = 3.1.5).
+		     3.2.3 cobre todos os CVEs do scan Trivy listados no issue (CVE-2026-29062,
+		     -89407/-89425, databind RCE 54512/54513/68497/91776/91777). -->
+		<jackson-bom.version>3.2.3</jackson-bom.version>
+		<!-- #246: par obrigatório do jackson-bom 3.2.x — o databind 3.2 referencia a anotação
+		     @JsonApplyView (BeanPropertyWriter/JacksonAnnotationIntrospector), adicionada em
+		     jackson-annotations 2.22 (2026-05-31). Sem este override, Boot 4.0.8 resolve
+		     jackson-annotations = 2.21.5 → NoClassDefFoundError em todo controller test.
+		     Nenhum Boot 4.0.x ou 4.1.x atualiza isso (todos pinam 2.21.5). Gotcha conhecido
+		     do par-BOM do Boot 4: sempre bumpar jackson-bom e jackson-2-bom em conjunto. -->
+		<jackson-2-bom.version>2.22.3</jackson-2-bom.version>
 		<!-- SonarQube: chave do projeto e caminho do relatório JaCoCo.
 		     Manter a chave aqui também é onde o MCP do Sonar resolve o projeto. -->
 		<sonar.projectKey>fintech-core-backend</sonar.projectKey>
@@ -122,10 +134,11 @@
 			<scope>runtime</scope>
 			<optional>true</optional>
 		</dependency>
-		<dependency>
-			<groupId>com.fasterxml.jackson.datatype</groupId>
-			<artifactId>jackson-datatype-jsr310</artifactId>
-		</dependency>
+		<!-- #246: jackson-datatype-jsr310 2.x foi removido. Em Jackson 3, o suporte a java.time
+		     foi mergeado no jackson-databind (jackson-databind#5032); o artefato
+		     tools.jackson.datatype:jackson-datatype-jsr310 no Central só tem 3.0.0-rc1/rc2
+		     órfãos. O Boot 4 mantém jackson-2-annotations no classpath, então as anotações
+		     @JsonPropertyDescription dos DTOs do VisionExtractor continuam resolvendo. -->
 
 		<!-- Swagger UI via springdoc — serve o spec estático em /swagger-ui.html -->
 		<dependency>

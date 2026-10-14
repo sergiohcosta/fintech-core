@@ -7,6 +7,7 @@ import com.google.genai.errors.ServerException;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.google.genai.GoogleGenAiChatOptions;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.util.MimeType;
@@ -141,7 +142,11 @@ class GeminiVisionClientTest {
 
         when(chatClient.prompt()).thenReturn(requestSpec);
         when(requestSpec.user(any(Consumer.class))).thenReturn(requestSpec);
-        when(requestSpec.options(org.mockito.ArgumentMatchers.any(org.springframework.ai.chat.prompt.ChatOptions.class)))
+        // #246: Spring AI 2.0.0-M2→2.0.1 mudou ChatClientRequestSpec.options() para receber
+        // o BUILDER (B extends ChatOptions.Builder<?>), não mais o ChatOptions pronto. A
+        // produção agora passa GoogleGenAiChatOptions.Builder, então o mock match deve ser
+        // pelo mesmo tipo concreto — capturar ArgumentCaptor pela Builder também.
+        when(requestSpec.options(org.mockito.ArgumentMatchers.any(GoogleGenAiChatOptions.Builder.class)))
                 .thenReturn(afterOptions);
         when(afterOptions.call()).thenReturn(callResponseSpec);
         when(callResponseSpec.entity(LlmReceiptExtractionDTO.class)).thenReturn(fullReceipt());
@@ -152,10 +157,12 @@ class GeminiVisionClientTest {
                 "prompt fixo", MimeTypeUtils.parseMimeType("image/jpeg"),
                 new ByteArrayResource(new byte[] {1, 2, 3}), LlmReceiptExtractionDTO.class, 4096);
 
-        org.mockito.ArgumentCaptor<org.springframework.ai.chat.prompt.ChatOptions> captor =
-                org.mockito.ArgumentCaptor.forClass(org.springframework.ai.chat.prompt.ChatOptions.class);
+        org.mockito.ArgumentCaptor<GoogleGenAiChatOptions.Builder> captor =
+                org.mockito.ArgumentCaptor.forClass(GoogleGenAiChatOptions.Builder.class);
         verify(requestSpec).options(captor.capture());
-        assertThat(captor.getValue().getMaxTokens()).isEqualTo(4096);
+        // Builder não expõe getMaxTokens() direto em 2.0.1 (só os setters); o getter vive no
+        // objeto ChatOptions construído por .build().
+        assertThat(captor.getValue().build().getMaxTokens()).isEqualTo(4096);
     }
 
     // --- Onda 4 — classificação de disponibilidade (spec §3.2: "Quando cair pro próximo") ---

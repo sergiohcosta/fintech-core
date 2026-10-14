@@ -62,7 +62,11 @@ public class OllamaVisionClient implements VisionModelClient {
             // chamada) — numPredict é o nome do Ollama para o mesmo conceito (ChatOptions.getMaxTokens()
             // é comum aos dois providers, só o builder muda).
             if (maxOutputTokens != null) {
-                spec = spec.options(OllamaChatOptions.builder().numPredict(maxOutputTokens).build());
+                // #246: Spring AI 2.0.0-M2→2.0.1 mudou ChatClientRequestSpec.options() de
+                // aceitar o ChatOptions pronto para aceitar o BUILDER (assinatura
+                // genérica B extends ChatOptions.Builder<?>). Chamar .build() aqui
+                // produz o tipo errado e o compilador rejeita — passa o builder direto.
+                spec = spec.options(OllamaChatOptions.builder().numPredict(maxOutputTokens));
             }
             return spec.call().entity(responseType);
         } catch (Exception e) {
