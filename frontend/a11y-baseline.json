@@ -1,6 +1,6 @@
 {
   "baseUrl": "http://localhost:4200",
-  "timestamp": "2026-10-14T18:39:58.545Z",
+  "timestamp": "2026-10-14T18:42:19.137Z",
   "routeResults": {
     "/login": {
       "route": "/login",
@@ -13,7 +13,7 @@
           "detail": "Fix any of the following:"
         }
       ],
-      "cls": 0.00032414827346801756,
+      "cls": 0.002806570148468018,
       "httpStatus": 200,
       "redirectedTo": "/dashboard"
     },
@@ -28,7 +28,7 @@
           "detail": "Fix any of the following:"
         }
       ],
-      "cls": 0,
+      "cls": 0.054951911926269525,
       "httpStatus": 200,
       "redirectedTo": "/dashboard"
     },
@@ -42,14 +42,14 @@
     "/forgot-password": {
       "route": "/forgot-password",
       "violations": [],
-      "cls": 0,
+      "cls": 0.01103607177734375,
       "httpStatus": 200,
       "redirectedTo": null
     },
     "/reset-password?token=demo": {
       "route": "/reset-password?token=demo",
       "violations": [],
-      "cls": 0,
+      "cls": 0.015607086181640624,
       "httpStatus": 200,
       "redirectedTo": null
     },
@@ -84,9 +84,16 @@
           "component": "unknown",
           "selector": "td > p",
           "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.194"
         }
       ],
-      "cls": 0.030814160156249996,
+      "cls": 0.19388056640624998,
       "httpStatus": 500,
       "redirectedTo": null
     },
@@ -121,9 +128,16 @@
           "component": "unknown",
           "selector": "td > p",
           "detail": "Fix any of the following:"
+        },
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.221"
         }
       ],
-      "cls": 0.0310150218963623,
+      "cls": 0.22063924064636228,
       "httpStatus": 500,
       "redirectedTo": "/accounts"
     },
@@ -136,16 +150,9 @@
           "component": "unknown",
           "selector": "td > p",
           "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "layout-cls",
-          "impact": "moderate",
-          "component": "page-root",
-          "selector": "body",
-          "detail": "CLS=0.163"
         }
       ],
-      "cls": 0.16306640625,
+      "cls": 0,
       "httpStatus": 200,
       "redirectedTo": null
     },
@@ -230,20 +237,6 @@
           "impact": "critical",
           "component": "unknown",
           "selector": ".chip-remove",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".active-chips-label",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".chip-period",
           "detail": "Fix any of the following:"
         },
         {
@@ -634,13 +627,6 @@
       "route": "/transactions/new",
       "violations": [
         {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".section-divider > span[_ngcontent-ng-c538935380=\"\"]",
-          "detail": "Fix any of the following:"
-        },
-        {
           "ruleId": "layout-overlap",
           "impact": "serious",
           "selector": "#mat-mdc-slide-toggle-0-button",
@@ -701,20 +687,6 @@
           "ruleId": "color-contrast",
           "impact": "serious",
           "component": "unknown",
-          "selector": ".active-chips-label",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".chip-period",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
           "selector": "td > p",
           "detail": "Fix any of the following:"
         }
@@ -740,23 +712,8 @@
     },
     "/invoices": {
       "route": "/invoices",
-      "violations": [
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".empty-state > p",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "ruleId": "layout-cls",
-          "impact": "moderate",
-          "component": "page-root",
-          "selector": "body",
-          "detail": "CLS=0.194"
-        }
-      ],
-      "cls": 0.19388056640624998,
+      "violations": [],
+      "cls": 0.030814160156249996,
       "httpStatus": 200,
       "redirectedTo": null
     },
@@ -768,10 +725,10 @@
           "impact": "moderate",
           "component": "page-root",
           "selector": "body",
-          "detail": "CLS=0.199"
+          "detail": "CLS=0.163"
         }
       ],
-      "cls": 0.1992689453125,
+      "cls": 0.16306640625,
       "httpStatus": 500,
       "redirectedTo": null
     },
@@ -784,20 +741,6 @@
     },
     "/planning/cycles": {
       "route": "/planning/cycles",
-      "violations": [],
-      "cls": 0.030814160156249996,
-      "httpStatus": 200,
-      "redirectedTo": null
-    },
-    "/planning/cycles/1": {
-      "route": "/planning/cycles/1",
-      "violations": [],
-      "cls": 0.030814160156249996,
-      "httpStatus": 200,
-      "redirectedTo": null
-    },
-    "/planning/recurring": {
-      "route": "/planning/recurring",
       "violations": [
         {
           "ruleId": "layout-cls",
@@ -808,6 +751,28 @@
         }
       ],
       "cls": 0.19388056640624998,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/planning/cycles/1": {
+      "route": "/planning/cycles/1",
+      "violations": [
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.194"
+        }
+      ],
+      "cls": 0.19388056640624998,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/planning/recurring": {
+      "route": "/planning/recurring",
+      "violations": [],
+      "cls": 0.030814160156249996,
       "httpStatus": 200,
       "redirectedTo": null
     },
@@ -828,6 +793,28 @@
     },
     "/recurrences": {
       "route": "/recurrences",
+      "violations": [],
+      "cls": 0.030814160156249996,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/import": {
+      "route": "/import",
+      "violations": [
+        {
+          "ruleId": "layout-cls",
+          "impact": "moderate",
+          "component": "page-root",
+          "selector": "body",
+          "detail": "CLS=0.163"
+        }
+      ],
+      "cls": 0.16306640625,
+      "httpStatus": 200,
+      "redirectedTo": null
+    },
+    "/import/1": {
+      "route": "/import/1",
       "violations": [
         {
           "ruleId": "layout-cls",
@@ -841,30 +828,9 @@
       "httpStatus": 200,
       "redirectedTo": null
     },
-    "/import": {
-      "route": "/import",
-      "violations": [],
-      "cls": 0,
-      "httpStatus": 200,
-      "redirectedTo": null
-    },
-    "/import/1": {
-      "route": "/import/1",
-      "violations": [],
-      "cls": 0.030814160156249996,
-      "httpStatus": 200,
-      "redirectedTo": null
-    },
     "/imports": {
       "route": "/imports",
       "violations": [
-        {
-          "ruleId": "color-contrast",
-          "impact": "serious",
-          "component": "unknown",
-          "selector": ".empty-state > p",
-          "detail": "Fix any of the following:"
-        },
         {
           "ruleId": "layout-cls",
           "impact": "moderate",
@@ -884,7 +850,7 @@
       "component": "page-root",
       "rule": "layout-cls",
       "impact": "moderate",
-      "routeCount": 16,
+      "routeCount": 18,
       "sampleSelectors": [
         "body"
       ],
@@ -895,43 +861,14 @@
           "detail": "CLS=0.163"
         },
         {
+          "route": "/accounts",
+          "selector": "body",
+          "detail": "CLS=0.194"
+        },
+        {
           "route": "/accounts/new",
           "selector": "body",
           "detail": "CLS=0.163"
-        },
-        {
-          "route": "/categories",
-          "selector": "body",
-          "detail": "CLS=0.163"
-        }
-      ]
-    },
-    {
-      "key": "unknown::color-contrast",
-      "component": "unknown",
-      "rule": "color-contrast",
-      "impact": "serious",
-      "routeCount": 8,
-      "sampleSelectors": [
-        "td > p",
-        ".active-chips-label",
-        ".chip-period"
-      ],
-      "samples": [
-        {
-          "route": "/accounts",
-          "selector": "td > p",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "route": "/accounts/1",
-          "selector": "td > p",
-          "detail": "Fix any of the following:"
-        },
-        {
-          "route": "/categories",
-          "selector": "td > p",
-          "detail": "Fix any of the following:"
         }
       ]
     },
@@ -960,6 +897,33 @@
         {
           "route": "/categories/1",
           "selector": ".icon-picker-trigger",
+          "detail": "Fix any of the following:"
+        }
+      ]
+    },
+    {
+      "key": "unknown::color-contrast",
+      "component": "unknown",
+      "rule": "color-contrast",
+      "impact": "serious",
+      "routeCount": 5,
+      "sampleSelectors": [
+        "td > p"
+      ],
+      "samples": [
+        {
+          "route": "/accounts",
+          "selector": "td > p",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "route": "/accounts/1",
+          "selector": "td > p",
+          "detail": "Fix any of the following:"
+        },
+        {
+          "route": "/categories",
+          "selector": "td > p",
           "detail": "Fix any of the following:"
         }
       ]
@@ -1086,8 +1050,8 @@
   ],
   "totals": {
     "routes": 29,
-    "totalViolations": 93,
+    "totalViolations": 88,
     "clusterCount": 8,
-    "routesWithViolations": 21
+    "routesWithViolations": 22
   }
 }
