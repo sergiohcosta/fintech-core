@@ -1,0 +1,49 @@
+@use '../../../../../styles/breakpoints' as bp;
+
+.action-sheet {
+  padding: var(--space-md, 16px);
+
+  h2 {
+    margin: 0 0 var(--space-sm, 8px);
+    font-size: 1.25rem;
+  }
+
+  p {
+    margin: 0;
+    color: var(--mat-sys-on-surface-variant);
+    line-height: 1.5;
+  }
+}
+
+.drag-handle {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-xs, 4px) 0 var(--space-md, 16px);
+
+  span {
+    width: 32px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--mat-sys-outline-variant);
+  }
+}
+
+.sheet-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm, 8px);
+  margin-top: var(--space-lg, 24px);
+
+  button { min-height: var(--touch-target-min, 48px); }
+}
+
+.scope-options { display: flex; flex-direction: column; gap: var(--space-sm, 8px); margin-top: var(--space-md, 16px); }
+.paid-warning { margin-top: var(--space-sm, 8px) !important; color: var(--mat-sys-error) !important; font-size: .8rem; }
+
+@include bp.compact {
+  .action-sheet { padding: var(--space-md, 16px); }
+}
+
+@include bp.expanded {
+  .action-sheet { padding: var(--space-lg, 24px); }
+}

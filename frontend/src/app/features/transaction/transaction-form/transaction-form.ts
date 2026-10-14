@@ -43,11 +43,29 @@ import { RecurrenceService } from '../../../core/services/recurrence.service';
 export { buildInstallmentPreview } from './installment-preview';
 export type { InstallmentPreviewRow, CreditCardPreviewConfig } from './installment-preview';
 
+// A edição continua identificada pela rota; a duplicação inicia um cadastro novo sem reutilizar IDs.
 interface TransactionCategoryOption {
   id: string;
   name: string;
   level: number;
   archived: boolean;
+}
+
+interface DuplicateTransactionSeed {
+  description: string;
+  amount: number;
+  type: 'INCOME' | 'EXPENSE';
+  categoryId: string | null;
+  accountId: string | null;
+}
+
+function isDuplicateTransactionSeed(value: unknown): value is DuplicateTransactionSeed {
+  if (typeof value !== 'object' || value === null) return false;
+  return 'description' in value && typeof value.description === 'string' &&
+    'amount' in value && typeof value.amount === 'number' &&
+    'type' in value && (value.type === 'INCOME' || value.type === 'EXPENSE') &&
+    'categoryId' in value && (typeof value.categoryId === 'string' || value.categoryId === null) &&
+    'accountId' in value && (typeof value.accountId === 'string' || value.accountId === null);
 }
 
 @Component({
@@ -197,6 +215,21 @@ export class TransactionForm implements OnInit {
           this.router.navigate(['/transactions']);
         }
       });
+    } else {
+      const seed = this.router.getCurrentNavigation()?.extras.state?.['duplicateTransaction'];
+      if (isDuplicateTransactionSeed(seed)) {
+        // Duplicar abre um cadastro novo: reutiliza valor/categoria/conta, mas começa com data e status atuais.
+        this.form.patchValue({
+          description: seed.description,
+          amount: seed.amount,
+          date: new Date(),
+          type: seed.type,
+          status: 'PENDING',
+          categoryId: seed.categoryId,
+          accountId: seed.accountId,
+        });
+        this.amountDisplay.set(this.formatAmount(seed.amount));
+      }
     }
   }
 

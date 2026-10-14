@@ -1,3 +1,5 @@
+@use '../../../../../styles/breakpoints' as bp;
+
 .filters-panel {
   background: #fff;
   border-bottom: 2px solid #e8f0fe;
@@ -205,4 +207,25 @@
 .clear-btn {
   font-size: 11px;
   color: #5f6368;
+}
+
+@include bp.compact {
+  .filters-panel { border: 0; }
+  .filter-section { padding: var(--space-md, 16px); }
+  .conta-field { width: 100%; }
+  .tipo-status-row { flex-direction: column; }
+  .tipo-status-row .filter-section:first-child { border-right: 0; }
+
+  .fchip,
+  .mchip,
+  .date-input,
+  .panel-footer button {
+    min-height: var(--touch-target-min, 48px);
+  }
+
+  .panel-footer {
+    flex-wrap: wrap;
+    gap: var(--space-sm, 8px);
+    padding: var(--space-md, 16px);
+  }
 }
