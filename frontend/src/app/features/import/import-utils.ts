@@ -296,11 +296,21 @@ export interface InstallmentInfo {
  * Lê installment_number/installment_total do fields — ausentes (Nubank/genérico) → null.
  * Importações geradas a partir de extratos do Itaú trazem o número e total da parcela;
  * outras fontes (Nubank, CSV genérico) deixam esses campos fora.
+ *
+ * <p>Caso degenerado 1/1 também vira null: não é parcelamento de verdade (uma única parcela
+ * é uma transação avulsa). Algum extrator (hoje só o {@code ItauFaturaTemplate} via mock
+ * ou um padrão NN/MM mal casado) pode popular 1/1 por ruído; sem o filtro, a UI mostra
+ * a linha como "Parcelada" + ícone "Vai criar parcelamento completo" — incoerente com o
+ * que o {@code ImportService.commit} de fato grava (avulsa, {@code totalInstallments=null},
+ * porque lá o guard exige {@code installmentTotal > 1}).
  */
 export function installmentInfo(staged: StagedTransactionResponseDTO): InstallmentInfo | null {
   const number = fieldValue(staged, 'installment_number');
   const total = fieldValue(staged, 'installment_total');
   if (typeof number !== 'number' || typeof total !== 'number') {
+    return null;
+  }
+  if (number === 1 && total === 1) {
     return null;
   }
   return { number, total };
