@@ -436,20 +436,20 @@ table {
 
 @include bp.compact {
   .tx-cards { display: flex; flex-direction: column; gap: var(--space-sm, 8px); padding: 0; }
-  .swipe-shell { position: relative; overflow: hidden; border-radius: 16px; }
-  .swipe-actions { position: absolute; inset: 0; display: flex; align-items: stretch; }
+  // clip-path clips the reveal without creating an overflow:hidden scroll container.
+  .swipe-shell { position: relative; clip-path: inset(0 round 16px); }
+  .swipe-actions { position: absolute; inset: 0; display: flex; }
   .swipe-actions button { min-width: 96px; min-height: var(--touch-target-min, 48px); color: #fff; }
   .swipe-actions.delete-action { justify-content: flex-end; background: #c62828; }
   .swipe-actions.edit-action { justify-content: flex-start; background: #1565c0; }
-  .tx-card { position: relative; z-index: 1; box-sizing: border-box; height: auto !important; min-height: 96px; padding: var(--space-md, 16px) !important; border: 1px solid var(--mat-sys-outline-variant); border-radius: 16px; background: var(--mat-sys-surface); }
+  // O CDK põe touch-action:none no draggable; pan-y!important mantém a rolagem do shell vertical.
+  .tx-card { position: relative; z-index: 1; box-sizing: border-box; height: auto !important; min-height: calc(var(--touch-target-min, 48px) * 2); padding: var(--space-md, 16px) !important; border: 1px solid var(--mat-sys-outline-variant); border-radius: 16px; background: var(--mat-sys-surface); touch-action: pan-y !important; }
   .tx-card-main { display: grid; grid-template-columns: minmax(0, 1fr) auto 48px; align-items: center; gap: var(--space-sm, 8px); width: 100%; }
   .tx-card-copy { min-width: 0; }
   .tx-description { display: block; max-width: 30ch; overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
   .tx-account { display: block; overflow: hidden; margin-top: 3px; color: var(--mat-sys-on-surface-variant); font-size: .75rem; text-overflow: ellipsis; white-space: nowrap; }
   .tx-card-meta { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-xs, 4px); margin-top: var(--space-xs, 4px); }
   .tx-card-value { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-xs, 4px); white-space: nowrap; }
-  .tx-card-value .amount.income { color: #2e7d32; }
-  .tx-card-value .amount.expense { color: #c62828; }
   .tx-card-value .amount.transfer { color: var(--mat-sys-outline); }
   .ghost-label { border-radius: 999px; padding: 2px var(--space-xs, 4px); background: #fff3e0; color: #8d4a00; font-size: .65rem; }
   .tx-menu-trigger { width: var(--touch-target-min, 48px); height: var(--touch-target-min, 48px); }

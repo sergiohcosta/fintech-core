@@ -58,6 +58,21 @@
   button { min-width: var(--touch-target-min, 48px); min-height: var(--touch-target-min, 48px); }
 }
 
+.import-shortcut {
+  display: flex;
+  justify-content: flex-start;
+  gap: var(--space-sm, 8px);
+  width: 100%;
+  min-height: var(--touch-target-min, 48px);
+  margin-bottom: var(--space-xs, 4px);
+}
+
+.import-hint {
+  margin: 0 0 var(--space-sm, 8px);
+  color: var(--mat-sys-on-surface-variant);
+  font-size: .75rem;
+}
+
 form {
   display: flex;
   flex-direction: column;

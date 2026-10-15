@@ -18,6 +18,12 @@
     </button>
   </header>
 
+  <button mat-stroked-button class="import-shortcut" type="button" (click)="openImport()">
+    <mat-icon>photo_camera</mat-icon>
+    Criar a partir de foto ou arquivo
+  </button>
+  <p class="import-hint">A importação extrai os dados e permite revisar antes de lançar.</p>
+
   <form [formGroup]="form" (ngSubmit)="submit()" [attr.aria-busy]="saving()" novalidate>
     <mat-form-field appearance="outline" class="field-full amount-field">
       <mat-label>Valor</mat-label>
