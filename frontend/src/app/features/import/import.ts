@@ -158,6 +158,16 @@ export class ImportComponent implements OnInit {
     () => anyRowReadyToCommit(this.rows()) && !this.committing() && !this.discarding(),
   );
 
+  // --- Layout dedicado pra "comprovante com 1 transação" (protótipo da Opção C) ---
+  // Ativa quando há exatamente 1 linha PENDING e não é só-leitura — caso contrário,
+  // mantém a tabela em lote (Fase 2). Não toca na lógica de commit/patch.
+  readonly singleReceiptView = computed(
+    () => this.stage() === 'review' && !this.readOnly() && this.rows().length === 1,
+  );
+  singleRow(): ReviewRow | null {
+    return this.rows().length === 1 ? this.rows()[0] : null;
+  }
+
   // --- Tabela: seleção, paginação e expansão (Fase 2 metade B) ---
 
   /** Colunas da tabela compacta. A edição fina (valor/data/descrição/tipo) vive na linha expandida.
