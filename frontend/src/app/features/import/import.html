@@ -109,7 +109,166 @@
       <mat-progress-bar mode="indeterminate" />
     }
 
-    @if (readOnly()) {
+    <!-- Layout dedicado: 1 comprovante = 1 transação. Sem tabela, sem seleção, sem bulk apply.
+         Mesmo patch/commit do caminho padrão — só o chrome mudou. -->
+    @if (singleReceiptView()) {
+      @if (singleRow(); as row) {
+        <mat-card appearance="outlined" class="single-receipt-card">
+          <mat-card-header>
+            <mat-icon mat-card-avatar>receipt_long</mat-icon>
+            <mat-card-title>1 transação identificada</mat-card-title>
+            <mat-card-subtitle>
+              Confira os dados extraídos do comprovante e escolha a conta antes de lançar.
+              @if (row.requiresReview) {
+                <mat-icon
+                  inline
+                  color="warn"
+                  matTooltip="Revisar com atenção — algum campo tem baixa confiança"
+                  >flag</mat-icon
+                >
+              }
+            </mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="single-receipt-grid">
+              <mat-form-field appearance="outline">
+                <mat-label>Valor</mat-label>
+                <span matTextPrefix>R$&nbsp;</span>
+                <input
+                  matInput
+                  type="text"
+                  inputmode="decimal"
+                  [value]="row.amountDisplay"
+                  (input)="onAmountInputRow(row.stagedId, $event)"
+                  (blur)="onAmountBlurRow(row.stagedId, $event)"
+                  (focus)="onAmountFocusRow(row.stagedId, $event)"
+                />
+                <span
+                  matSuffix
+                  class="conf-badge"
+                  [class]="confClass(row, 'amount')"
+                  matTooltip="Confiança neste campo"
+                  >{{ confPct(row, 'amount') }}</span
+                >
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Data</mat-label>
+                <input
+                  matInput
+                  [matDatepicker]="singleDatePicker"
+                  [value]="dateValue(row)"
+                  (dateChange)="onDateChange(row.stagedId, $event.value)"
+                  placeholder="dd/mm/aaaa"
+                />
+                <mat-datepicker-toggle matIconSuffix [for]="singleDatePicker" />
+                <mat-datepicker #singleDatePicker />
+                <span
+                  matTextSuffix
+                  class="conf-badge"
+                  [class]="confClass(row, 'transaction_date')"
+                  matTooltip="Confiança neste campo"
+                  >{{ confPct(row, 'transaction_date') }}</span
+                >
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Tipo</mat-label>
+                <mat-select
+                  [value]="row.direction"
+                  (selectionChange)="updateField(row.stagedId, 'direction', $event.value)"
+                >
+                  <mat-option value="debit">Saída (despesa)</mat-option>
+                  <mat-option value="credit">Entrada (receita)</mat-option>
+                </mat-select>
+                <span
+                  matSuffix
+                  class="conf-badge"
+                  [class]="confClass(row, 'direction')"
+                  matTooltip="Confiança neste campo"
+                  >{{ confPct(row, 'direction') }}</span
+                >
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="span-2">
+                <mat-label>Descrição</mat-label>
+                <input
+                  matInput
+                  type="text"
+                  [value]="row.description"
+                  (input)="onInput(row.stagedId, 'description', $event)"
+                />
+                <span
+                  matSuffix
+                  class="conf-badge"
+                  [class]="confClass(row, 'description')"
+                  matTooltip="Confiança neste campo"
+                  >{{ confPct(row, 'description') }}</span
+                >
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Método</mat-label>
+                <input
+                  matInput
+                  type="text"
+                  [value]="row.payment_method"
+                  (input)="onInput(row.stagedId, 'payment_method', $event)"
+                />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Conta *</mat-label>
+                <mat-select
+                  [value]="row.accountId"
+                  (selectionChange)="updateField(row.stagedId, 'accountId', $event.value)"
+                >
+                  @for (acc of accounts(); track acc.id) {
+                    <mat-option [value]="acc.id">{{ acc.name }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Categoria</mat-label>
+                <mat-select
+                  [value]="row.categoryId"
+                  (selectionChange)="updateField(row.stagedId, 'categoryId', $event.value)"
+                >
+                  <mat-option [value]="null">Sem categoria</mat-option>
+                  @for (cat of categoryOptions(); track cat.id) {
+                    <mat-option [value]="cat.id">{{ cat.name }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+            </div>
+          </mat-card-content>
+          <mat-card-actions align="end">
+            <button mat-button type="button" (click)="reset()">Cancelar</button>
+            <button
+              mat-stroked-button
+              color="warn"
+              type="button"
+              [disabled]="discarding()"
+              (click)="discardRow(row.stagedId)"
+            >
+              <mat-icon>delete_outline</mat-icon> Descartar comprovante
+            </button>
+            <button
+              mat-flat-button
+              color="primary"
+              type="button"
+              [disabled]="!canConfirm()"
+              (click)="confirm()"
+            >
+              <mat-icon>check</mat-icon> Confirmar e lançar
+            </button>
+          </mat-card-actions>
+        </mat-card>
+      }
+    } @else {
+      <!-- @else (N >= 2, ou readOnly): tabela em lote (Fase 2B) -->
+      @if (readOnly()) {
       <p class="hint">
         Importação já lançada — consulta somente leitura das transações confirmadas.
       </p>
@@ -478,5 +637,6 @@
         </button>
       </div>
     }
+    }   <!-- fecha @else do singleReceiptView (N >= 2) -->
   }
 </div>
