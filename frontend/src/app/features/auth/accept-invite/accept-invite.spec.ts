@@ -70,7 +70,7 @@ describe('AcceptInviteComponent', () => {
     const router = TestBed.inject(Router);
     const authSvc = TestBed.inject(AuthService);
     vi.spyOn(router, 'navigate').mockResolvedValue(true);
-    vi.spyOn(authSvc, 'setToken').mockImplementation((t: string) => { savedToken = t; });
+    vi.spyOn(authSvc, 'setToken').mockImplementation(async (t: string) => { savedToken = t; });
 
     component.form.setValue({ name: 'João', password: 'Senha123' });
     component.onSubmit();

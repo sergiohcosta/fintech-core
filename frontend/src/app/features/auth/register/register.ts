@@ -56,15 +56,22 @@ export class RegisterComponent implements OnInit {
 
   onSubmit() {
     if (this.form.invalid) return;
+    const value = this.form.getRawValue();
+    if (!value.name || !value.adminName || !value.adminEmail || !value.password) return;
 
     this.isLoading.set(true);
     this.errorMessage.set('');
 
-    this.authService.register(this.form.value as any).subscribe({
+    this.authService.register({
+      name: value.name,
+      adminName: value.adminName,
+      adminEmail: value.adminEmail,
+      password: value.password,
+    }).subscribe({
       next: (response) => {
         this.isLoading.set(false);
         this.isSuccess.set(true);
-        this.registeredTenantName.set(response.name);
+        this.registeredTenantName.set(response.name ?? '');
       },
       error: (err) => {
         this.isLoading.set(false);

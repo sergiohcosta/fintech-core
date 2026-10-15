@@ -78,8 +78,12 @@ export class AcceptInviteComponent implements OnInit {
       password: this.form.value.password!,
     }).subscribe({
       next: (response) => {
-        this.authService.setToken(response.token);
-        this.router.navigate(['/dashboard']);
+        this.authService.setToken(response.token)
+          .then(() => this.router.navigate(['/dashboard']))
+          .catch(() => {
+            this.errorMessage.set('Conta criada, mas não foi possível iniciar a sessão. Entre com suas credenciais.');
+            this.state.set('form');
+          });
       },
       error: (err) => {
         this.errorMessage.set(err.error?.message ?? 'Erro ao aceitar convite.');
