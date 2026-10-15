@@ -5,12 +5,14 @@ import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Va
 import { MatBottomSheetRef } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelect, MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { Router } from '@angular/router';
 import { finalize, Observable } from 'rxjs';
 
 import { AccountsService } from '../../../core/api/accounts/accounts.service';
@@ -18,6 +20,7 @@ import { CategoriesService } from '../../../core/api/categories/categories.servi
 import { AccountResponse, CategoryResponseDTO, TransactionRequestDTO } from '../../../core/api/fintechSaaSAPI.schemas';
 import { TransactionsService } from '../../../core/api/transactions/transactions.service';
 import { TransfersService } from '../../../core/api/transfers/transfers.service';
+import { ConfirmationDialogComponent, ConfirmationDialogData } from '../../../components/confirmation-dialog/confirmation-dialog';
 import { TransactionEventsService } from '../../../core/services/transaction-events';
 import { formatLocalDate } from '../transaction-form/transaction-form.utils';
 
@@ -56,7 +59,9 @@ export class TransactionQuickSheetComponent {
   private readonly transferService = inject(TransfersService);
   private readonly transactionEvents = inject(TransactionEventsService);
   private readonly bottomSheetRef = inject(MatBottomSheetRef<TransactionQuickSheetComponent>);
+  private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly router = inject(Router);
 
   readonly accounts = signal<AccountResponse[]>([]);
   private readonly categories = signal<QuickEntryCategory[]>([]);
@@ -108,6 +113,27 @@ export class TransactionQuickSheetComponent {
 
   close(): void {
     this.bottomSheetRef.dismiss();
+  }
+
+  openImport(): void {
+    const navigate = () => {
+      this.bottomSheetRef.dismiss();
+      void this.router.navigate(['/import']);
+    };
+    if (!this.form.dirty) {
+      navigate();
+      return;
+    }
+    this.dialog.open(ConfirmationDialogComponent, {
+      data: {
+        title: 'Descartar lançamento?',
+        message: 'Os dados deste lançamento rápido serão descartados ao abrir o importador.',
+        confirmText: 'Abrir importador',
+        cancelText: 'Continuar lançando',
+      } satisfies ConfirmationDialogData,
+    }).afterClosed().subscribe((confirmed: boolean) => {
+      if (confirmed) navigate();
+    });
   }
 
   // O Material não expõe swipe-to-dismiss; o handle isolado permite arrastar sem bloquear o scroll do formulário.

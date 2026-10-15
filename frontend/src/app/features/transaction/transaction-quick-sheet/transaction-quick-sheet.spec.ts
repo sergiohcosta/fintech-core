@@ -1,6 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatBottomSheetRef } from '@angular/material/bottom-sheet';
+import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 
@@ -19,6 +21,8 @@ describe('TransactionQuickSheetComponent', () => {
   let transferService: { createTransfer: ReturnType<typeof vi.fn> };
   let sheetRef: { dismiss: ReturnType<typeof vi.fn> };
   let snackBar: { open: ReturnType<typeof vi.fn> };
+  let router: { navigate: ReturnType<typeof vi.fn> };
+  let dialog: { open: ReturnType<typeof vi.fn> };
 
   const accounts: AccountResponse[] = [
     {
@@ -46,6 +50,8 @@ describe('TransactionQuickSheetComponent', () => {
     transferService = { createTransfer: vi.fn(() => of({})) };
     sheetRef = { dismiss: vi.fn() };
     snackBar = { open: vi.fn() };
+    router = { navigate: vi.fn().mockResolvedValue(true) };
+    dialog = { open: vi.fn(() => ({ afterClosed: () => of(true) })) };
 
     await TestBed.configureTestingModule({
       imports: [TransactionQuickSheetComponent],
@@ -56,6 +62,8 @@ describe('TransactionQuickSheetComponent', () => {
         { provide: TransfersService, useValue: transferService },
         { provide: MatBottomSheetRef, useValue: sheetRef },
         { provide: MatSnackBar, useValue: snackBar },
+        { provide: Router, useValue: router },
+        { provide: MatDialog, useValue: dialog },
       ],
     }).compileComponents();
 
@@ -125,6 +133,25 @@ describe('TransactionQuickSheetComponent', () => {
 
     expect(sheetRef.dismiss).toHaveBeenCalledOnce();
     expect(component.dragOffset()).toBe(0);
+  });
+
+  it('fecha a sheet e abre o fluxo existente de importação', () => {
+    component.openImport();
+
+    expect(sheetRef.dismiss).toHaveBeenCalledOnce();
+    expect(router.navigate).toHaveBeenCalledWith(['/import']);
+    expect(dialog.open).not.toHaveBeenCalled();
+  });
+
+  it('pede confirmação antes de descartar um rascunho ao abrir a importação', () => {
+    component.form.controls.description.setValue('Mercado');
+    component.form.controls.description.markAsDirty();
+
+    component.openImport();
+
+    expect(dialog.open).toHaveBeenCalled();
+    expect(sheetRef.dismiss).toHaveBeenCalledOnce();
+    expect(router.navigate).toHaveBeenCalledWith(['/import']);
   });
 
   it('mantém a sheet aberta se a API rejeitar o lançamento', () => {
