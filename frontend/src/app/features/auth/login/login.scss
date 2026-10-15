@@ -1,3 +1,5 @@
+@use '../../../../styles/breakpoints' as bp;
+
 .login-container {
     display: flex;
     justify-content: center;
@@ -21,6 +23,21 @@
     padding: 24px;
 }
 
+.biometric-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm, 8px);
+    min-height: var(--touch-target-min, 48px);
+    margin-top: var(--space-md, 16px);
+}
+
+.storage-warning {
+    padding: var(--space-sm, 8px);
+    color: var(--mat-sys-on-surface-variant);
+    font-size: .8rem;
+}
+
 .error-message {
     color: #d32f2f;
     font-size: 12px;
@@ -41,4 +58,9 @@ mat-card-footer {
     font-size: 12px;
     letter-spacing: 0.3px;
     color: rgba(0, 0, 0, 0.55);
+}
+
+@include bp.compact {
+    .login-card { padding: var(--space-md, 16px); }
+    .biometric-btn { min-height: var(--touch-target-min, 48px); }
 }
