@@ -113,7 +113,11 @@
          Mesmo patch/commit do caminho padrão — só o chrome mudou. -->
     @if (singleReceiptView()) {
       @if (singleRow(); as row) {
-        <mat-card appearance="outlined" class="single-receipt-card">
+        <mat-card
+          appearance="outlined"
+          class="single-receipt-card"
+          data-testid="single-receipt-card"
+        >
           <mat-card-header>
             <mat-icon mat-card-avatar>receipt_long</mat-icon>
             <mat-card-title>1 transação identificada</mat-card-title>

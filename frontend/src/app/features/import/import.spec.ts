@@ -352,14 +352,24 @@ describe('ImportComponent', () => {
     expect(c.pagedRows().find((r) => r.stagedId === 's25')!.accountId).toBe('acc-1');
   });
 
-  it('fluxo de imagem única (Fase 1): 1 linha na tabela e nenhum paginador', () => {
+  it('fluxo de imagem única (1 linha): ativa o cartão single-receipt e oculta a tabela em lote', () => {
     const { fixture, c } = reviewing([staged]);
 
     expect(c.rows()).toHaveLength(1);
-    expect(c.pagedRows()).toHaveLength(1);
+    expect(c.singleReceiptView()).toBe(true);
     expect(c.showPaginator()).toBe(false);
     expect(fixture.nativeElement.querySelector('mat-paginator')).toBeNull();
-    expect(fixture.nativeElement.querySelectorAll('tr.review-row')).toHaveLength(1);
+    expect(fixture.nativeElement.querySelector('[data-testid="single-receipt-card"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelectorAll('tr.review-row')).toHaveLength(0);
+  });
+
+  it('caminho N >= 2: mantém a tabela em lote e oculta o cartão single-receipt', () => {
+    const { fixture, c } = reviewing(manyStaged(3));
+
+    expect(c.rows()).toHaveLength(3);
+    expect(c.singleReceiptView()).toBe(false);
+    expect(fixture.nativeElement.querySelector('[data-testid="single-receipt-card"]')).toBeNull();
+    expect(fixture.nativeElement.querySelectorAll('tr.review-row')).toHaveLength(3);
   });
 
   it('contagem exibida reflete "prontas de pendentes" com o gate relaxado', () => {
