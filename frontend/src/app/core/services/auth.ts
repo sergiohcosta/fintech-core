@@ -1,19 +1,21 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Router } from '@angular/router'; // Precisamos disso para mandar o usuário pro Login ao sair
-import { Observable, tap } from 'rxjs';
-import { jwtDecode } from 'jwt-decode'; // A ferramenta que instalamos
+import { Router } from '@angular/router';
+import { Observable, from, map, switchMap } from 'rxjs';
+import { jwtDecode } from 'jwt-decode';
 
-// 1. O Contrato: Definimos o que esperamos encontrar DENTRO do token
+import { RegisterResponseDTO } from '../api/fintechSaaSAPI.schemas';
+import { BiometricAuthService } from './biometric-auth.service';
+import { TokenStorageService } from './token-storage.service';
+
 export interface TokenPayload {
-  sub: string;       // Email
-  name: string;      // Nome do usuário
-  tenant_id: string; // ID da empresa
+  sub: string;
+  name: string;
+  tenant_id: string;
   role: 'ADMIN' | 'USER';
-  exp: number;       // Expiração (Unix timestamp)
+  exp: number;
 }
 
-// O Contrato do Registro (que você já tinha)
 export interface RegisterRequest {
   name: string;
   document?: string;
@@ -22,39 +24,32 @@ export interface RegisterRequest {
   password: string;
 }
 
+// AuthService mantém o estado de sessão em memória; a inicialização aguarda o storage assíncrono
+// antes do primeiro guard para que uma recarga não redirecione um usuário válido ao login.
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private http = inject(HttpClient);
-  private router = inject(Router); // Injetamos o roteador
-  
+  private readonly http = inject(HttpClient);
+  private readonly router = inject(Router);
+  private readonly tokenStorage = inject(TokenStorageService);
+  private readonly biometricAuth = inject(BiometricAuthService);
   private readonly API_URL = '/auth';
-  private readonly TOKEN_KEY = 'auth_token';
 
-  // 2. O "Alto-Falante" (Signal):
-  // É uma variável especial do Angular. Quando ela muda, 
-  // qualquer tela que estiver usando ela atualiza sozinha.
-  // Começa como 'null' (ninguém logado).
-  currentUser = signal<TokenPayload | null>(null);
-  isAdmin = computed(() => this.currentUser()?.role === 'ADMIN');
+  readonly currentUser = signal<TokenPayload | null>(null);
+  readonly isAdmin = computed(() => this.currentUser()?.role === 'ADMIN');
 
-  constructor() {
-    // Quando o serviço nasce (no F5), tentamos ver se já tem token salvo
-    this.decodeToken();
-  }
-
-  register(data: RegisterRequest): Observable<any> {
-    return this.http.post(`${this.API_URL}/register`, data);
+  register(data: RegisterRequest): Observable<RegisterResponseDTO> {
+    return this.http.post<RegisterResponseDTO>(`${this.API_URL}/register`, data);
   }
 
   login(credentials: { email: string; password: string }): Observable<{ token: string }> {
-    return this.http.post<{ token: string }>(`${this.API_URL}/login`, credentials)
-      .pipe(
-        // O 'tap' é um "espião". Ele olha a resposta SEM atrapalhar o fluxo.
-        tap(response => {
-          this.saveToken(response.token); // Guarda na gaveta
-          this.decodeToken(); // Lê o crachá e avisa o app
-        })
-      );
+    return this.http.post<{ token: string }>(`${this.API_URL}/login`, credentials).pipe(
+      switchMap(response => from(this.tokenStorage.saveToken(response.token)).pipe(
+        map(() => {
+          this.restoreSession(response.token);
+          return response;
+        }),
+      )),
+    );
   }
 
   forgotPassword(email: string): Observable<void> {
@@ -65,57 +60,62 @@ export class AuthService {
     return this.http.post<void>(`${this.API_URL}/reset-password`, { token, newPassword });
   }
 
-  logout() {
-    localStorage.removeItem(this.TOKEN_KEY); // Rasga o crachá
-    this.currentUser.set(null); // Avisa: "Ninguém logado"
-    this.router.navigate(['/login']); // Manda pra porta de entrada
+  async logout(): Promise<void> {
+    this.currentUser.set(null);
+    await this.tokenStorage.clearToken();
+    await this.router.navigate(['/login']);
   }
 
-  saveToken(token: string) {
-    localStorage.setItem(this.TOKEN_KEY, token);
+  async setToken(token: string): Promise<void> {
+    await this.tokenStorage.saveToken(token);
+    this.restoreSession(token);
   }
 
-  setToken(token: string): void {
-    this.saveToken(token);
-    this.decodeToken();
+  getToken(): string | null {
+    return this.tokenStorage.token();
   }
 
-  getToken() {
-    return localStorage.getItem(this.TOKEN_KEY);
-  }
-
-  /**
-   * 🎓 CONCEITO: Segurança no Frontend
-   * Verifica se o token existe e se ainda é válido (não expirou).
-   */
   isAuthenticated(): boolean {
-    const token = this.getToken();
+    const token = this.tokenStorage.token();
     if (!token) return false;
-
     try {
-      const decoded = jwtDecode<TokenPayload>(token);
-      const currentTime = Math.floor(Date.now() / 1000);
-      return decoded.exp > currentTime;
+      const valid = jwtDecode<TokenPayload>(token).exp > Math.floor(Date.now() / 1000);
+      if (!valid) {
+        this.currentUser.set(null);
+        void this.tokenStorage.clearToken();
+      }
+      return valid;
     } catch {
+      this.currentUser.set(null);
+      void this.tokenStorage.clearToken();
       return false;
     }
   }
 
-  // 3. O Tradutor: A mágica acontece aqui
-  private decodeToken() {
-    const token = this.getToken();
-    if (token) {
-      try {
-        // Usa a biblioteca para ler o token
-        const decoded = jwtDecode<TokenPayload>(token);
-        
-        // Atualiza o Signal (o alto-falante) com os dados lidos
-        this.currentUser.set(decoded);
-        
-      } catch (error) {
-        // Se o token estiver estragado, faz logout por segurança
-        this.logout();
+  async bootstrap(): Promise<void> {
+    await this.tokenStorage.init();
+    await this.biometricAuth.checkAvailability();
+    this.restoreSession();
+  }
+
+  restoreSession(token = this.tokenStorage.token()): boolean {
+    if (!token) {
+      this.currentUser.set(null);
+      return false;
+    }
+    try {
+      const decoded = jwtDecode<TokenPayload>(token);
+      if (decoded.exp <= Math.floor(Date.now() / 1000)) {
+        this.currentUser.set(null);
+        void this.tokenStorage.clearToken();
+        return false;
       }
+      this.currentUser.set(decoded);
+      return true;
+    } catch {
+      this.currentUser.set(null);
+      void this.tokenStorage.clearToken();
+      return false;
     }
   }
 }

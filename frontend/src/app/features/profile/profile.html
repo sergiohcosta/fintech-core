@@ -1,0 +1,27 @@
+<main class="profile-page">
+  <h1>Meu perfil</h1>
+  <mat-card>
+    <mat-card-header>
+      <mat-icon matCardAvatar>fingerprint</mat-icon>
+      <mat-card-title>Login neste dispositivo</mat-card-title>
+      <mat-card-subtitle>{{ auth.currentUser()?.sub }}</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      @if (biometricAuth.isAvailable()) {
+        <mat-slide-toggle
+          [checked]="tokenStorage.biometricEnabled()"
+          [disabled]="saving()"
+          (change)="onBiometricToggle($event)">
+          Ativar login com biometria neste dispositivo
+        </mat-slide-toggle>
+      } @else {
+        <p class="unavailable-note">
+          Este navegador não oferece credenciais biométricas seguras neste contexto.
+        </p>
+      }
+      @if (saving()) {
+        <p class="saving-note" role="status">Atualizando configuração…</p>
+      }
+    </mat-card-content>
+  </mat-card>
+</main>

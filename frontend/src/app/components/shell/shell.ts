@@ -68,6 +68,7 @@ export class ShellComponent {
     { label: 'Recorrências', icon: 'autorenew',  route: '/recurrences' },
     { label: 'Contas',     icon: 'credit_card',  route: '/accounts' },
     { label: 'Categorias', icon: 'category',     route: '/categories' },
+    { label: 'Meu perfil', icon: 'person', route: '/profile' },
     { label: 'Equipe',     icon: 'group',        route: '/team', adminOnly: true },
   ];
 

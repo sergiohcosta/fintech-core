@@ -1,0 +1,27 @@
+@use '../../../styles/breakpoints' as bp;
+
+.profile-page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: var(--space-lg, 24px);
+
+  h1 { margin-top: 0; }
+}
+
+mat-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md, 16px);
+  padding: var(--space-lg, 24px);
+}
+
+.unavailable-note,
+.saving-note {
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+@include bp.compact {
+  .profile-page { padding: var(--space-md, 16px); }
+  mat-card-content { padding: var(--space-md, 16px); }
+}

@@ -1,4 +1,4 @@
-import { ApplicationConfig, LOCALE_ID, provideZonelessChangeDetection, isDevMode } from '@angular/core';
+import { ApplicationConfig, inject, LOCALE_ID, provideAppInitializer, provideZonelessChangeDetection, isDevMode } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
@@ -10,6 +10,7 @@ import { routes } from './app.routes';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
 import { authErrorInterceptor } from './core/interceptors/auth-error.interceptor';
 import { apiUrlInterceptor } from './core/interceptors/api-url.interceptor';
+import { AuthService } from './core/services/auth';
 import { provideServiceWorker } from '@angular/service-worker';
 
 // Registra os dados de formatação do locale pt-BR (moeda, datas, números)
@@ -18,6 +19,7 @@ registerLocaleData(localePtBr);
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZonelessChangeDetection(),
+    provideAppInitializer(() => inject(AuthService).bootstrap()),
     provideRouter(routes),
     provideHttpClient(
       withFetch(),
