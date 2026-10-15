@@ -12,6 +12,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 import { DashboardService } from '../../core/api/dashboard/dashboard.service';
 import { TransactionsService } from '../../core/api/transactions/transactions.service';
+import { TransactionEventsService } from '../../core/services/transaction-events';
 
 @Component({
   selector: 'app-dashboard',
@@ -32,6 +33,7 @@ import { TransactionsService } from '../../core/api/transactions/transactions.se
 export class DashboardComponent {
   private dashboardService = inject(DashboardService);
   private transactionService = inject(TransactionsService);
+  private transactionEvents = inject(TransactionEventsService);
 
   private now = new Date();
   selectedYear = signal(this.now.getFullYear());
@@ -55,14 +57,21 @@ export class DashboardComponent {
   });
 
   // toObservable + switchMap: quando selectedMonth muda, cancela a request anterior e dispara nova
-  private summary$ = toObservable(this.selectedMonth).pipe(
-    switchMap(month => this.dashboardService.getDashboardSummary({ month }))
+  private refreshState = computed(() => ({
+    refresh: this.transactionEvents.refreshTrigger(),
+    month: this.selectedMonth(),
+  }));
+  private summary$ = toObservable(this.refreshState).pipe(
+    switchMap(({ month }) => this.dashboardService.getDashboardSummary({ month }))
   );
   summary = toSignal(this.summary$, { initialValue: null });
   hasTransactions = computed(() => (this.summary()?.transactionCount ?? 0) > 0);
 
   // Transações recentes: reaproveitamos o service existente, exibimos as 5 primeiras
-  recentTransactions = toSignal(this.transactionService.listTransactions(), { initialValue: [] });
+  private recentTransactions$ = toObservable(this.transactionEvents.refreshTrigger).pipe(
+    switchMap(() => this.transactionService.listTransactions())
+  );
+  recentTransactions = toSignal(this.recentTransactions$, { initialValue: [] });
 
   prevMonth() {
     if (this.selectedMonthIndex() === 1) {

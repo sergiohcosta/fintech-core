@@ -1,0 +1,22 @@
+<section class="action-sheet" aria-labelledby="action-sheet-title">
+  <div class="drag-handle" aria-hidden="true"><span></span></div>
+  <h2 id="action-sheet-title">{{ data.title }}</h2>
+  <p>{{ data.message }}</p>
+  @if (data.installment) {
+    <mat-radio-group [ngModel]="scope()" (ngModelChange)="scope.set($event)" class="scope-options">
+      <mat-radio-button value="SINGLE">Somente esta parcela</mat-radio-button>
+      <mat-radio-button value="THIS_AND_NEXT">Esta e as próximas</mat-radio-button>
+      <mat-radio-button value="ALL">Todo o grupo</mat-radio-button>
+    </mat-radio-group>
+    @if (scope() !== 'SINGLE') {
+      <p class="paid-warning">Parcelas já pagas serão mantidas no histórico.</p>
+    }
+  }
+  <div class="sheet-actions">
+    <button mat-button type="button" (click)="cancel()">Cancelar</button>
+    <button mat-flat-button color="warn" type="button" (click)="confirm()">
+      <mat-icon>delete</mat-icon>
+      {{ data.confirmText }}
+    </button>
+  </div>
+</section>

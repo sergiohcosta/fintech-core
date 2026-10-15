@@ -1,3 +1,5 @@
+@use '../../../styles/breakpoints' as bp;
+
 // :host é o elemento <app-shell> em si — precisamos que ele ocupe toda a viewport
 // e empilhe toolbar + sidenav-container em coluna.
 :host {
@@ -45,7 +47,11 @@
 .sidenav {
   width: 220px;
   border-right: none;
-  padding-top: 8px;
+  padding-top: var(--space-sm, 8px);
+
+  a[mat-list-item] {
+    min-height: var(--touch-target-min, 48px);
+  }
 }
 
 // Destaque visual do item ativo usando tokens do Material 3 (sem hardcode de cor)
@@ -61,8 +67,28 @@
 }
 
 .content {
-  padding: 24px;
+  padding: var(--space-lg, 24px);
   height: 100%;
   box-sizing: border-box;
   overflow-y: auto;
+}
+
+@include bp.compact {
+  :host {
+    height: 100dvh;
+  }
+
+  .sidenav-container {
+    height: calc(100dvh - 64px);
+  }
+
+  .sidenav {
+    width: min(280px, 85vw);
+    padding: var(--space-md, 16px) 0;
+  }
+
+  .content {
+    padding: 0;
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+  }
 }

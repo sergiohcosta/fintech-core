@@ -26,6 +26,23 @@
                     {{ isLoading() ? 'ENTRANDO...' : 'ENTRAR' }}
                 </button>
 
+                @if (biometricAuth.isAvailable() && tokenStorage.biometricEnabled()) {
+                    <button mat-stroked-button type="button" class="full-width biometric-btn"
+                        [disabled]="isBiometricLoading()"
+                        (click)="authenticateWithBiometric()">
+                        @if (isBiometricLoading()) {
+                            <mat-progress-spinner diameter="18" mode="indeterminate" />
+                        } @else {
+                            <mat-icon>fingerprint</mat-icon>
+                        }
+                        {{ isBiometricLoading() ? 'VERIFICANDO...' : 'Entrar com biometria' }}
+                    </button>
+                }
+
+                @if (tokenStorage.storageWarning()) {
+                    <p class="storage-warning" role="status">{{ tokenStorage.storageWarning() }}</p>
+                }
+
                 <p class="forgot-password-link"><a routerLink="/forgot-password">Esqueci minha senha</a></p>
             </form>
         </mat-card-content>

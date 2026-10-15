@@ -402,6 +402,12 @@ export function getSortInfo(
   return { priority: idx + 1, dir: criteria[idx].dir };
 }
 
+export function resolveSwipeAction(distanceX: number, threshold = 96): 'delete' | 'edit' | null {
+  if (distanceX <= -threshold) return 'delete';
+  if (distanceX >= threshold) return 'edit';
+  return null;
+}
+
 // --- CSV Export ---
 
 const MONTH_ABBR_PT = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];

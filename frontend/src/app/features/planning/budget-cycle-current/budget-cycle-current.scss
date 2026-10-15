@@ -1,5 +1,7 @@
+@use '../../../../styles/breakpoints' as bp;
+
 .planning-container {
-  padding: 24px;
+  padding: var(--space-lg, 24px);
   max-width: 960px;
   margin: 0 auto;
 }
@@ -18,8 +20,8 @@
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: var(--space-md, 16px);
+  margin-bottom: var(--space-lg, 24px);
 }
 
 .summary-line {
@@ -87,4 +89,23 @@ mat-expansion-panel { margin-bottom: 12px; }
 .chip-ended {
   background-color: var(--mat-sys-error-container) !important;
   color: var(--mat-sys-on-error-container) !important;
+}
+
+@include bp.medium {
+  .summary-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@include bp.compact {
+  .planning-container { padding: var(--space-md, 16px); }
+  .summary-grid { grid-template-columns: 1fr; gap: var(--space-md, 16px); }
+  .cycle-header { align-items: flex-start; flex-direction: column; gap: var(--space-sm, 8px); }
+  .cycle-actions { flex-wrap: wrap; }
+  .cycle-actions button,
+  .add-btn { min-height: var(--touch-target-min, 48px); }
+  .available-card { background: var(--mat-sys-primary-container); }
+  .available-card mat-card-content { padding: var(--space-md, 16px); }
+  .available-to-spend { padding: var(--space-lg, 24px) 0; }
+  .available-to-spend strong { font-size: 1.5em; }
+  .daily-allowance { padding: var(--space-md, 16px) 0; }
+  .daily-allowance strong { font-size: 1em; }
 }

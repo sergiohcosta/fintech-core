@@ -98,7 +98,7 @@
         <p class="empty-state">Nenhuma transação encontrada.</p>
       } @else {
         @for (t of recentTransactions().slice(0, 5); track t.id) {
-          <div class="transaction-row">
+          <div class="transaction-row" [class]="typeColor(t.type)">
             <div class="transaction-info">
               <span class="transaction-description">{{ t.description }}</span>
               <span class="transaction-date">{{ t.date | date:'dd/MM/yyyy':'':'pt-BR' }}</span>

@@ -1,0 +1,53 @@
+<main class="breakdown-page">
+  <header class="breakdown-header">
+    <a mat-icon-button routerLink="/planning/current" aria-label="Voltar ao ciclo atual">
+      <mat-icon>arrow_back</mat-icon>
+    </a>
+    <div>
+      <p class="eyebrow">Ciclo atual</p>
+      <h1>{{ breakdown()?.title ?? 'Composição' }}</h1>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <div class="loading-state" aria-busy="true">
+      <mat-spinner diameter="36" aria-label="Carregando composição" />
+    </div>
+  } @else if (breakdown(); as details) {
+    @for (section of details.sections; track section.title) {
+      <section class="breakdown-section">
+        <header class="section-header">
+          <h2>{{ section.title }}</h2>
+          <strong>{{ section.total | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong>
+        </header>
+        @if (section.entries.length > 0) {
+          <ul class="entry-list">
+            @for (entry of section.entries; track $index) {
+              <li class="entry-row">
+                <span class="entry-copy">
+                  <strong>{{ entry.label }}</strong>
+                  <small>{{ entry.detail }}</small>
+                </span>
+                <span class="entry-amount">{{ entry.amount | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="empty-section">Nenhum lançamento nesta composição.</p>
+        }
+      </section>
+    }
+
+    <section class="results-card" aria-label="Resumo da composição">
+      @for (result of details.results; track result.label) {
+        <div class="result-row" [class.emphasis]="result.emphasis">
+          <span>
+            {{ result.label }}
+            @if (result.note) { <small>{{ result.note }}</small> }
+          </span>
+          <strong>{{ result.amount | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong>
+        </div>
+      }
+    </section>
+  }
+</main>

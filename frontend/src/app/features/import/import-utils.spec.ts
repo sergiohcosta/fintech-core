@@ -384,6 +384,16 @@ describe('installmentInfo', () => {
     const staged = { fields: {} } as unknown as StagedTransactionResponseDTO;
     expect(installmentInfo(staged)).toBeNull();
   });
+
+  it('devolve null no caso degenerado 1/1 (não é parcelamento de verdade)', () => {
+    const staged = {
+      fields: {
+        installment_number: { value: 1, confidence: 1 },
+        installment_total: { value: 1, confidence: 1 },
+      },
+    } as unknown as StagedTransactionResponseDTO;
+    expect(installmentInfo(staged)).toBeNull();
+  });
 });
 
 describe('installmentBadgeText', () => {

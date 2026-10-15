@@ -219,3 +219,27 @@
     color: var(--mat-sys-on-tertiary-container);
   }
 }
+
+// --- Layout dedicado: 1 comprovante = 1 transação (protótipo) ---
+.single-receipt-card {
+  margin-bottom: 1rem;
+
+  .single-receipt-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+    margin-top: 1rem;
+
+    .span-2 {
+      grid-column: 1 / -1;
+    }
+
+    @media (max-width: 600px) {
+      grid-template-columns: 1fr;
+
+      .span-2 {
+        grid-column: 1;
+      }
+    }
+  }
+}

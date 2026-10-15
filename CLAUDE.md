@@ -165,3 +165,15 @@ Em cada interação significativa, o ciclo esperado é:
 **Versionamento — sugerir sempre:** ao concluir uma mudança (feature/bugfix) ou preparar um PR, sugira o **incremento SemVer** dela (PATCH/MINOR/MAJOR; fronteira de compatibilidade = `api-spec/openapi.yaml`) e registre no campo "Impacto SemVer" do PR. A **release** não é por mudança: o bump é o **maior** impacto acumulado desde a última tag. Detalhe: skill `fintech-core-release-and-versioning`.
 
 A meta não é só ter o software funcionando — é o desenvolvedor entender profundamente *por que* funciona.
+
+---
+
+## Agent skills
+
+### Issue tracker
+
+Tarefas e tickets vivem em **GitHub Issues** no repositório `sergiohcosta/fintech-core`, acessados via `gh` CLI. Ver `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Layout **single-context**: `GLOSSARY.md` (quando existir) na raiz e `docs/adr/` na raiz. Ver `docs/agents/domain.md`.

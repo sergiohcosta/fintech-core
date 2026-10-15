@@ -1,0 +1,116 @@
+<section class="quick-sheet" aria-labelledby="quick-sheet-title"
+         [class.dragging]="isDragging()"
+         [style.transform]="'translateY(' + dragOffset() + 'px)'">
+  <div class="drag-handle" aria-hidden="true"
+       (pointerdown)="startDrag($event)"
+       (pointermove)="moveDrag($event)"
+       (pointerup)="endDrag($event)"
+       (pointercancel)="cancelDrag()">
+    <span></span>
+  </div>
+  <header class="sheet-header">
+    <div>
+      <p class="eyebrow">Novo lançamento</p>
+      <h2 id="quick-sheet-title">Adicionar ao seu fluxo</h2>
+    </div>
+    <button mat-icon-button type="button" aria-label="Fechar lançamento rápido" (click)="close()">
+      <mat-icon>close</mat-icon>
+    </button>
+  </header>
+
+  <button mat-stroked-button class="import-shortcut" type="button" (click)="openImport()">
+    <mat-icon>photo_camera</mat-icon>
+    Criar a partir de foto ou arquivo
+  </button>
+  <p class="import-hint">A importação extrai os dados e permite revisar antes de lançar.</p>
+
+  <form [formGroup]="form" (ngSubmit)="submit()" [attr.aria-busy]="saving()" novalidate>
+    <mat-form-field appearance="outline" class="field-full amount-field">
+      <mat-label>Valor</mat-label>
+      <span matTextPrefix>R$&nbsp;</span>
+      <input #amountInput matInput type="number" inputmode="decimal" step="0.01" min="0.01"
+             formControlName="amount" placeholder="0,00" />
+      @if (form.controls.amount.hasError('required') && form.controls.amount.touched) {
+        <mat-error>Informe o valor</mat-error>
+      } @else if (form.controls.amount.hasError('min') && form.controls.amount.touched) {
+        <mat-error>O valor deve ser maior que zero</mat-error>
+      }
+    </mat-form-field>
+
+    <div class="type-field">
+      <span class="field-label">Tipo</span>
+      <mat-button-toggle-group #typeToggle formControlName="type" aria-label="Tipo do lançamento"
+                               [hideSingleSelectionIndicator]="true">
+        <mat-button-toggle value="EXPENSE">Despesa</mat-button-toggle>
+        <mat-button-toggle value="INCOME">Receita</mat-button-toggle>
+        <mat-button-toggle value="TRANSFER">Transferência</mat-button-toggle>
+      </mat-button-toggle-group>
+    </div>
+
+    <mat-form-field appearance="outline" class="field-full">
+      <mat-label>{{ isTransfer() ? 'Conta de origem' : 'Conta' }}</mat-label>
+      <mat-select #accountSelect formControlName="accountId">
+        @for (account of accounts(); track account.id) {
+          <mat-option [value]="account.id">{{ account.name }}</mat-option>
+        }
+      </mat-select>
+      @if (accounts().length === 0) {
+        <mat-hint>Nenhuma conta ativa disponível</mat-hint>
+      }
+      @if (form.controls.accountId.hasError('required') && form.controls.accountId.touched) {
+        <mat-error>Selecione uma conta</mat-error>
+      }
+    </mat-form-field>
+
+    @if (isTransfer()) {
+      <mat-form-field appearance="outline" class="field-full">
+        <mat-label>Conta de destino</mat-label>
+        <mat-select #destinationAccountSelect formControlName="destinationAccountId">
+          @for (account of accounts(); track account.id) {
+            <mat-option [value]="account.id" [disabled]="account.id === form.controls.accountId.value">
+              {{ account.name }}
+            </mat-option>
+          }
+        </mat-select>
+        @if (form.hasError('sameAccount') && form.controls.destinationAccountId.touched) {
+          <mat-error>Escolha uma conta diferente da origem</mat-error>
+        } @else if (form.controls.destinationAccountId.hasError('required') && form.controls.destinationAccountId.touched) {
+          <mat-error>Selecione a conta de destino</mat-error>
+        }
+      </mat-form-field>
+    } @else {
+      <mat-form-field appearance="outline" class="field-full">
+        <mat-label>Categoria</mat-label>
+        <mat-select #categorySelect formControlName="categoryId">
+          @for (category of availableCategories(); track category.id) {
+            <mat-option [value]="category.id">
+              <span [style.padding-left.px]="category.level * 16">{{ category.name }}</span>
+            </mat-option>
+          }
+        </mat-select>
+        @if (form.controls.categoryId.hasError('required') && form.controls.categoryId.touched) {
+          <mat-error>Selecione uma categoria</mat-error>
+        }
+      </mat-form-field>
+    }
+
+    <mat-form-field appearance="outline" class="field-full description-field">
+      <mat-label>Descrição (opcional)</mat-label>
+      <input #descriptionInput matInput formControlName="description" maxlength="200"
+             placeholder="Ex.: mercado, salário..." />
+      <mat-hint align="end">{{ form.controls.description.value.length }}/200</mat-hint>
+    </mat-form-field>
+
+    <button mat-flat-button color="primary" class="submit-button" type="submit"
+            [disabled]="form.invalid || saving()">
+      <span class="submit-content">
+        @if (saving()) {
+          <mat-progress-spinner diameter="18" mode="indeterminate" />
+        } @else {
+          <mat-icon>check</mat-icon>
+        }
+        {{ saving() ? 'Salvando…' : (isTransfer() ? 'Transferir agora' : 'Lançar agora') }}
+      </span>
+    </button>
+  </form>
+</section>

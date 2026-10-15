@@ -1,0 +1,18 @@
+<nav class="tab-bar" aria-label="Navegação principal">
+  <a class="tab-item" routerLink="/dashboard" routerLinkActive="active" aria-label="Dashboard">
+    <mat-icon aria-hidden="true">dashboard</mat-icon>
+    <span>Início</span>
+  </a>
+  <a class="tab-item" routerLink="/transactions" routerLinkActive="active" aria-label="Transações">
+    <mat-icon aria-hidden="true">swap_horiz</mat-icon>
+    <span>Transações</span>
+  </a>
+  <button class="tab-item quick-entry" mat-button type="button" aria-label="Lançamento rápido" (click)="openQuickEntry()">
+    <mat-icon aria-hidden="true">add_circle</mat-icon>
+    <span>Novo</span>
+  </button>
+  <a class="tab-item" routerLink="/planning" routerLinkActive="active" aria-label="Planejamento">
+    <mat-icon aria-hidden="true">pie_chart</mat-icon>
+    <span>Planejamento</span>
+  </a>
+</nav>

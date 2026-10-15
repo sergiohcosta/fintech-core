@@ -1,0 +1,129 @@
+@use '../../../../styles/breakpoints' as bp;
+
+:host {
+  display: block;
+  max-width: 100%;
+}
+
+.quick-sheet {
+  max-height: min(88dvh, 760px);
+  overflow-y: auto;
+  padding: var(--space-md, 16px);
+  overscroll-behavior: contain;
+  transition: transform 180ms ease-out;
+
+  &.dragging { transition: none; }
+}
+
+.drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--touch-target-min, 48px);
+  margin: calc(-1 * var(--space-xs, 4px)) 0 var(--space-xs, 4px);
+  touch-action: none;
+  cursor: grab;
+
+  span {
+    width: 32px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--mat-sys-outline-variant);
+  }
+}
+
+.sheet-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-sm, 8px);
+  margin-bottom: var(--space-md, 16px);
+
+  h2 {
+    margin: 2px 0 0;
+    font-size: 1.35rem;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+
+  .eyebrow {
+    margin: 0;
+    color: var(--mat-sys-primary);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  button { min-width: var(--touch-target-min, 48px); min-height: var(--touch-target-min, 48px); }
+}
+
+.import-shortcut {
+  display: flex;
+  justify-content: flex-start;
+  gap: var(--space-sm, 8px);
+  width: 100%;
+  min-height: var(--touch-target-min, 48px);
+  margin-bottom: var(--space-xs, 4px);
+}
+
+.import-hint {
+  margin: 0 0 var(--space-sm, 8px);
+  color: var(--mat-sys-on-surface-variant);
+  font-size: .75rem;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm, 8px);
+}
+
+.field-full { width: 100%; }
+
+.amount-field input {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.type-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs, 4px);
+  margin-bottom: var(--space-sm, 8px);
+
+  .field-label {
+    color: var(--mat-sys-on-surface-variant);
+    font-size: 0.875rem;
+  }
+
+  mat-button-toggle-group {
+    display: flex;
+    width: 100%;
+    min-height: var(--touch-target-min, 48px);
+  }
+
+  mat-button-toggle { flex: 1; }
+}
+
+.submit-button {
+  min-height: var(--touch-target-min, 48px);
+  margin-top: var(--space-xs, 4px);
+  font-weight: 600;
+}
+
+.submit-content {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm, 8px);
+}
+
+@include bp.compact {
+  .quick-sheet { padding: var(--space-md, 16px); }
+  .submit-button { width: 100%; }
+}
+
+@include bp.expanded {
+  .quick-sheet { padding: var(--space-lg, 24px); }
+}

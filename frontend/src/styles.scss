@@ -1,4 +1,9 @@
 
+// Tokens e breakpoints — vem antes do Material para que mixins/bp este disponivel
+// em qualquer componente que fizer @use deste arquivo.
+@use './styles/breakpoints' as bp;
+@use './styles/tokens';
+
 // Include theming for Angular Material with `mat.theme()`.
 // This Sass mixin will define CSS variables that are used for styling Angular Material
 // components according to the Material 3 design spec.
@@ -46,4 +51,75 @@ body {
   transition-duration: 0s !important;
   animation-duration: 0s !important;
 }
-/* You can add global styles to this file, and also import other style files */
+.quick-entry-sheet {
+  width: min(480px, calc(100vw - 32px));
+  max-width: 480px !important;
+
+  .mat-bottom-sheet-container {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    padding: 0;
+    border-radius: 24px 24px 0 0;
+  }
+}
+
+@include bp.compact {
+  .quick-entry-sheet {
+    width: 100vw;
+    max-width: 100vw !important;
+
+    .mat-bottom-sheet-container { border-radius: 20px 20px 0 0; }
+  }
+}
+
+@include bp.expanded {
+  .quick-entry-sheet { width: min(480px, calc(100vw - 32px)); }
+}
+
+.transaction-action-sheet,
+.transaction-filters-sheet {
+  width: min(480px, calc(100vw - 32px));
+  max-width: 480px !important;
+
+  .mat-bottom-sheet-container {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    padding: 0;
+  }
+}
+
+@include bp.compact {
+  .transaction-action-sheet,
+  .transaction-filters-sheet {
+    width: 100vw;
+    max-width: 100vw !important;
+  }
+
+  app-transaction-list .page-container { padding: var(--space-md, 16px); }
+  app-transaction-list .page-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--space-sm, 8px);
+    margin-bottom: var(--space-md, 16px);
+  }
+  app-transaction-list .page-header h1 { font-size: 1.5rem; }
+  app-transaction-list .header-actions { width: 100%; justify-content: flex-end; gap: var(--space-xs, 4px); }
+  app-transaction-list .header-actions button[mat-icon-button],
+  app-transaction-list .filter-chip .chip-remove {
+    min-width: var(--touch-target-min, 48px);
+    min-height: var(--touch-target-min, 48px);
+  }
+  app-transaction-list .header-actions a[mat-flat-button] { min-height: var(--touch-target-min, 48px); }
+  app-transaction-list .active-chips { padding: var(--space-xs, 4px) 0 var(--space-sm, 8px); }
+}
+
+app-transaction-list .desktop-context-anchor {
+  position: fixed;
+  z-index: -1;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}

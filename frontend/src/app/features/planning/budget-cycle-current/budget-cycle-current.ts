@@ -1,5 +1,8 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
+import { BreakpointObserver } from '@angular/cdk/layout';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
@@ -22,6 +25,8 @@ import { ConfirmationDialogComponent, ConfirmationDialogData } from '../../../co
 import { BreakdownDialogComponent } from '../breakdown/breakdown-dialog';
 import { buildBreakdown, BreakdownCard } from '../breakdown/budget-cycle-breakdown';
 
+// O breakpoint muda apenas o destino da composição; os summaries e seus cálculos continuam
+// vindo do mesmo ciclo, para que a versão móvel não replique nem altere regra financeira.
 @Component({
   selector: 'app-budget-cycle-current',
   standalone: true,
@@ -37,7 +42,11 @@ export class BudgetCycleCurrentComponent implements OnInit {
   private readonly planningService = inject(PlanningService);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly breakpointObserver = inject(BreakpointObserver);
 
+  readonly isCompact = signal(false);
   readonly cycle = signal<BudgetCycleResponse | null>(null);
   readonly items = signal<BudgetItemResponse[]>([]);
   readonly loading = signal(true);
@@ -55,6 +64,14 @@ export class BudgetCycleCurrentComponent implements OnInit {
   }));
   readonly unplannedItems = computed(() => this.cycle()?.unplannedTransactions ?? []);
 
+  constructor() {
+    // O modal continua no desktop; em compact a mesma composição vira uma página navegável,
+    // preservando o contexto de voltar ao ciclo atual.
+    this.breakpointObserver.observe('(max-width: 719.98px)')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(({ matches }) => this.isCompact.set(matches));
+  }
+
   ngOnInit(): void {
     this.loadCurrentCycle();
   }
@@ -64,6 +81,10 @@ export class BudgetCycleCurrentComponent implements OnInit {
   openBreakdown(card: BreakdownCard): void {
     const c = this.cycle();
     if (!c) return;
+    if (this.isCompact()) {
+      this.router.navigate(['/planning', 'breakdown', card]);
+      return;
+    }
     this.dialog.open(BreakdownDialogComponent, {
       width: '480px',
       data: buildBreakdown(card, {

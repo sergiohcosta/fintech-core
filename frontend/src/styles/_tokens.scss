@@ -1,0 +1,20 @@
+// Design tokens — fonte única de valores reutilizáveis no app.
+// Define espacamento, touch target minimo e qualquer outro valor cross-cutting
+// que precise ser coerente entre desktop e mobile. Componentes devem referenciar
+// estes tokens via var(--space-*) / var(--touch-target-min), nao valores hardcoded.
+
+// Espacamento — escala semantica reutilizavel entre componentes.
+// Regra: use o token mais proximo do contexto (ex.: padding de card = --space-md ou --space-lg),
+// nao o valor numerico. Trocar a escala aqui propaga para todo o app.
+:root {
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+
+  // Touch target minimo. 48dp cobre Apple HIG (44pt) e Material Design 3 (48dp).
+  // Use em altura de botoes, items de lista, tab bar, swipe action handles.
+  --touch-target-min: 48px;
+}

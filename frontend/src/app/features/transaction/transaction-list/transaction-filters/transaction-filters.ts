@@ -1,6 +1,7 @@
-import { Component, computed, input, OnInit, output, signal } from '@angular/core';
+import { Component, computed, inject, input, OnInit, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { MAT_BOTTOM_SHEET_DATA } from '@angular/material/bottom-sheet';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatInputModule } from '@angular/material/input';
@@ -11,6 +12,13 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { AccountResponse } from '../../../../core/api/fintechSaaSAPI.schemas';
 import { TransactionFilters, TransactionType, TransactionStatus, DEFAULT_FILTERS, currentMonthFilters, currentMonthKey } from './transaction-filters.types';
 import { monthBounds, computeMonthChipStates, resolveMonthKey } from '../transaction-list.utils';
+
+// Os inputs mantêm a mesma API no desktop; dados opcionais do BottomSheet só substituem esses
+// valores quando os filtros são apresentados como conteúdo modal em compact.
+interface TransactionFiltersSheetData {
+  accounts: AccountResponse[];
+  initialFilters: TransactionFilters;
+}
 
 @Component({
   selector: 'app-transaction-filters',
@@ -24,9 +32,12 @@ import { monthBounds, computeMonthChipStates, resolveMonthKey } from '../transac
   styleUrl: './transaction-filters.scss',
 })
 export class TransactionFiltersComponent implements OnInit {
+  private readonly sheetData = inject<TransactionFiltersSheetData | null>(MAT_BOTTOM_SHEET_DATA, { optional: true });
+
   accounts       = input<AccountResponse[]>([]);
   initialFilters = input<TransactionFilters>(DEFAULT_FILTERS);
   filterChange   = output<TransactionFilters>();
+  filterAccounts = computed(() => this.sheetData?.accounts ?? this.accounts());
 
   accountIds = signal<string[]>([]);
   statuses   = signal<TransactionStatus[]>([]);
@@ -51,7 +62,7 @@ export class TransactionFiltersComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    const f = this.initialFilters();
+    const f = this.sheetData?.initialFilters ?? this.initialFilters();
     this.accountIds.set(f.accountIds);
     this.statuses.set(f.statuses);
     this.types.set(f.types);

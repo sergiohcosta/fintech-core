@@ -1,12 +1,18 @@
-import { Component, inject, OnInit, signal, computed, effect, untracked } from '@angular/core';
+import { Component, HostListener, inject, OnInit, signal, computed, effect, untracked, ViewChild } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
+import { BreakpointObserver } from '@angular/cdk/layout';
+import { CdkDragEnd, DragDropModule } from '@angular/cdk/drag-drop';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatTableModule } from '@angular/material/table';
+import { MatListModule } from '@angular/material/list';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatBottomSheet, MatBottomSheetModule } from '@angular/material/bottom-sheet';
+import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -23,23 +29,31 @@ import { ConfirmationDialogComponent } from '../../../components/confirmation-di
 import { DeleteInstallmentDialogComponent, DeleteInstallmentDialogResult } from './delete-installment-dialog/delete-installment-dialog';
 import { TransactionFiltersComponent } from './transaction-filters/transaction-filters';
 import { TransactionFilters, DEFAULT_FILTERS, currentMonthFilters, TransactionType, TransactionStatus } from './transaction-filters/transaction-filters.types';
-import { buildDisplayRows, InstallmentGroupInfo, DisplayRow, InvoiceSummaryRow, resolveMonthKey, formatMonthLabel, SortCol, SortCriterion, applySort, getSortInfo, isGhost, exportToCsv, selectableRowId, planBulkDelete } from './transaction-list.utils';
+import { buildDisplayRows, InstallmentGroupInfo, DisplayRow, InvoiceSummaryRow, resolveMonthKey, formatMonthLabel, SortCol, SortCriterion, applySort, getSortInfo, isGhost, exportToCsv, selectableRowId, planBulkDelete, resolveSwipeAction } from './transaction-list.utils';
 import { RecurrenceService } from '../../../core/services/recurrence.service';
 import { triggerCsvDownload } from '../../../core/csv.utils';
+import { TransactionActionSheetComponent, TransactionActionSheetData, TransactionActionSheetResult } from './transaction-action-sheet/transaction-action-sheet';
 export { buildDisplayRows } from './transaction-list.utils';
 export type { InstallmentGroupInfo, DisplayRow, InvoiceSummaryRow, SortCriterion } from './transaction-list.utils';
 
+// Compact troca somente a apresentação e os atalhos de toque; os mesmos dados e comandos
+// de domínio alimentam a tabela desktop e os cards. O CDK bloqueia touch-action no drag root;
+// o SCSS restaura pan-y para scroll vertical e preserva o arraste horizontal de ações.
 @Component({
   selector: 'app-transaction-list',
   standalone: true,
   imports: [
     CommonModule,
     RouterLink,
+    DragDropModule,
     MatTableModule,
+    MatListModule,
     MatButtonModule,
     MatIconModule,
     MatChipsModule,
     MatDialogModule,
+    MatBottomSheetModule,
+    MatMenuModule,
     MatTooltipModule,
     MatSnackBarModule,
     MatProgressBarModule,
@@ -61,8 +75,13 @@ export class TransactionList implements OnInit {
   private router   = inject(Router);
   private route    = inject(ActivatedRoute);
   private dialog   = inject(MatDialog);
+  private bottomSheet = inject(MatBottomSheet);
+  private breakpointObserver = inject(BreakpointObserver);
   private snackBar = inject(MatSnackBar);
 
+  @ViewChild('desktopContextTrigger') private desktopContextTrigger?: MatMenuTrigger;
+
+  isCompact = signal(false);
   transactions         = signal<TransactionResponseDTO[]>([]);
   accounts             = signal<AccountResponse[]>([]);
   expandedTransactions = signal(new Set<string>());
@@ -71,8 +90,30 @@ export class TransactionList implements OnInit {
   sortCriteria         = signal<SortCriterion[]>([{ col: 'date', dir: 'desc' }]);
   invoicesForGrouping  = signal<InvoiceResponseDTO[]>([]);
   selectedIds          = signal<Set<string>>(new Set());
+  swipedRow = signal<{ id: string; direction: 'left' | 'right' } | null>(null);
+  desktopMenuData = signal<{ transaction: TransactionResponseDTO } | null>(null);
+  desktopMenuPosition = signal({ x: -1000, y: -1000 });
+
+  private longPressTimer: ReturnType<typeof setTimeout> | null = null;
+  private longPressOrigin: { x: number; y: number } | null = null;
+  private longPressTriggered = false;
+  private lastSwipeEndAt = 0;
+  private menuReturnFocus: HTMLElement | null = null;
+  private readonly swipeLeftPosition = { x: -96, y: 0 };
+  private readonly swipeRightPosition = { x: 96, y: 0 };
+  private readonly resetSwipePosition = { x: 0, y: 0 };
 
   constructor() {
+    this.breakpointObserver.observe('(max-width: 719.98px)')
+      .pipe(takeUntilDestroyed())
+      .subscribe(({ matches }) => {
+        this.isCompact.set(matches);
+        if (matches) {
+          this.clearSelection();
+          this.swipedRow.set(null);
+        }
+      });
+
     effect(() => {
       const f = this.filters();
       if (!f.groupByInvoice || !f.startDate || !f.endDate) {
@@ -189,6 +230,231 @@ export class TransactionList implements OnInit {
     this.sortCriteria.update(criteria => applySort(criteria, col, event.shiftKey));
   }
 
+  sortCompact(col: SortCol): void {
+    this.sortCriteria.update(criteria => applySort(criteria, col, false));
+  }
+
+  swipePosition(id: string): { x: number; y: number } {
+    const openRow = this.swipedRow();
+    if (!openRow || openRow.id !== id) return this.resetSwipePosition;
+    return openRow.direction === 'left' ? this.swipeLeftPosition : this.swipeRightPosition;
+  }
+
+  onSwipeEnd(event: CdkDragEnd<TransactionResponseDTO>, transaction: TransactionResponseDTO): void {
+    if (isGhost(transaction)) {
+      event.source.reset();
+      return;
+    }
+    const action = resolveSwipeAction(event.distance.x);
+    if (!action || (action === 'edit' && !!transaction.transferId)) {
+      this.swipedRow.set(null);
+      event.source.reset();
+      return;
+    }
+    const direction = action === 'delete' ? 'left' : 'right';
+    this.swipedRow.set({ id: transaction.id, direction });
+    this.lastSwipeEndAt = Date.now();
+    event.source.setFreeDragPosition(direction === 'left' ? this.swipeLeftPosition : this.swipeRightPosition);
+  }
+
+  closeSwipe(): void {
+    this.swipedRow.set(null);
+  }
+
+  swipeEdit(transaction: TransactionResponseDTO): void {
+    this.closeSwipe();
+    this.onEdit(transaction);
+  }
+
+  swipeDelete(transaction: TransactionResponseDTO): void {
+    this.closeSwipe();
+    this.confirmCompactDelete(transaction);
+  }
+
+  startLongPress(event: PointerEvent, transaction: TransactionResponseDTO): void {
+    if (event.pointerType !== 'touch') return;
+    this.cancelLongPress();
+    this.longPressTriggered = false;
+    this.longPressOrigin = { x: event.clientX, y: event.clientY };
+    this.longPressTimer = setTimeout(() => {
+      this.longPressTimer = null;
+      this.longPressTriggered = true;
+      this.swipedRow.set(null);
+      const card = event.currentTarget instanceof HTMLElement
+        ? event.currentTarget.closest<HTMLElement>('.tx-card')
+        : null;
+      this.openTransactionMenu(transaction, event.clientX, event.clientY, card);
+    }, 500);
+  }
+
+  moveLongPress(event: PointerEvent): void {
+    if (!this.longPressOrigin) return;
+    if (Math.hypot(event.clientX - this.longPressOrigin.x, event.clientY - this.longPressOrigin.y) > 10) {
+      this.cancelLongPress();
+    }
+  }
+
+  endLongPress(): void {
+    this.cancelLongPress();
+  }
+
+  onCompactCardClick(event: MouseEvent, transaction: TransactionResponseDTO): void {
+    if (Date.now() - this.lastSwipeEndAt < 250) return;
+    if (this.swipedRow()?.id === transaction.id) {
+      this.swipedRow.set(null);
+      return;
+    }
+    if (this.longPressTriggered) {
+      this.longPressTriggered = false;
+      event.preventDefault();
+      return;
+    }
+    if (transaction.installmentGroupId) this.toggleExpand(transaction.id);
+  }
+
+  onCompactContextMenu(event: MouseEvent, transaction: TransactionResponseDTO): void {
+    event.preventDefault();
+    if (this.longPressTriggered) return;
+    this.cancelLongPress();
+    this.swipedRow.set(null);
+    const card = event.currentTarget instanceof HTMLElement
+      ? event.currentTarget.closest<HTMLElement>('.tx-card')
+      : null;
+    this.openTransactionMenu(transaction, event.clientX, event.clientY, card);
+  }
+
+  openTransactionMenu(
+    transaction: TransactionResponseDTO,
+    x: number,
+    y: number,
+    returnFocus: HTMLElement | null = null,
+  ): void {
+    this.swipedRow.set(null);
+    this.desktopMenuData.set({ transaction });
+    this.desktopMenuPosition.set({ x, y });
+    this.menuReturnFocus = returnFocus;
+    queueMicrotask(() => this.desktopContextTrigger?.openMenu());
+  }
+
+  onMenuButtonClick(event: MouseEvent, transaction: TransactionResponseDTO): void {
+    event.stopPropagation();
+    const target = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+    this.openTransactionMenu(transaction, event.clientX, event.clientY, target);
+  }
+
+  restoreMenuFocus(): void {
+    this.menuReturnFocus?.focus();
+    this.menuReturnFocus = null;
+  }
+
+  private cancelLongPress(): void {
+    if (this.longPressTimer !== null) clearTimeout(this.longPressTimer);
+    this.longPressTimer = null;
+    this.longPressOrigin = null;
+  }
+
+  @HostListener('document:contextmenu', ['$event'])
+  onDesktopContextMenu(event: MouseEvent): void {
+    if (!(event.target instanceof Element)) return;
+    const targetRow = event.target.closest('.table-container tr.element-row');
+    const tableContainer = event.target.closest('.table-container');
+    if (!targetRow || !tableContainer) return;
+
+    const renderedIndex = Array.from(tableContainer.querySelectorAll('tr.element-row')).indexOf(targetRow);
+    const dataRows = this.displayRows().filter((row) =>
+      row.kind === 'single' || row.kind === 'installment' || row.kind === 'invoice-summary',
+    );
+    const row = dataRows[renderedIndex];
+    if (!row || row.kind === 'invoice-summary' || isGhost(row.data)) return;
+
+    event.preventDefault();
+    targetRow.setAttribute('tabindex', '-1');
+    this.openTransactionMenu(row.data, event.clientX, event.clientY, targetRow as HTMLElement);
+  }
+
+  duplicateTransaction(transaction: TransactionResponseDTO): void {
+    if (transaction.transferId || isGhost(transaction)) return;
+    this.router.navigate(['/transactions/new'], {
+      state: {
+        duplicateTransaction: {
+          description: transaction.description,
+          amount: transaction.amount,
+          date: transaction.date,
+          type: transaction.type,
+          categoryId: transaction.categoryId ?? null,
+          accountId: transaction.accountId ?? null,
+        },
+      },
+    });
+  }
+
+  private confirmCompactDelete(transaction: TransactionResponseDTO): void {
+    const isTransfer = !!transaction.transferId;
+    const data: TransactionActionSheetData = {
+      title: transaction.installmentGroupId
+        ? 'Excluir parcela?'
+        : isTransfer ? 'Excluir transferência?' : 'Excluir transação?',
+      message: transaction.installmentGroupId
+        ? transaction.description
+        : isTransfer ? 'Os dois lançamentos desta transferência serão removidos.'
+        : `Deseja excluir “${transaction.description}”? Esta ação não pode ser desfeita.`,
+      confirmText: 'Excluir',
+      installment: !!transaction.installmentGroupId,
+    };
+    this.bottomSheet.open<TransactionActionSheetComponent, TransactionActionSheetData, TransactionActionSheetResult>(TransactionActionSheetComponent, {
+      data,
+      panelClass: 'transaction-action-sheet',
+    }).afterDismissed().subscribe((confirmed) => {
+      if (typeof confirmed === 'object' && confirmed !== null && 'scope' in confirmed) {
+        this.deleteInstallment(transaction, confirmed);
+        return;
+      }
+      if (confirmed !== true) return;
+      const request: Observable<unknown> = isTransfer
+        ? this.transferService.deleteTransfer(transaction.transferId!)
+        : this.service.deleteTransaction(transaction.id);
+      request.subscribe({
+        next: () => {
+          this.snackBar.open(isTransfer ? 'Transferência excluída.' : 'Transação excluída.', 'OK', { duration: 3000 });
+          this.loadTransactions();
+        },
+        error: (error: unknown) => this.snackBar.open(
+          this.getDeleteErrorMessage(error, isTransfer), 'Fechar', { duration: 5000 },
+        ),
+      });
+    });
+  }
+
+  private deleteInstallment(transaction: TransactionResponseDTO, result: DeleteInstallmentDialogResult): void {
+    this.service.deleteTransaction(transaction.id, { scope: result.scope }).subscribe({
+      next: (res) => {
+        const msg = res.skippedPaid > 0
+          ? `${res.deleted} parcela(s) excluída(s). ${res.skippedPaid} pagas foram mantidas.`
+          : `${res.deleted} parcela(s) excluída(s).`;
+        this.snackBar.open(msg, 'OK', { duration: 4000 });
+        this.loadTransactions();
+      },
+      error: (error: unknown) => this.snackBar.open(
+        this.getDeleteErrorMessage(error, false, 'Erro ao excluir parcela.'), 'Fechar', { duration: 5000 },
+      ),
+    });
+  }
+
+  private getDeleteErrorMessage(error: unknown, isTransfer: boolean, fallback?: string): string {
+    const fallbackMessage = fallback ?? (isTransfer ? 'Erro ao excluir transferência.' : 'Erro ao excluir transação.');
+    if (!(error instanceof HttpErrorResponse)) return fallbackMessage;
+    const body: unknown = error.error;
+    if (typeof body !== 'object' || body === null || !('message' in body)) return fallbackMessage;
+    return typeof body.message === 'string' && body.message.trim() ? body.message : fallbackMessage;
+  }
+
+  transferDestination(transaction: TransactionResponseDTO): string | null {
+    if (!transaction.transferId) return null;
+    return this.transactions().find((candidate) =>
+      candidate.transferId === transaction.transferId && candidate.id !== transaction.id,
+    )?.accountName ?? null;
+  }
+
   sortInfo(col: SortCol): { priority: number; dir: 'asc' | 'desc' } | null {
     return getSortInfo(this.sortCriteria(), col);
   }
@@ -245,6 +511,14 @@ export class TransactionList implements OnInit {
   }
 
   toggleFilters(): void {
+    if (this.isCompact()) {
+      const sheetRef = this.bottomSheet.open(TransactionFiltersComponent, {
+        data: { accounts: this.accounts(), initialFilters: this.filters() },
+        panelClass: 'transaction-filters-sheet',
+      });
+      sheetRef.instance.filterChange.subscribe(filters => this.onFilterChange(filters));
+      return;
+    }
     this.showFilters.update(v => !v);
   }
 
@@ -452,18 +726,7 @@ export class TransactionList implements OnInit {
       });
       dialogRef.afterClosed().subscribe((result: DeleteInstallmentDialogResult | undefined) => {
         if (!result) return;
-        this.service.deleteTransaction(t.id, { scope: result.scope }).subscribe({
-          next: (res: any) => {
-            const msg = res?.skippedPaid > 0
-              ? `${res.deleted} parcela(s) excluída(s). ${res.skippedPaid} pagas foram mantidas.`
-              : `${res?.deleted ?? 1} parcela(s) excluída(s).`;
-            this.snackBar.open(msg, 'OK', { duration: 4000 });
-            this.loadTransactions();
-          },
-          error: (err) => this.snackBar.open(
-            err.error?.message ?? 'Erro ao excluir parcela.', 'Fechar', { duration: 5000 },
-          ),
-        });
+        this.deleteInstallment(t, result);
       });
       return;
     }
