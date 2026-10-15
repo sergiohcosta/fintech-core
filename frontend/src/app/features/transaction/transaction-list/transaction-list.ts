@@ -37,7 +37,8 @@ export { buildDisplayRows } from './transaction-list.utils';
 export type { InstallmentGroupInfo, DisplayRow, InvoiceSummaryRow, SortCriterion } from './transaction-list.utils';
 
 // Compact troca somente a apresentação e os atalhos de toque; os mesmos dados e comandos
-// de domínio alimentam a tabela desktop e os cards, reduzindo o risco de divergência.
+// de domínio alimentam a tabela desktop e os cards. O CDK bloqueia touch-action no drag root;
+// o SCSS restaura pan-y para scroll vertical e preserva o arraste horizontal de ações.
 @Component({
   selector: 'app-transaction-list',
   standalone: true,
