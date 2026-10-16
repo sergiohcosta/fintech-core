@@ -67,7 +67,7 @@ public class VisionAiConfig {
     }
 
     @Bean("geminiVisionChatClient")
-    @ConditionalOnExpression("!'${GEMINI_API_KEY:}'.isBlank()")
+    @ConditionalOnExpression("${GEMINI_ENABLED:false} && !'${GEMINI_API_KEY:}'.isBlank()")
     public ChatClient geminiVisionChatClient(GoogleGenAiChatModel chatModel) {
         return ChatClient.builder(chatModel).build();
     }

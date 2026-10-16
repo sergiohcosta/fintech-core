@@ -51,7 +51,7 @@ import org.springframework.util.MimeType;
  */
 @Component
 @Order(10)
-@ConditionalOnExpression("!'${GEMINI_API_KEY:}'.isBlank()")
+@ConditionalOnExpression("${GEMINI_ENABLED:false} && !'${GEMINI_API_KEY:}'.isBlank()")
 public class GeminiVisionClient implements VisionModelClient {
 
     private final ChatClient chatClient;
