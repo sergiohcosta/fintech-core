@@ -1147,6 +1147,34 @@ components:
           type: string
           format: date-time
           nullable: true
+        inputTokens:
+          type: integer
+          format: int64
+          nullable: true
+          description: >-
+            Tokens de entrada consumidos pelo provider vencedor (prompt + imagem como mídia).
+            NULL quando indisponível ou quando o extrator não chama LLM (CSV/OFX/PDF texto).
+        outputTokens:
+          type: integer
+          format: int64
+          nullable: true
+          description: >-
+            Tokens de saída consumidos pelo provider vencedor (completion / JSON estruturado).
+            NULL nas mesmas condições de inputTokens.
+        totalTokens:
+          type: integer
+          format: int64
+          nullable: true
+          description: >-
+            Soma input + output. Pode ser fornecido pelo provider ou computado na aplicação
+            se faltar. NULL nas mesmas condições de inputTokens.
+        costUsd:
+          type: number
+          format: double
+          nullable: true
+          description: >-
+            Custo estimado em USD da chamada vencedora. NULL enquanto não houver tabela de
+            preços por provider/modelo mantida no app. Não usar como fonte de cobrança sem isso.
 
     StagedTransactionResponseDTO:
       type: object
