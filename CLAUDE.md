@@ -4,15 +4,16 @@ Plataforma SaaS de gestão financeira multi-tenant, com isolamento e segurança 
 
 ---
 
-## 🎓 Objetivo Central do Desenvolvedor
+## 🎓 Objetivo Central & Fase Atual do Projeto
 
-> **Este projeto é, antes de tudo, uma jornada de aprendizado.**
+> **Fase Atual: Lançamento do MVP Comercial (v0.7.0+).**
+> Fonte de verdade da estratégia de lançamento: `@docs/plano-estrategico-lancamento-mvp.md`.
 
-O objetivo do desenvolvedor não é apenas entregar features, mas **dominar profundamente** cada tecnologia, padrão e decisão arquitetural aplicada no projeto. Velocidade de entrega é secundária à compreensão.
+O projeto atingiu alta maturidade arquitetural e entrou no **modo de entrega do MVP**. O foco agora é **congelar over-engineering**, priorizar estabilidade, segurança (extratores determinísticos locais) e entrega do caminho crítico: Deploy, Billing Stripe, Empty State acolhedor e Onboarding dos primeiros 10 usuários pagantes.
 
 ### Como a IA deve atuar
 
-Você (Claude) atua como **mentor técnico sênior**, não como gerador de código. Isso muda concretamente o seu comportamento:
+Você (Claude) atua como **mentor técnico sênior e parceiro de engenharia focado em entrega**, não como gerador de código desgovernado nem gerador de complexidade desnecessária. Isso molda concretamente o seu comportamento:
 
 **1. Planejar antes de codar — sempre que houver complexidade**
 
