@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection, LOCALE_ID } from '@angular/core';
-import { provideRouter, ActivatedRoute } from '@angular/router';
+import { provideRouter, ActivatedRoute, convertToParamMap } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
@@ -18,7 +18,8 @@ import { InvoiceResponseDTO, TransactionResponseDTO } from '../../../core/api/fi
 registerLocaleData(localePt, 'pt-BR');
 
 const makeRoute = (id: string) => ({
-  snapshot: { paramMap: { get: (_: string) => id } }
+  snapshot: { paramMap: { get: (_: string) => id } },
+  paramMap: of(convertToParamMap({ id }))
 });
 
 const baseInvoice: InvoiceResponseDTO = {
@@ -57,6 +58,7 @@ describe('InvoiceDetail', () => {
     });
     invoicesService = TestBed.inject(InvoicesService);
     transactionsService = TestBed.inject(TransactionsService);
+    vi.spyOn(invoicesService, 'listInvoices').mockReturnValue(of([]) as any);
   }
 
   it('totalIncome soma apenas transações INCOME não canceladas', async () => {
@@ -143,5 +145,63 @@ describe('InvoiceDetail', () => {
 
     expect(fixture.nativeElement.textContent).not.toContain('Fechar Fatura');
     expect(fixture.nativeElement.textContent).not.toContain('Pagar Fatura');
+  });
+
+  describe('navegação entre faturas', () => {
+    const mai: InvoiceResponseDTO = { ...baseInvoice, id: 'inv-mai', referenceMonth: 5, referenceYear: 2026, label: 'Maio/2026' };
+    const jun: InvoiceResponseDTO = { ...baseInvoice, id: 'inv-jun', referenceMonth: 6, referenceYear: 2026, label: 'Junho/2026' };
+    const jul: InvoiceResponseDTO = { ...baseInvoice, id: 'inv-jul', referenceMonth: 7, referenceYear: 2026, label: 'Julho/2026' };
+    const accountList = [jul, mai, jun]; // fora de ordem para provar a ordenação cronológica
+
+    it('fatura intermediária: prevInvoice e nextInvoice preenchidos', async () => {
+      setup('inv-jun');
+      vi.spyOn(invoicesService, 'getInvoice').mockReturnValue(of(jun) as any);
+      vi.spyOn(invoicesService, 'listInvoices').mockReturnValue(of(accountList) as any);
+      vi.spyOn(transactionsService, 'listTransactions').mockReturnValue(of([]) as any);
+
+      const fixture = TestBed.createComponent(InvoiceDetail);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(fixture.componentInstance.prevInvoice()?.id).toBe('inv-mai');
+      expect(fixture.componentInstance.nextInvoice()?.id).toBe('inv-jul');
+
+      const buttons = fixture.nativeElement.querySelectorAll('button[aria-label="Fatura anterior"], button[aria-label="Próxima fatura"]');
+      buttons.forEach((btn: HTMLButtonElement) => expect(btn.disabled).toBe(false));
+    });
+
+    it('primeira fatura: prevInvoice null e botão "Anterior" desabilitado', async () => {
+      setup('inv-mai');
+      vi.spyOn(invoicesService, 'getInvoice').mockReturnValue(of(mai) as any);
+      vi.spyOn(invoicesService, 'listInvoices').mockReturnValue(of(accountList) as any);
+      vi.spyOn(transactionsService, 'listTransactions').mockReturnValue(of([]) as any);
+
+      const fixture = TestBed.createComponent(InvoiceDetail);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(fixture.componentInstance.prevInvoice()).toBeNull();
+      expect(fixture.componentInstance.nextInvoice()?.id).toBe('inv-jun');
+
+      const prevBtn = fixture.nativeElement.querySelector('button[aria-label="Fatura anterior"]') as HTMLButtonElement;
+      expect(prevBtn.disabled).toBe(true);
+    });
+
+    it('última fatura: nextInvoice null e botão "Próxima" desabilitado', async () => {
+      setup('inv-jul');
+      vi.spyOn(invoicesService, 'getInvoice').mockReturnValue(of(jul) as any);
+      vi.spyOn(invoicesService, 'listInvoices').mockReturnValue(of(accountList) as any);
+      vi.spyOn(transactionsService, 'listTransactions').mockReturnValue(of([]) as any);
+
+      const fixture = TestBed.createComponent(InvoiceDetail);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(fixture.componentInstance.prevInvoice()?.id).toBe('inv-jun');
+      expect(fixture.componentInstance.nextInvoice()).toBeNull();
+
+      const nextBtn = fixture.nativeElement.querySelector('button[aria-label="Próxima fatura"]') as HTMLButtonElement;
+      expect(nextBtn.disabled).toBe(true);
+    });
   });
 });

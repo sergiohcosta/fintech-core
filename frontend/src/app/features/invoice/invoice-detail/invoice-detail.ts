@@ -1,6 +1,7 @@
-import { Component, inject, OnInit, signal, computed } from '@angular/core';
+import { Component, inject, OnInit, signal, computed, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -24,7 +25,7 @@ import { triggerCsvDownload } from '../../../core/csv.utils';
   selector: 'app-invoice-detail',
   standalone: true,
   imports: [
-    CommonModule, CurrencyPipe, DatePipe,
+    CommonModule, CurrencyPipe, DatePipe, RouterLink,
     MatTableModule, MatButtonModule, MatIconModule,
     MatCardModule, MatSnackBarModule, MatDialogModule, MatTooltipModule
   ],
@@ -33,6 +34,7 @@ import { triggerCsvDownload } from '../../../core/csv.utils';
 })
 export class InvoiceDetail implements OnInit {
   private route = inject(ActivatedRoute);
+  private destroyRef = inject(DestroyRef);
   private invoicesService = inject(InvoicesService);
   private transactionsService = inject(TransactionsService);
   private snackBar = inject(MatSnackBar);
@@ -40,6 +42,24 @@ export class InvoiceDetail implements OnInit {
 
   invoice = signal<InvoiceResponseDTO | null>(null);
   transactions = signal<TransactionResponseDTO[]>([]);
+  accountInvoices = signal<InvoiceResponseDTO[]>([]);
+
+  currentIndex = computed(() => {
+    const current = this.invoice();
+    if (!current) return -1;
+    return this.accountInvoices().findIndex(i => i.id === current.id);
+  });
+
+  prevInvoice = computed(() => {
+    const idx = this.currentIndex();
+    return idx > 0 ? this.accountInvoices()[idx - 1] : null;
+  });
+
+  nextInvoice = computed(() => {
+    const idx = this.currentIndex();
+    const list = this.accountInvoices();
+    return idx >= 0 && idx < list.length - 1 ? list[idx + 1] : null;
+  });
 
   // CANCELLED excluídas dos cálculos financeiros; aparecem na tabela como registro histórico
   activeTransactions = computed(() =>
@@ -93,14 +113,40 @@ export class InvoiceDetail implements OnInit {
   readonly InvoiceStatus = InvoiceStatus;
 
   ngOnInit(): void {
-    const id = this.route.snapshot.paramMap.get('id')!;
+    if (this.route.paramMap) {
+      this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
+        const id = params.get('id');
+        if (id) this.loadInvoice(id);
+      });
+    } else if (this.route.snapshot?.paramMap) {
+      const id = this.route.snapshot.paramMap.get('id');
+      if (id) this.loadInvoice(id);
+    }
+  }
+
+  private loadInvoice(id: string): void {
     this.invoicesService.getInvoice(id).subscribe({
-      next: (inv) => this.invoice.set(inv),
+      next: (inv) => {
+        this.invoice.set(inv);
+        this.loadAccountInvoices(inv.accountId);
+      },
       error: () => this.snackBar.open('Fatura não encontrada.', 'Fechar', { duration: 5000 })
     });
     this.transactionsService.listTransactions({ invoiceId: id }).subscribe({
       next: (txs) => this.transactions.set(txs),
       error: () => this.snackBar.open('Erro ao carregar transações.', 'Fechar', { duration: 5000 })
+    });
+  }
+
+  private loadAccountInvoices(accountId: string): void {
+    this.invoicesService.listInvoices({ accountId }).subscribe({
+      next: (list) => {
+        const sorted = [...list].sort((a, b) =>
+          (a.referenceYear * 12 + a.referenceMonth) - (b.referenceYear * 12 + b.referenceMonth)
+        );
+        this.accountInvoices.set(sorted);
+      },
+      error: () => {}
     });
   }
 
@@ -111,7 +157,7 @@ export class InvoiceDetail implements OnInit {
     ref.afterClosed().subscribe(confirmed => {
       if (!confirmed || !this.invoice()) return;
       this.invoicesService.closeInvoice(this.invoice()!.id).subscribe({
-        next: (inv) => { this.invoice.set(inv); this.snackBar.open('Fatura fechada.', 'OK', { duration: 3000 }); },
+        next: (inv) => { this.invoice.set(inv); this.updateAccountInvoice(inv); this.snackBar.open('Fatura fechada.', 'OK', { duration: 3000 }); },
         error: () => this.snackBar.open('Erro ao fechar fatura.', 'Fechar', { duration: 5000 })
       });
     });
@@ -130,10 +176,14 @@ export class InvoiceDetail implements OnInit {
         sourceAccountId: result.sourceAccountId,
         paymentDate: result.paymentDate
       }).subscribe({
-        next: (inv) => { this.invoice.set(inv); this.snackBar.open('Fatura paga.', 'OK', { duration: 3000 }); },
+        next: (inv) => { this.invoice.set(inv); this.updateAccountInvoice(inv); this.snackBar.open('Fatura paga.', 'OK', { duration: 3000 }); },
         error: () => this.snackBar.open('Erro ao pagar fatura.', 'Fechar', { duration: 5000 })
       });
     });
+  }
+
+  private updateAccountInvoice(updated: InvoiceResponseDTO): void {
+    this.accountInvoices.set(this.accountInvoices().map(i => i.id === updated.id ? updated : i));
   }
 
   exportCsv(): void {
