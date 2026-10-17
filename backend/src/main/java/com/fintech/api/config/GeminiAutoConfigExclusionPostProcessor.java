@@ -65,18 +65,18 @@ public class GeminiAutoConfigExclusionPostProcessor implements EnvironmentPostPr
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
-        // Lê a env var diretamente (não a property já processada com default vazio de
-        // application.properties) — é o sinal cru de "a chave foi configurada por quem opera
-        // este ambiente", sem depender de nenhum outro property source já ter carregado.
+        // ADR-008: Gemini só é habilitado se GEMINI_ENABLED=true for explícito E GEMINI_API_KEY for não-vazia.
+        // Sem GEMINI_ENABLED=true, a auto-configuração é excluída por padrão (modo seguro/LGPD).
+        boolean enabled = Boolean.parseBoolean(environment.getProperty("GEMINI_ENABLED", "false"));
         String apiKey = environment.getProperty("GEMINI_API_KEY");
-        if (StringUtils.hasText(apiKey)) {
+        if (enabled && StringUtils.hasText(apiKey)) {
             return;
         }
 
         environment.getPropertySources().addFirst(new MapPropertySource(
                 "gemini-autoconfig-exclusion",
                 Map.of("spring.autoconfigure.exclude", GEMINI_CHAT_AUTOCONFIG)));
-        System.out.println(">>> [GeminiAutoConfigExclusion] GEMINI_API_KEY ausente — excluindo "
-                + "a auto-configuration do Gemini (extração de visão segue só com Ollama)");
+        System.out.println(">>> [GeminiAutoConfigExclusion] Gemini desativado (GEMINI_ENABLED="
+                + enabled + ") — excluindo a auto-configuration do Gemini");
     }
 }

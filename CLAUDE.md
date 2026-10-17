@@ -4,15 +4,16 @@ Plataforma SaaS de gestão financeira multi-tenant, com isolamento e segurança 
 
 ---
 
-## 🎓 Objetivo Central do Desenvolvedor
+## 🎓 Objetivo Central & Fase Atual do Projeto
 
-> **Este projeto é, antes de tudo, uma jornada de aprendizado.**
+> **Fase Atual: Lançamento do MVP Comercial (v0.7.0+).**
+> Fonte de verdade da estratégia de lançamento: `@docs/plano-estrategico-lancamento-mvp.md`.
 
-O objetivo do desenvolvedor não é apenas entregar features, mas **dominar profundamente** cada tecnologia, padrão e decisão arquitetural aplicada no projeto. Velocidade de entrega é secundária à compreensão.
+O projeto atingiu alta maturidade arquitetural e entrou no **modo de entrega do MVP**. O foco agora é **congelar over-engineering**, priorizar estabilidade, segurança (extratores determinísticos locais) e entrega do caminho crítico: Deploy, Billing Stripe, Empty State acolhedor e Onboarding dos primeiros 10 usuários pagantes.
 
 ### Como a IA deve atuar
 
-Você (Claude) atua como **mentor técnico sênior**, não como gerador de código. Isso muda concretamente o seu comportamento:
+Você (Claude) atua como **mentor técnico sênior e parceiro de engenharia focado em entrega**, não como gerador de código desgovernado nem gerador de complexidade desnecessária. Isso molda concretamente o seu comportamento:
 
 **1. Planejar antes de codar — sempre que houver complexidade**
 
@@ -165,6 +166,15 @@ Em cada interação significativa, o ciclo esperado é:
 **Versionamento — sugerir sempre:** ao concluir uma mudança (feature/bugfix) ou preparar um PR, sugira o **incremento SemVer** dela (PATCH/MINOR/MAJOR; fronteira de compatibilidade = `api-spec/openapi.yaml`) e registre no campo "Impacto SemVer" do PR. A **release** não é por mudança: o bump é o **maior** impacto acumulado desde a última tag. Detalhe: skill `fintech-core-release-and-versioning`.
 
 A meta não é só ter o software funcionando — é o desenvolvedor entender profundamente *por que* funciona.
+
+---
+
+## ⚡ Diretrizes de Eficiência de Tokens (Modelo Híbrido com Antigravity)
+
+Quando invocado para implementar uma feature ou correção já especificada pelo Antigravity:
+1. **Foco Cirúrgico no Escopo:** Limite a leitura e escrita estritamente aos arquivos indicados no prompt ou na spec. Não explore outros diretórios ou arquivos sem necessidade expressa.
+2. **Confiança na Spec:** Se a tarefa referenciar uma especificação em `docs/superpowers/specs/`, a arquitetura e os contratos já foram validados e aprovados. Vá direto à implementação.
+3. **Validação Rápida:** Rode os testes locais imediatamente após implementar (`npm test -- --watch=false` ou `./mvnw test`) e corrija eventuais falhas com alterações mínimas.
 
 ---
 

@@ -1,119 +1,316 @@
 <div class="dashboard-container">
 
-  <!-- Cabeçalho: título + navegação de mês -->
+  <!-- Cabeçalho: Saudação + Título + Navegação de mês + Modo Privacidade -->
   <div class="dashboard-header">
-    <h2 class="page-title">Dashboard</h2>
-    <div class="month-nav">
-      <button mat-icon-button (click)="prevMonth()" aria-label="Mês anterior">
-        <mat-icon>chevron_left</mat-icon>
-      </button>
-      <span class="month-label">{{ monthLabel() }}</span>
-      <button mat-icon-button (click)="nextMonth()" [disabled]="isCurrentMonth()" aria-label="Próximo mês">
-        <mat-icon>chevron_right</mat-icon>
+    <div class="header-titles">
+      <span class="greeting-text">{{ greeting() }}</span>
+      <h2 class="page-title">Dashboard</h2>
+    </div>
+
+    <div class="header-actions">
+      <div class="month-nav">
+        <button mat-icon-button (click)="prevMonth()" aria-label="Mês anterior">
+          <mat-icon>chevron_left</mat-icon>
+        </button>
+        <span class="month-label">{{ monthLabel() }}</span>
+        <button mat-icon-button (click)="nextMonth()" [disabled]="isCurrentMonth()" aria-label="Próximo mês">
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      </div>
+
+      <button
+        mat-icon-button
+        class="privacy-toggle"
+        (click)="togglePrivacy()"
+        [attr.aria-label]="hideValues() ? 'Exibir valores' : 'Ocultar valores'"
+        [matTooltip]="hideValues() ? 'Exibir valores' : 'Ocultar valores'">
+        <mat-icon>{{ hideValues() ? 'visibility_off' : 'visibility' }}</mat-icon>
       </button>
     </div>
   </div>
 
-  <!-- Cards de resumo -->
-  @if (summary(); as s) {
+  <!-- Estado 0: Onboarding Dia Zero (Sem contas criadas) -->
+  @if (!hasAccounts()) {
+    <mat-card class="onboarding-card">
+      <mat-card-header>
+        <div mat-card-avatar class="onboarding-avatar">
+          <mat-icon>waving_hand</mat-icon>
+        </div>
+        <mat-card-title>Boas-vindas ao Nosso Dinheirinho!</mat-card-title>
+        <mat-card-subtitle>Vamos organizar sua vida financeira juntos. Comece em poucos passos:</mat-card-subtitle>
+      </mat-card-header>
 
-    <!-- Posição atual — exibida sempre, independente de haver movimentação no período -->
-    <div class="position-wrapper">
-      <mat-card class="summary-card position-card">
-        <mat-card-content>
-          <div class="card-icon">
-            <mat-icon>account_balance</mat-icon>
+      <mat-card-content>
+        <div class="onboarding-steps">
+          <div class="onboarding-step active-step">
+            <div class="step-badge">1</div>
+            <div class="step-body">
+              <span class="step-title">Crie sua primeira conta ou carteira</span>
+              <span class="step-desc">Adicione suas contas bancárias, cartões de crédito ou carteira de dinheiro.</span>
+              <a mat-flat-button color="primary" routerLink="/accounts/new" class="step-cta">
+                <mat-icon>add</mat-icon>
+                Criar Primeira Conta
+              </a>
+            </div>
           </div>
-          <div class="card-info">
-            <span class="card-label">Posição atual</span>
-            <span class="card-value">{{ s.totalAccountBalance | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
+
+          <div class="onboarding-step disabled-step">
+            <div class="step-badge">2</div>
+            <div class="step-body">
+              <span class="step-title">Traga seus dados ou faça lançamentos</span>
+              <span class="step-desc">Após criar a conta, importe seu primeiro extrato (OFX/PDF) ou lance suas transações.</span>
+            </div>
           </div>
-        </mat-card-content>
-      </mat-card>
-    </div>
 
-    <!-- Movimentações do período: cards quando há dados, empty state quando não há -->
-    @if (hasTransactions()) {
-      <div class="summary-cards">
-        <mat-card class="summary-card income-card">
-          <mat-card-content>
-            <div class="card-icon">
-              <mat-icon>trending_up</mat-icon>
+          <div class="onboarding-step info-step">
+            <div class="step-badge">3</div>
+            <div class="step-body">
+              <span class="step-title">Convide membros da sua família</span>
+              <span class="step-desc">Compartilhe o planejamento financeiro do seu lar com quem mora com você.</span>
+              <a mat-button routerLink="/team" class="step-link">Gerenciar membros →</a>
             </div>
-            <div class="card-info">
-              <span class="card-label">Receita</span>
-              <span class="card-value">{{ s.totalIncome | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
-            </div>
-          </mat-card-content>
-        </mat-card>
-
-        <mat-card class="summary-card expense-card">
-          <mat-card-content>
-            <div class="card-icon">
-              <mat-icon>trending_down</mat-icon>
-            </div>
-            <div class="card-info">
-              <span class="card-label">Despesa</span>
-              <span class="card-value">{{ s.totalExpense | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
-            </div>
-          </mat-card-content>
-        </mat-card>
-
-        <mat-card class="summary-card" [class.balance-positive]="(s.balance ?? 0) >= 0" [class.balance-negative]="(s.balance ?? 0) < 0">
-          <mat-card-content>
-            <div class="card-icon">
-              <mat-icon>account_balance_wallet</mat-icon>
-            </div>
-            <div class="card-info">
-              <span class="card-label">Saldo do período</span>
-              <span class="card-value">{{ s.balance | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
-            </div>
-          </mat-card-content>
-        </mat-card>
-      </div>
-    } @else {
-      <div class="empty-state">
-        <mat-icon class="empty-icon">inbox</mat-icon>
-        <p class="empty-message">Nenhuma movimentação em {{ monthLabel() }}.</p>
-        <a mat-stroked-button routerLink="/transactions">+ Lançar transação</a>
-      </div>
-    }
-
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
   } @else {
-    <div class="loading-cards" aria-busy="true">
-      <mat-spinner diameter="40" aria-label="Carregando dashboard" />
-    </div>
-  }
 
-  <!-- Transações recentes -->
-  <mat-card class="recent-card">
-    <mat-card-header>
-      <mat-card-title>Transações Recentes</mat-card-title>
-      <span class="spacer"></span>
-      <a mat-button routerLink="/transactions">Ver todas</a>
-    </mat-card-header>
-
-    <mat-card-content>
-      @if (recentTransactions().length === 0) {
-        <p class="empty-state">Nenhuma transação encontrada.</p>
-      } @else {
-        @for (t of recentTransactions().slice(0, 5); track t.id) {
-          <div class="transaction-row" [class]="typeColor(t.type)">
-            <div class="transaction-info">
-              <span class="transaction-description">{{ t.description }}</span>
-              <span class="transaction-date">{{ t.date | date:'dd/MM/yyyy':'':'pt-BR' }}</span>
-            </div>
-            <div class="transaction-right">
-              <span class="transaction-amount" [class]="typeColor(t.type)">
-                {{ t.type === 'EXPENSE' ? '-' : '+' }}{{ t.amount | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}
-              </span>
-              <mat-chip [class]="typeColor(t.type)">{{ typeLabel(t.type) }}</mat-chip>
+    <!-- Carrossel de Contas exclusivo para Mobile -->
+    <div class="mobile-accounts-section">
+      <div class="section-header">
+        <span class="section-title">Minhas Contas</span>
+        <a mat-button routerLink="/accounts" class="section-link">Ver todas</a>
+      </div>
+      <div class="accounts-carousel">
+        @for (acc of accounts(); track acc.id) {
+          <div class="account-pill-card">
+            <mat-icon class="pill-icon">{{ getAccountIcon(acc.type) }}</mat-icon>
+            <div class="pill-info">
+              <span class="pill-name">{{ acc.name }}</span>
+              <span class="pill-balance">{{ formatMoney(acc.balance) }}</span>
             </div>
           </div>
-          <mat-divider />
         }
-      }
-    </mat-card-content>
-  </mat-card>
+        <a routerLink="/accounts/new" class="account-pill-card add-pill">
+          <mat-icon>add</mat-icon>
+          <span>Nova Conta</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Atalhos Rápidos para Mobile -->
+    <div class="mobile-quick-actions">
+      <a mat-stroked-button routerLink="/import" class="mobile-action-btn">
+        <mat-icon>upload_file</mat-icon>
+        Importar Extrato
+      </a>
+      <a mat-stroked-button routerLink="/transactions/new" [queryParams]="{ mode: 'TRANSFER' }" class="mobile-action-btn">
+        <mat-icon>sync_alt</mat-icon>
+        Transferir
+      </a>
+    </div>
+
+    <!-- Layout Responsivo: Coluna Principal + Coluna Lateral no Desktop -->
+    <div class="dashboard-layout">
+
+      <!-- ═══ COLUNA PRINCIPAL ═══ -->
+      <div class="main-column">
+
+        <!-- Cards de Resumo -->
+        @if (summary(); as s) {
+
+          <!-- Posição Financeira Líquida -->
+          <div class="position-wrapper">
+            <mat-card class="summary-card position-card">
+              <mat-card-content>
+                <div class="card-icon">
+                  <mat-icon>account_balance</mat-icon>
+                </div>
+                <div class="card-info">
+                  <span class="card-label">Posição financeira líquida</span>
+                  <span class="card-value">{{ formatMoney(s.totalAccountBalance) }}</span>
+                </div>
+              </mat-card-content>
+            </mat-card>
+          </div>
+
+          <!-- Movimentações do Período -->
+          @if (hasTransactions()) {
+            <div class="summary-cards">
+              <mat-card class="summary-card income-card">
+                <mat-card-content>
+                  <div class="card-icon">
+                    <mat-icon>trending_up</mat-icon>
+                  </div>
+                  <div class="card-info">
+                    <span class="card-label">Receita</span>
+                    <span class="card-value">{{ formatMoney(s.totalIncome) }}</span>
+                  </div>
+                </mat-card-content>
+              </mat-card>
+
+              <mat-card class="summary-card expense-card">
+                <mat-card-content>
+                  <div class="card-icon">
+                    <mat-icon>trending_down</mat-icon>
+                  </div>
+                  <div class="card-info">
+                    <span class="card-label">Despesa</span>
+                    <span class="card-value">{{ formatMoney(s.totalExpense) }}</span>
+                  </div>
+                </mat-card-content>
+              </mat-card>
+
+              <mat-card class="summary-card" [class.balance-positive]="(s.balance ?? 0) >= 0" [class.balance-negative]="(s.balance ?? 0) < 0">
+                <mat-card-content>
+                  <div class="card-icon">
+                    <mat-icon>account_balance_wallet</mat-icon>
+                  </div>
+                  <div class="card-info">
+                    <span class="card-label">Saldo do período</span>
+                    <span class="card-value">{{ formatMoney(s.balance) }}</span>
+                  </div>
+                </mat-card-content>
+              </mat-card>
+            </div>
+
+            <!-- Indicador de Poupança / Economia -->
+            @if (savingsRate(); as rate) {
+              <div class="savings-banner" [class.negative]="rate < 0">
+                @if (rate >= 0) {
+                  <mat-icon>savings</mat-icon>
+                  <span>🎉 Você poupou <strong>{{ rate }}%</strong> da sua receita em {{ monthLabel() }}.</span>
+                } @else {
+                  <mat-icon>warning</mat-icon>
+                  <span>⚠️ Despesas superaram receitas neste período.</span>
+                }
+              </div>
+            }
+
+          } @else {
+            <div class="empty-state">
+              <mat-icon class="empty-icon">inbox</mat-icon>
+              <p class="empty-message">Nenhuma movimentação em {{ monthLabel() }}.</p>
+              <div class="empty-actions">
+                <a mat-stroked-button routerLink="/transactions/new">+ Lançar transação</a>
+                <a mat-stroked-button routerLink="/import">↑ Importar extrato</a>
+              </div>
+            </div>
+          }
+
+        } @else {
+          <div class="loading-cards" aria-busy="true">
+            <mat-spinner diameter="40" aria-label="Carregando dashboard" />
+          </div>
+        }
+
+        <!-- Transações Recentes -->
+        <mat-card class="recent-card">
+          <mat-card-header>
+            <mat-card-title>Transações Recentes</mat-card-title>
+            <span class="spacer"></span>
+            <a mat-button routerLink="/transactions">Ver todas</a>
+          </mat-card-header>
+
+          <mat-card-content>
+            @if (recentTransactions().length === 0) {
+              <p class="empty-recent">Nenhuma transação encontrada.</p>
+            } @else {
+              @for (t of recentTransactions().slice(0, 5); track t.id) {
+                <div class="transaction-row" [class]="typeColor(t.type)">
+                  <div class="transaction-lead">
+                    <div class="category-icon-wrapper" [class]="typeColor(t.type)">
+                      <mat-icon>{{ getTransactionIcon(t) }}</mat-icon>
+                    </div>
+                    <div class="transaction-info">
+                      <span class="transaction-description">{{ t.description }}</span>
+                      <div class="transaction-sub">
+                        <span class="transaction-account">{{ t.accountName || 'Sem conta' }}</span>
+                        <span class="dot">•</span>
+                        <span class="transaction-date">{{ t.date | date:'dd/MM/yyyy':'':'pt-BR' }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="transaction-right">
+                    <span class="transaction-amount" [class]="typeColor(t.type)">
+                      {{ formatTransactionAmount(t) }}
+                    </span>
+                    <mat-chip [class]="typeColor(t.type)">{{ typeLabel(t.type) }}</mat-chip>
+                  </div>
+                </div>
+                <mat-divider />
+              }
+            }
+          </mat-card-content>
+        </mat-card>
+
+      </div>
+
+      <!-- ═══ COLUNA LATERAL (Desktop) ═══ -->
+      <div class="sidebar-column">
+
+        <!-- Card: Ações Rápidas -->
+        <mat-card class="sidebar-card quick-actions-card">
+          <mat-card-header>
+            <mat-card-title>Ações Rápidas</mat-card-title>
+          </mat-card-header>
+          <mat-card-content class="quick-actions-list">
+            <a mat-flat-button color="primary" routerLink="/transactions/new" class="action-btn">
+              <mat-icon>add</mat-icon>
+              Nova Transação
+            </a>
+            <a mat-stroked-button routerLink="/transactions/new" [queryParams]="{ mode: 'TRANSFER' }" class="action-btn">
+              <mat-icon>sync_alt</mat-icon>
+              Transferência
+            </a>
+            <a mat-stroked-button routerLink="/import" class="action-btn">
+              <mat-icon>upload_file</mat-icon>
+              Importar Extrato
+            </a>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Card: Minhas Contas -->
+        <mat-card class="sidebar-card accounts-sidebar-card">
+          <mat-card-header>
+            <mat-card-title>Minhas Contas</mat-card-title>
+            <span class="spacer"></span>
+            <a mat-button routerLink="/accounts/new" class="add-account-link">+ Nova</a>
+          </mat-card-header>
+          <mat-card-content>
+            <mat-nav-list class="sidebar-accounts-list">
+              @for (acc of accounts(); track acc.id) {
+                <a mat-list-item [routerLink]="['/accounts', acc.id]">
+                  <mat-icon matListItemIcon>{{ getAccountIcon(acc.type) }}</mat-icon>
+                  <span matListItemTitle>{{ acc.name }}</span>
+                  <span matListItemLine class="acc-type-line">{{ getAccountTypeLabel(acc.type) }}</span>
+                  <span matListItemMeta class="acc-balance-meta">{{ formatMoney(acc.balance) }}</span>
+                </a>
+              }
+            </mat-nav-list>
+            <div class="sidebar-card-footer">
+              <a mat-button routerLink="/accounts" class="full-link">Gerenciar todas as contas →</a>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Card: Planejamento / Dica -->
+        <mat-card class="sidebar-card planning-card">
+          <mat-card-header>
+            <mat-icon mat-card-avatar class="planning-avatar">pie_chart</mat-icon>
+            <mat-card-title>Planejamento</mat-card-title>
+            <mat-card-subtitle>Metas de gastos do mês</mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-content>
+            <p class="planning-desc">Defina limites para suas categorias e mantenha seu orçamento sob controle.</p>
+            <a mat-stroked-button routerLink="/planning" class="planning-btn">Acessar Planejamento →</a>
+          </mat-card-content>
+        </mat-card>
+
+      </div>
+
+    </div>
+
+  }
 
 </div>
