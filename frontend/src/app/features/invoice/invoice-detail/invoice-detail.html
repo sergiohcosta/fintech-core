@@ -5,7 +5,23 @@
     <header class="invoice-header mat-elevation-z1">
       <div class="header-info">
         <p class="account-name">{{ inv.accountName }}</p>
-        <h1>Fatura {{ inv.label }}</h1>
+        <div class="title-with-nav">
+          <button mat-icon-button
+                  [disabled]="!prevInvoice()"
+                  [routerLink]="prevInvoice() ? ['/invoices', prevInvoice()!.id] : null"
+                  [matTooltip]="prevInvoice() ? 'Fatura anterior (' + prevInvoice()!.label + ')' : ''"
+                  aria-label="Fatura anterior">
+            <mat-icon>chevron_left</mat-icon>
+          </button>
+          <h1>Fatura {{ inv.label }}</h1>
+          <button mat-icon-button
+                  [disabled]="!nextInvoice()"
+                  [routerLink]="nextInvoice() ? ['/invoices', nextInvoice()!.id] : null"
+                  [matTooltip]="nextInvoice() ? 'Próxima fatura (' + nextInvoice()!.label + ')' : ''"
+                  aria-label="Próxima fatura">
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+        </div>
         <div class="header-dates">
           <span>Fechamento: {{ inv.closingDate | date:'dd/MM/yyyy' }}</span>
           <span class="separator">·</span>
