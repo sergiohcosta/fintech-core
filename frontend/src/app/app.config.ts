@@ -1,5 +1,5 @@
 import { ApplicationConfig, inject, LOCALE_ID, provideAppInitializer, provideZonelessChangeDetection, isDevMode } from '@angular/core';
-import { provideRouter } from '@angular/router';
+import { provideRouter, TitleStrategy } from '@angular/router';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { registerLocaleData } from '@angular/common';
@@ -11,6 +11,7 @@ import { authInterceptor } from './core/interceptors/auth.interceptor';
 import { authErrorInterceptor } from './core/interceptors/auth-error.interceptor';
 import { apiUrlInterceptor } from './core/interceptors/api-url.interceptor';
 import { AuthService } from './core/services/auth';
+import { PageTitleStrategy } from './core/services/page-title.strategy';
 import { provideServiceWorker } from '@angular/service-worker';
 
 // Registra os dados de formatação do locale pt-BR (moeda, datas, números)
@@ -31,7 +32,9 @@ export const appConfig: ApplicationConfig = {
     // alcança. Registrar aqui cobre datepickers em qualquer contexto, incluindo diálogos.
     provideNativeDateAdapter(),
     { provide: LOCALE_ID, useValue: 'pt-BR' },
-    { provide: MAT_DATE_LOCALE, useValue: 'pt-BR' }, provideServiceWorker('ngsw-worker.js', {
+    { provide: MAT_DATE_LOCALE, useValue: 'pt-BR' },
+    { provide: TitleStrategy, useClass: PageTitleStrategy },
+    provideServiceWorker('ngsw-worker.js', {
             enabled: !isDevMode(),
             registrationStrategy: 'registerWhenStable:30000'
           })
