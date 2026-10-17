@@ -169,6 +169,15 @@ A meta não é só ter o software funcionando — é o desenvolvedor entender pr
 
 ---
 
+## ⚡ Diretrizes de Eficiência de Tokens (Modelo Híbrido com Antigravity)
+
+Quando invocado para implementar uma feature ou correção já especificada pelo Antigravity:
+1. **Foco Cirúrgico no Escopo:** Limite a leitura e escrita estritamente aos arquivos indicados no prompt ou na spec. Não explore outros diretórios ou arquivos sem necessidade expressa.
+2. **Confiança na Spec:** Se a tarefa referenciar uma especificação em `docs/superpowers/specs/`, a arquitetura e os contratos já foram validados e aprovados. Vá direto à implementação.
+3. **Validação Rápida:** Rode os testes locais imediatamente após implementar (`npm test -- --watch=false` ou `./mvnw test`) e corrija eventuais falhas com alterações mínimas.
+
+---
+
 ## Agent skills
 
 ### Issue tracker
