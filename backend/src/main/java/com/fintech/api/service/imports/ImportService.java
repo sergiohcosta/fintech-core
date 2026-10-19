@@ -73,6 +73,12 @@ public class ImportService {
     @Value("${import.review.amount-threshold:0.95}")
     private BigDecimal amountThreshold;
 
+    @Value("${import.review.date-threshold:0.90}")
+    private BigDecimal dateThreshold;
+
+    @Value("${import.review.direction-threshold:0.70}")
+    private BigDecimal directionThreshold;
+
     // Teto de transações por arquivo — um CSV/OFX gigante não deve travar o commit nem virar um
     // batch impraticável de revisar. Property (não hardcode) pro produto ajustar sem redeploy.
     @Value("${import.file.max-transactions:500}")
@@ -550,9 +556,14 @@ public class ImportService {
 
     /**
      * Regra de review: exige olho humano se a confiança agregada não bate o threshold geral, OU
-     * se a confiança do campo mais crítico (amount) não bate o threshold de valor. Ausência de
-     * confiança (null) conta como "duvidoso" → exige review. Nunca confia num {@code requiresReview}
-     * vindo do modelo/cliente.
+     * se a confiança de algum campo crítico (amount, transaction_date) não bate o respectivo threshold.
+     * Ausência de confiança (null) conta como "duvidoso" → exige review (#242).
+     *
+     * <p>Decisão sobre direction (#242): se presente no mapa e com confiança estritamente abaixo
+     * de {@code directionThreshold} (ex.: 0.0 quando a normalização de visão falha em reconhecer
+     * o valor), exige revisão. Porém, CsvExtractor e PdfTextExtractor inferem direction por heurística
+     * com confiança 0.70 por design (§183) — logo, o threshold default de direction é 0.70
+     * (não bloqueia 0.70) e ausência de direction não bloqueia transações que não definem esse campo.
      */
     private boolean deriveRequiresReview(Map<String, StagedFieldValue> fields, BigDecimal overallConfidence) {
         if (isBelow(overallConfidence, overallThreshold)) {
@@ -560,7 +571,16 @@ public class ImportService {
         }
         StagedFieldValue amount = fields == null ? null : fields.get("amount");
         BigDecimal amountConfidence = amount == null ? null : amount.confidence();
-        return isBelow(amountConfidence, amountThreshold);
+        if (isBelow(amountConfidence, amountThreshold)) {
+            return true;
+        }
+        StagedFieldValue date = fields == null ? null : fields.get("transaction_date");
+        BigDecimal dateConfidence = date == null ? null : date.confidence();
+        if (isBelow(dateConfidence, dateThreshold)) {
+            return true;
+        }
+        StagedFieldValue direction = fields == null ? null : fields.get("direction");
+        return direction != null && isBelow(direction.confidence(), directionThreshold);
     }
 
     /** true se {@code value} é null ou estritamente menor que {@code threshold}. */

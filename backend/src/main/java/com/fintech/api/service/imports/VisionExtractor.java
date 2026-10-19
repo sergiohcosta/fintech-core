@@ -622,10 +622,9 @@ public class VisionExtractor implements TransactionExtractor {
      * "nunca apaga o valor"). Valor ausente em branco vira (null, 0.0) mesmo antes do
      * normalizador.
      *
-     * <p>Observação honesta sobre o "forçar revisão": hoje o {@code deriveRequiresReview} do
-     * {@code ImportService} só olha a confiança AGREGADA e a do amount — confiança 0.0 em data/
-     * direção/método sinaliza dúvida no staged, mas por si só ainda não vira {@code requires_review}
-     * quando as outras confianças estão altas.
+     * <p>#242: o {@code deriveRequiresReview} do {@code ImportService} considera a confiança
+     * de {@code transaction_date} e {@code direction} — logo, confiança 0.0 de valor não reconhecido
+     * força {@code requires_review=true} automaticamente, mesmo se o overall do modelo for alto.
      */
     private StagedFieldValueDTO normalizeToField(
             String rawValue, Double rawConfidence, Function<String, String> normalizer) {
