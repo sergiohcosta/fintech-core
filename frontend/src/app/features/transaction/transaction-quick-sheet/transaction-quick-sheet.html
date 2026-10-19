@@ -47,6 +47,34 @@
       </mat-button-toggle-group>
     </div>
 
+    <div class="date-section">
+      <div class="date-shortcuts">
+        <button mat-stroked-button type="button" class="shortcut-btn"
+                [class.active-shortcut]="isToday()"
+                (click)="setDateToday()">
+          <mat-icon>today</mat-icon>
+          Hoje
+        </button>
+        <button mat-stroked-button type="button" class="shortcut-btn"
+                [class.active-shortcut]="isYesterday()"
+                (click)="setDateYesterday()">
+          <mat-icon>event_repeat</mat-icon>
+          Ontem
+        </button>
+      </div>
+
+      <mat-form-field appearance="outline" class="field-full date-field">
+        <mat-label>Data</mat-label>
+        <input #dateInput matInput [matDatepicker]="datePicker" formControlName="date"
+               placeholder="dd/mm/aaaa" />
+        <mat-datepicker-toggle matIconSuffix [for]="datePicker" />
+        <mat-datepicker #datePicker />
+        @if (form.controls.date.hasError('required') && form.controls.date.touched) {
+          <mat-error>Informe a data</mat-error>
+        }
+      </mat-form-field>
+    </div>
+
     <mat-form-field appearance="outline" class="field-full">
       <mat-label>{{ isTransfer() ? 'Conta de origem' : 'Conta' }}</mat-label>
       <mat-select #accountSelect formControlName="accountId">

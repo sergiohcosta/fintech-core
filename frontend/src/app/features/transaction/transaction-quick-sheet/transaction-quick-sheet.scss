@@ -106,6 +106,32 @@ form {
   mat-button-toggle { flex: 1; }
 }
 
+.date-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs, 4px);
+  margin-bottom: var(--space-xs, 4px);
+}
+
+.date-shortcuts {
+  display: flex;
+  gap: var(--space-xs, 8px);
+  margin-bottom: var(--space-xs, 4px);
+
+  .shortcut-btn {
+    flex: 1;
+    min-height: var(--touch-target-min, 40px);
+    font-size: 0.875rem;
+
+    &.active-shortcut {
+      background: var(--mat-sys-primary-container);
+      color: var(--mat-sys-on-primary-container);
+      border-color: var(--mat-sys-primary);
+      font-weight: 600;
+    }
+  }
+}
+
 .submit-button {
   min-height: var(--touch-target-min, 48px);
   margin-top: var(--space-xs, 4px);

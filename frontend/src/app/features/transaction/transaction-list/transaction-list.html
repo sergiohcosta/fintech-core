@@ -109,7 +109,7 @@
         <button mat-menu-item (click)="onEdit(transaction)" [disabled]="!!transaction.transferId">
           <mat-icon>edit</mat-icon><span>Editar</span>
         </button>
-        <button mat-menu-item (click)="swipeDelete(transaction)">
+        <button mat-menu-item (click)="confirmCompactDelete(transaction)">
           <mat-icon>delete</mat-icon><span>Excluir</span>
         </button>
         <button mat-menu-item (click)="duplicateTransaction(transaction)"
@@ -135,91 +135,66 @@
       }
 
       <ng-template #transactionCard let-transaction let-group="group" let-expanded="expanded">
-        <div class="swipe-shell" [class.is-swiped]="swipedRow()?.id === transaction.id">
-          @if (swipedRow()?.id === transaction.id) {
-            <div class="swipe-actions" [class.delete-action]="swipedRow()?.direction === 'left'"
-                 [class.edit-action]="swipedRow()?.direction === 'right'">
-              @if (swipedRow()?.direction === 'left') {
-                <button mat-button type="button" (click)="swipeDelete(transaction)">
-                  <mat-icon>delete</mat-icon>Excluir
-                </button>
-              } @else {
-                <button mat-button type="button" [disabled]="!!transaction.transferId || isGhost(transaction)"
-                        (click)="swipeEdit(transaction)">
-                  <mat-icon>edit</mat-icon>Editar
-                </button>
-              }
-            </div>
-          }
-
-          <mat-list-item class="tx-card" tabindex="0" cdkDrag cdkDragLockAxis="x"
-                         [cdkDragFreeDragPosition]="swipePosition(transaction.id)"
-                         (cdkDragEnded)="onSwipeEnd($event, transaction)"
-                         (contextmenu)="onCompactContextMenu($event, transaction)"
-                         (click)="onCompactCardClick($event, transaction)">
-            <div class="tx-card-main"
-                 (pointerdown)="startLongPress($event, transaction)"
-                 (pointermove)="moveLongPress($event)"
-                 (pointerup)="endLongPress()"
-                 (pointercancel)="endLongPress()"
-                 (pointerleave)="endLongPress()">
-              <div class="tx-card-copy">
-                <div class="tx-card-heading">
-                  <span class="tx-description">{{ transaction.description }}</span>
-                  @if (isGhost(transaction)) {
-                    <span class="ghost-label">Prevista</span>
-                  }
-                </div>
-                @if (transaction.transferId) {
-                  <span class="tx-account">→ {{ transferDestination(transaction) ?? 'Conta de destino' }}</span>
-                } @else if (transaction.accountName) {
-                  <span class="tx-account">{{ transaction.accountName }}</span>
+        <mat-list-item class="tx-card" tabindex="0"
+                       (contextmenu)="onCompactContextMenu($event, transaction)"
+                       (click)="onCompactCardClick($event, transaction)">
+          <div class="tx-card-main">
+            <div class="tx-card-copy">
+              <div class="tx-card-heading">
+                <span class="tx-description">{{ transaction.description }}</span>
+                @if (isGhost(transaction)) {
+                  <span class="ghost-label">Prevista</span>
                 }
-                <div class="tx-card-meta">
-                  @if (transaction.categoryName) {
-                    <mat-chip>{{ transaction.categoryName }}</mat-chip>
-                  }
-                  @if (transaction.installmentNumber && transaction.totalInstallments) {
-                    <span class="installment-badge">{{ transaction.installmentNumber }}/{{ transaction.totalInstallments }}</span>
-                  } @else if (transaction.installmentLabel) {
-                    <span class="installment-badge">{{ transaction.installmentLabel }}</span>
-                  }
-                  <span [class]="'status-badge status-' + (transaction.status ?? '').toLowerCase()">
-                    {{ statusLabel(transaction.status ?? '') }}
-                  </span>
-                </div>
               </div>
-
-              <div class="tx-card-value">
-                <span class="tx-date">
-                  {{ (transaction.installmentGroupId && transaction.invoiceDueDate
-                    ? transaction.invoiceDueDate
-                    : transaction.date) | date:'dd/MM' }}
-                </span>
-                <span [class]="'amount ' + (transaction.transferId ? 'transfer' : (transaction.type ?? '').toLowerCase())">
-                  {{ transaction.amount | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}
+              @if (transaction.transferId) {
+                <span class="tx-account">→ {{ transferDestination(transaction) ?? 'Conta de destino' }}</span>
+              } @else if (transaction.accountName) {
+                <span class="tx-account">{{ transaction.accountName }}</span>
+              }
+              <div class="tx-card-meta">
+                @if (transaction.categoryName) {
+                  <mat-chip>{{ transaction.categoryName }}</mat-chip>
+                }
+                @if (transaction.installmentNumber && transaction.totalInstallments) {
+                  <span class="installment-badge">{{ transaction.installmentNumber }}/{{ transaction.totalInstallments }}</span>
+                } @else if (transaction.installmentLabel) {
+                  <span class="installment-badge">{{ transaction.installmentLabel }}</span>
+                }
+                <span [class]="'status-badge status-' + (transaction.status ?? '').toLowerCase()">
+                  {{ statusLabel(transaction.status ?? '') }}
                 </span>
               </div>
-
-              <button mat-icon-button class="tx-menu-trigger" type="button"
-                      aria-label="Mais ações" (click)="onMenuButtonClick($event, transaction)">
-                <mat-icon>more_vert</mat-icon>
-              </button>
             </div>
-          </mat-list-item>
 
-          @if (expanded && group) {
-            <div class="installment-detail-panel">
-              <div class="detail-group-info">
-                <span class="detail-group-name">{{ group.description }}</span>
-                <span class="detail-group-meta">{{ group.paidInstallments }}/{{ group.totalInstallments }} pagas</span>
-              </div>
-              <mat-progress-bar class="detail-progress" mode="determinate"
-                                [value]="(group.paidInstallments / group.totalInstallments) * 100" />
-              <span class="detail-meta-chip">{{ group.accountName ?? '—' }}</span>
+            <div class="tx-card-value">
+              <span class="tx-date">
+                {{ (transaction.installmentGroupId && transaction.invoiceDueDate
+                  ? transaction.invoiceDueDate
+                  : transaction.date) | date:'dd/MM' }}
+              </span>
+              <span [class]="'amount ' + (transaction.transferId ? 'transfer' : (transaction.type ?? '').toLowerCase())">
+                {{ transaction.amount | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}
+              </span>
             </div>
-          }
-        </div>
+
+            <button mat-icon-button class="tx-menu-trigger" type="button"
+                    aria-label="Mais ações" (click)="onMenuButtonClick($event, transaction)">
+              <mat-icon>more_vert</mat-icon>
+            </button>
+          </div>
+        </mat-list-item>
+
+        @if (expanded && group) {
+          <div class="installment-detail-panel">
+            <div class="detail-group-info">
+              <span class="detail-group-name">{{ group.description }}</span>
+              <span class="detail-group-meta">{{ group.paidInstallments }}/{{ group.totalInstallments }} pagas</span>
+            </div>
+            <mat-progress-bar class="detail-progress" mode="determinate"
+                              [value]="(group.paidInstallments / group.totalInstallments) * 100" />
+            <span class="detail-meta-chip">{{ group.accountName ?? '—' }}</span>
+          </div>
+        }
       </ng-template>
 
       @for (row of displayRows(); track rowTrackKey(row, $index)) {

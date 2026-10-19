@@ -436,14 +436,16 @@ table {
 
 @include bp.compact {
   .tx-cards { display: flex; flex-direction: column; gap: var(--space-sm, 8px); padding: 0; }
-  // clip-path clips the reveal without creating an overflow:hidden scroll container.
-  .swipe-shell { position: relative; clip-path: inset(0 round 16px); }
-  .swipe-actions { position: absolute; inset: 0; display: flex; }
-  .swipe-actions button { min-width: 96px; min-height: var(--touch-target-min, 48px); color: #fff; }
-  .swipe-actions.delete-action { justify-content: flex-end; background: #c62828; }
-  .swipe-actions.edit-action { justify-content: flex-start; background: #1565c0; }
-  // O CDK põe touch-action:none no draggable; pan-y!important mantém a rolagem do shell vertical.
-  .tx-card { position: relative; z-index: 1; box-sizing: border-box; height: auto !important; min-height: calc(var(--touch-target-min, 48px) * 2); padding: var(--space-md, 16px) !important; border: 1px solid var(--mat-sys-outline-variant); border-radius: 16px; background: var(--mat-sys-surface); touch-action: pan-y !important; }
+  .tx-card {
+    box-sizing: border-box;
+    height: auto !important;
+    min-height: calc(var(--touch-target-min, 48px) * 2);
+    padding: var(--space-md, 16px) !important;
+    border: 1px solid var(--mat-sys-outline-variant);
+    border-radius: 16px;
+    background: var(--mat-sys-surface);
+    cursor: pointer;
+  }
   .tx-card-main { display: grid; grid-template-columns: minmax(0, 1fr) auto 48px; align-items: center; gap: var(--space-sm, 8px); width: 100%; }
   .tx-card-copy { min-width: 0; }
   .tx-description { display: block; max-width: 30ch; overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }

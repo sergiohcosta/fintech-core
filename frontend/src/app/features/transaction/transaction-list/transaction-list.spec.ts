@@ -3,7 +3,6 @@ import {
   buildDisplayRows, DisplayRow, InstallmentGroupInfo,
   effectiveMonth, groupByEffectiveMonth, resolveMonthKey, monthBounds, formatMonthLabel,
   PeriodGroup, computeMonthChipStates,
-  resolveSwipeAction,
 } from './transaction-list.utils';
 import { TransactionList } from './transaction-list';
 import { TransactionFilters } from './transaction-filters/transaction-filters.types';
@@ -246,15 +245,6 @@ describe('computeMonthChipStates', () => {
   it('intervalo personalizado (não exato de mês): nenhum chip fica active', () => {
     const chips = computeMonthChipStates(2026, 6, '2026-06-05', '2026-06-20');
     expect(chips.every(c => !c.active)).toBe(true);
-  });
-});
-
-describe('resolveSwipeAction', () => {
-  it('só revela uma ação ao ultrapassar 96px', () => {
-    expect(resolveSwipeAction(-96)).toBe('delete');
-    expect(resolveSwipeAction(96)).toBe('edit');
-    expect(resolveSwipeAction(-95)).toBeNull();
-    expect(resolveSwipeAction(95)).toBeNull();
   });
 });
 

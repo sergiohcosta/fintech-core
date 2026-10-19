@@ -35,6 +35,7 @@ describe('TransactionTimelineComponent', () => {
     // - styles vazio (evita fetch de styleUrl)
     // Sem compileComponents() — a compilação ocorre sob demanda em createComponent(),
     // que já reconhece o override e usa o template inline, não a templateUrl.
+    TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
         provideZonelessChangeDetection(),
