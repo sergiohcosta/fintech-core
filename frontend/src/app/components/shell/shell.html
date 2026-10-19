@@ -19,14 +19,23 @@
     (openedChange)="sidenavOpen.set($event)"
     class="sidenav">
     <mat-nav-list>
-      @for (item of navItems; track item.route) {
-        @if (!item.adminOnly || isAdmin()) {
-          <a mat-list-item
-             [routerLink]="item.route"
-             routerLinkActive="active-link">
-            <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
-            <span matListItemTitle>{{ item.label }}</span>
-          </a>
+      @for (section of navSections; track section.title; let first = $first) {
+        @if (!first) {
+          <mat-divider class="section-divider"></mat-divider>
+        }
+        @if (section.title) {
+          <div mat-subheader class="nav-subheader">{{ section.title }}</div>
+        }
+        @for (item of section.items; track item.route) {
+          @if (!item.adminOnly || isAdmin()) {
+            <a mat-list-item
+               [routerLink]="item.route"
+               routerLinkActive="active-link"
+               (click)="isCompact() && sidenavOpen.set(false)">
+              <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+              <span matListItemTitle>{{ item.label }}</span>
+            </a>
+          }
         }
       }
     </mat-nav-list>

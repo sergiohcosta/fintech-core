@@ -16,6 +16,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatDividerModule } from '@angular/material/divider';
 import { forkJoin, map, catchError, of, Observable } from 'rxjs';
 
 import { TransactionsService } from '../../../core/api/transactions/transactions.service';
@@ -55,6 +56,7 @@ export type { InstallmentGroupInfo, DisplayRow, InvoiceSummaryRow, SortCriterion
     MatSnackBarModule,
     MatProgressBarModule,
     MatCheckboxModule,
+    MatDividerModule,
     CurrencyPipe,
     DatePipe,
     TransactionFiltersComponent,

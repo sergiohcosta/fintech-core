@@ -12,9 +12,9 @@
         Mostrar arquivadas
       </mat-slide-toggle>
       @if (isAdmin()) {
-        <button mat-stroked-button color='primary' routerLink='/categories/taxonomy'>
+        <button mat-stroked-button color='primary' routerLink='/categories/taxonomy' matTooltip="Vincular ao padrão bancário para reconhecimento inteligente">
           <mat-icon>account_tree</mat-icon>
-          Mapeamento de Taxonomia
+          Categorias Padrão
         </button>
       }
       <button mat-flat-button color='primary' routerLink='/categories/new'>

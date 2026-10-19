@@ -18,6 +18,7 @@ describe('AccountList', () => {
   let accountsService: AccountsService;
 
   beforeEach(() => {
+    TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       imports: [AccountList, NoopAnimationsModule, MatDialogModule],
       providers: [
@@ -54,5 +55,17 @@ describe('AccountList', () => {
     expect(component.typeLabel('INVESTMENT')).toBe('Investimento');
     expect(component.typeLabel('CREDIT_CARD')).toBe('Cartão de Crédito');
     expect(component.typeLabel('CASH')).toBe('Carteira');
+  });
+
+  it('exibe o empty-state-card acolhedor quando não existem contas cadastradas', async () => {
+    vi.spyOn(accountsService, 'listAccounts').mockReturnValue(of([]) as any);
+
+    const fixture = TestBed.createComponent(AccountList);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.querySelector('.empty-state-card')).toBeTruthy();
+    expect(compiled.textContent).toContain('Nenhuma conta cadastrada');
   });
 });

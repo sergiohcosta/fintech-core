@@ -6,17 +6,17 @@
     </div>
     <div class="header-actions">
       @if (isCompact()) {
+        <a mat-icon-button routerLink="/transactions/timeline" aria-label="Ver linha do tempo e calendário" matTooltip="Linha do tempo e calendário">
+          <mat-icon>calendar_month</mat-icon>
+        </a>
         <button mat-icon-button (click)="toggleFilters()" aria-label="Abrir filtros" matTooltip="Filtrar transações">
           <mat-icon>filter_alt</mat-icon>
           @if (activeFilterChips().length > 0) {
             <span class="filter-badge">{{ activeFilterChips().length }}</span>
           }
         </button>
-        <button mat-icon-button [matMenuTriggerFor]="sortMenu" aria-label="Ordenar transações">
+        <button mat-icon-button [matMenuTriggerFor]="sortMenu" aria-label="Ordenar e mais opções">
           <mat-icon>more_vert</mat-icon>
-        </button>
-        <button mat-icon-button (click)="exportCsv()" aria-label="Exportar CSV" matTooltip="Exportar CSV">
-          <mat-icon>download</mat-icon>
         </button>
         <a mat-flat-button color="primary" routerLink="/transactions/new" aria-label="Nova transação">
           <mat-icon>add</mat-icon>
@@ -30,8 +30,8 @@
             <span class="filter-badge">{{ activeFilterChips().length }}</span>
           }
         </button>
-        <a mat-stroked-button routerLink="/transactions/timeline">
-          <mat-icon>timeline</mat-icon>
+        <a mat-stroked-button routerLink="/transactions/timeline" matTooltip="Ver visualização em linha do tempo e calendário">
+          <mat-icon>calendar_month</mat-icon>
           Linha do tempo
         </a>
         <button mat-icon-button (click)="exportCsv()" aria-label="Exportar CSV" matTooltip="Exportar CSV">
@@ -93,6 +93,15 @@
     <button mat-menu-item (click)="sortCompact('description')">
       <mat-icon>{{ sortInfo('description')?.dir === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
       <span>Descrição</span>
+    </button>
+    <mat-divider></mat-divider>
+    <a mat-menu-item routerLink="/transactions/timeline">
+      <mat-icon>calendar_month</mat-icon>
+      <span>Linha do tempo / Calendário</span>
+    </a>
+    <button mat-menu-item (click)="exportCsv()">
+      <mat-icon>download</mat-icon>
+      <span>Exportar CSV</span>
     </button>
   </mat-menu>
 

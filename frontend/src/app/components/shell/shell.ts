@@ -8,14 +8,20 @@ import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDividerModule } from '@angular/material/divider';
 import { AuthService } from '../../core/services/auth';
 import { BottomTabBarComponent } from './bottom-tab-bar/bottom-tab-bar';
 
-interface NavItem {
+export interface NavItem {
   label: string;
   icon: string;
   route: string;
   adminOnly?: boolean;
+}
+
+export interface NavSection {
+  title?: string;
+  items: NavItem[];
 }
 
 @Component({
@@ -30,6 +36,7 @@ interface NavItem {
     MatIconModule,
     MatButtonModule,
     MatTooltipModule,
+    MatDividerModule,
     BottomTabBarComponent,
   ],
   templateUrl: './shell.html',
@@ -59,18 +66,37 @@ export class ShellComponent {
   userName = computed(() => this.authService.currentUser()?.name ?? '');
   isAdmin = this.authService.isAdmin;
 
-  readonly navItems: NavItem[] = [
-    { label: 'Dashboard',  icon: 'dashboard',    route: '/dashboard' },
-    { label: 'Transações', icon: 'swap_horiz',   route: '/transactions' },
-    { label: 'Importar',   icon: 'document_scanner', route: '/import' },
-    { label: 'Faturas',    icon: 'receipt_long', route: '/invoices' },
-    { label: 'Planejamento', icon: 'event_note', route: '/planning' },
-    { label: 'Recorrências', icon: 'autorenew',  route: '/recurrences' },
-    { label: 'Contas',     icon: 'credit_card',  route: '/accounts' },
-    { label: 'Categorias', icon: 'category',     route: '/categories' },
-    { label: 'Meu perfil', icon: 'person', route: '/profile' },
-    { label: 'Equipe',     icon: 'group',        route: '/team', adminOnly: true },
+  readonly navSections: NavSection[] = [
+    {
+      title: 'Finanças',
+      items: [
+        { label: 'Dashboard', icon: 'dashboard', route: '/dashboard' },
+        { label: 'Transações', icon: 'swap_horiz', route: '/transactions' },
+        { label: 'Planejamento', icon: 'event_note', route: '/planning' },
+        { label: 'Faturas', icon: 'receipt_long', route: '/invoices' },
+      ],
+    },
+    {
+      title: 'Operações',
+      items: [
+        { label: 'Importar Extrato', icon: 'document_scanner', route: '/import' },
+        { label: 'Recorrências', icon: 'autorenew', route: '/recurrences' },
+      ],
+    },
+    {
+      title: 'Cadastros & Configurações',
+      items: [
+        { label: 'Contas & Carteiras', icon: 'credit_card', route: '/accounts' },
+        { label: 'Categorias', icon: 'category', route: '/categories' },
+        { label: 'Meu perfil', icon: 'person', route: '/profile' },
+        { label: 'Equipe', icon: 'group', route: '/team', adminOnly: true },
+      ],
+    },
   ];
+
+  get navItems(): NavItem[] {
+    return this.navSections.flatMap(s => s.items);
+  }
 
   toggleSidenav() {
     if (!this.isCompact()) return;

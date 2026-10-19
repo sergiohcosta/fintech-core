@@ -44,6 +44,7 @@ describe('InvoiceList', () => {
   let invoicesService: InvoicesService;
 
   function setup(accountId: string | null = null) {
+    TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       imports: [InvoiceList, NoopAnimationsModule],
       providers: [
@@ -83,6 +84,20 @@ describe('InvoiceList', () => {
     await fixture.whenStable();
 
     expect(fixture.nativeElement.textContent).toContain('Selecione um cartão');
+  });
+
+  it('exibe empty state acolhedor com CTA quando não há cartões de crédito cadastrados', async () => {
+    setup();
+    vi.spyOn(accountsService, 'listAccounts').mockReturnValue(of([mockCheckingAccount]) as any);
+
+    const fixture = TestBed.createComponent(InvoiceList);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.querySelector('.empty-state-card')).toBeTruthy();
+    expect(compiled.textContent).toContain('Nenhum cartão de crédito cadastrado');
+    expect(compiled.textContent).toContain('Cadastrar Cartão de Crédito');
   });
 
   it('auto-seleciona conta única quando há só um cartão de crédito', async () => {
