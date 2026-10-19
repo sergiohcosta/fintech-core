@@ -222,7 +222,7 @@
         </div>
       </ng-template>
 
-      @for (row of displayRows(); track row.kind === 'period-header' ? row.key : row.kind === 'invoice-summary' ? row.invoiceId : row.kind + row.data.id) {
+      @for (row of displayRows(); track rowTrackKey(row, $index)) {
         @switch (row.kind) {
           @case ('single') {
             <ng-container *ngTemplateOutlet="transactionCard; context: { $implicit: row.data, group: null, expanded: false }" />

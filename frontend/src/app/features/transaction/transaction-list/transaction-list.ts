@@ -29,7 +29,7 @@ import { ConfirmationDialogComponent } from '../../../components/confirmation-di
 import { DeleteInstallmentDialogComponent, DeleteInstallmentDialogResult } from './delete-installment-dialog/delete-installment-dialog';
 import { TransactionFiltersComponent } from './transaction-filters/transaction-filters';
 import { TransactionFilters, DEFAULT_FILTERS, currentMonthFilters, TransactionType, TransactionStatus } from './transaction-filters/transaction-filters.types';
-import { buildDisplayRows, InstallmentGroupInfo, DisplayRow, InvoiceSummaryRow, resolveMonthKey, formatMonthLabel, SortCol, SortCriterion, applySort, getSortInfo, isGhost, exportToCsv, selectableRowId, planBulkDelete, resolveSwipeAction } from './transaction-list.utils';
+import { buildDisplayRows, InstallmentGroupInfo, DisplayRow, InvoiceSummaryRow, resolveMonthKey, formatMonthLabel, SortCol, SortCriterion, applySort, getSortInfo, isGhost, exportToCsv, selectableRowId, planBulkDelete, resolveSwipeAction, rowTrackKey } from './transaction-list.utils';
 import { RecurrenceService } from '../../../core/services/recurrence.service';
 import { triggerCsvDownload } from '../../../core/csv.utils';
 import { TransactionActionSheetComponent, TransactionActionSheetData, TransactionActionSheetResult } from './transaction-action-sheet/transaction-action-sheet';
@@ -80,6 +80,8 @@ export class TransactionList implements OnInit {
   private snackBar = inject(MatSnackBar);
 
   @ViewChild('desktopContextTrigger') private desktopContextTrigger?: MatMenuTrigger;
+
+  readonly rowTrackKey = rowTrackKey;
 
   isCompact = signal(false);
   transactions         = signal<TransactionResponseDTO[]>([]);
