@@ -9,6 +9,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatListModule } from '@angular/material/list';
 
@@ -17,7 +18,9 @@ import { TransactionsService } from '../../core/api/transactions/transactions.se
 import { AccountsService } from '../../core/api/accounts/accounts.service';
 import { TransactionEventsService } from '../../core/services/transaction-events';
 import { AuthService } from '../../core/services/auth';
-import { AccountResponse, TransactionResponseDTO } from '../../core/api/fintechSaaSAPI.schemas';
+import { PlanningService } from '../planning/planning.service';
+import { AccountResponse, BudgetCycleResponse, BudgetCycleSummary, TransactionResponseDTO } from '../../core/api/fintechSaaSAPI.schemas';
+import { DEFAULT_SUMMARY } from '../planning/budget-cycle-current/budget-cycle.utils';
 
 @Component({
   selector: 'app-dashboard',
@@ -30,6 +33,7 @@ import { AccountResponse, TransactionResponseDTO } from '../../core/api/fintechS
     MatDividerModule,
     MatChipsModule,
     MatProgressSpinnerModule,
+    MatProgressBarModule,
     MatTooltipModule,
     MatListModule,
   ],
@@ -42,6 +46,7 @@ export class DashboardComponent {
   private accountsService = inject(AccountsService);
   private transactionEvents = inject(TransactionEventsService);
   private authService = inject(AuthService);
+  private planningService = inject(PlanningService);
 
   private now = new Date();
   selectedYear = signal(this.now.getFullYear());
@@ -107,6 +112,61 @@ export class DashboardComponent {
   );
   accounts = toSignal(this.accounts$, { initialValue: [] as AccountResponse[] });
   hasAccounts = computed(() => (this.accounts()?.length ?? 0) > 0);
+
+  // Carregamento do Planejamento Ativo (Budget Cycle)
+  private currentCycle$ = toObservable(this.transactionEvents.refreshTrigger).pipe(
+    switchMap(() => this.planningService.getCurrentCycle().pipe(catchError(() => of(null))))
+  );
+  currentCycle = toSignal(this.currentCycle$, { initialValue: null });
+  hasActiveCycle = computed(() => {
+    const c = this.currentCycle();
+    return !!c && c.status === 'OPEN';
+  });
+  cycleSummary = computed((): Required<BudgetCycleSummary> => ({
+    ...DEFAULT_SUMMARY,
+    ...(this.currentCycle()?.summary ?? {}),
+  }));
+
+  cycleDatesLabel = computed(() => {
+    const c = this.currentCycle();
+    if (!c || !c.startDate || !c.endDate) return '';
+    const [sy, sm, sd] = c.startDate.split('-').map(Number);
+    const [ey, em, ed] = c.endDate.split('-').map(Number);
+    const start = new Date(sy, sm - 1, sd);
+    const end = new Date(ey, em - 1, ed);
+    const fmt = (d: Date) => d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    return `${fmt(start)} a ${fmt(end)}/${end.getFullYear()}`;
+  });
+
+  availableToSpend = computed(() => this.cycleSummary().availableToSpend);
+  dailyAllowance = computed(() => this.cycleSummary().dailyAllowance);
+  remainingDays = computed(() => this.cycleSummary().remainingDays);
+
+  expenseProgress = computed(() => {
+    const planned = this.cycleSummary().plannedExpense;
+    const realized = this.cycleSummary().realizedExpense;
+    if (!planned || planned <= 0) return 0;
+    return Math.min(100, Math.round((realized / planned) * 100));
+  });
+
+  incomeProgress = computed(() => {
+    const planned = this.cycleSummary().plannedIncome;
+    const realized = this.cycleSummary().realizedIncome;
+    if (!planned || planned <= 0) return 0;
+    return Math.min(100, Math.round((realized / planned) * 100));
+  });
+
+  liquidBalance = computed(() => {
+    const s = this.summary();
+    if (s?.totalAccountBalance !== undefined && s?.totalAccountBalance !== null) {
+      return s.totalAccountBalance;
+    }
+    const accs = this.accounts();
+    if (!accs || accs.length === 0) return 0;
+    return accs
+      .filter(a => a.active && a.countInLiquidBalance)
+      .reduce((sum, a) => sum + (a.balance ?? 0), 0);
+  });
 
   // Carregamento do Resumo Financeiro
   private refreshState = computed(() => ({

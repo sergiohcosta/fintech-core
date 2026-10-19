@@ -2,17 +2,18 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { provideZonelessChangeDetection, signal, computed, LOCALE_ID } from '@angular/core';
-import { of } from 'rxjs';
-import { vi } from 'vitest';
+import { provideZonelessChangeDetection, signal, LOCALE_ID } from '@angular/core';
+import { of, throwError } from 'rxjs';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import { DashboardComponent } from './dashboard';
 import { DashboardService } from '../../core/api/dashboard/dashboard.service';
 import { TransactionsService } from '../../core/api/transactions/transactions.service';
 import { AccountsService } from '../../core/api/accounts/accounts.service';
+import { PlanningService } from '../planning/planning.service';
 import { TransactionEventsService } from '../../core/services/transaction-events';
 import { AuthService } from '../../core/services/auth';
-import { AccountResponse, DashboardSummaryDTO, TransactionResponseDTO } from '../../core/api/fintechSaaSAPI.schemas';
+import { AccountResponse, BudgetCycleResponse, DashboardSummaryDTO, TransactionResponseDTO } from '../../core/api/fintechSaaSAPI.schemas';
 import { registerLocaleData } from '@angular/common';
 import localePt from '@angular/common/locales/pt';
 
@@ -59,9 +60,32 @@ describe('DashboardComponent', () => {
     categoryIcon: 'shopping_cart',
   };
 
+  const mockCycle: BudgetCycleResponse = {
+    id: 'cycle-1',
+    startDate: '2026-10-05',
+    endDate: '2026-11-04',
+    status: 'OPEN',
+    openingBalance: 1000,
+    summary: {
+      plannedIncome: 8000,
+      realizedIncome: 8000,
+      plannedExpense: 5000,
+      realizedExpense: 3200,
+      currentBalance: 5800,
+      projectedBalance: 4000,
+      availableToSpend: 1800,
+      dailyAllowance: 112.5,
+      remainingDays: 16,
+      pendingCount: 2,
+      unplannedIncome: 0,
+      unplannedExpense: 200,
+    },
+  };
+
   beforeEach(async () => {
     localStorage.clear();
 
+    TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
       imports: [DashboardComponent],
       providers: [
@@ -77,10 +101,12 @@ describe('DashboardComponent', () => {
     const dashboardService = TestBed.inject(DashboardService);
     const transactionsService = TestBed.inject(TransactionsService);
     const accountsService = TestBed.inject(AccountsService);
+    const planningService = TestBed.inject(PlanningService);
 
     vi.spyOn(dashboardService, 'getDashboardSummary').mockReturnValue(of(mockSummary) as any);
     vi.spyOn(transactionsService, 'listTransactions').mockReturnValue(of([mockTransaction]) as any);
     vi.spyOn(accountsService, 'listAccounts').mockReturnValue(of([mockAccount]) as any);
+    vi.spyOn(planningService, 'getCurrentCycle').mockReturnValue(of(mockCycle) as any);
 
     fixture = TestBed.createComponent(DashboardComponent);
     component = fixture.componentInstance;
@@ -93,18 +119,21 @@ describe('DashboardComponent', () => {
     expect(component.greeting()).toContain('Sérgio');
   });
 
-  it('refaz o fetch do resumo, contas e da lista após criar uma transação', async () => {
+  it('refaz o fetch do resumo, contas, ciclo e lista após criar uma transação', async () => {
     const dashboardService = TestBed.inject(DashboardService);
     const transactionsService = TestBed.inject(TransactionsService);
     const accountsService = TestBed.inject(AccountsService);
+    const planningService = TestBed.inject(PlanningService);
 
     const summarySpy = vi.spyOn(dashboardService, 'getDashboardSummary');
     const transactionsSpy = vi.spyOn(transactionsService, 'listTransactions');
     const accountsSpy = vi.spyOn(accountsService, 'listAccounts');
+    const cycleSpy = vi.spyOn(planningService, 'getCurrentCycle');
 
     const summaryCalls = summarySpy.mock.calls.length;
     const transactionCalls = transactionsSpy.mock.calls.length;
     const accountsCalls = accountsSpy.mock.calls.length;
+    const cycleCalls = cycleSpy.mock.calls.length;
 
     TestBed.inject(TransactionEventsService).notifyTransactionCreated();
     await fixture.whenStable();
@@ -112,6 +141,7 @@ describe('DashboardComponent', () => {
     expect(summarySpy).toHaveBeenCalledTimes(summaryCalls + 1);
     expect(transactionsSpy).toHaveBeenCalledTimes(transactionCalls + 1);
     expect(accountsSpy).toHaveBeenCalledTimes(accountsCalls + 1);
+    expect(cycleSpy).toHaveBeenCalledTimes(cycleCalls + 1);
   });
 
   describe('Modo Privacidade', () => {
@@ -138,13 +168,36 @@ describe('DashboardComponent', () => {
     });
   });
 
+  describe('Planejamento Ativo (Budget Cycle)', () => {
+    it('reconhece o ciclo aberto e calcula os KPIs corretamente', () => {
+      expect(component.hasActiveCycle()).toBe(true);
+      expect(component.availableToSpend()).toBe(1800);
+      expect(component.dailyAllowance()).toBe(112.5);
+      expect(component.remainingDays()).toBe(16);
+      expect(component.cycleDatesLabel()).toContain('2026');
+      expect(component.expenseProgress()).toBe(64); // 3200 / 5000 = 64%
+    });
+
+    it('lida graciosamente com ausência de ciclo ativo', async () => {
+      const planningService = TestBed.inject(PlanningService);
+      vi.spyOn(planningService, 'getCurrentCycle').mockReturnValue(throwError(() => ({ status: 404 })));
+
+      TestBed.inject(TransactionEventsService).notifyTransactionCreated();
+      await fixture.whenStable();
+
+      expect(component.hasActiveCycle()).toBe(false);
+      expect(component.availableToSpend()).toBe(0);
+      expect(component.dailyAllowance()).toBeNull();
+    });
+  });
+
   describe('Estados e Métricas Derivadas', () => {
-    it('detecta contas ativas corretamente (hasAccounts)', () => {
+    it('detecta contas ativas e calcula a posição líquida (liquidBalance)', () => {
       expect(component.hasAccounts()).toBe(true);
+      expect(component.liquidBalance()).toBe(1500.5);
     });
 
     it('calcula a taxa de poupança (savingsRate) corretamente', () => {
-      // 10000 receita, 4000 despesa -> saldo 6000 -> 60%
       expect(component.savingsRate()).toBe(60);
     });
 
@@ -163,11 +216,9 @@ describe('DashboardComponent', () => {
       component.prevMonth();
       expect(component.selectedMonthIndex()).not.toBe(initialMonth);
 
-      // nextMonth volta para o mês inicial
       component.nextMonth();
       expect(component.selectedMonthIndex()).toBe(initialMonth);
 
-      // Avançar além do mês atual não tem efeito
       if (component.isCurrentMonth()) {
         component.nextMonth();
         expect(component.selectedMonthIndex()).toBe(initialMonth);
