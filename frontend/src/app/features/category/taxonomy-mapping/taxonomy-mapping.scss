@@ -168,7 +168,13 @@
 .taxonomy-info {
   flex: 1;
   display: flex;
-  flex-direction: column;
+  align-items: center;
+}
+
+.taxonomy-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--mat-sys-on-surface, #1c1b1f);
 }
 
 .taxonomy-code {

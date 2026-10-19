@@ -55,6 +55,11 @@ export class TaxonomyMappingComponent implements OnInit {
     return cat ? getSuggestion(cat.name) : null;
   });
 
+  suggestedLabel = computed(() => {
+    const code = this.suggestedCode();
+    return this.getLabelForCode(code);
+  });
+
   // Quantas categorias já têm código (salvo ou pendente)
   mappedCount = computed(() => {
     const pending = this.pendingMappings();
@@ -104,6 +109,16 @@ export class TaxonomyMappingComponent implements OnInit {
   // Código efetivo de uma categoria: pendente > salvo > null
   getEffectiveCode(cat: CategoryResponseDTO): string | null {
     return this.pendingMappings().get(cat.id) ?? cat.taxonomyCode ?? null;
+  }
+
+  getLabelForCode(code: string | null | undefined): string | null {
+    if (!code) return null;
+    return this.taxonomyRoots.find(r => r.code === code)?.label ?? code;
+  }
+
+  getEffectiveLabel(cat: CategoryResponseDTO): string | null {
+    const code = this.getEffectiveCode(cat);
+    return this.getLabelForCode(code);
   }
 
   hasSuggestion(cat: CategoryResponseDTO): boolean {

@@ -48,13 +48,13 @@
                  (click)="selectCategory(cat)">
               <span class="category-dot" [style.background]="cat.color"></span>
               <span class="category-name">{{ cat.name }}</span>
-              @if (getEffectiveCode(cat); as code) {
+              @if (getEffectiveLabel(cat); as label) {
                 <span class="code-badge"
                       [class.pending]="pendingMappings().has(cat.id)">
-                  {{ code }}{{ pendingMappings().has(cat.id) ? ' *' : '' }}
+                  {{ label }}{{ pendingMappings().has(cat.id) ? ' *' : '' }}
                 </span>
               } @else if (!hasSuggestion(cat)) {
-                <span class="ambiguous-badge">? ambígua</span>
+                <span class="ambiguous-badge">? sem sugestão</span>
               }
             </div>
           }
@@ -69,12 +69,11 @@
             <div class="taxonomy-item"
                  [class.suggested]="suggestedCode() === root.code && !isCodeUsedByOther(root.code)"
                  [class.disabled]="!selectedCategory() || isCodeUsedByOther(root.code)"
-                 [matTooltip]="isCodeUsedByOther(root.code) ? 'Código já em uso por outra categoria' : ''"
+                 [matTooltip]="isCodeUsedByOther(root.code) ? 'Categoria já associada a outra categoria' : ''"
                  (click)="selectCode(root.code)">
               <mat-icon class="taxonomy-icon">{{ root.icon }}</mat-icon>
               <div class="taxonomy-info">
-                <span class="taxonomy-code">{{ root.code }}</span>
-                <span class="taxonomy-label">{{ root.label }}</span>
+                <span class="taxonomy-name">{{ root.label }}</span>
               </div>
               @if (suggestedCode() === root.code && !isCodeUsedByOther(root.code)) {
                 <span class="suggested-badge">sugerido ✦</span>
@@ -92,10 +91,10 @@
       <div class="hint-bar">
         <mat-icon>info</mat-icon>
         <strong>{{ selectedCategory()!.name }}</strong> selecionada —
-        @if (suggestedCode()) {
-          clique em <strong>{{ suggestedCode() }}</strong> para confirmar a sugestão, ou escolha outro código.
+        @if (suggestedLabel()) {
+          clique em <strong>{{ suggestedLabel() }}</strong> para confirmar a sugestão, ou escolha outra categoria padrão.
         } @else {
-          sem sugestão automática; escolha o código mais adequado no painel direito.
+          sem sugestão automática; escolha a categoria padrão mais adequada no painel direito.
         }
       </div>
     }
