@@ -21,7 +21,7 @@
     <button
       mat-flat-button
       color="primary"
-      [disabled]="form.invalid || state() === 'submitting'"
+      [disabled]="isInvalid() || state() === 'submitting'"
       (click)="submit()"
     >
       @if (state() === 'submitting') {

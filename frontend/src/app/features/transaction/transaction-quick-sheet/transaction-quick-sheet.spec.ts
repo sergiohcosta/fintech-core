@@ -4,7 +4,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
-import { vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import { AccountsService } from '../../../core/api/accounts/accounts.service';
 import { CategoriesService } from '../../../core/api/categories/categories.service';
@@ -53,6 +53,7 @@ describe('TransactionQuickSheetComponent', () => {
     router = { navigate: vi.fn().mockResolvedValue(true) };
     dialog = { open: vi.fn(() => ({ afterClosed: () => of(true) })) };
 
+    TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
       imports: [TransactionQuickSheetComponent],
       providers: [

@@ -23,6 +23,7 @@ import { TransfersService } from '../../../core/api/transfers/transfers.service'
 import { ConfirmationDialogComponent, ConfirmationDialogData } from '../../../components/confirmation-dialog/confirmation-dialog';
 import { TransactionEventsService } from '../../../core/services/transaction-events';
 import { formatLocalDate } from '../transaction-form/transaction-form.utils';
+import { formInvalidSignal } from '../../../core/form.utils';
 
 type QuickEntryType = 'INCOME' | 'EXPENSE' | 'TRANSFER';
 
@@ -79,6 +80,7 @@ export class TransactionQuickSheetComponent {
   readonly selectedType = toSignal(this.form.controls.type.valueChanges, {
     initialValue: this.form.controls.type.value,
   });
+  readonly isInvalid = formInvalidSignal(this.form);
   readonly isTransfer = computed(() => this.selectedType() === 'TRANSFER');
   readonly isDragging = signal(false);
   readonly dragOffset = signal(0);
@@ -231,6 +233,7 @@ export class TransactionQuickSheetComponent {
     }
     category.updateValueAndValidity({ emitEvent: false });
     destination.updateValueAndValidity({ emitEvent: false });
+    this.form.updateValueAndValidity();
   }
 
   private resetDrag(): void {

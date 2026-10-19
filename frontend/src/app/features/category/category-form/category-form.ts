@@ -12,8 +12,9 @@ import { forkJoin } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { CategoriesService } from '../../../core/api/categories/categories.service';
-import { CategoryResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
+import { CategoryCreateDTO, CategoryResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
 import { IconPicker } from '../../../components/icon-picker/icon-picker';
+import { formInvalidSignal } from '../../../core/form.utils';
 
 interface CategoryOption {
   id: string;
@@ -49,7 +50,14 @@ export class CategoryForm implements OnInit {
   private snackBar = inject(MatSnackBar);
   private destroyRef = inject(DestroyRef);
 
-  form!: FormGroup;
+  readonly form = this.fb.group({
+    name: ['', [Validators.required, Validators.minLength(3)]],
+    icon: ['folder', Validators.required],
+    color: ['#3f51b5', Validators.required],
+    parentId: [null as string | null]
+  });
+  readonly isInvalid = formInvalidSignal(this.form);
+
   isEditMode = signal(false);
   categoryId = signal<string | null>(null);
   parentOptions = signal<CategoryOption[]>([]);
@@ -58,18 +66,8 @@ export class CategoryForm implements OnInit {
   inheritedFromName = signal<string | null>(null);
 
   ngOnInit(): void {
-    this.initForm();
     this.setupParentInheritance();
     this.loadData();
-  }
-
-  private initForm() {
-    this.form = this.fb.group({
-      name: ['', [Validators.required, Validators.minLength(3)]],
-      icon: ['folder', Validators.required],
-      color: ['#3f51b5', Validators.required],
-      parentId: [null]
-    });
   }
 
   private applyInheritance(parentId: string) {
@@ -122,6 +120,7 @@ export class CategoryForm implements OnInit {
           } else {
             this.selectedIcon.set(cat.icon);
           }
+          this.form.updateValueAndValidity();
         },
         error: () => this.showError('Erro ao carregar categoria.'),
       });
@@ -161,7 +160,13 @@ export class CategoryForm implements OnInit {
 
   onSubmit() {
     if (this.form.invalid) return;
-    const data = this.form.getRawValue();
+    const v = this.form.getRawValue();
+    const data: CategoryCreateDTO = {
+      name: v.name!,
+      icon: v.icon!,
+      color: v.color!,
+      parentId: v.parentId,
+    };
     const request = (this.isEditMode() && this.categoryId())
       ? this.service.updateCategory(this.categoryId()!, data)
       : this.service.createCategory(data);

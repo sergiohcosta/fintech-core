@@ -19,6 +19,7 @@ describe('InviteDialogComponent', () => {
     dialogRef = { close: vi.fn() };
     snackBar = { open: vi.fn() };
 
+    TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
       imports: [InviteDialogComponent],
       providers: [
@@ -86,5 +87,17 @@ describe('InviteDialogComponent', () => {
   it('close chama dialogRef.close()', () => {
     component.close();
     expect(dialogRef.close).toHaveBeenCalled();
+  });
+
+  it('isInvalid signal é reativo a alterações no formulário de convite', async () => {
+    expect(component.isInvalid()).toBe(true);
+
+    component.form.patchValue({ email: 'novo-membro@fintech.com' });
+    await fixture.whenStable();
+    expect(component.isInvalid()).toBe(false);
+
+    component.form.patchValue({ email: 'invalido' });
+    await fixture.whenStable();
+    expect(component.isInvalid()).toBe(true);
   });
 });

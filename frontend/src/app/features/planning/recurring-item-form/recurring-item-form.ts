@@ -9,6 +9,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { formInvalidSignal } from '../../../core/form.utils';
 
 import {
   RecurrenceRuleCreateDTO,
@@ -64,6 +65,8 @@ export class RecurringItemFormComponent {
       Validators.required
     ],
   });
+
+  readonly isInvalid = formInvalidSignal(this.form);
 
   onSubmit(): void {
     if (this.form.invalid) return;

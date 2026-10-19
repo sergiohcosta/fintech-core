@@ -6,6 +6,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { AuthService } from '../../../core/services/auth';
+import { formInvalidSignal } from '../../../core/form.utils';
 
 type PageState = 'enter-token' | 'form' | 'submitting' | 'success';
 
@@ -59,6 +60,9 @@ export class ResetPasswordComponent implements OnInit {
   tokenForm = this.fb.group({
     manualToken: ['', [Validators.required]],
   });
+
+  readonly isTokenFormInvalid = formInvalidSignal(this.tokenForm);
+  readonly isFormInvalid = formInvalidSignal(this.form);
 
   ngOnInit(): void {
     const queryToken = this.route.snapshot.queryParamMap.get('token');

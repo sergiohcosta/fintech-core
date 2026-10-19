@@ -30,6 +30,7 @@ describe('AcceptInviteComponent', () => {
       setToken: () => {},
     };
 
+    TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
       imports: [AcceptInviteComponent],
       providers: [

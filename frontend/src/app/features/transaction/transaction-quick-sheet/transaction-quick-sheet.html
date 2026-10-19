@@ -102,7 +102,7 @@
     </mat-form-field>
 
     <button mat-flat-button color="primary" class="submit-button" type="submit"
-            [disabled]="form.invalid || saving()">
+            [disabled]="isInvalid() || saving()">
       <span class="submit-content">
         @if (saving()) {
           <mat-progress-spinner diameter="18" mode="indeterminate" />

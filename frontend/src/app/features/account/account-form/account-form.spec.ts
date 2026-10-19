@@ -9,6 +9,7 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 
 describe('AccountForm', () => {
   beforeEach(() => {
+    TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       imports: [AccountForm, NoopAnimationsModule],
       providers: [
@@ -32,6 +33,20 @@ describe('AccountForm', () => {
     fixture.detectChanges();
     fixture.componentInstance.form.patchValue({ name: 'Bradesco', type: 'CHECKING' });
     expect(fixture.componentInstance.form.valid).toBe(true);
+  });
+
+  it('isInvalid signal é reativo a alterações de valor no formulário', async () => {
+    const fixture = TestBed.createComponent(AccountForm);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.isInvalid()).toBe(true);
+
+    fixture.componentInstance.form.patchValue({ name: 'Nubank', type: 'CHECKING' });
+    await fixture.whenStable();
+    expect(fixture.componentInstance.isInvalid()).toBe(false);
+
+    fixture.componentInstance.form.patchValue({ name: '' });
+    await fixture.whenStable();
+    expect(fixture.componentInstance.isInvalid()).toBe(true);
   });
 
   it('isCreditCard retorna true quando type = CREDIT_CARD', async () => {

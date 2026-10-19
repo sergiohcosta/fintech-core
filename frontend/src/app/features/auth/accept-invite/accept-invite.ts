@@ -8,6 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { InvitationService, InvitationInfo } from '../../../core/services/invitation';
 import { AuthService } from '../../../core/services/auth';
+import { formInvalidSignal } from '../../../core/form.utils';
 
 type PageState = 'loading' | 'error' | 'form' | 'submitting';
 
@@ -47,6 +48,8 @@ export class AcceptInviteComponent implements OnInit {
       Validators.pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/),
     ]],
   });
+
+  readonly isInvalid = formInvalidSignal(this.form);
 
   ngOnInit(): void {
     this.token = this.route.snapshot.queryParamMap.get('token');

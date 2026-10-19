@@ -48,7 +48,7 @@
 
           <mat-card-actions align="end">
             <button mat-flat-button color="primary" type="submit"
-                    [disabled]="form.invalid || state() === 'submitting'">
+                    [disabled]="isInvalid() || state() === 'submitting'">
               {{ state() === 'submitting' ? 'PROCESSANDO...' : 'CRIAR CONTA' }}
             </button>
           </mat-card-actions>

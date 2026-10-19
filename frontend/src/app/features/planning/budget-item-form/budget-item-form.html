@@ -23,7 +23,7 @@
   <mat-dialog-actions align="end">
     <button mat-button type="button" (click)="onCancel()">Cancelar</button>
     <button mat-flat-button color="primary" type="button"
-            [disabled]="cycleForm.invalid" (click)="onSubmit()">Abrir</button>
+            [disabled]="isCycleFormInvalid()" (click)="onSubmit()">Abrir</button>
   </mat-dialog-actions>
 } @else {
   <h2 mat-dialog-title>Adicionar item</h2>
@@ -60,6 +60,6 @@
   <mat-dialog-actions align="end">
     <button mat-button type="button" (click)="onCancel()">Cancelar</button>
     <button mat-flat-button color="primary" type="button"
-            [disabled]="itemForm.invalid" (click)="onSubmit()">Salvar</button>
+            [disabled]="isItemFormInvalid()" (click)="onSubmit()">Salvar</button>
   </mat-dialog-actions>
 }

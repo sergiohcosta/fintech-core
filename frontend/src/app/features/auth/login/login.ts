@@ -13,6 +13,7 @@ import { BiometricAuthService } from '../../../core/services/biometric-auth.serv
 import { TokenStorageService } from '../../../core/services/token-storage.service';
 import { environment } from '../../../../environments/environment';
 import { formatVersionLabel, formatVersionTooltip, readAppEnv } from '../../../core/app-env';
+import { formInvalidSignal } from '../../../core/form.utils';
 
 @Component({
   selector: 'app-login',
@@ -59,6 +60,8 @@ export class LoginComponent implements OnInit {
     email: [environment.devCredentials?.email ?? '', [Validators.required, Validators.email]],
     password: [environment.devCredentials?.password ?? '', [Validators.required]]
   });
+
+  readonly isInvalid = formInvalidSignal(this.form);
 
   onSubmit() {
     if (this.form.invalid) return;

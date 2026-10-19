@@ -81,7 +81,7 @@
   }
 
   <div class="form-actions">
-    <button mat-raised-button color="primary" type="submit" [disabled]="form.invalid || saving()">
+    <button mat-raised-button color="primary" type="submit" [disabled]="isInvalid() || saving()">
       {{ saving() ? 'Salvando...' : (isEditMode() ? 'Atualizar' : 'Criar Conta') }}
     </button>
   </div>
