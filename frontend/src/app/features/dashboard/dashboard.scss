@@ -47,6 +47,16 @@
   }
 }
 
+// ═══ CARREGAMENTO INICIAL ═══
+.dashboard-loading {
+  padding: 1rem 0;
+
+  .dashboard-progress-bar {
+    border-radius: 4px;
+    height: 4px;
+  }
+}
+
 // ═══ ONBOARDING (DIA ZERO) ═══
 .onboarding-card {
   border: 1px solid var(--mat-sys-outline-variant, rgba(0, 0, 0, 0.1));

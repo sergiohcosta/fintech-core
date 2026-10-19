@@ -225,4 +225,22 @@ describe('DashboardComponent', () => {
       }
     });
   });
+
+  describe('Carregamento Inicial e Prevenção de Flicker no Onboarding', () => {
+    it('encerra o estado de carregamento (isLoading=false) quando dados essenciais estão carregados', () => {
+      expect(component.isLoading()).toBe(false);
+      expect(component.hasAccounts()).toBe(true);
+    });
+
+    it('libera o onboarding imediatamente quando a lista de contas retorna vazia (tenant recém-criado)', async () => {
+      const accountsService = TestBed.inject(AccountsService);
+      vi.spyOn(accountsService, 'listAccounts').mockReturnValue(of([]) as any);
+
+      TestBed.inject(TransactionEventsService).notifyTransactionCreated();
+      await fixture.whenStable();
+
+      expect(component.isLoading()).toBe(false);
+      expect(component.hasAccounts()).toBe(false);
+    });
+  });
 });

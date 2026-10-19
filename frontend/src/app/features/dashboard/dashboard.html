@@ -19,8 +19,13 @@
     </div>
   </header>
 
-  <!-- Estado 0: Onboarding Dia Zero (Sem contas criadas) -->
-  @if (!hasAccounts()) {
+  <!-- Carregamento Inicial -->
+  @if (isLoading()) {
+    <div class="dashboard-loading" aria-busy="true">
+      <mat-progress-bar mode="indeterminate" class="dashboard-progress-bar"></mat-progress-bar>
+    </div>
+  } @else if (!hasAccounts()) {
+    <!-- Estado 0: Onboarding Dia Zero (Sem contas criadas) -->
     <mat-card class="onboarding-card">
       <mat-card-header>
         <div mat-card-avatar class="onboarding-avatar">

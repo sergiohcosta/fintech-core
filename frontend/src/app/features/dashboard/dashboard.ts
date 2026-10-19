@@ -110,14 +110,14 @@ export class DashboardComponent {
   private accounts$ = toObservable(this.transactionEvents.refreshTrigger).pipe(
     switchMap(() => this.accountsService.listAccounts().pipe(catchError(() => of([]))))
   );
-  accounts = toSignal(this.accounts$, { initialValue: [] as AccountResponse[] });
+  accounts = toSignal(this.accounts$);
   hasAccounts = computed(() => (this.accounts()?.length ?? 0) > 0);
 
   // Carregamento do Planejamento Ativo (Budget Cycle)
   private currentCycle$ = toObservable(this.transactionEvents.refreshTrigger).pipe(
     switchMap(() => this.planningService.getCurrentCycle().pipe(catchError(() => of(null))))
   );
-  currentCycle = toSignal(this.currentCycle$, { initialValue: null });
+  currentCycle = toSignal(this.currentCycle$);
   hasActiveCycle = computed(() => {
     const c = this.currentCycle();
     return !!c && c.status === 'OPEN';
@@ -126,6 +126,14 @@ export class DashboardComponent {
     ...DEFAULT_SUMMARY,
     ...(this.currentCycle()?.summary ?? {}),
   }));
+
+  // Carregamento Inicial: evita flash do onboarding e de ciclo vazio pós-login
+  isLoading = computed(() => {
+    const accs = this.accounts();
+    if (accs === undefined) return true;
+    if (accs.length === 0) return false;
+    return this.currentCycle() === undefined;
+  });
 
   cycleDatesLabel = computed(() => {
     const c = this.currentCycle();
