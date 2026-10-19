@@ -32,7 +32,7 @@
 
   @if (loading()) {
     <div class="loading-state">
-      <mat-spinner [diameter]="40" aria-label="Carregando taxonomia"></mat-spinner>
+      <mat-spinner [diameter]="40" aria-label="Carregando categorias padrão"></mat-spinner>
     </div>
   } @else {
     <div class="mapping-panels">
@@ -61,9 +61,9 @@
         </div>
       </div>
 
-      <!-- Painel direito: taxonomia padrão -->
+      <!-- Painel direito: categorias padrão -->
       <div class="panel">
-        <div class="panel-label">Taxonomia padrão — clique para associar</div>
+        <div class="panel-label">Categorias padrão — clique para associar</div>
         <div class="taxonomy-list">
           @for (root of taxonomyRoots; track root.code) {
             <div class="taxonomy-item"
