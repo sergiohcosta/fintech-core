@@ -19,6 +19,7 @@ frontend/coverage/
 .scannerwork/
 .sonar-scan.log
 .aider*
+.gemini/
 
 # Android
 android/local.properties

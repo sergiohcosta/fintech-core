@@ -243,4 +243,36 @@ describe('DashboardComponent', () => {
       expect(component.hasAccounts()).toBe(false);
     });
   });
+
+  describe('Checklist Progressivo de Onboarding (Primeiros Passos)', () => {
+    it('calcula o progresso dos passos baseado no estado da aplicação', () => {
+      // No setup padrão: tem conta (acc-1), tem transação (tx-1), tem ciclo aberto (cycle-1)
+      expect(component.onboardingTotalCount()).toBe(3);
+      expect(component.onboardingCompletedCount()).toBe(3);
+      expect(component.isOnboardingComplete()).toBe(true);
+      expect(component.showOnboardingChecklist()).toBe(false);
+    });
+
+    it('exibe o checklist quando há contas mas faltam transações ou planejamento', async () => {
+      const planningService = TestBed.inject(PlanningService);
+      vi.spyOn(planningService, 'getCurrentCycle').mockReturnValue(of(null) as any);
+
+      TestBed.inject(TransactionEventsService).notifyTransactionCreated();
+      await fixture.whenStable();
+
+      expect(component.hasActiveCycle()).toBe(false);
+      expect(component.isOnboardingComplete()).toBe(false);
+      expect(component.showOnboardingChecklist()).toBe(true);
+    });
+
+    it('dispensa o checklist quando dismissOnboarding é chamado e persiste no localStorage', () => {
+      expect(component.onboardingDismissed()).toBe(false);
+
+      component.dismissOnboarding();
+
+      expect(component.onboardingDismissed()).toBe(true);
+      expect(localStorage.getItem('fintech_onboarding_dismissed')).toBe('true');
+      expect(component.showOnboardingChecklist()).toBe(false);
+    });
+  });
 });

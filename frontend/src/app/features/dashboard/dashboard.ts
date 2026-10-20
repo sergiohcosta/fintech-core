@@ -185,7 +185,14 @@ export class DashboardComponent {
     switchMap(({ month }) => this.dashboardService.getDashboardSummary({ month }).pipe(catchError(() => of(null))))
   );
   summary = toSignal(this.summary$, { initialValue: null });
-  hasTransactions = computed(() => (this.summary()?.transactionCount ?? 0) > 0);
+
+  // Transações recentes: exibimos as 5 primeiras
+  private recentTransactions$ = toObservable(this.transactionEvents.refreshTrigger).pipe(
+    switchMap(() => this.transactionService.listTransactions().pipe(catchError(() => of([]))))
+  );
+  recentTransactions = toSignal(this.recentTransactions$, { initialValue: [] as TransactionResponseDTO[] });
+
+  hasTransactions = computed(() => (this.summary()?.transactionCount ?? 0) > 0 || (this.recentTransactions()?.length ?? 0) > 0);
 
   // Taxa de Poupança / Economia do mês (%)
   savingsRate = computed<number | null>(() => {
@@ -195,11 +202,76 @@ export class DashboardComponent {
     return Math.round((balance / s.totalIncome) * 100);
   });
 
-  // Transações recentes: exibimos as 5 primeiras
-  private recentTransactions$ = toObservable(this.transactionEvents.refreshTrigger).pipe(
-    switchMap(() => this.transactionService.listTransactions().pipe(catchError(() => of([]))))
-  );
-  recentTransactions = toSignal(this.recentTransactions$, { initialValue: [] as TransactionResponseDTO[] });
+  // Checklist de Onboarding Progressivo (Primeiros Passos)
+  private getInitialOnboardingDismissedState(): boolean {
+    try {
+      return localStorage.getItem('fintech_onboarding_dismissed') === 'true';
+    } catch {
+      return false;
+    }
+  }
+
+  onboardingDismissed = signal<boolean>(this.getInitialOnboardingDismissedState());
+
+  dismissOnboarding(): void {
+    this.onboardingDismissed.set(true);
+    try {
+      localStorage.setItem('fintech_onboarding_dismissed', 'true');
+    } catch {}
+  }
+
+  onboardingSteps = computed(() => [
+    {
+      id: 'account',
+      title: 'Cadastrar primeira conta ou cartão',
+      description: 'Conta bancária, carteira ou cartão de crédito para gerenciar seu saldo.',
+      completed: this.hasAccounts(),
+      actionUrl: '/accounts/new',
+      actionLabel: 'Criar Conta',
+      actionIcon: 'add',
+      secondaryActionUrl: null,
+      secondaryActionLabel: null,
+      secondaryActionIcon: null,
+    },
+    {
+      id: 'transaction',
+      title: 'Lançar ou importar primeira movimentação',
+      description: 'Importe seu extrato bancário ou registre uma despesa do dia a dia.',
+      completed: this.hasTransactions(),
+      actionUrl: '/transactions/new',
+      actionLabel: 'Lançar Despesa',
+      actionIcon: 'add',
+      secondaryActionUrl: '/import',
+      secondaryActionLabel: 'Importar Extrato',
+      secondaryActionIcon: 'upload_file',
+    },
+    {
+      id: 'planning',
+      title: 'Abrir planejamento do mês',
+      description: 'Defina o período do seu orçamento e acompanhe seu limite diário para gastar.',
+      completed: this.hasActiveCycle(),
+      actionUrl: '/planning',
+      actionLabel: 'Abrir Planejamento',
+      actionIcon: 'event_note',
+      secondaryActionUrl: null,
+      secondaryActionLabel: null,
+      secondaryActionIcon: null,
+    },
+  ]);
+
+  onboardingCompletedCount = computed(() => {
+    return this.onboardingSteps().filter(s => s.completed).length;
+  });
+
+  onboardingTotalCount = computed(() => this.onboardingSteps().length);
+
+  isOnboardingComplete = computed(() => {
+    return this.onboardingCompletedCount() === this.onboardingTotalCount();
+  });
+
+  showOnboardingChecklist = computed(() => {
+    return this.hasAccounts() && !this.isOnboardingComplete() && !this.onboardingDismissed();
+  });
 
   prevMonth(): void {
     if (this.selectedMonthIndex() === 1) {

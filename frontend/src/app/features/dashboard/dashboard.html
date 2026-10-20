@@ -32,7 +32,7 @@
           <mat-icon>waving_hand</mat-icon>
         </div>
         <mat-card-title>Boas-vindas ao Nosso Dinheirinho!</mat-card-title>
-        <mat-card-subtitle>Vamos organizar sua vida financeira juntos. Comece em poucos passos:</mat-card-subtitle>
+        <mat-card-subtitle>O controle financeiro feito para famílias, casais e autonomia pessoal. Comece em 3 passos:</mat-card-subtitle>
       </mat-card-header>
 
       <mat-card-content>
@@ -40,29 +40,39 @@
           <div class="onboarding-step active-step">
             <div class="step-badge">1</div>
             <div class="step-body">
-              <span class="step-title">Crie sua primeira conta ou carteira</span>
-              <span class="step-desc">Adicione suas contas bancárias, cartões de crédito ou carteira de dinheiro.</span>
-              <a mat-flat-button color="primary" routerLink="/accounts/new" class="step-cta">
-                <mat-icon>add</mat-icon>
-                Criar Primeira Conta
-              </a>
+              <span class="step-title">Cadastre sua primeira conta ou cartão</span>
+              <span class="step-desc">Adicione suas contas bancárias (ex: Nubank, Itaú, Inter), cartões de crédito ou dinheiro em carteira.</span>
+              <div class="step-actions">
+                <a mat-flat-button color="primary" routerLink="/accounts/new" class="step-cta">
+                  <mat-icon>add</mat-icon>
+                  Cadastrar Primeira Conta
+                </a>
+              </div>
             </div>
           </div>
 
-          <div class="onboarding-step disabled-step">
+          <div class="onboarding-step">
             <div class="step-badge">2</div>
             <div class="step-body">
-              <span class="step-title">Traga seus dados ou faça lançamentos</span>
-              <span class="step-desc">Após criar a conta, importe seu primeiro extrato (OFX/PDF) ou lance suas transações.</span>
+              <span class="step-title">Importe seus extratos ou lance despesas</span>
+              <span class="step-desc">Economize tempo importando extratos em OFX, faturas em PDF ou planilhas CSV com categorização inteligente.</span>
+              <div class="step-actions">
+                <a mat-stroked-button color="primary" routerLink="/import" class="step-cta">
+                  <mat-icon>upload_file</mat-icon>
+                  Importar Extrato / Fatura
+                </a>
+              </div>
             </div>
           </div>
 
           <div class="onboarding-step info-step">
             <div class="step-badge">3</div>
             <div class="step-body">
-              <span class="step-title">Convide membros da sua família</span>
-              <span class="step-desc">Compartilhe o planejamento financeiro do seu lar com quem mora com você.</span>
-              <a mat-button routerLink="/team" class="step-link">Gerenciar membros →</a>
+              <span class="step-title">Planeje seu orçamento mensal e convide a família</span>
+              <span class="step-desc">Abra seu ciclo de planejamento para definir tetos de gastos e compartilhe o acesso com quem mora com você.</span>
+              <div class="step-actions">
+                <a mat-button routerLink="/team" class="step-link">Convidar membros da família →</a>
+              </div>
             </div>
           </div>
         </div>
@@ -114,6 +124,65 @@
 
       <!-- ═══ COLUNA PRINCIPAL ═══ -->
       <div class="main-column">
+
+        <!-- Checklist de Primeiros Passos (Onboarding Progressivo) -->
+        @if (showOnboardingChecklist()) {
+          <mat-card class="onboarding-checklist-card">
+            <mat-card-content>
+              <div class="checklist-header">
+                <div class="checklist-title-group">
+                  <div class="checklist-badge-icon">
+                    <mat-icon>rocket_launch</mat-icon>
+                  </div>
+                  <div class="checklist-text">
+                    <h4 class="checklist-title">Primeiros passos no Nosso Dinheirinho</h4>
+                    <span class="checklist-subtitle">
+                      {{ onboardingCompletedCount() }} de {{ onboardingTotalCount() }} etapas concluídas
+                    </span>
+                  </div>
+                </div>
+                <button
+                  mat-icon-button
+                  (click)="dismissOnboarding()"
+                  matTooltip="Dispensar guia"
+                  aria-label="Dispensar guia de primeiros passos"
+                  class="dismiss-btn">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+
+              <div class="checklist-progress-bar">
+                <div class="checklist-progress-fill" [style.width.%]="(onboardingCompletedCount() / onboardingTotalCount()) * 100"></div>
+              </div>
+
+              <div class="checklist-items">
+                @for (step of onboardingSteps(); track step.id) {
+                  <div class="checklist-item" [class.completed]="step.completed">
+                    <mat-icon class="status-icon">{{ step.completed ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
+                    <div class="item-content">
+                      <span class="item-title">{{ step.title }}</span>
+                      <span class="item-desc">{{ step.description }}</span>
+                    </div>
+                    @if (!step.completed) {
+                      <div class="item-actions">
+                        <a mat-flat-button color="primary" [routerLink]="step.actionUrl" class="item-btn">
+                          <mat-icon>{{ step.actionIcon }}</mat-icon>
+                          {{ step.actionLabel }}
+                        </a>
+                        @if (step.secondaryActionUrl) {
+                          <a mat-stroked-button color="primary" [routerLink]="step.secondaryActionUrl" class="item-btn">
+                            <mat-icon>{{ step.secondaryActionIcon }}</mat-icon>
+                            {{ step.secondaryActionLabel }}
+                          </a>
+                        }
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            </mat-card-content>
+          </mat-card>
+        }
 
         <!-- BLOCO 1: Minha Situação Hoje -->
         <section class="dashboard-section today-block" aria-labelledby="today-heading">
