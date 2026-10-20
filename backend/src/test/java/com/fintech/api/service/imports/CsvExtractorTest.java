@@ -211,4 +211,46 @@ class CsvExtractorTest {
         assertThat(segunda.fields().get("amount").value()).isEqualTo(new BigDecimal("30.00"));
         assertThat(segunda.fields().get("description").value()).isEqualTo("OUTRA LOJA");
     }
+
+    @Test
+    void aceitaCsvComDelimitadorMistoEntreCabecalhoELinhas() {
+        String csvMisto = """
+                data;descricao;valor
+                03/10/2026,Okypizzarialtda restaurante,"154,50"
+                03/10/2026,Claudia simone kassin,"99,70"
+                """;
+        ExtractionInput input = new ExtractionInput(
+                csvMisto.getBytes(StandardCharsets.UTF_8),
+                "export.csv",
+                "text/csv",
+                ImportMode.NEW_TRANSACTIONS
+        );
+
+        assertThat(extractor.supports(input)).isTrue();
+        NormalizedBatchDTO batch = extractor.extract(input);
+        assertThat(batch.transactions()).hasSize(2);
+
+        NormalizedTransactionDTO primeira = batch.transactions().get(0);
+        assertThat(primeira.fields().get("transaction_date").value()).isEqualTo("2026-10-03");
+        assertThat(primeira.fields().get("description").value()).isEqualTo("Okypizzarialtda restaurante");
+        assertThat(primeira.fields().get("amount").value()).isEqualTo(new BigDecimal("154.50"));
+    }
+
+    @Test
+    void extraiCsvDelimitadoPorTabulacao() {
+        String tsv = "data\tdescricao\tvalor\n03/10/2026\tPadaria\t15,50\n";
+        ExtractionInput input = new ExtractionInput(
+                tsv.getBytes(StandardCharsets.UTF_8),
+                "extrato.tsv",
+                "text/tab-separated-values",
+                ImportMode.NEW_TRANSACTIONS
+        );
+        assertThat(extractor.supports(input)).isTrue();
+        NormalizedBatchDTO batch = extractor.extract(input);
+        assertThat(batch.transactions()).hasSize(1);
+        NormalizedTransactionDTO tx = batch.transactions().get(0);
+        assertThat(tx.fields().get("transaction_date").value()).isEqualTo("2026-10-03");
+        assertThat(tx.fields().get("description").value()).isEqualTo("Padaria");
+        assertThat(tx.fields().get("amount").value()).isEqualTo(new BigDecimal("15.50"));
+    }
 }
