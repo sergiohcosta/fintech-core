@@ -10,10 +10,11 @@ import { DashboardComponent } from './dashboard';
 import { DashboardService } from '../../core/api/dashboard/dashboard.service';
 import { TransactionsService } from '../../core/api/transactions/transactions.service';
 import { AccountsService } from '../../core/api/accounts/accounts.service';
+import { InvoicesService } from '../../core/api/invoices/invoices.service';
 import { PlanningService } from '../planning/planning.service';
 import { TransactionEventsService } from '../../core/services/transaction-events';
 import { AuthService } from '../../core/services/auth';
-import { AccountResponse, BudgetCycleResponse, DashboardSummaryDTO, TransactionResponseDTO } from '../../core/api/fintechSaaSAPI.schemas';
+import { AccountResponse, BudgetCycleResponse, DashboardSummaryDTO, InvoiceResponseDTO, TransactionResponseDTO } from '../../core/api/fintechSaaSAPI.schemas';
 import { registerLocaleData } from '@angular/common';
 import localePt from '@angular/common/locales/pt';
 
@@ -101,11 +102,13 @@ describe('DashboardComponent', () => {
     const dashboardService = TestBed.inject(DashboardService);
     const transactionsService = TestBed.inject(TransactionsService);
     const accountsService = TestBed.inject(AccountsService);
+    const invoicesService = TestBed.inject(InvoicesService);
     const planningService = TestBed.inject(PlanningService);
 
     vi.spyOn(dashboardService, 'getDashboardSummary').mockReturnValue(of(mockSummary) as any);
     vi.spyOn(transactionsService, 'listTransactions').mockReturnValue(of([mockTransaction]) as any);
     vi.spyOn(accountsService, 'listAccounts').mockReturnValue(of([mockAccount]) as any);
+    vi.spyOn(invoicesService, 'listInvoices').mockReturnValue(of([]) as any);
     vi.spyOn(planningService, 'getCurrentCycle').mockReturnValue(of(mockCycle) as any);
 
     fixture = TestBed.createComponent(DashboardComponent);
@@ -273,6 +276,70 @@ describe('DashboardComponent', () => {
       expect(component.onboardingDismissed()).toBe(true);
       expect(localStorage.getItem('fintech_onboarding_dismissed')).toBe('true');
       expect(component.showOnboardingChecklist()).toBe(false);
+    });
+  });
+
+  describe('Radar de Faturas e Cartões', () => {
+    it('carrega e filtra faturas em aberto para contas do tipo CREDIT_CARD', async () => {
+      const mockCreditCard: AccountResponse = {
+        id: 'cc-1',
+        name: 'Nubank Roxinho',
+        type: 'CREDIT_CARD',
+        balance: 450,
+        active: true,
+        countInLiquidBalance: false,
+        countInNetWorth: true,
+      };
+
+      const mockInvoice: InvoiceResponseDTO = {
+        id: 'inv-1',
+        accountId: 'cc-1',
+        accountName: 'Nubank Roxinho',
+        referenceMonth: 10,
+        referenceYear: 2026,
+        label: 'Outubro/2026',
+        closingDate: '2026-10-25',
+        dueDate: '2026-11-02',
+        status: 'OPEN',
+        totalAmount: 850.75,
+        transactionCount: 8,
+      };
+
+      const accountsService = TestBed.inject(AccountsService);
+      const invoicesService = TestBed.inject(InvoicesService);
+
+      vi.spyOn(accountsService, 'listAccounts').mockReturnValue(of([mockAccount, mockCreditCard]) as any);
+      vi.spyOn(invoicesService, 'listInvoices').mockReturnValue(of([mockInvoice]) as any);
+
+      TestBed.inject(TransactionEventsService).notifyTransactionCreated();
+      await fixture.whenStable();
+
+      expect(component.creditCardAccounts().length).toBe(1);
+      expect(component.creditCardInvoices().length).toBe(1);
+      expect(component.creditCardInvoices()[0].id).toBe('inv-1');
+      expect(component.creditCardInvoices()[0].totalAmount).toBe(850.75);
+    });
+  });
+
+  describe('Wizard de Boas-Vindas (Dia Zero)', () => {
+    it('exibe o wizard quando não há contas cadastradas e o guia não foi dispensado', async () => {
+      const accountsService = TestBed.inject(AccountsService);
+      vi.spyOn(accountsService, 'listAccounts').mockReturnValue(of([]) as any);
+
+      TestBed.inject(TransactionEventsService).notifyTransactionCreated();
+      await fixture.whenStable();
+
+      expect(component.hasAccounts()).toBe(false);
+      expect(component.showWelcomeWizard()).toBe(true);
+
+      component.dismissWelcomeWizard();
+      expect(component.welcomeWizardDismissed()).toBe(true);
+      expect(localStorage.getItem('fintech_welcome_wizard_dismissed')).toBe('true');
+      expect(component.showWelcomeWizard()).toBe(false);
+
+      component.reopenWelcomeWizard();
+      expect(component.welcomeWizardDismissed()).toBe(false);
+      expect(component.showWelcomeWizard()).toBe(true);
     });
   });
 });

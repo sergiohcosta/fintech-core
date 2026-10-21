@@ -2,8 +2,8 @@
 
 **Produto:** SaaS financeiro — gestão de finanças pessoais
 **Objetivo final:** conciliação de extratos/faturas contra transações lançadas no sistema
-**Status:** ideação / arquitetura
-**Última revisão:** julho/2026
+**Status:** ideação / arquitetura (entregas por fase registradas no corpo)
+**Última revisão:** outubro/2026 (sincronização pós-#241 / ADR-007)
 
 ---
 
@@ -202,7 +202,7 @@ Princípio de ordenação: **construir de dentro pra fora** — cada fase é us�
 - Extrator de texto de PDF (heurística de linha, sem registry) — **entregue, fatia 1** (#205)
 - Extração via visão para PDF escaneado — **entregue, fatia 4**
 - **IA como camada universal**: qualquer PDF/CSV que não case com template nem parser genérico vai para extração via IA, transparente para o usuário (mapeamento manual vira opcional, não último recurso)
-- **Camada de IA agora tem provider gerenciado primário** (plano "extração Gemini primário / Ollama fallback", entregue): a `VisionExtractor` tenta Gemini (Google AI Studio, tier free) antes do Ollama do homelab, caindo pro Ollama só por falha de disponibilidade (cota/5xx/timeout/auth). Relevante para o dimensionamento desta fase: se PDF/CSV desconhecidos passarem a rotear para extração via IA em volume, é a **cota gratuita do Gemini** que absorve a maior parte do tráfego primeiro — dimensionar/monitorar essa cota (não só a capacidade da GPU do homelab) vira parte do critério de saída da fase quando o volume via IA crescer
+- **Camada de IA agora opera em política local-first** (ADR-007, entregue via #241 e commit `cd92980`): `qwen3-vl:8b-instruct` rodando no Ollama do homelab é o provider primário; Gemini (Google AI Studio, tier free) é fallback de disponibilidade (cota/5xx/timeout/auth). Inversão da ordem original (que previa Gemini primário) justificada por PoC interno de 70 documentos reais com 0 falhas e ~12s/foto no modelo local — registrado em ADR (`docs/adr/ADR-007`). Quando o volume de extração por IA crescer (PDF/CSV desconhecidos caindo pela cascata), a **capacidade da GPU do homelab** passa a ser o gargalo primário — monitorar e dimensionar isso é parte do critério de saída da fase; o Gemini continua disponível como fallback quando a GPU saturar. A régua de `requires_review` foi endurecida em #242 para incluir confiança de campos críticos (data/direção), não só overall e amount — pré-requisito da Fase 4/5 (matching depende de campos com confiança calibrada)
 - Registry de templates para os 2–3 bancos principais (definidos pelos dados da Fase 2) — cabeça da curva apenas — **entregue, fatia 2**: Itaú (fatura PDF) e Nubank (extrato PDF). Nubank CSV não precisou de template — os headers reais já batem os sinônimos genéricos do `CsvExtractor` (Fase 2). CEF fica fora (só existe como print de imagem no caso avaliado — pertence a #194, não a registry de PDF/CSV)
 - **Validações de sanidade pós-extração** (guarda-corpo comum a template e IA): soma × total declarado, datas × período do extrato, ranges plausíveis
 - **Telemetria por formato**: volume, custo em tokens, taxa de casamento de template por banco — a base tanto do alerta de drift quanto da decisão de quais templates criar/promover

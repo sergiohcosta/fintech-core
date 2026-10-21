@@ -1,0 +1,226 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-20T23:09:40Z",
+  "title": "Design System: Nosso Dinheirinho",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Cyan Equilíbrio",
+        "canonical": "#00838f",
+        "tonalRamp": [
+          "#00363a",
+          "#004d40",
+          "#006064",
+          "#00838f",
+          "#0097a7",
+          "#00acc1",
+          "#80deea",
+          "#e0f7fa"
+        ]
+      },
+      "tertiary": {
+        "role": "tertiary",
+        "displayName": "Âmbar Acolhedor",
+        "canonical": "#ef6c00",
+        "tonalRamp": [
+          "#4a1c00",
+          "#702b00",
+          "#a73f00",
+          "#e65100",
+          "#ef6c00",
+          "#f57c00",
+          "#ffb74d",
+          "#ffe0b2"
+        ]
+      },
+      "income": {
+        "role": "semantic-income",
+        "displayName": "Verde Seguro",
+        "canonical": "#2e7d32",
+        "tonalRamp": [
+          "#0d3810",
+          "#1b5e20",
+          "#2e7d32",
+          "#388e3c",
+          "#4caf50",
+          "#81c784",
+          "#c8e6c9",
+          "#e8f5e9"
+        ]
+      },
+      "expense": {
+        "role": "semantic-expense",
+        "displayName": "Rubro Cautela",
+        "canonical": "#c62828",
+        "tonalRamp": [
+          "#490c0c",
+          "#801313",
+          "#b71c1c",
+          "#c62828",
+          "#e53935",
+          "#ef5350",
+          "#ffcdd2",
+          "#ffebee"
+        ]
+      },
+      "transfer": {
+        "role": "semantic-transfer",
+        "displayName": "Azul Movimento",
+        "canonical": "#1565c0",
+        "tonalRamp": [
+          "#0a284e",
+          "#0d47a1",
+          "#1565c0",
+          "#1976d2",
+          "#2196f3",
+          "#64b5f6",
+          "#bbdefb",
+          "#e3f2fd"
+        ]
+      },
+      "pending": {
+        "role": "semantic-pending",
+        "displayName": "Âmbar Projeção",
+        "canonical": "#f57f17",
+        "tonalRamp": [
+          "#4d2600",
+          "#804000",
+          "#b35900",
+          "#e67300",
+          "#f57f17",
+          "#ffa000",
+          "#ffecb3",
+          "#fff8e1"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Superfície Pura",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#1c1b1f",
+          "#313033",
+          "#484649",
+          "#79747e",
+          "#cac4d0",
+          "#e6e1e5",
+          "#f5f5f5",
+          "#ffffff"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Títulos principais do Dashboard e telas hero." },
+      "headline": { "displayName": "Headline", "purpose": "Títulos de cartões de resumo, onboarding e modais." },
+      "title": { "displayName": "Title", "purpose": "Títulos de transações e cabeçalhos de tabela." },
+      "body": { "displayName": "Body", "purpose": "Texto padrão de leitura, dados e formulários." },
+      "label": { "displayName": "Label", "purpose": "Badges de status, subheaders da barra lateral e metadados." }
+    },
+    "shadows": [
+      { "name": "floating-bar", "value": "0 -4px 16px rgba(0, 0, 0, 0.08)", "purpose": "Barra de navegação inferior fixa em telas compactas (mobile)." },
+      { "name": "modal-sheet", "value": "0 8px 32px rgba(0, 0, 0, 0.16)", "purpose": "Elevação de bottom sheets de lançamento rápido e diálogos modais." }
+    ],
+    "motion": [
+      { "name": "ease-standard", "value": "cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Curva padrão de interpolação para aberturas e recolhimentos." },
+      { "name": "tab-bar-enter", "value": "150ms ease-out", "purpose": "Animação de surgimento da barra inferior no mobile." }
+    ],
+    "breakpoints": [
+      { "name": "compact", "value": "719.98px" },
+      { "name": "medium", "value": "1023.98px" },
+      { "name": "expanded", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Botão principal de ação do sistema (salvar transação, confirmar pagamento).",
+      "html": "<button class=\"ds-btn-primary\">Confirmar Lançamento</button>",
+      "css": ".ds-btn-primary { background: #00838f; color: #ffffff; padding: 10px 24px; border-radius: 28px; font-family: Roboto, sans-serif; font-size: 14px; font-weight: 500; border: none; cursor: pointer; transition: background 0.15s ease; } .ds-btn-primary:hover { background: #006064; } .ds-btn-primary:focus-visible { outline: 2px solid #00838f; outline-offset: 2px; }"
+    },
+    {
+      "name": "Status Badge (Paid)",
+      "kind": "chip",
+      "refersTo": "chip-status",
+      "description": "Badge de status pago/confirmado em transações e faturas.",
+      "html": "<span class=\"ds-badge-paid\">PAGO</span>",
+      "css": ".ds-badge-paid { display: inline-block; padding: 3px 10px; border-radius: 12px; background: #e8f5e9; color: #2e7d32; font-family: Roboto, sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase; }"
+    },
+    {
+      "name": "Status Badge (Expense)",
+      "kind": "chip",
+      "refersTo": "chip-status",
+      "description": "Badge de tipo despesa com fundo suave e tipografia nítida.",
+      "html": "<span class=\"ds-badge-expense\">DESPESA</span>",
+      "css": ".ds-badge-expense { display: inline-block; padding: 3px 10px; border-radius: 12px; background: #ffebee; color: #c62828; font-family: Roboto, sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase; }"
+    },
+    {
+      "name": "Summary KPI Card",
+      "kind": "card",
+      "refersTo": "card-default",
+      "description": "Cartão de resumo métrico do dashboard com hierarquia tonal.",
+      "html": "<div class=\"ds-kpi-card\"><span class=\"ds-kpi-label\">Disponível para Gastar</span><strong class=\"ds-kpi-value\">R$ 2.450,00</strong><span class=\"ds-kpi-meta\">R$ 81,66 / dia restante</span></div>",
+      "css": ".ds-kpi-card { background: #ffffff; border: 1px solid #e0e0e0; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 4px; font-family: Roboto, sans-serif; } .ds-kpi-label { font-size: 13px; color: #595959; font-weight: 500; } .ds-kpi-value { font-size: 24px; font-weight: 600; color: #1c1b1f; font-family: 'Roboto Mono', monospace; } .ds-kpi-meta { font-size: 12px; color: #757575; }"
+    },
+    {
+      "name": "Bottom Navigation Bar",
+      "kind": "nav",
+      "refersTo": "nav-bottom",
+      "description": "Barra de navegação móvel compacta com botão Quick Entry em destaque.",
+      "html": "<nav class=\"ds-tab-bar\"><button class=\"ds-tab-item active\">Início</button><button class=\"ds-tab-item\">Transações</button><button class=\"ds-tab-item ds-quick-btn\">+ Novo</button><button class=\"ds-tab-item\">Planejamento</button></nav>",
+      "css": ".ds-tab-bar { display: flex; justify-content: space-around; background: #ffffff; border-top: 1px solid #e0e0e0; box-shadow: 0 -4px 16px rgba(0,0,0,0.08); padding: 4px 8px; font-family: Roboto, sans-serif; } .ds-tab-item { background: transparent; border: none; font-size: 11px; color: #595959; padding: 6px; cursor: pointer; display: flex; flex-direction: column; align-items: center; } .ds-tab-item.active { color: #00838f; font-weight: 600; } .ds-quick-btn { color: #00838f; font-weight: 700; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "O Porto Seguro Familiar",
+    "overview": "O design visual do Nosso Dinheirinho é concebido para transformar a conferência financeira de um momento tenso e burocrático em uma experiência serena, acolhedora e de controle compartilhado. O sistema afasta conscientemente tanto a frieza monocromática dos ERPs legados quanto o excesso de estímulos da cultura cripto/fintech hiper-gamificada. Cada tela privilegia a clareza limpa, com respiros generosos e legibilidade inequívoca.",
+    "keyCharacteristics": [
+      "Clareza Tonal: Profundidade construída por hierarquia de superfícies e bordas delicadas, mantendo sombras restritas a camadas ativas/flutuantes.",
+      "Rigor Tipográfico Numérico: Uso estrito de tipografia com alinhamento tabular (Roboto Mono) para quantias monetárias, alinhando centavos perfeitamente.",
+      "Eficiência no Toque: Ergonomia pensada para uso com uma mão no smartphone através de bottom sheets e touch targets generosos de 48px."
+    ],
+    "rules": [
+      {
+        "name": "The Rarity of Accent Rule",
+        "body": "A cor primária (Cyan) deve ocupar no máximo 10% a 15% de qualquer superfície de tela. Sua autoridade vem do respiro oferecido pelas superfícies neutras.",
+        "section": "colors"
+      },
+      {
+        "name": "The Absolute Semantic Invariant Rule",
+        "body": "Verde e vermelho são reservados exclusivamente para receita/despesa ou sucesso/erro. Jamais utilize a cor da marca (Cyan) para substituir sinais financeiros de débito ou crédito.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Number Rule",
+        "body": "Toda quantia monetária exibida no sistema deve obrigatoriamente utilizar 'Roboto Mono' com alinhamento à direita em tabelas ou blocos comparativos, assegurando alinhamento decimal exato.",
+        "section": "typography"
+      },
+      {
+        "name": "The Touch-Floor Rule",
+        "body": "Qualquer elemento clicável ou acionável em telas touch deve possuir altura mínima garantida de 48px (var(--touch-target-min, 48px)), mesmo que a sua representação visual seja menor (usando padding invisível).",
+        "section": "layout"
+      },
+      {
+        "name": "The Rest-is-Flat Rule",
+        "body": "Superfícies de cartões, painéis e tabelas permanecem planas em repouso. Elevações e sombras surgem exclusivamente quando um elemento se destaca do plano base (modais, menus suspensos e bottom sheets).",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do formatar todas as quantias monetárias com o símbolo 'R$', separador de milhar por ponto e decimal por vírgula em tipografia monospaçada (Roboto Mono).",
+      "Do manter a meta de toque mínimo de 48px (var(--touch-target-min)) em todos os elementos clicáveis no mobile.",
+      "Do usar cores semânticas (verde para receita/pago, vermelho para despesa/atrasado) com fundos correspondentes suaves para garantir contraste acessível (WCAG AA).",
+      "Do reservar o uso de sombras exclusivamente para camadas elevadas (bottom sheets, diálogos e barras flutuantes).",
+      "Do exibir sempre a proveniência e estado de revisão em lançamentos importados antes do commit final."
+    ],
+    "donts": [
+      "Don't utilizar fundos pretos neon, gráficos fluorescentes ou tipografia espalhafatosa no estilo 'cripto/trader'.",
+      "Don't aplicar drop shadows em cartões em repouso sobre o fundo da página.",
+      "Don't hardcodar cores no CSS; referencie sempre variáveis e tokens semânticos do Material 3 e de _tokens.scss.",
+      "Don't utilizar caixas de diálogo modais centralizadas no mobile quando uma bottom sheet for o padrão natural de interação com o polegar.",
+      "Don't esconder o botão de Quick Entry ('+') atrás de menus secundários no smartphone."
+    ]
+  }
+}

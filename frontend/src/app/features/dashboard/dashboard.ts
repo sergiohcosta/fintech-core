@@ -1,8 +1,8 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
-import { switchMap, catchError, of } from 'rxjs';
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { switchMap, catchError, of, forkJoin, map } from 'rxjs';
+import { DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -16,11 +16,19 @@ import { MatListModule } from '@angular/material/list';
 import { DashboardService } from '../../core/api/dashboard/dashboard.service';
 import { TransactionsService } from '../../core/api/transactions/transactions.service';
 import { AccountsService } from '../../core/api/accounts/accounts.service';
+import { InvoicesService } from '../../core/api/invoices/invoices.service';
 import { TransactionEventsService } from '../../core/services/transaction-events';
 import { AuthService } from '../../core/services/auth';
 import { PlanningService } from '../planning/planning.service';
-import { AccountResponse, BudgetCycleResponse, BudgetCycleSummary, TransactionResponseDTO } from '../../core/api/fintechSaaSAPI.schemas';
+import {
+  AccountResponse,
+  BudgetCycleResponse,
+  BudgetCycleSummary,
+  InvoiceResponseDTO,
+  TransactionResponseDTO,
+} from '../../core/api/fintechSaaSAPI.schemas';
 import { DEFAULT_SUMMARY } from '../planning/budget-cycle-current/budget-cycle.utils';
+import { WelcomeWizardComponent } from './welcome-wizard/welcome-wizard';
 
 @Component({
   selector: 'app-dashboard',
@@ -36,6 +44,7 @@ import { DEFAULT_SUMMARY } from '../planning/budget-cycle-current/budget-cycle.u
     MatProgressBarModule,
     MatTooltipModule,
     MatListModule,
+    WelcomeWizardComponent,
   ],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',
@@ -44,6 +53,7 @@ export class DashboardComponent {
   private dashboardService = inject(DashboardService);
   private transactionService = inject(TransactionsService);
   private accountsService = inject(AccountsService);
+  private invoicesService = inject(InvoicesService);
   private transactionEvents = inject(TransactionEventsService);
   private authService = inject(AuthService);
   private planningService = inject(PlanningService);
@@ -101,6 +111,12 @@ export class DashboardComponent {
     return label.charAt(0).toUpperCase() + label.slice(1);
   });
 
+  currentMonthName = computed(() => {
+    const d = new Date(this.selectedYear(), this.selectedMonthIndex() - 1, 1);
+    const label = d.toLocaleDateString('pt-BR', { month: 'long' });
+    return label.charAt(0).toUpperCase() + label.slice(1);
+  });
+
   isCurrentMonth = computed(() => {
     const n = new Date();
     return this.selectedYear() === n.getFullYear() && this.selectedMonthIndex() === n.getMonth() + 1;
@@ -112,6 +128,61 @@ export class DashboardComponent {
   );
   accounts = toSignal(this.accounts$);
   hasAccounts = computed(() => (this.accounts()?.length ?? 0) > 0);
+
+  // Faturas de Cartão de Crédito (Radar de Faturas)
+  creditCardAccounts = computed(() => {
+    return (this.accounts() ?? []).filter(a => a.active && a.type === 'CREDIT_CARD');
+  });
+
+  private ccTrigger = computed(() => ({
+    refresh: this.transactionEvents.refreshTrigger(),
+    ccIds: this.creditCardAccounts().map(a => a.id).sort().join(','),
+  }));
+
+  private invoices$ = toObservable(this.ccTrigger).pipe(
+    switchMap(() => {
+      const cards = this.creditCardAccounts();
+      if (cards.length === 0) return of([] as InvoiceResponseDTO[]);
+      return forkJoin(
+        cards.map(c => this.invoicesService.listInvoices({ accountId: c.id }).pipe(catchError(() => of([]))))
+      ).pipe(
+        map(lists => {
+          const all = lists.flat();
+          return all
+            .filter(inv => inv.status === 'OPEN' || inv.status === 'CLOSED')
+            .sort((a, b) => (a.dueDate ?? '').localeCompare(b.dueDate ?? ''));
+        })
+      );
+    })
+  );
+
+  creditCardInvoices = toSignal(this.invoices$, { initialValue: [] as InvoiceResponseDTO[] });
+
+  // Wizard de Boas-Vindas do Dia Zero
+  private getInitialWelcomeWizardState(): boolean {
+    try {
+      return localStorage.getItem('fintech_welcome_wizard_dismissed') === 'true';
+    } catch {
+      return false;
+    }
+  }
+
+  welcomeWizardDismissed = signal<boolean>(this.getInitialWelcomeWizardState());
+
+  dismissWelcomeWizard(): void {
+    this.welcomeWizardDismissed.set(true);
+    try {
+      localStorage.setItem('fintech_welcome_wizard_dismissed', 'true');
+    } catch {}
+  }
+
+  reopenWelcomeWizard(): void {
+    this.welcomeWizardDismissed.set(false);
+  }
+
+  showWelcomeWizard = computed(() => {
+    return !this.isLoading() && !this.hasAccounts() && !this.welcomeWizardDismissed();
+  });
 
   // Carregamento do Planejamento Ativo (Budget Cycle)
   private currentCycle$ = toObservable(this.transactionEvents.refreshTrigger).pipe(

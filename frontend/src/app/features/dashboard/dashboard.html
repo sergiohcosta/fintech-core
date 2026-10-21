@@ -1,10 +1,15 @@
 <div class="dashboard-container">
 
+  <!-- Wizard de Boas-Vindas do Dia Zero (Modal descartável) -->
+  @if (showWelcomeWizard()) {
+    <app-welcome-wizard (dismiss)="dismissWelcomeWizard()"></app-welcome-wizard>
+  }
+
   <!-- Cabeçalho: Saudação + Título + Modo Privacidade -->
   <header class="dashboard-header">
     <div class="header-titles">
       <span class="greeting-text">{{ greeting() }}</span>
-      <h2 class="page-title">Dashboard</h2>
+      <h2 class="page-title">Início</h2>
     </div>
 
     <div class="header-actions">
@@ -32,7 +37,7 @@
           <mat-icon>waving_hand</mat-icon>
         </div>
         <mat-card-title>Boas-vindas ao Nosso Dinheirinho!</mat-card-title>
-        <mat-card-subtitle>O controle financeiro feito para famílias, casais e autonomia pessoal. Comece em 3 passos:</mat-card-subtitle>
+        <mat-card-subtitle>Controle financeiro com rigor contábil e tranquilidade para sua família. Comece em 2 passos essenciais:</mat-card-subtitle>
       </mat-card-header>
 
       <mat-card-content>
@@ -41,7 +46,7 @@
             <div class="step-badge">1</div>
             <div class="step-body">
               <span class="step-title">Cadastre sua primeira conta ou cartão</span>
-              <span class="step-desc">Adicione suas contas bancárias (ex: Nubank, Itaú, Inter), cartões de crédito ou dinheiro em carteira.</span>
+              <span class="step-desc">Adicione suas contas bancárias (Nubank, Itaú, Inter), cartões de crédito ou dinheiro em carteira.</span>
               <div class="step-actions">
                 <a mat-flat-button color="primary" routerLink="/accounts/new" class="step-cta">
                   <mat-icon>add</mat-icon>
@@ -55,7 +60,7 @@
             <div class="step-badge">2</div>
             <div class="step-body">
               <span class="step-title">Importe seus extratos ou lance despesas</span>
-              <span class="step-desc">Economize tempo importando extratos em OFX, faturas em PDF ou planilhas CSV com categorização inteligente.</span>
+              <span class="step-desc">Importe extratos em OFX, faturas em PDF bancário ou planilhas CSV com segurança e privacidade local.</span>
               <div class="step-actions">
                 <a mat-stroked-button color="primary" routerLink="/import" class="step-cta">
                   <mat-icon>upload_file</mat-icon>
@@ -64,17 +69,13 @@
               </div>
             </div>
           </div>
+        </div>
 
-          <div class="onboarding-step info-step">
-            <div class="step-badge">3</div>
-            <div class="step-body">
-              <span class="step-title">Planeje seu orçamento mensal e convide a família</span>
-              <span class="step-desc">Abra seu ciclo de planejamento para definir tetos de gastos e compartilhe o acesso com quem mora com você.</span>
-              <div class="step-actions">
-                <a mat-button routerLink="/team" class="step-link">Convidar membros da família →</a>
-              </div>
-            </div>
-          </div>
+        <div class="onboarding-footer-actions">
+          <button mat-button (click)="reopenWelcomeWizard()" class="reopen-wizard-btn">
+            <mat-icon>explore</mat-icon>
+            Abrir guia de introdução passo a passo
+          </button>
         </div>
       </mat-card-content>
     </mat-card>
@@ -125,7 +126,7 @@
       <!-- ═══ COLUNA PRINCIPAL ═══ -->
       <div class="main-column">
 
-        <!-- Checklist de Primeiros Passos (Onboarding Progressivo) -->
+        <!-- Checklist de Primeiros Passos (Onboarding Progressivo pós-conta) -->
         @if (showOnboardingChecklist()) {
           <mat-card class="onboarding-checklist-card">
             <mat-card-content>
@@ -184,204 +185,225 @@
           </mat-card>
         }
 
-        <!-- BLOCO 1: Minha Situação Hoje -->
-        <section class="dashboard-section today-block" aria-labelledby="today-heading">
-          <div class="section-header-row">
-            <div>
-              <h3 id="today-heading" class="section-heading">Minha Situação Hoje</h3>
-              <span class="section-subheading">Disponibilidade financeira imediata</span>
-            </div>
-          </div>
-
-          <div class="position-wrapper">
-            <mat-card class="summary-card position-card">
-              <mat-card-content>
-                <div class="card-icon">
-                  <mat-icon>account_balance</mat-icon>
+        <!-- ═══ BLOCO HERO: Decisão Diária ou Ação Direta ═══ -->
+        @if (hasActiveCycle()) {
+          <!-- HERO ATIVO: Disponível para Gastar Hoje -->
+          <mat-card class="daily-hero-card" [class.negative]="availableToSpend() < 0">
+            <mat-card-content>
+              <div class="hero-header-row">
+                <div class="cycle-pill">
+                  <mat-icon>event</mat-icon>
+                  <span>Ciclo {{ cycleDatesLabel() }}</span>
+                  @if (remainingDays() !== null && remainingDays() !== undefined) {
+                    <span class="days-remaining">• {{ remainingDays() }} dias restantes</span>
+                  }
                 </div>
-                <div class="card-info">
-                  <span class="card-label">Posição financeira líquida</span>
-                  <span class="card-value">{{ formatMoney(liquidBalance()) }}</span>
-                  <span class="card-hint">Total disponível em contas ativas com liquidez</span>
-                </div>
-              </mat-card-content>
-            </mat-card>
-          </div>
-        </section>
+                <mat-chip class="cycle-status-chip">Aberto</mat-chip>
+              </div>
 
-        <!-- BLOCO 2: Planejamento Ativo -->
-        <section class="dashboard-section planning-block" aria-labelledby="planning-heading">
-          <div class="section-header-row">
-            <div>
-              <h3 id="planning-heading" class="section-heading">Planejamento Ativo</h3>
-              @if (hasActiveCycle()) {
-                <span class="section-subheading">{{ cycleDatesLabel() }}</span>
-              } @else {
-                <span class="section-subheading">Acompanhamento e limites de orçamento</span>
+              <div class="hero-main-content">
+                <div class="hero-stat-primary">
+                  <span class="hero-stat-label">Disponível para Gastar no Ciclo</span>
+                  <div class="hero-stat-value" [class.negative]="availableToSpend() < 0">
+                    {{ formatMoney(availableToSpend()) }}
+                  </div>
+                </div>
+
+                @if (dailyAllowance() !== null && dailyAllowance() !== undefined) {
+                  <div class="hero-allowance-box">
+                    <span class="allowance-label">Limite Seguro Hoje</span>
+                    <div class="allowance-value">
+                      {{ formatMoney(dailyAllowance()) }}<span class="allowance-unit">/dia</span>
+                    </div>
+                    <span class="allowance-hint">Para manter o equilíbrio até o fechamento</span>
+                  </div>
+                }
+              </div>
+
+              <!-- Mini Grid Secundário de Indicadores do Ciclo -->
+              <div class="hero-secondary-grid">
+                <div class="hero-substat">
+                  <span class="substat-label">Despesas Realizadas</span>
+                  <span class="substat-value expense">{{ formatMoney(cycleSummary().realizedExpense) }}</span>
+                  <span class="substat-meta">de {{ formatMoney(cycleSummary().plannedExpense) }} teto</span>
+                  @if (cycleSummary().plannedExpense > 0) {
+                    <mat-progress-bar mode="determinate" [value]="expenseProgress()" class="substat-progress" [class.over-budget]="cycleSummary().realizedExpense > cycleSummary().plannedExpense"></mat-progress-bar>
+                  }
+                </div>
+
+                <div class="hero-substat">
+                  <span class="substat-label">Receitas Recebidas</span>
+                  <span class="substat-value income">{{ formatMoney(cycleSummary().realizedIncome) }}</span>
+                  <span class="substat-meta">de {{ formatMoney(cycleSummary().plannedIncome) }} previsto</span>
+                  @if (cycleSummary().plannedIncome > 0) {
+                    <mat-progress-bar mode="determinate" [value]="incomeProgress()" class="substat-progress income-bar"></mat-progress-bar>
+                  }
+                </div>
+
+                <div class="hero-substat">
+                  <span class="substat-label">Saldo Atual em Caixa</span>
+                  <span class="substat-value" [class.income]="cycleSummary().currentBalance >= 0" [class.expense]="cycleSummary().currentBalance < 0">
+                    {{ formatMoney(cycleSummary().currentBalance) }}
+                  </span>
+                  <span class="substat-meta">Projetado: {{ formatMoney(cycleSummary().projectedBalance) }}</span>
+                </div>
+              </div>
+
+              <div class="hero-footer-link">
+                <a mat-button color="primary" routerLink="/planning" class="full-planning-link">
+                  Ver detalhes completos do planejamento →
+                </a>
+              </div>
+            </mat-card-content>
+          </mat-card>
+
+        } @else {
+
+          <!-- HERO SEM CICLO: Card de Ação Direta -->
+          <mat-card class="direct-action-hero-card">
+            <mat-card-content>
+              <div class="direct-action-layout">
+                <div class="direct-action-left">
+                  <span class="direct-action-label">Posição Financeira Líquida</span>
+                  <div class="direct-action-value">{{ formatMoney(liquidBalance()) }}</div>
+                  <p class="direct-action-desc">
+                    Saldo disponível em suas contas com liquidez imediata. Inicie o planejamento de <strong>{{ currentMonthName() }}</strong> para calcular seu limite diário seguro de gastos e evitar surpresas no fim do mês.
+                  </p>
+                </div>
+                <div class="direct-action-right">
+                  <a mat-flat-button color="primary" routerLink="/planning" class="open-cycle-direct-btn">
+                    <mat-icon>play_circle</mat-icon>
+                    Abrir Planejamento de {{ currentMonthName() }}
+                  </a>
+                </div>
+              </div>
+
+              <!-- Resumo do Mês Calendário Auxiliar -->
+              @if (summary(); as s) {
+                <div class="month-fallback-section">
+                  <div class="month-fallback-header">
+                    <span class="month-fallback-title">Movimentações de {{ monthLabel() }}</span>
+                    <div class="month-nav mini">
+                      <button mat-icon-button (click)="prevMonth()" aria-label="Mês anterior">
+                        <mat-icon>chevron_left</mat-icon>
+                      </button>
+                      <button mat-icon-button (click)="nextMonth()" [disabled]="isCurrentMonth()" aria-label="Próximo mês">
+                        <mat-icon>chevron_right</mat-icon>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="summary-cards">
+                    <mat-card class="summary-card income-card">
+                      <mat-card-content>
+                        <div class="card-icon"><mat-icon>trending_up</mat-icon></div>
+                        <div class="card-info">
+                          <span class="card-label">Receita</span>
+                          <span class="card-value">{{ formatMoney(s.totalIncome) }}</span>
+                        </div>
+                      </mat-card-content>
+                    </mat-card>
+
+                    <mat-card class="summary-card expense-card">
+                      <mat-card-content>
+                        <div class="card-icon"><mat-icon>trending_down</mat-icon></div>
+                        <div class="card-info">
+                          <span class="card-label">Despesa</span>
+                          <span class="card-value">{{ formatMoney(s.totalExpense) }}</span>
+                        </div>
+                      </mat-card-content>
+                    </mat-card>
+
+                    <mat-card class="summary-card" [class.balance-positive]="(s.balance ?? 0) >= 0" [class.balance-negative]="(s.balance ?? 0) < 0">
+                      <mat-card-content>
+                        <div class="card-icon"><mat-icon>account_balance_wallet</mat-icon></div>
+                        <div class="card-info">
+                          <span class="card-label">Saldo do período</span>
+                          <span class="card-value">{{ formatMoney(s.balance) }}</span>
+                        </div>
+                      </mat-card-content>
+                    </mat-card>
+                  </div>
+                </div>
               }
+            </mat-card-content>
+          </mat-card>
+
+        }
+
+        <!-- ═══ BLOCO: Radar de Faturas e Cartões ═══ -->
+        @if (creditCardAccounts().length > 0) {
+          <section class="dashboard-section invoices-radar-section" aria-labelledby="invoices-heading">
+            <div class="section-header-row">
+              <div>
+                <h3 id="invoices-heading" class="section-heading">Faturas e Cartões</h3>
+                <span class="section-subheading">Acompanhamento de faturas em aberto e datas de vencimento</span>
+              </div>
+              <a mat-button routerLink="/invoices" class="see-all-link">Ver todas →</a>
             </div>
-            @if (hasActiveCycle()) {
-              <div class="cycle-badges">
-                <mat-chip class="status-chip open">Aberto</mat-chip>
-                @if (remainingDays() !== null && remainingDays() !== undefined) {
-                  <span class="days-badge">{{ remainingDays() }} dias restantes</span>
+
+            @if (creditCardInvoices().length === 0) {
+              <mat-card class="empty-invoices-card">
+                <mat-card-content>
+                  <mat-icon>credit_score</mat-icon>
+                  <span>Nenhuma fatura em aberto nos seus cartões cadastrados.</span>
+                </mat-card-content>
+              </mat-card>
+            } @else {
+              <div class="invoices-radar-grid">
+                @for (inv of creditCardInvoices(); track inv.id) {
+                  <mat-card class="invoice-radar-card" [class.closed]="inv.status === 'CLOSED'">
+                    <mat-card-content>
+                      <div class="invoice-card-top">
+                        <div class="card-name-group">
+                          <div class="card-icon-avatar">
+                            <mat-icon>credit_card</mat-icon>
+                          </div>
+                          <div class="card-name-wrap">
+                            <span class="card-account-name">{{ inv.accountName }}</span>
+                            <span class="card-invoice-label">{{ inv.label }}</span>
+                          </div>
+                        </div>
+                        <span class="invoice-status-chip" [class.status-closed]="inv.status === 'CLOSED'">
+                          {{ inv.status === 'CLOSED' ? 'Fechada' : 'Aberta' }}
+                        </span>
+                      </div>
+
+                      <div class="invoice-card-amount-row">
+                        <div class="invoice-amount-block">
+                          <span class="amount-label">Total da Fatura</span>
+                          <span class="amount-val expense">{{ formatMoney(inv.totalAmount) }}</span>
+                        </div>
+                        <div class="invoice-dates-block">
+                          @if (inv.status === 'CLOSED') {
+                            <span class="date-highlight warning">Vence em {{ inv.dueDate | date:'dd/MM/yyyy':'':'pt-BR' }}</span>
+                          } @else {
+                            <span class="date-highlight">Fecha em {{ inv.closingDate | date:'dd/MM/yyyy':'':'pt-BR' }}</span>
+                            <span class="due-sub">Vence em {{ inv.dueDate | date:'dd/MM/yyyy':'':'pt-BR' }}</span>
+                          }
+                        </div>
+                      </div>
+
+                      <div class="invoice-card-actions">
+                        <a mat-button [routerLink]="['/invoices', inv.id]" class="detail-btn">
+                          Ver Detalhes
+                        </a>
+                        @if (inv.status === 'CLOSED') {
+                          <a mat-flat-button color="primary" [routerLink]="['/invoices', inv.id]" class="pay-btn">
+                            <mat-icon>payment</mat-icon>
+                            Pagar
+                          </a>
+                        }
+                      </div>
+                    </mat-card-content>
+                  </mat-card>
                 }
               </div>
             }
-          </div>
+          </section>
+        }
 
-          @if (hasActiveCycle()) {
-            <div class="planning-kpi-grid">
-              <!-- Disponível para Gastar -->
-              <mat-card class="planning-kpi-card available-card" [class.negative]="availableToSpend() < 0">
-                <mat-card-content>
-                  <div class="kpi-top">
-                    <span class="kpi-label">Disponível para Gastar</span>
-                    <mat-icon class="kpi-icon">savings</mat-icon>
-                  </div>
-                  <span class="kpi-value">{{ formatMoney(availableToSpend()) }}</span>
-                  @if (dailyAllowance() !== null && dailyAllowance() !== undefined) {
-                    <span class="kpi-sub">
-                      Limite de <strong>{{ formatMoney(dailyAllowance()) }}</strong> / dia
-                    </span>
-                  }
-                </mat-card-content>
-              </mat-card>
-
-              <!-- Despesas do Ciclo -->
-              <mat-card class="planning-kpi-card expense-kpi-card">
-                <mat-card-content>
-                  <div class="kpi-top">
-                    <span class="kpi-label">Despesas</span>
-                    <mat-icon class="kpi-icon">trending_down</mat-icon>
-                  </div>
-                  <span class="kpi-value">{{ formatMoney(cycleSummary().realizedExpense) }}</span>
-                  <span class="kpi-sub">
-                    Teto: {{ formatMoney(cycleSummary().plannedExpense) }}
-                  </span>
-                  @if (cycleSummary().plannedExpense > 0) {
-                    <mat-progress-bar mode="determinate" [value]="expenseProgress()"
-                                      class="kpi-progress"
-                                      [class.over-budget]="cycleSummary().realizedExpense > cycleSummary().plannedExpense" />
-                  }
-                </mat-card-content>
-              </mat-card>
-
-              <!-- Receitas do Ciclo -->
-              <mat-card class="planning-kpi-card income-kpi-card">
-                <mat-card-content>
-                  <div class="kpi-top">
-                    <span class="kpi-label">Receitas</span>
-                    <mat-icon class="kpi-icon">trending_up</mat-icon>
-                  </div>
-                  <span class="kpi-value">{{ formatMoney(cycleSummary().realizedIncome) }}</span>
-                  <span class="kpi-sub">
-                    Previsto: {{ formatMoney(cycleSummary().plannedIncome) }}
-                  </span>
-                  @if (cycleSummary().plannedIncome > 0) {
-                    <mat-progress-bar mode="determinate" [value]="incomeProgress()"
-                                      class="kpi-progress income-progress" />
-                  }
-                </mat-card-content>
-              </mat-card>
-
-              <!-- Saldo Atual do Ciclo -->
-              <mat-card class="planning-kpi-card balance-kpi-card"
-                        [class.positive]="cycleSummary().currentBalance >= 0"
-                        [class.negative]="cycleSummary().currentBalance < 0">
-                <mat-card-content>
-                  <div class="kpi-top">
-                    <span class="kpi-label">Saldo do Ciclo</span>
-                    <mat-icon class="kpi-icon">account_balance_wallet</mat-icon>
-                  </div>
-                  <span class="kpi-value">{{ formatMoney(cycleSummary().currentBalance) }}</span>
-                  <span class="kpi-sub">
-                    Projetado: {{ formatMoney(cycleSummary().projectedBalance) }}
-                  </span>
-                </mat-card-content>
-              </mat-card>
-            </div>
-
-            <div class="planning-section-footer">
-              <a mat-button color="primary" routerLink="/planning" class="full-planning-link">
-                Ver planejamento completo com itens e categorias →
-              </a>
-            </div>
-
-          } @else {
-
-            <!-- Quando não há ciclo ativo: Card de Abertura + Resumo Mensal Auxiliar -->
-            <mat-card class="no-cycle-card">
-              <mat-card-content>
-                <div class="no-cycle-layout">
-                  <div class="no-cycle-avatar">
-                    <mat-icon>event_note</mat-icon>
-                  </div>
-                  <div class="no-cycle-info">
-                    <h4>Nenhum ciclo de planejamento aberto</h4>
-                    <p>Com um ciclo de planejamento, você define o período do seu orçamento (ex: dia do salário), estipula tetos por categoria e acompanha quanto ainda pode gastar por dia.</p>
-                  </div>
-                  <a mat-flat-button color="primary" routerLink="/planning" class="open-cycle-cta">
-                    <mat-icon>add</mat-icon>
-                    Abrir Planejamento
-                  </a>
-                </div>
-              </mat-card-content>
-            </mat-card>
-
-            <!-- Resumo Mensal de Apoio (mês calendário) -->
-            @if (summary(); as s) {
-              <div class="month-fallback-section">
-                <div class="month-fallback-header">
-                  <span class="month-fallback-title">Movimentações do Mês ({{ monthLabel() }})</span>
-                  <div class="month-nav mini">
-                    <button mat-icon-button (click)="prevMonth()" aria-label="Mês anterior">
-                      <mat-icon>chevron_left</mat-icon>
-                    </button>
-                    <button mat-icon-button (click)="nextMonth()" [disabled]="isCurrentMonth()" aria-label="Próximo mês">
-                      <mat-icon>chevron_right</mat-icon>
-                    </button>
-                  </div>
-                </div>
-
-                <div class="summary-cards">
-                  <mat-card class="summary-card income-card">
-                    <mat-card-content>
-                      <div class="card-icon"><mat-icon>trending_up</mat-icon></div>
-                      <div class="card-info">
-                        <span class="card-label">Receita</span>
-                        <span class="card-value">{{ formatMoney(s.totalIncome) }}</span>
-                      </div>
-                    </mat-card-content>
-                  </mat-card>
-
-                  <mat-card class="summary-card expense-card">
-                    <mat-card-content>
-                      <div class="card-icon"><mat-icon>trending_down</mat-icon></div>
-                      <div class="card-info">
-                        <span class="card-label">Despesa</span>
-                        <span class="card-value">{{ formatMoney(s.totalExpense) }}</span>
-                      </div>
-                    </mat-card-content>
-                  </mat-card>
-
-                  <mat-card class="summary-card" [class.balance-positive]="(s.balance ?? 0) >= 0" [class.balance-negative]="(s.balance ?? 0) < 0">
-                    <mat-card-content>
-                      <div class="card-icon"><mat-icon>account_balance_wallet</mat-icon></div>
-                      <div class="card-info">
-                        <span class="card-label">Saldo do período</span>
-                        <span class="card-value">{{ formatMoney(s.balance) }}</span>
-                      </div>
-                    </mat-card-content>
-                  </mat-card>
-                </div>
-              </div>
-            }
-
-          }
-        </section>
-
-        <!-- BLOCO 3: Últimas Movimentações -->
+        <!-- ═══ BLOCO: Últimas Movimentações ═══ -->
         <section class="dashboard-section recent-block" aria-labelledby="recent-heading">
           <div class="section-header-row">
             <div>

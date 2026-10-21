@@ -1,0 +1,116 @@
+<div class="wizard-backdrop" (click)="onDismiss()" (keydown.escape)="onDismiss()" tabindex="-1">
+  <div class="wizard-dialog" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="wizard-title">
+    <div class="wizard-header">
+      <div class="wizard-steps-indicator">
+        <span class="step-counter">Etapa {{ currentStep() }} de {{ totalSteps }}</span>
+        <mat-progress-bar mode="determinate" [value]="(currentStep() / totalSteps) * 100" class="step-progress"></mat-progress-bar>
+      </div>
+      <button mat-icon-button (click)="onDismiss()" aria-label="Fechar guia de início" class="close-btn">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <div class="wizard-body">
+      @switch (currentStep()) {
+        @case (1) {
+          <div class="step-content">
+            <div class="step-icon-wrapper primary">
+              <mat-icon>account_balance</mat-icon>
+            </div>
+            <h2 id="wizard-title" class="step-title">Comece cadastrando suas contas</h2>
+            <p class="step-description">
+              Para ter controle exato do que você tem em caixa e do que deve em faturas, cadastre suas contas correntes, cartões de crédito ou dinheiro vivo.
+            </p>
+
+            <div class="step-actions-grid">
+              <a mat-flat-button color="primary" routerLink="/accounts/new" [queryParams]="{ type: 'CHECKING' }" (click)="onDismiss()" class="action-tile">
+                <mat-icon>account_balance</mat-icon>
+                <div class="tile-text">
+                  <strong>Conta Corrente</strong>
+                  <span>Salário, Pix e saldo do dia a dia</span>
+                </div>
+              </a>
+
+              <a mat-stroked-button routerLink="/accounts/new" [queryParams]="{ type: 'CREDIT_CARD' }" (click)="onDismiss()" class="action-tile">
+                <mat-icon>credit_card</mat-icon>
+                <div class="tile-text">
+                  <strong>Cartão de Crédito</strong>
+                  <span>Faturas, limites e compras parceladas</span>
+                </div>
+              </a>
+            </div>
+          </div>
+        }
+
+        @case (2) {
+          <div class="step-content">
+            <div class="step-icon-wrapper tertiary">
+              <mat-icon>upload_file</mat-icon>
+            </div>
+            <h2 id="wizard-title" class="step-title">Importe um mês inteiro em segundos</h2>
+            <p class="step-description">
+              Economize tempo: envie faturas em PDF bancário (Itaú, Nubank), arquivos OFX ou planilhas CSV. O motor de extração lê os lançamentos e prepara tudo para sua revisão com privacidade 100% local.
+            </p>
+
+            <div class="step-highlight-box">
+              <mat-icon>security</mat-icon>
+              <span>Privacidade por padrão: seus dados financeiros não são usados para treinar IAs públicas.</span>
+            </div>
+
+            <div class="step-cta-center">
+              <a mat-flat-button color="primary" routerLink="/import" (click)="onDismiss()" class="primary-step-btn">
+                <mat-icon>upload_file</mat-icon>
+                Ir para Importação de Extratos
+              </a>
+            </div>
+          </div>
+        }
+
+        @case (3) {
+          <div class="step-content">
+            <div class="step-icon-wrapper info">
+              <mat-icon>pie_chart</mat-icon>
+            </div>
+            <h2 id="wizard-title" class="step-title">Descubra quanto você pode gastar hoje</h2>
+            <p class="step-description">
+              O diferencial do Nosso Dinheirinho é calcular seu limite diário seguro de gastos. Abrindo o ciclo de planejamento mensal, você sabe exatamente se pode fazer uma compra hoje sem estourar o fim do mês.
+            </p>
+
+            <div class="step-cta-center">
+              <a mat-flat-button color="primary" routerLink="/planning" (click)="onDismiss()" class="primary-step-btn">
+                <mat-icon>event_note</mat-icon>
+                Conhecer o Planejamento Mensal
+              </a>
+            </div>
+          </div>
+        }
+      }
+    </div>
+
+    <div class="wizard-footer">
+      @if (currentStep() > 1) {
+        <button mat-button (click)="prevStep()" class="nav-btn">
+          <mat-icon>chevron_left</mat-icon>
+          Voltar
+        </button>
+      } @else {
+        <button mat-button (click)="onDismiss()" class="skip-btn">
+          Pular introdução
+        </button>
+      }
+
+      <div class="footer-spacer"></div>
+
+      @if (currentStep() < totalSteps) {
+        <button mat-flat-button color="primary" (click)="nextStep()" class="next-btn">
+          Avançar
+          <mat-icon iconPositionEnd>chevron_right</mat-icon>
+        </button>
+      } @else {
+        <button mat-button (click)="onDismiss()" class="finish-btn">
+          Ir para o Dashboard
+        </button>
+      }
+    </div>
+  </div>
+</div>
