@@ -3,9 +3,6 @@
 // que precise ser coerente entre desktop e mobile. Componentes devem referenciar
 // estes tokens via var(--space-*) / var(--touch-target-min), nao valores hardcoded.
 
-// Espacamento — escala semantica reutilizavel entre componentes.
-// Regra: use o token mais proximo do contexto (ex.: padding de card = --space-md ou --space-lg),
-// nao o valor numerico. Trocar a escala aqui propaga para todo o app.
 :root {
   --space-xs: 4px;
   --space-sm: 8px;
@@ -17,4 +14,55 @@
   // Touch target minimo. 48dp cobre Apple HIG (44pt) e Material Design 3 (48dp).
   // Use em altura de botoes, items de lista, tab bar, swipe action handles.
   --touch-target-min: 48px;
+
+  // Canvas e Superfícies Semânticas (Modo Claro)
+  --app-canvas-bg: #f8fafc;
+  --app-card-bg: #ffffff;
+  --app-card-border: rgba(148, 163, 184, 0.22);
+  --app-card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
+  --app-card-hover-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.06), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+
+  // Topbar e Navegação (Modo Claro)
+  --app-topbar-bg: rgba(255, 255, 255, 0.85);
+  --app-topbar-border: rgba(226, 232, 240, 0.9);
+  --app-sidenav-bg: #ffffff;
+  --app-sidenav-border: rgba(226, 232, 240, 0.9);
+
+  // Cores Semânticas de Fluxo Financeiro (Modo Claro)
+  --fintech-income: #16a34a;
+  --fintech-income-bg: rgba(22, 163, 74, 0.1);
+  --fintech-expense: #dc2626;
+  --fintech-expense-bg: rgba(220, 38, 38, 0.1);
+  --fintech-pending: #d97706;
+  --fintech-pending-bg: rgba(217, 119, 6, 0.1);
+  --fintech-info: #0284c7;
+  --fintech-info-bg: rgba(2, 132, 199, 0.1);
+}
+
+html.dark-theme,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  // Canvas e Superfícies Semânticas (Modo Escuro)
+  --app-canvas-bg: #0b0f17;
+  --app-card-bg: #131b26;
+  --app-card-border: rgba(255, 255, 255, 0.09);
+  --app-card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+  --app-card-hover-shadow: 0 10px 20px -3px rgba(0, 0, 0, 0.5);
+
+  // Topbar e Navegação (Modo Escuro)
+  --app-topbar-bg: rgba(16, 22, 32, 0.85);
+  --app-topbar-border: rgba(255, 255, 255, 0.08);
+  --app-sidenav-bg: #101620;
+  --app-sidenav-border: rgba(255, 255, 255, 0.08);
+
+  // Cores Semânticas de Fluxo Financeiro (Modo Escuro com luminescência equilibrada)
+  --fintech-income: #4ade80;
+  --fintech-income-bg: rgba(74, 222, 128, 0.14);
+  --fintech-expense: #f87171;
+  --fintech-expense-bg: rgba(248, 113, 113, 0.14);
+  --fintech-pending: #fbbf24;
+  --fintech-pending-bg: rgba(251, 191, 36, 0.14);
+  --fintech-info: #38bdf8;
+  --fintech-info-bg: rgba(56, 189, 248, 0.14);
 }

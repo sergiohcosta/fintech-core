@@ -331,75 +331,199 @@
 
         }
 
-        <!-- ═══ BLOCO: Radar de Faturas e Cartões ═══ -->
+        <!-- ═══ BLOCO: Sinopse por Cartão de Crédito ═══ -->
         @if (creditCardAccounts().length > 0) {
-          <section class="dashboard-section invoices-radar-section" aria-labelledby="invoices-heading">
+          <section class="dashboard-section card-synopsis-section" aria-labelledby="cards-heading">
             <div class="section-header-row">
               <div>
-                <h3 id="invoices-heading" class="section-heading">Faturas e Cartões</h3>
-                <span class="section-subheading">Acompanhamento de faturas em aberto e datas de vencimento</span>
+                <h3 id="cards-heading" class="section-heading">Cartões de Crédito</h3>
+                <span class="section-subheading">Sinopse de faturas, limites e acompanhamento por cartão</span>
               </div>
-              <a mat-button routerLink="/invoices" class="see-all-link">Ver todas →</a>
+              <a mat-button routerLink="/invoices" class="see-all-link">Ver todas as faturas →</a>
             </div>
 
-            @if (creditCardInvoices().length === 0) {
-              <mat-card class="empty-invoices-card">
-                <mat-card-content>
-                  <mat-icon>credit_score</mat-icon>
-                  <span>Nenhuma fatura em aberto nos seus cartões cadastrados.</span>
-                </mat-card-content>
-              </mat-card>
-            } @else {
-              <div class="invoices-radar-grid">
-                @for (inv of creditCardInvoices(); track inv.id) {
-                  <mat-card class="invoice-radar-card" [class.closed]="inv.status === 'CLOSED'">
-                    <mat-card-content>
-                      <div class="invoice-card-top">
-                        <div class="card-name-group">
-                          <div class="card-icon-avatar">
-                            <mat-icon>credit_card</mat-icon>
-                          </div>
-                          <div class="card-name-wrap">
-                            <span class="card-account-name">{{ inv.accountName }}</span>
-                            <span class="card-invoice-label">{{ inv.label }}</span>
-                          </div>
+            <div class="card-synopsis-grid">
+              @for (card of cardSynopses(); track card.account.id) {
+                <mat-card class="card-synopsis-card" [class.urgent-card]="card.isClosedWaitingPayment">
+                  <mat-card-content>
+                    <!-- Topo do Card: Identificação do Cartão e Status -->
+                    <div class="synopsis-top-bar">
+                      <div class="card-identity">
+                        <div class="card-color-avatar" [style.background-color]="card.account.color || '#4f46e5'">
+                          <mat-icon>credit_card</mat-icon>
                         </div>
-                        <span class="invoice-status-chip" [class.status-closed]="inv.status === 'CLOSED'">
-                          {{ inv.status === 'CLOSED' ? 'Fechada' : 'Aberta' }}
-                        </span>
+                        <div class="card-name-meta">
+                          <span class="card-name">
+                            {{ card.account.name }}
+                            @if (card.account.creditCardDetails?.lastFourDigits) {
+                              <span class="card-digits">•••• {{ card.account.creditCardDetails?.lastFourDigits }}</span>
+                            }
+                          </span>
+                          <span class="card-cycle-dates">
+                            @if (card.closingDay && card.dueDay) {
+                              Fecha dia {{ card.closingDay }} • Vence dia {{ card.dueDay }}
+                            } @else {
+                              Cartão de Crédito
+                            }
+                          </span>
+                        </div>
                       </div>
 
-                      <div class="invoice-card-amount-row">
-                        <div class="invoice-amount-block">
-                          <span class="amount-label">Total da Fatura</span>
-                          <span class="amount-val expense">{{ formatMoney(inv.totalAmount) }}</span>
-                        </div>
-                        <div class="invoice-dates-block">
-                          @if (inv.status === 'CLOSED') {
-                            <span class="date-highlight warning">Vence em {{ inv.dueDate | date:'dd/MM/yyyy':'':'pt-BR' }}</span>
+                      <!-- Status Badge -->
+                      <div class="card-status-badge-wrap">
+                        @if (card.isClosedWaitingPayment) {
+                          @if (card.isOverdue) {
+                            <span class="synopsis-badge badge-overdue">
+                              <mat-icon>error</mat-icon> Fatura Vencida
+                            </span>
+                          } @else if (card.isDueSoon) {
+                            <span class="synopsis-badge badge-due-soon">
+                              <mat-icon>warning</mat-icon> Vence em breve
+                            </span>
                           } @else {
-                            <span class="date-highlight">Fecha em {{ inv.closingDate | date:'dd/MM/yyyy':'':'pt-BR' }}</span>
-                            <span class="due-sub">Vence em {{ inv.dueDate | date:'dd/MM/yyyy':'':'pt-BR' }}</span>
+                            <span class="synopsis-badge badge-closed">
+                              <mat-icon>priority_high</mat-icon> Fatura Fechada
+                            </span>
                           }
-                        </div>
-                      </div>
-
-                      <div class="invoice-card-actions">
-                        <a mat-button [routerLink]="['/invoices', inv.id]" class="detail-btn">
-                          Ver Detalhes
-                        </a>
-                        @if (inv.status === 'CLOSED') {
-                          <a mat-flat-button color="primary" [routerLink]="['/invoices', inv.id]" class="pay-btn">
-                            <mat-icon>payment</mat-icon>
-                            Pagar
-                          </a>
+                        } @else if (card.isOpenInvoice) {
+                          <span class="synopsis-badge badge-open">
+                            <mat-icon>schedule</mat-icon> Fatura Aberta
+                          </span>
+                        } @else {
+                          <span class="synopsis-badge badge-clean">
+                            <mat-icon>check_circle</mat-icon> Em dia
+                          </span>
                         }
                       </div>
-                    </mat-card-content>
-                  </mat-card>
-                }
-              </div>
-            }
+                    </div>
+
+                    <mat-divider class="synopsis-divider"></mat-divider>
+
+                    <!-- Seção Principal: Fatura em Destaque -->
+                    <div class="synopsis-featured-invoice">
+                      @if (card.featuredInvoice; as inv) {
+                        <div class="featured-invoice-header">
+                          <span class="invoice-label-title">
+                            {{ card.isClosedWaitingPayment ? 'Fatura Fechada' : 'Fatura Atual (em aberto)' }}
+                            <span class="invoice-ref-label">({{ inv.label }})</span>
+                          </span>
+                          <span class="invoice-date-pill" [class.urgent]="card.isClosedWaitingPayment && (card.isOverdue || card.isDueSoon)">
+                            @if (card.isClosedWaitingPayment) {
+                              Vence em {{ inv.dueDate | date:'dd/MM/yyyy':'':'pt-BR' }}
+                            } @else {
+                              Fecha em {{ inv.closingDate | date:'dd/MM/yyyy':'':'pt-BR' }}
+                            }
+                          </span>
+                        </div>
+
+                        <div class="featured-invoice-amount-row">
+                          <div class="featured-amount-box">
+                            <span class="amount-caption">Total da fatura</span>
+                            <div class="featured-amount" [class.expense]="inv.totalAmount > 0">
+                              {{ formatMoney(inv.totalAmount) }}
+                            </div>
+                          </div>
+
+                          @if (card.isClosedWaitingPayment && card.nextOpenInvoice; as nextInv) {
+                            <div class="next-invoice-mini">
+                              <span class="next-caption">Próxima fatura (aberta)</span>
+                              <span class="next-amount">{{ formatMoney(nextInv.totalAmount) }}</span>
+                              <span class="next-date">Fecha em {{ nextInv.closingDate | date:'dd/MM':'':'pt-BR' }}</span>
+                            </div>
+                          }
+                        </div>
+                      } @else {
+                        <div class="no-invoice-box">
+                          <mat-icon class="no-inv-icon">task_alt</mat-icon>
+                          <div class="no-inv-text">
+                            <span class="no-inv-title">Sem fatura em aberto</span>
+                            <span class="no-inv-sub">Nenhum lançamento pendente no ciclo atual deste cartão.</span>
+                          </div>
+                        </div>
+                      }
+                    </div>
+
+                    <!-- Seção de Limite e Saldo Total Comprometido -->
+                    <div class="synopsis-limit-section">
+                      @if (card.limitAmount && card.limitAmount > 0) {
+                        <div class="limit-labels-row">
+                          <span class="limit-label-left">
+                            Disponível: <strong>{{ formatMoney(card.availableLimit) }}</strong>
+                          </span>
+                          <span class="limit-label-right">
+                            Limite: {{ formatMoney(card.limitAmount) }}
+                          </span>
+                        </div>
+                        <mat-progress-bar
+                          mode="determinate"
+                          [value]="card.limitUsagePercentage"
+                          class="limit-progress-bar"
+                          [class.high-usage]="(card.limitUsagePercentage ?? 0) >= 80"
+                          [class.over-limit]="(card.limitUsagePercentage ?? 0) >= 100">
+                        </mat-progress-bar>
+                        <div class="limit-sub-row">
+                          <span class="total-committed">
+                            Total comprometido: {{ formatMoney(card.usedBalance) }}
+                          </span>
+                          <span class="usage-pct">{{ card.limitUsagePercentage }}% usado</span>
+                        </div>
+                      } @else {
+                        <div class="limit-fallback-row">
+                          <span class="total-committed-only">
+                            Total acumulado no cartão: <strong>{{ formatMoney(card.usedBalance) }}</strong>
+                          </span>
+                          <a [routerLink]="['/accounts', card.account.id, 'edit']" class="setup-limit-link">
+                            Configurar limite →
+                          </a>
+                        </div>
+                      }
+                    </div>
+
+                    <!-- Ações Rápidas do Cartão -->
+                    <div class="synopsis-actions-bar">
+                      @if (card.isClosedWaitingPayment && card.featuredInvoice; as inv) {
+                        <button
+                          mat-flat-button
+                          color="primary"
+                          type="button"
+                          (click)="onPayInvoice(inv)"
+                          class="action-pay-btn">
+                          <mat-icon>payment</mat-icon>
+                          Pagar Fatura
+                        </button>
+                        <a mat-stroked-button [routerLink]="['/invoices', inv.id]" class="action-detail-btn">
+                          Detalhes
+                        </a>
+                      } @else if (card.featuredInvoice; as inv) {
+                        <a mat-stroked-button [routerLink]="['/invoices', inv.id]" class="action-view-btn">
+                          <mat-icon>visibility</mat-icon>
+                          Ver Fatura
+                        </a>
+                        <a mat-button [routerLink]="['/transactions/new']" [queryParams]="{ accountId: card.account.id }" class="action-add-btn">
+                          <mat-icon>add</mat-icon>
+                          Lançar no Cartão
+                        </a>
+                      } @else {
+                        <a mat-stroked-button [routerLink]="['/invoices']" [queryParams]="{ accountId: card.account.id }" class="action-view-btn">
+                          <mat-icon>receipt_long</mat-icon>
+                          Faturas
+                        </a>
+                        <a mat-button [routerLink]="['/transactions/new']" [queryParams]="{ accountId: card.account.id }" class="action-add-btn">
+                          <mat-icon>add</mat-icon>
+                          Lançar no Cartão
+                        </a>
+                      }
+
+                      <span class="spacer"></span>
+
+                      <a mat-icon-button [routerLink]="['/invoices']" [queryParams]="{ accountId: card.account.id }" matTooltip="Histórico de faturas deste cartão" aria-label="Histórico de faturas">
+                        <mat-icon>history</mat-icon>
+                      </a>
+                    </div>
+                  </mat-card-content>
+                </mat-card>
+              }
+            </div>
           </section>
         }
 

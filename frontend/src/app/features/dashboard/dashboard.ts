@@ -12,6 +12,8 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatListModule } from '@angular/material/list';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 import { DashboardService } from '../../core/api/dashboard/dashboard.service';
 import { TransactionsService } from '../../core/api/transactions/transactions.service';
@@ -29,6 +31,24 @@ import {
 } from '../../core/api/fintechSaaSAPI.schemas';
 import { DEFAULT_SUMMARY } from '../planning/budget-cycle-current/budget-cycle.utils';
 import { WelcomeWizardComponent } from './welcome-wizard/welcome-wizard';
+import { InvoicePayDialogComponent, InvoicePayDialogResult } from '../invoice/invoice-pay-dialog/invoice-pay-dialog';
+
+export interface CardSynopsis {
+  account: AccountResponse;
+  featuredInvoice?: InvoiceResponseDTO;
+  nextOpenInvoice?: InvoiceResponseDTO;
+  isClosedWaitingPayment: boolean;
+  isOpenInvoice: boolean;
+  hasInvoices: boolean;
+  limitAmount?: number | null;
+  usedBalance: number;
+  availableLimit?: number | null;
+  limitUsagePercentage?: number | null;
+  closingDay?: number;
+  dueDay?: number;
+  isDueSoon: boolean;
+  isOverdue: boolean;
+}
 
 @Component({
   selector: 'app-dashboard',
@@ -44,6 +64,8 @@ import { WelcomeWizardComponent } from './welcome-wizard/welcome-wizard';
     MatProgressBarModule,
     MatTooltipModule,
     MatListModule,
+    MatDialogModule,
+    MatSnackBarModule,
     WelcomeWizardComponent,
   ],
   templateUrl: './dashboard.html',
@@ -57,6 +79,8 @@ export class DashboardComponent {
   private transactionEvents = inject(TransactionEventsService);
   private authService = inject(AuthService);
   private planningService = inject(PlanningService);
+  private dialog = inject(MatDialog);
+  private snackBar = inject(MatSnackBar);
 
   private now = new Date();
   selectedYear = signal(this.now.getFullYear());
@@ -157,6 +181,99 @@ export class DashboardComponent {
   );
 
   creditCardInvoices = toSignal(this.invoices$, { initialValue: [] as InvoiceResponseDTO[] });
+
+  // Sinopse consolidada por Cartão de Crédito
+  cardSynopses = computed<CardSynopsis[]>(() => {
+    const cards = this.creditCardAccounts();
+    const allInvoices = this.creditCardInvoices();
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const threeDays = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 3);
+    const threeDaysStr = `${threeDays.getFullYear()}-${String(threeDays.getMonth() + 1).padStart(2, '0')}-${String(threeDays.getDate()).padStart(2, '0')}`;
+
+    return cards.map(card => {
+      const cardInvoices = allInvoices.filter(inv => inv.accountId === card.id);
+
+      // Prioridade máxima: fatura FECHADA (aguardando quitação)
+      const closedInvoice = cardInvoices.find(inv => inv.status === 'CLOSED');
+      // Fatura ABERTA corrente
+      const openInvoice = cardInvoices.find(inv => inv.status === 'OPEN');
+
+      let featuredInvoice: InvoiceResponseDTO | undefined;
+      let nextOpenInvoice: InvoiceResponseDTO | undefined;
+      let isClosedWaitingPayment = false;
+      let isOpenInvoice = false;
+
+      if (closedInvoice) {
+        featuredInvoice = closedInvoice;
+        isClosedWaitingPayment = true;
+        nextOpenInvoice = openInvoice;
+      } else if (openInvoice) {
+        featuredInvoice = openInvoice;
+        isOpenInvoice = true;
+      }
+
+      const hasInvoices = !!featuredInvoice;
+      const limitAmount = card.creditCardDetails?.limitAmount ?? null;
+      const usedBalance = Math.max(0, card.balance ?? 0);
+      let availableLimit: number | null = null;
+      let limitUsagePercentage: number | null = null;
+
+      if (limitAmount !== null && limitAmount > 0) {
+        availableLimit = Math.max(0, limitAmount - usedBalance);
+        limitUsagePercentage = Math.min(100, Math.round((usedBalance / limitAmount) * 100));
+      }
+
+      let isDueSoon = false;
+      let isOverdue = false;
+      if (featuredInvoice?.dueDate && isClosedWaitingPayment) {
+        if (featuredInvoice.dueDate < todayStr) {
+          isOverdue = true;
+        } else if (featuredInvoice.dueDate <= threeDaysStr) {
+          isDueSoon = true;
+        }
+      }
+
+      return {
+        account: card,
+        featuredInvoice,
+        nextOpenInvoice,
+        isClosedWaitingPayment,
+        isOpenInvoice,
+        hasInvoices,
+        limitAmount,
+        usedBalance,
+        availableLimit,
+        limitUsagePercentage,
+        closingDay: card.creditCardDetails?.closingDay,
+        dueDay: card.creditCardDetails?.dueDay,
+        isDueSoon,
+        isOverdue,
+      };
+    });
+  });
+
+  onPayInvoice(invoice: InvoiceResponseDTO): void {
+    const dialogRef = this.dialog.open(InvoicePayDialogComponent, {
+      data: { invoice },
+      width: '480px',
+    });
+    dialogRef.afterClosed().subscribe((result: InvoicePayDialogResult | undefined) => {
+      if (!result) return;
+      this.invoicesService.payInvoice(invoice.id, {
+        sourceAccountId: result.sourceAccountId,
+        paymentDate: result.paymentDate,
+      }).subscribe({
+        next: () => {
+          this.snackBar.open('Fatura paga com sucesso!', 'Fechar', { duration: 3000 });
+          this.transactionEvents.notifyTransactionCreated();
+        },
+        error: () => {
+          this.snackBar.open('Erro ao pagar fatura.', 'Fechar', { duration: 5000 });
+        },
+      });
+    });
+  }
 
   // Wizard de Boas-Vindas do Dia Zero
   private getInitialWelcomeWizardState(): boolean {

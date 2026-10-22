@@ -3,6 +3,7 @@ import { provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideZonelessChangeDetection, signal, LOCALE_ID } from '@angular/core';
+import { MatDialog } from '@angular/material/dialog';
 import { of, throwError } from 'rxjs';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
@@ -279,22 +280,28 @@ describe('DashboardComponent', () => {
     });
   });
 
-  describe('Radar de Faturas e Cartões', () => {
-    it('carrega e filtra faturas em aberto para contas do tipo CREDIT_CARD', async () => {
+  describe('Radar de Faturas e Cartões (Sinopse por Cartão)', () => {
+    it('carrega e gera sinopse detalhada por cartão com fatura aberta e limites', async () => {
       const mockCreditCard: AccountResponse = {
         id: 'cc-1',
-        name: 'Nubank Roxinho',
+        name: 'Nubank Ultravioleta',
         type: 'CREDIT_CARD',
         balance: 450,
         active: true,
         countInLiquidBalance: false,
         countInNetWorth: true,
+        creditCardDetails: {
+          limitAmount: 5000,
+          closingDay: 25,
+          dueDay: 2,
+          lastFourDigits: '9876',
+        },
       };
 
       const mockInvoice: InvoiceResponseDTO = {
         id: 'inv-1',
         accountId: 'cc-1',
-        accountName: 'Nubank Roxinho',
+        accountName: 'Nubank Ultravioleta',
         referenceMonth: 10,
         referenceYear: 2026,
         label: 'Outubro/2026',
@@ -318,6 +325,118 @@ describe('DashboardComponent', () => {
       expect(component.creditCardInvoices().length).toBe(1);
       expect(component.creditCardInvoices()[0].id).toBe('inv-1');
       expect(component.creditCardInvoices()[0].totalAmount).toBe(850.75);
+
+      // Verificação da Sinopse por Cartão
+      const synopses = component.cardSynopses();
+      expect(synopses.length).toBe(1);
+      const synopsis = synopses[0];
+      expect(synopsis.account.id).toBe('cc-1');
+      expect(synopsis.featuredInvoice?.id).toBe('inv-1');
+      expect(synopsis.isOpenInvoice).toBe(true);
+      expect(synopsis.isClosedWaitingPayment).toBe(false);
+      expect(synopsis.limitAmount).toBe(5000);
+      expect(synopsis.usedBalance).toBe(450);
+      expect(synopsis.availableLimit).toBe(4550);
+      expect(synopsis.limitUsagePercentage).toBe(9); // 450 / 5000 = 9%
+      expect(synopsis.closingDay).toBe(25);
+      expect(synopsis.dueDay).toBe(2);
+    });
+
+    it('prioriza fatura FECHADA aguardando pagamento e expõe próxima fatura aberta como preview', async () => {
+      const mockCreditCard: AccountResponse = {
+        id: 'cc-2',
+        name: 'XP Visa Infinite',
+        type: 'CREDIT_CARD',
+        balance: 3200,
+        active: true,
+        countInLiquidBalance: false,
+        countInNetWorth: true,
+        creditCardDetails: {
+          limitAmount: 10000,
+          closingDay: 15,
+          dueDay: 22,
+        },
+      };
+
+      const closedInvoice: InvoiceResponseDTO = {
+        id: 'inv-closed',
+        accountId: 'cc-2',
+        accountName: 'XP Visa Infinite',
+        referenceMonth: 9,
+        referenceYear: 2026,
+        label: 'Setembro/2026',
+        closingDate: '2026-09-15',
+        dueDate: '2026-09-22',
+        status: 'CLOSED',
+        totalAmount: 2100,
+        transactionCount: 12,
+      };
+
+      const openInvoice: InvoiceResponseDTO = {
+        id: 'inv-open',
+        accountId: 'cc-2',
+        accountName: 'XP Visa Infinite',
+        referenceMonth: 10,
+        referenceYear: 2026,
+        label: 'Outubro/2026',
+        closingDate: '2026-10-15',
+        dueDate: '2026-10-22',
+        status: 'OPEN',
+        totalAmount: 1100,
+        transactionCount: 5,
+      };
+
+      const accountsService = TestBed.inject(AccountsService);
+      const invoicesService = TestBed.inject(InvoicesService);
+
+      vi.spyOn(accountsService, 'listAccounts').mockReturnValue(of([mockCreditCard]) as any);
+      vi.spyOn(invoicesService, 'listInvoices').mockReturnValue(of([closedInvoice, openInvoice]) as any);
+
+      TestBed.inject(TransactionEventsService).notifyTransactionCreated();
+      await fixture.whenStable();
+
+      const synopses = component.cardSynopses();
+      expect(synopses.length).toBe(1);
+      const card = synopses[0];
+      expect(card.featuredInvoice?.id).toBe('inv-closed');
+      expect(card.isClosedWaitingPayment).toBe(true);
+      expect(card.nextOpenInvoice?.id).toBe('inv-open');
+      expect(card.availableLimit).toBe(6800); // 10000 - 3200
+    });
+
+    it('onPayInvoice abre o diálogo e efetua o pagamento da fatura com notificação', async () => {
+      const invoicesService = TestBed.inject(InvoicesService);
+      const eventService = TestBed.inject(TransactionEventsService);
+
+      const notifySpy = vi.spyOn(eventService, 'notifyTransactionCreated');
+      const paySpy = vi.spyOn(invoicesService, 'payInvoice').mockReturnValue(of({ id: 'inv-closed', status: 'PAID' } as any));
+      const dialogRefSpy = {
+        afterClosed: vi.fn().mockReturnValue(of({ sourceAccountId: 'acc-1', paymentDate: '2026-09-22' })),
+      };
+      const dialogSpy = vi.spyOn((component as any).dialog, 'open').mockReturnValue(dialogRefSpy as any);
+
+      const targetInvoice: InvoiceResponseDTO = {
+        id: 'inv-closed',
+        accountId: 'cc-2',
+        accountName: 'XP Visa Infinite',
+        referenceMonth: 9,
+        referenceYear: 2026,
+        label: 'Setembro/2026',
+        closingDate: '2026-09-15',
+        dueDate: '2026-09-22',
+        status: 'CLOSED',
+        totalAmount: 2100,
+        transactionCount: 12,
+      };
+
+      component.onPayInvoice(targetInvoice);
+
+      expect(dialogSpy).toHaveBeenCalled();
+      expect(paySpy).toHaveBeenCalledWith('inv-closed', {
+        sourceAccountId: 'acc-1',
+        paymentDate: '2026-09-22',
+      });
+      expect(notifySpy).toHaveBeenCalled();
     });
   });
 
