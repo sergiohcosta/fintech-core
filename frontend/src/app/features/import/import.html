@@ -30,12 +30,20 @@
     } @else {
       <mat-card appearance="outlined" class="upload-card">
         <mat-card-content>
-          <p class="hint">
-            Envie a foto de um comprovante (recibo, PIX, nota), um extrato CSV, um arquivo OFX do
-            seu banco ou um PDF com texto (fatura/extrato gerado digitalmente — PDF escaneado ainda
-            não é suportado). Vamos extrair valor, data e descrição automaticamente — você confere
-            antes de lançar.
-          </p>
+          <div class="upload-formats-row">
+            <div class="format-pill">
+              <mat-icon>receipt_long</mat-icon>
+              <span>Extratos OFX & CSV</span>
+            </div>
+            <div class="format-pill">
+              <mat-icon>credit_card</mat-icon>
+              <span>Faturas em PDF</span>
+            </div>
+            <div class="format-pill">
+              <mat-icon>photo_camera</mat-icon>
+              <span>Comprovantes & Pix</span>
+            </div>
+          </div>
 
           <div
             class="dropzone"
@@ -51,7 +59,7 @@
                 <mat-icon>close</mat-icon> Remover
               </button>
             } @else {
-              <p>Arraste um arquivo aqui ou</p>
+              <p class="dropzone-text">Arraste seu arquivo aqui ou</p>
               <label class="file-input-label">
                 <input
                   type="file"
@@ -63,6 +71,10 @@
               </label>
             }
           </div>
+
+          <p class="hint center upload-disclaimer">
+            Extração automática e privada de valor, data e descrição. Nada é lançado sem sua conferência.
+          </p>
 
           @if (uploading()) {
             <mat-progress-bar mode="indeterminate" />

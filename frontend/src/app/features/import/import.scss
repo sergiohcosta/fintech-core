@@ -1,27 +1,37 @@
+@use '../../../styles/breakpoints' as bp;
+
 .import-page {
-  max-width: 900px;
+  max-width: 1040px;
   margin: 0 auto;
-  padding: 1rem;
+  padding: var(--space-lg, 24px) var(--space-md, 16px);
 }
 
 .page-title-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-lg, 24px);
 }
 
 .page-title {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 1.5rem;
+  gap: var(--space-sm, 8px);
+  font-size: 1.6rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
   margin-bottom: 0;
+  color: var(--mat-sys-on-surface);
+
+  mat-icon {
+    color: var(--mat-sys-primary);
+  }
 }
 
 .hint {
-  color: var(--mat-sys-on-surface-variant, rgba(0, 0, 0, 0.6));
-  font-size: 0.9rem;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
+  line-height: 1.5;
 
   &.center {
     text-align: center;
@@ -31,12 +41,53 @@
 .upload-card,
 .failed-card,
 .conflict-card,
-.review-card {
-  margin-bottom: 1rem;
+.review-card,
+.single-receipt-card {
+  margin-bottom: var(--space-lg, 24px);
+  border-radius: 16px;
+  border: 1px solid var(--mat-sys-outline-variant);
+  background: var(--app-card-bg, var(--mat-sys-surface));
 }
 
-.conflict-card {
+.conflict-card,
+.failed-card {
   text-align: center;
+  padding: var(--space-md, 16px);
+
+  .failed-icon {
+    font-size: 3rem;
+    width: 3rem;
+    height: 3rem;
+    margin-bottom: var(--space-sm, 8px);
+  }
+}
+
+.upload-formats-row {
+  display: flex;
+  gap: var(--space-sm, 8px);
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: var(--space-md, 16px);
+
+  .format-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: var(--mat-sys-surface-container-high);
+    border: 1px solid var(--mat-sys-outline-variant);
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--mat-sys-on-surface-variant);
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      color: var(--mat-sys-primary);
+    }
+  }
 }
 
 .dropzone {
@@ -44,30 +95,40 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  padding: 2rem;
-  border: 2px dashed var(--mat-sys-outline, #b0b0b0);
-  border-radius: 12px;
+  gap: var(--space-sm, 8px);
+  padding: var(--space-xl, 36px) var(--space-md, 16px);
+  border: 2px dashed var(--mat-sys-outline-variant);
+  border-radius: 16px;
   text-align: center;
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
+  background: var(--mat-sys-surface-container-low);
+  transition: background-color 180ms ease, border-color 180ms ease;
 
   &.dragging {
-    border-color: var(--mat-sys-primary, #3f51b5);
-    background-color: rgba(63, 81, 181, 0.06);
+    border-color: var(--mat-sys-primary);
+    background-color: color-mix(in srgb, var(--mat-sys-primary) 8%, var(--mat-sys-surface));
   }
 
   .dropzone-icon {
     font-size: 3rem;
     width: 3rem;
     height: 3rem;
-    opacity: 0.6;
+    color: var(--mat-sys-primary);
+    opacity: 0.85;
+  }
+
+  .dropzone-text {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--mat-sys-on-surface);
   }
 
   .file-name {
     font-weight: 600;
     word-break: break-all;
+    color: var(--mat-sys-primary);
+    font-size: 1rem;
+    margin: 0;
   }
 }
 
@@ -75,21 +136,16 @@
   cursor: pointer;
 }
 
-.failed-card {
-  text-align: center;
-
-  .failed-icon {
-    font-size: 3rem;
-    width: 3rem;
-    height: 3rem;
-  }
+.upload-disclaimer {
+  margin-top: var(--space-md, 16px);
+  font-size: 0.8rem;
 }
 
 .review-flag {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  color: var(--mat-sys-error, #b00020);
+  color: var(--mat-sys-error);
   font-size: 0.85rem;
   margin-bottom: 0.5rem;
 }
@@ -97,13 +153,13 @@
 .field-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 0.75rem;
+  gap: var(--space-md, 16px);
 
   .span-2 {
     grid-column: 1 / -1;
   }
 
-  @media (max-width: 600px) {
+  @include bp.compact {
     grid-template-columns: 1fr;
 
     .span-2 {
@@ -112,22 +168,26 @@
   }
 }
 
-// Badge de confiança por campo — baixa confiança em cor de atenção.
+// Badge de confiança por campo
 .conf-badge {
   font-size: 0.72rem;
   font-weight: 600;
-  padding: 0.1rem 0.4rem;
+  padding: 2px 8px;
   border-radius: 999px;
   white-space: nowrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
 
   &.high {
-    color: #1b5e20;
-    background-color: rgba(46, 125, 50, 0.12);
+    color: var(--fintech-income, #10b981);
+    background-color: color-mix(in srgb, var(--fintech-income, #10b981) 14%, var(--mat-sys-surface));
+    border: 1px solid color-mix(in srgb, var(--fintech-income, #10b981) 28%, transparent);
   }
 
   &.low {
-    color: #b00020;
-    background-color: rgba(176, 0, 32, 0.12);
+    color: var(--mat-sys-error);
+    background-color: color-mix(in srgb, var(--mat-sys-error) 14%, var(--mat-sys-surface));
+    border: 1px solid color-mix(in srgb, var(--mat-sys-error) 28%, transparent);
   }
 }
 
@@ -135,58 +195,86 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
+  gap: var(--space-sm, 8px);
+  margin-top: var(--space-md, 16px);
 
   .commit-count {
     margin-right: auto;
+    font-weight: 500;
   }
 }
 
-// --- Revisão em lote (Fase 2 metade B) ---
+// --- Revisão em lote ---
 
 .selection-bar {
   display: flex;
-  margin-bottom: 0.25rem;
+  margin-bottom: var(--space-xs, 4px);
 }
 
 .bulk-toolbar {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.75rem;
-  padding: 0.5rem 0.75rem;
-  margin-bottom: 0.5rem;
-  border-radius: 8px;
-  background-color: rgba(63, 81, 181, 0.08);
+  gap: var(--space-md, 16px);
+  padding: var(--space-sm, 12px) var(--space-md, 16px);
+  margin-bottom: var(--space-md, 16px);
+  border-radius: 12px;
+  background-color: var(--mat-sys-surface-container-high);
+  border: 1px solid var(--mat-sys-outline-variant);
 
   .bulk-count {
     font-weight: 600;
     font-size: 0.9rem;
+    color: var(--mat-sys-primary);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
   }
 
   .bulk-field {
     min-width: 180px;
+    margin: 0;
   }
 }
 
 .review-table {
   width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+
+  th.mat-header-cell {
+    font-weight: 600;
+    color: var(--mat-sys-on-surface-variant);
+    font-size: 0.8rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  td.mat-cell {
+    font-size: 0.875rem;
+    color: var(--mat-sys-on-surface);
+  }
+
+  td.mat-column-amount,
+  td.mat-column-transaction_date {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
 
   .cell-field {
     width: 100%;
-    min-width: 130px;
+    min-width: 140px;
   }
 
   .desc-cell {
     max-width: 260px;
+    font-weight: 500;
   }
 
   .actions-cell {
     white-space: nowrap;
   }
 
-  // A linha de detalhe existe sempre (multiTemplateDataRows), mas só ocupa espaço quando expandida.
   .detail-row-collapsed {
     height: 0;
 
@@ -197,22 +285,27 @@
   }
 
   .detail-grid {
-    padding: 0.75rem 0;
+    padding: var(--space-md, 16px) var(--space-sm, 8px);
+    background: var(--mat-sys-surface-container-lowest);
+    border-bottom: 1px solid var(--mat-sys-outline-variant);
   }
 }
 
 .installment-groups-summary {
   display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: var(--space-sm, 8px);
+  margin-bottom: var(--space-sm, 8px);
 }
 
 .group-chip {
   padding: 4px 12px;
   border-radius: 16px;
-  font-size: 0.875rem;
+  font-size: 0.82rem;
+  font-weight: 600;
   background: var(--mat-sys-surface-container);
   color: var(--mat-sys-on-surface);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
 
   &--parceladas {
     background: var(--mat-sys-tertiary-container);
@@ -220,26 +313,49 @@
   }
 }
 
-// --- Layout dedicado: 1 comprovante = 1 transação (protótipo) ---
+// --- Layout de comprovante único ---
 .single-receipt-card {
-  margin-bottom: 1rem;
-
   .single-receipt-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 0.75rem;
-    margin-top: 1rem;
+    gap: var(--space-md, 16px);
+    margin-top: var(--space-md, 16px);
 
     .span-2 {
       grid-column: 1 / -1;
     }
 
-    @media (max-width: 600px) {
+    @include bp.compact {
       grid-template-columns: 1fr;
 
       .span-2 {
         grid-column: 1;
       }
+    }
+  }
+}
+
+@include bp.compact {
+  .import-page {
+    padding: var(--space-md, 16px);
+  }
+
+  .bulk-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+
+    .bulk-field {
+      width: 100%;
+      min-width: 0;
+    }
+  }
+
+  .review-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+
+    button, a {
+      width: 100%;
     }
   }
 }
