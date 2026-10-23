@@ -83,6 +83,7 @@ export class TransactionList implements OnInit {
   readonly rowTrackKey = rowTrackKey;
 
   isCompact = signal(false);
+  loading = signal(false);
   transactions         = signal<TransactionResponseDTO[]>([]);
   accounts             = signal<AccountResponse[]>([]);
   expandedTransactions = signal(new Set<string>());
@@ -407,6 +408,7 @@ export class TransactionList implements OnInit {
     const qp = this.route.snapshot.queryParams as Record<string, string | undefined>;
     const initial = TransactionList.mergeFiltersFromQueryParams(saved, qp);
     this.filters.set(initial);
+    this.loading.set(true);
     forkJoin({
       accounts:     this.accountService.listAccounts(),
       transactions: this.service.listTransactions({
@@ -420,8 +422,12 @@ export class TransactionList implements OnInit {
       next: ({ accounts, transactions }) => {
         this.accounts.set(accounts);
         this.transactions.set(transactions);
+        this.loading.set(false);
       },
-      error: () => this.snackBar.open('Erro ao carregar dados.', 'Fechar', { duration: 5000 }),
+      error: () => {
+        this.snackBar.open('Erro ao carregar dados.', 'Fechar', { duration: 5000 });
+        this.loading.set(false);
+      },
     });
   }
 
@@ -464,7 +470,16 @@ export class TransactionList implements OnInit {
     }
   }
 
+  clearAllFilters(): void {
+    this.clearSelection();
+    const defaults = currentMonthFilters();
+    this.filters.set(defaults);
+    this.saveToStorage(defaults);
+    this.loadTransactions(defaults);
+  }
+
   loadTransactions(f: TransactionFilters = this.filters()): void {
+    this.loading.set(true);
     this.service.listTransactions({
       accountIds: f.accountIds.length > 0 ? f.accountIds : undefined,
       status:    f.statuses[0],
@@ -474,8 +489,14 @@ export class TransactionList implements OnInit {
       // O backend só projeta quando há janela (startDate+endDate); sem período, retorna só reais.
       includeProjected: true,
     }).subscribe({
-      next:  (data) => this.transactions.set(data.map(t => this.withGhostKey(t))),
-      error: () => this.snackBar.open('Erro ao carregar transações.', 'Fechar', { duration: 5000 }),
+      next:  (data) => {
+        this.transactions.set(data.map(t => this.withGhostKey(t)));
+        this.loading.set(false);
+      },
+      error: () => {
+        this.snackBar.open('Erro ao carregar transações.', 'Fechar', { duration: 5000 });
+        this.loading.set(false);
+      },
     });
   }
 

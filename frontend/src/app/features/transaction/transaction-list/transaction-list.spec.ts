@@ -5,7 +5,7 @@ import {
   PeriodGroup, computeMonthChipStates,
 } from './transaction-list.utils';
 import { TransactionList } from './transaction-list';
-import { TransactionFilters } from './transaction-filters/transaction-filters.types';
+import { TransactionFilters, currentMonthFilters } from './transaction-filters/transaction-filters.types';
 
 describe('buildDisplayRows', () => {
   it('cada parcela do mesmo grupo aparece como linha individual', () => {
@@ -270,5 +270,16 @@ describe('TransactionList.mergeFiltersFromQueryParams', () => {
   it('sem params devolve a base inalterada', () => {
     expect(TransactionList.mergeFiltersFromQueryParams({ ...base, accountIds: ['x'] }, {}))
       .toEqual({ ...base, accountIds: ['x'] });
+  });
+
+  it('currentMonthFilters retorna filtros padrão focados no mês corrente', () => {
+    const filters = currentMonthFilters();
+    expect(filters.accountIds).toEqual([]);
+    expect(filters.statuses).toEqual([]);
+    expect(filters.types).toEqual([]);
+    expect(filters.groupByPeriod).toBe(false);
+    expect(filters.groupByInvoice).toBe(false);
+    expect(filters.startDate).toMatch(/^\d{4}-\d{2}-01$/);
+    expect(filters.endDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });

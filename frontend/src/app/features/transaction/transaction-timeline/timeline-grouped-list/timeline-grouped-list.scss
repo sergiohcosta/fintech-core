@@ -22,9 +22,11 @@
     display: flex;
     gap: 12px;
     font-size: 0.85rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
 
     .income {
-      color: var(--mat-sys-primary);
+      color: var(--fintech-income, #10b981);
     }
 
     .expense {
@@ -35,7 +37,7 @@
       font-weight: 600;
 
       &.positive {
-        color: var(--mat-sys-primary);
+        color: var(--fintech-income, #10b981);
       }
     }
   }
@@ -69,10 +71,12 @@
 
   .amount {
     font-weight: 600;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
   }
 
   &.income .amount {
-    color: var(--mat-sys-primary);
+    color: var(--fintech-income, #10b981);
   }
 
   &.expense .amount {

@@ -135,12 +135,27 @@
           aria-hidden="true" tabindex="-1" [matMenuTriggerRestoreFocus]="false"></button>
 
   @if (isCompact()) {
+    @if (loading()) {
+      <mat-progress-bar mode="indeterminate" class="table-loading-bar" />
+    }
     <mat-list class="tx-cards">
       @if (displayRows().length === 0) {
-        <mat-list-item class="empty-state">
-          <mat-icon matListItemIcon>receipt_long</mat-icon>
-          <span matListItemTitle>Nenhuma transação encontrada.</span>
-        </mat-list-item>
+        <div class="empty-state">
+          @if (loading()) {
+            <mat-icon class="spinning">hourglass_empty</mat-icon>
+            <p>Carregando transações...</p>
+          } @else {
+            <mat-icon>receipt_long</mat-icon>
+            <p>Nenhuma transação encontrada.</p>
+            @if (activeFilterChips().length > 0) {
+              <p class="empty-hint">Tente ajustar ou limpar os filtros aplicados.</p>
+              <button mat-stroked-button (click)="clearAllFilters()" class="clear-filters-btn">
+                <mat-icon>filter_alt_off</mat-icon>
+                Limpar filtros
+              </button>
+            }
+          }
+        </div>
       }
 
       <ng-template #transactionCard let-transaction let-group="group" let-expanded="expanded">
@@ -237,6 +252,9 @@
     </mat-list>
   } @else {
   <div class="table-container mat-elevation-z2">
+    @if (loading()) {
+      <mat-progress-bar mode="indeterminate" class="table-loading-bar" />
+    }
     <table mat-table [dataSource]="displayRows()">
 
       <ng-container matColumnDef="select">
@@ -535,8 +553,20 @@
 
       <tr class="mat-row" *matNoDataRow>
         <td class="mat-cell empty-state" [attr.colspan]="displayedColumns.length">
-          <mat-icon>receipt_long</mat-icon>
-          <p>Nenhuma transação encontrada.</p>
+          @if (loading()) {
+            <mat-icon class="spinning">hourglass_empty</mat-icon>
+            <p>Carregando transações...</p>
+          } @else {
+            <mat-icon>receipt_long</mat-icon>
+            <p>Nenhuma transação encontrada.</p>
+            @if (activeFilterChips().length > 0) {
+              <p class="empty-hint">Tente ajustar ou limpar os filtros aplicados.</p>
+              <button mat-stroked-button (click)="clearAllFilters()" class="clear-filters-btn">
+                <mat-icon>filter_alt_off</mat-icon>
+                Limpar filtros
+              </button>
+            }
+          }
         </td>
       </tr>
     </table>

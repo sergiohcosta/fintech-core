@@ -1,13 +1,13 @@
 @use '../../../../../styles/breakpoints' as bp;
 
 .filters-panel {
-  background: #fff;
-  border-bottom: 2px solid #e8f0fe;
+  background: var(--mat-sys-surface, #fff);
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
 }
 
 .filter-section {
   padding: 12px 20px;
-  border-bottom: 1px solid #f1f3f4;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
 
   &:last-of-type {
     border-bottom: none;
@@ -16,11 +16,11 @@
 
 .section-label {
   display: block;
-  font-size: 9px;
-  font-weight: 700;
-  color: #9aa0a6;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--mat-sys-on-surface-variant);
   text-transform: uppercase;
-  letter-spacing: 0.6px;
+  letter-spacing: 0.06em;
   margin-bottom: 8px;
 }
 
@@ -38,14 +38,14 @@
 
 .tipo-status-row {
   display: flex;
-  border-bottom: 1px solid #f1f3f4;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
 
   .filter-section {
     flex: 1;
     border-bottom: none;
 
     &:first-child {
-      border-right: 1px solid #f1f3f4;
+      border-right: 1px solid var(--mat-sys-outline-variant);
     }
   }
 }
@@ -54,25 +54,39 @@
 
 .chip-group {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
 .fchip {
   display: inline-flex;
   align-items: center;
-  border: 1.5px solid #e0e0e0;
-  border-radius: 20px;
-  padding: 4px 12px;
-  font-size: 11px;
-  font-weight: 400;
-  color: #5f6368;
-  background: #fff;
+  justify-content: center;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 9999px;
+  min-height: 36px;
+  padding: 6px 14px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--mat-sys-on-surface-variant);
+  background: var(--mat-sys-surface, #fff);
   cursor: pointer;
   line-height: 1.4;
-  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 
-  &:focus { outline: none; }
+  &:hover {
+    background: var(--mat-sys-surface-container-high);
+    color: var(--mat-sys-on-surface);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: 1px;
+  }
+
+  &:focus:not(:focus-visible) {
+    outline: none;
+  }
 
   &.active {
     font-weight: 600;
@@ -81,34 +95,58 @@
   // Neutro (Todos)
   &:not(.income):not(.expense):not(.pending):not(.paid):not(.cancelled):not(.transfer) {
     &.active {
-      background: #f1f3f4;
-      border-color: #bdc1c6;
-      color: #3c4043;
+      background: var(--mat-sys-secondary-container);
+      border-color: transparent;
+      color: var(--mat-sys-on-secondary-container);
     }
   }
 
   &.expense {
-    &:hover, &.active { background: #fce8e6; border-color: #f28b82; color: #c5221f; }
+    &:hover, &.active {
+      background: rgba(239, 68, 68, 0.12);
+      border-color: rgba(239, 68, 68, 0.35);
+      color: var(--fintech-expense, #dc2626);
+    }
   }
 
   &.income {
-    &:hover, &.active { background: #e6f4ea; border-color: #81c995; color: #1e8e3e; }
+    &:hover, &.active {
+      background: rgba(16, 185, 129, 0.12);
+      border-color: rgba(16, 185, 129, 0.35);
+      color: var(--fintech-income, #16a34a);
+    }
   }
 
   &.pending {
-    &:hover, &.active { background: #fef7e0; border-color: #fbcc64; color: #f29900; }
+    &:hover, &.active {
+      background: rgba(245, 158, 11, 0.12);
+      border-color: rgba(245, 158, 11, 0.35);
+      color: #b45309;
+    }
   }
 
   &.paid {
-    &:hover, &.active { background: #e6f4ea; border-color: #81c995; color: #1e8e3e; }
+    &:hover, &.active {
+      background: rgba(16, 185, 129, 0.12);
+      border-color: rgba(16, 185, 129, 0.35);
+      color: var(--fintech-income, #16a34a);
+    }
   }
 
   &.cancelled {
-    &:hover, &.active { background: #f1f3f4; border-color: #bdc1c6; color: #80868b; }
+    &:hover, &.active {
+      background: var(--mat-sys-surface-container-high);
+      border-color: var(--mat-sys-outline-variant);
+      color: var(--mat-sys-on-surface-variant);
+    }
   }
 
   &.transfer {
-    &:hover, &.active { background: #e8f0fe; border-color: #4285f4; color: #1a73e8; }
+    &:hover, &.active {
+      background: rgba(2, 132, 199, 0.12);
+      border-color: rgba(2, 132, 199, 0.35);
+      color: var(--fintech-info, #0284c7);
+    }
   }
 }
 
@@ -116,7 +154,7 @@
 
 .month-chips-row {
   display: flex;
-  gap: 5px;
+  gap: 8px;
   flex-wrap: wrap;
   margin-bottom: 2px;
 }
@@ -124,42 +162,56 @@
 .mchip {
   display: inline-flex;
   align-items: center;
-  border: 1.5px solid #e0e0e0;
-  border-radius: 20px;
-  padding: 4px 10px;
-  font-size: 11px;
-  font-weight: 400;
-  color: #5f6368;
-  background: #fff;
+  justify-content: center;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 9999px;
+  min-height: 36px;
+  padding: 6px 12px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--mat-sys-on-surface-variant);
+  background: var(--mat-sys-surface, #fff);
   cursor: pointer;
   line-height: 1.4;
-  transition: background 0.12s, border-color 0.12s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 
-  &:focus { outline: none; }
+  &:hover {
+    background: var(--mat-sys-surface-container-high);
+    color: var(--mat-sys-on-surface);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: 1px;
+  }
+
+  &:focus:not(:focus-visible) {
+    outline: none;
+  }
 
   &.active {
-    background: #e8f0fe;
-    border-color: #4285f4;
-    color: #1a73e8;
+    background: var(--mat-sys-primary-container);
+    border-color: var(--mat-sys-primary);
+    color: var(--mat-sys-on-primary-container);
     font-weight: 600;
   }
 
   &[disabled] {
-    opacity: 0.32;
+    opacity: 0.38;
     cursor: default;
     pointer-events: none;
   }
 
   &.custom {
     border-style: dashed;
-    color: #9aa0a6;
-    font-size: 10px;
+    color: var(--mat-sys-on-surface-variant);
+    font-size: 0.75rem;
 
     &.active {
-      background: #f8f9fa;
+      background: var(--mat-sys-surface-container-high);
       border-style: solid;
-      border-color: #9aa0a6;
-      color: #5f6368;
+      border-color: var(--mat-sys-outline);
+      color: var(--mat-sys-on-surface);
     }
   }
 }
@@ -174,24 +226,27 @@
 }
 
 .date-input {
-  border: 1.5px solid #ccc;
-  border-radius: 6px;
-  padding: 6px 10px;
-  font-size: 11px;
-  color: #3c4043;
-  background: #fafafa;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.8125rem;
+  color: var(--mat-sys-on-surface);
+  background: var(--mat-sys-surface-container-lowest, #fff);
   flex: 1;
   max-width: 160px;
+  min-height: 36px;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;
-    border-color: #4285f4;
+    border-color: var(--mat-sys-primary);
+    box-shadow: 0 0 0 1px var(--mat-sys-primary);
   }
 }
 
 .interval-sep {
-  font-size: 12px;
-  color: #9aa0a6;
+  font-size: 0.8125rem;
+  color: var(--mat-sys-on-surface-variant);
 }
 
 // --- Footer ---
@@ -201,12 +256,12 @@
   align-items: center;
   justify-content: space-between;
   padding: 10px 20px 12px;
-  border-top: 1px solid #f1f3f4;
+  border-top: 1px solid var(--mat-sys-outline-variant);
 }
 
 .clear-btn {
-  font-size: 11px;
-  color: #5f6368;
+  font-size: 0.8125rem;
+  color: var(--mat-sys-on-surface-variant);
 }
 
 @include bp.compact {
