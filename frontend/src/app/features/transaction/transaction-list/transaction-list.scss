@@ -82,12 +82,13 @@ table {
 }
 
 .amount {
-  font-family: 'Roboto Mono', monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
   font-weight: 600;
 
-  &.income   { color: #2e7d32; }
-  &.expense  { color: #c62828; }
-  &.transfer { color: #1565c0; }
+  &.income   { color: var(--fintech-income, #16a34a); }
+  &.expense  { color: var(--fintech-expense, #dc2626); }
+  &.transfer { color: var(--fintech-info, #0284c7); }
 }
 
 .type-badge,
@@ -117,7 +118,7 @@ table {
 }
 
 .expand-active {
-  color: var(--mat-sys-primary, #1976d2);
+  color: var(--mat-sys-primary);
 }
 
 .empty-state {
@@ -156,10 +157,9 @@ table {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 12px 24px 16px 32px;
-  background: rgba(25, 118, 210, 0.04);
-  border-left: 4px solid var(--mat-sys-primary, #1976d2);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 14px 24px 16px 24px;
+  background: var(--mat-sys-surface-container, rgba(0, 131, 143, 0.04));
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
 }
 
 .detail-group-info {
@@ -251,8 +251,8 @@ table {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: var(--mat-sys-primary, #1976d2);
-  color: #fff;
+  background: var(--mat-sys-primary);
+  color: var(--mat-sys-on-primary, #fff);
   border-radius: 10px;
   font-size: 11px;
   font-weight: 600;
@@ -391,14 +391,14 @@ table {
   color: inherit;
   padding: 0;
   white-space: nowrap;
-  &:hover { color: var(--mat-sys-primary, #1976d2); }
+  &:hover { color: var(--mat-sys-primary); }
   &:focus  { outline: none; }
 }
 
 .sort-badge {
   font-size: 10px;
   font-weight: 700;
-  color: var(--mat-sys-primary, #1976d2);
+  color: var(--mat-sys-primary);
   line-height: 1;
 }
 
@@ -407,7 +407,7 @@ table {
   width: 14px !important;
   height: 14px !important;
   line-height: 14px !important;
-  color: var(--mat-sys-primary, #1976d2);
+  color: var(--mat-sys-primary);
   vertical-align: middle;
 }
 

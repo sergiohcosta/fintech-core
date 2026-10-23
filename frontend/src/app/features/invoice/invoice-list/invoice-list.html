@@ -33,7 +33,7 @@
         <p>Selecione um cartão para ver as faturas.</p>
       </div>
     } @else {
-      <div class="table-container mat-elevation-z2">
+      <div class="desktop-table-container table-container mat-elevation-z2">
         <table mat-table [dataSource]="invoices()">
 
           <ng-container matColumnDef="label">
@@ -94,6 +94,45 @@
             </td>
           </tr>
         </table>
+      </div>
+
+      <!-- Mobile cards view -->
+      <div class="mobile-cards-container">
+        @if (invoices().length === 0) {
+          <div class="empty-state">
+            <mat-icon>receipt_long</mat-icon>
+            <p>Nenhuma fatura encontrada para este cartão.</p>
+          </div>
+        } @else {
+          @for (row of invoices(); track row.id) {
+            <mat-card class="invoice-mobile-card">
+              <div class="mobile-card-top">
+                <span class="mobile-invoice-label">{{ row.label }}</span>
+                <span [class]="statusChipClass(row.status)">{{ statusLabel(row.status) }}</span>
+              </div>
+              <div class="mobile-card-body">
+                <div class="mobile-dates">
+                  <span>Fecha: <strong>{{ row.closingDate | date:'dd/MM/yyyy' }}</strong></span>
+                  <span class="dot">·</span>
+                  <span>Vence: <strong>{{ row.dueDate | date:'dd/MM/yyyy' }}</strong></span>
+                </div>
+                <div class="mobile-values">
+                  <span class="mobile-count">{{ row.transactionCount }} transações</span>
+                  <span class="mobile-total">{{ row.totalAmount | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
+                </div>
+              </div>
+              <div class="mobile-card-actions">
+                @if (row.status === 'OPEN') {
+                  <button mat-stroked-button color="accent" (click)="onClose(row)">Fechar fatura</button>
+                }
+                @if (row.status === 'CLOSED') {
+                  <button mat-flat-button color="primary" (click)="onPay(row)">Pagar fatura</button>
+                }
+                <a mat-button [routerLink]="['/invoices', row.id]">Ver detalhes</a>
+              </div>
+            </mat-card>
+          }
+        }
       </div>
     }
   }

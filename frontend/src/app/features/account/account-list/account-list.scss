@@ -65,11 +65,12 @@ table {
 // --- Saldo ---
 
 .balance {
-  font-family: 'Roboto Mono', monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
   font-weight: 600;
 
-  &.positive { color: #2e7d32; }
-  &.negative { color: #c62828; }
+  &.positive { color: var(--fintech-income, #16a34a); }
+  &.negative { color: var(--fintech-expense, #dc2626); }
 }
 
 // --- Badges de tipo ---

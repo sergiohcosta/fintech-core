@@ -27,7 +27,7 @@
     <mat-icon class="theme-icon">{{ themeService.isDark() ? 'light_mode' : 'dark_mode' }}</mat-icon>
   </button>
 
-  <div class="user-profile-pill">
+  <div class="user-profile-pill" [matTooltip]="'Logado como ' + userName()">
     <div class="user-avatar" [attr.aria-label]="userName()">{{ userInitials() }}</div>
     <span class="user-name">{{ userName() }}</span>
   </div>

@@ -1,3 +1,5 @@
+@use '../../../../styles/breakpoints' as bp;
+
 // Layout Principal
 .page-container {
   padding: 2rem;
@@ -11,85 +13,66 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 16px;
 
   h1 {
     font-size: 1.75rem;
     font-weight: 500;
     margin: 0;
-    color: #333; // Use variaveis de tema se tiver (ex: var(--mat-sys-on-surface))
+    color: var(--mat-sys-on-surface);
   }
 
   .subtitle {
     margin: 0.5rem 0 0;
-    color: #666;
+    color: var(--mat-sys-on-surface-variant);
     font-size: 0.9rem;
   }
-}
-
-// Container da Tabela (Arredondado e com Sombra Suave)
-.table-container {
-  background: #fff;
-  border-radius: 12px;
-  overflow: hidden; // Garante que o border-radius corte a tabela
-}
-
-table {
-  width: 100%;
-}
-
-// Estilização das Colunas Específicas
-.color-dot {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: 2px solid rgba(0,0,0,0.05); // Borda sutil para cores claras
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.card-info {
-  display: flex;
-  flex-direction: column;
-
-  .card-name {
-    font-weight: 500;
-    font-size: 0.95rem;
-    color: #333;
-  }
-
-  .card-digits {
-    font-size: 0.75rem;
-    color: #888;
-    letter-spacing: 0.5px;
-  }
-}
-
-.brand-badge {
-  display: inline-block;
-  padding: 4px 8px;
-  background-color: #f5f5f5;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: #555;
-  border: 1px solid #e0e0e0;
-}
-
-.limit-cell {
-  font-family: 'Roboto Mono', monospace; // Fonte monoespaçada para números
-  font-weight: 500;
-  color: #2e7d32; // Verde sutil para dinheiro
 }
 
 .header-actions {
   display: flex;
   align-items: center;
   gap: 16px;
+  flex-wrap: wrap;
+}
+
+// Container da Tabela
+.table-container {
+  background: var(--app-card-bg, var(--mat-sys-surface));
+  border: 1px solid var(--app-card-border, var(--mat-sys-outline-variant));
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--app-card-shadow);
+}
+
+table {
+  width: 100%;
+}
+
+.hierarchy-arrow {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  margin-right: 8px;
+  color: var(--mat-sys-outline);
+}
+
+.category-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.category-archived-icon {
+  opacity: 0.7;
 }
 
 .category-archived {
   text-decoration: line-through;
-  color: #9e9e9e;
+  color: var(--mat-sys-outline);
 }
 
 .actions-group {
@@ -103,7 +86,7 @@ table {
   transition: background-color 0.2s;
 
   &:hover {
-    background-color: rgba(0, 0, 0, 0.02);
+    background-color: var(--mat-sys-surface-container-low, rgba(0, 0, 0, 0.02));
   }
 }
 
@@ -111,9 +94,7 @@ table {
 .empty-state {
   text-align: center;
   padding: 3rem !important;
-  // Cor #888 -> #595959: contraste 3.5:1 -> 7:1 sobre branco (WCAG AA).
-  // shortcut: idem invoice-list; unificar em shared <empty-state> depois.
-  color: #595959;
+  color: var(--mat-sys-on-surface-variant);
 
   mat-icon {
     font-size: 48px;
@@ -130,14 +111,23 @@ table {
 }
 
 // Responsividade para Telas Pequenas
-@media (max-width: 768px) {
+@include bp.compact {
   .page-container {
     padding: 1rem;
   }
-  
-  // Esconder colunas menos importantes no mobile
-  .mat-column-closingDay, 
-  .mat-column-brand {
-    display: none;
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+
+    .header-actions {
+      width: 100%;
+      justify-content: space-between;
+    }
+  }
+
+  .table-container {
+    border-radius: 10px;
   }
 }

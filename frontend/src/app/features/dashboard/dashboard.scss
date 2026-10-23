@@ -555,8 +555,30 @@
         line-height: 1.1;
 
         &.negative {
-          color: #c62828;
+          color: var(--fintech-expense, #dc2626);
         }
+      }
+    }
+
+    .deficit-coaching-banner {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 14px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      background-color: var(--mat-sys-surface-container, rgba(0, 0, 0, 0.04));
+      border: 1px solid var(--app-card-border, var(--mat-sys-outline-variant));
+      font-size: 0.825rem;
+      line-height: 1.4;
+      color: var(--mat-sys-on-surface-variant);
+
+      mat-icon {
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+        color: var(--fintech-pending, #d97706);
+        flex-shrink: 0;
       }
     }
 
@@ -1218,18 +1240,18 @@
 
 .balance-positive {
   .card-icon {
-    background-color: color-mix(in srgb, #1565c0 15%, transparent);
-    mat-icon { color: #1565c0; }
+    background-color: color-mix(in srgb, var(--mat-sys-primary) 15%, transparent);
+    mat-icon { color: var(--mat-sys-primary); }
   }
-  .card-value { color: #1565c0; }
+  .card-value { color: var(--mat-sys-primary); }
 }
 
 .balance-negative {
   .card-icon {
-    background-color: color-mix(in srgb, #c62828 15%, transparent);
-    mat-icon { color: #c62828; }
+    background-color: color-mix(in srgb, var(--fintech-expense) 15%, transparent);
+    mat-icon { color: var(--fintech-expense); }
   }
-  .card-value { color: #c62828; }
+  .card-value { color: var(--fintech-expense); }
 }
 
 // ═══ TRANSAÇÕES RECENTES ═══

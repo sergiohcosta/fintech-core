@@ -1,3 +1,5 @@
+@use '../../../../styles/breakpoints' as bp;
+
 .page-container {
   padding: 24px;
   max-width: 1200px;
@@ -9,11 +11,21 @@
   align-items: flex-start;
   justify-content: space-between;
   padding: 24px;
-  border-radius: 8px;
+  border-radius: 12px;
   margin-bottom: 24px;
+  background: var(--app-card-bg, var(--mat-sys-surface));
+  border: 1px solid var(--app-card-border, var(--mat-sys-outline-variant));
 
-  .account-name { margin: 0 0 4px; color: #666; font-size: 14px; }
-  h1 { margin: 0 0 8px; }
+  .account-name {
+    margin: 0 0 4px;
+    color: var(--mat-sys-on-surface-variant);
+    font-size: 14px;
+  }
+
+  h1 {
+    margin: 0 0 8px;
+    color: var(--mat-sys-on-surface);
+  }
 
   .title-with-nav {
     display: inline-flex;
@@ -29,15 +41,16 @@
   .header-dates {
     display: flex;
     gap: 8px;
-    color: #666;
+    color: var(--mat-sys-on-surface-variant);
     font-size: 14px;
-    .separator { color: #ccc; }
+    .separator { color: var(--mat-sys-outline-variant); }
   }
 
   .header-actions {
     display: flex;
     align-items: center;
     gap: 12px;
+    flex-wrap: wrap;
   }
 }
 
@@ -51,26 +64,47 @@
 
 .summary-card {
   flex: 1;
+  border-radius: 12px;
+  background: var(--app-card-bg, var(--mat-sys-surface));
+  border: 1px solid var(--app-card-border, var(--mat-sys-outline-variant));
 
-  .card-label { margin: 0 0 8px; color: #666; font-size: 13px; }
+  .card-label {
+    margin: 0 0 8px;
+    color: var(--mat-sys-on-surface-variant);
+    font-size: 13px;
+  }
+
   .card-value {
     margin: 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
     font-size: 22px;
     font-weight: 600;
-    &.negative { color: #c62828; }
+    color: var(--mat-sys-on-surface);
+
+    &.negative {
+      color: var(--fintech-expense, #dc2626);
+    }
   }
 }
 
-.income-card  mat-card-content .card-value { color: #2e7d32; }
-.expense-card mat-card-content .card-value { color: #c62828; }
+.income-card  mat-card-content .card-value { color: var(--fintech-income, #16a34a); }
+.expense-card mat-card-content .card-value { color: var(--fintech-expense, #dc2626); }
 
 .breakdown-container, .table-container {
-  border-radius: 8px;
-  overflow: hidden;
+  border-radius: 12px;
+  overflow-x: auto;
   margin-bottom: 24px;
+  background: var(--app-card-bg, var(--mat-sys-surface));
+  border: 1px solid var(--app-card-border, var(--mat-sys-outline-variant));
 }
 
-.section-title { margin: 0 0 16px; font-size: 16px; font-weight: 500; }
+.section-title {
+  margin: 0 0 16px;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--mat-sys-on-surface);
+}
 
 .category-cell {
   display: flex;
@@ -82,9 +116,10 @@
     width: 18px;
     height: 18px;
     flex-shrink: 0;
-    opacity: 0.75;
+    opacity: 0.85;
   }
 }
+
 .transactions-section { margin-bottom: 24px; }
 
 table { width: 100%; }
@@ -94,15 +129,30 @@ table { width: 100%; }
   border-radius: 12px;
   font-size: 12px;
   font-weight: 500;
+  display: inline-block;
 }
-.status-open   { background: #e3f2fd; color: #1565c0; }
-.status-closed { background: #fff3e0; color: #e65100; }
-.status-paid   { background: #e8f5e9; color: #2e7d32; }
+
+.status-open {
+  background: var(--fintech-info-bg, rgba(2, 132, 199, 0.1));
+  color: var(--fintech-info, #0284c7);
+}
+
+.status-closed {
+  background: var(--fintech-pending-bg, rgba(217, 119, 6, 0.1));
+  color: var(--fintech-pending, #d97706);
+}
+
+.status-paid {
+  background: var(--fintech-income-bg, rgba(22, 163, 74, 0.1));
+  color: var(--fintech-income, #16a34a);
+}
 
 .amount {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
   font-weight: 500;
-  &.income  { color: #2e7d32; }
-  &.expense { color: #c62828; }
+  &.income  { color: var(--fintech-income, #16a34a); }
+  &.expense { color: var(--fintech-expense, #dc2626); }
 }
 
 .type-badge, .status-badge {
@@ -110,15 +160,26 @@ table { width: 100%; }
   border-radius: 4px;
   font-size: 12px;
 }
-.type-income  { background: #e8f5e9; color: #2e7d32; }
-.type-expense { background: #ffebee; color: #c62828; }
 
-.status-pending   { background: #fff8e1; color: #f57f17; }
-.status-paid      { background: #e8f5e9; color: #2e7d32; }
-.status-cancelled { background: #f5f5f5; color: #9e9e9e; }
+.type-income  { background: var(--fintech-income-bg); color: var(--fintech-income); }
+.type-expense { background: var(--fintech-expense-bg); color: var(--fintech-expense); }
 
-.empty-state { text-align: center; padding: 24px; color: #999; }
-.loading-state { display: flex; justify-content: center; padding: 48px; color: #666; }
+.status-pending   { background: var(--fintech-pending-bg); color: var(--fintech-pending); }
+.status-paid      { background: var(--fintech-income-bg); color: var(--fintech-income); }
+.status-cancelled { background: var(--mat-sys-surface-container); color: var(--mat-sys-outline); }
+
+.empty-state {
+  text-align: center;
+  padding: 24px;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.loading-state {
+  display: flex;
+  justify-content: center;
+  padding: 48px;
+  color: var(--mat-sys-on-surface-variant);
+}
 
 .show-more-container {
   padding: 4px 16px 8px;
@@ -137,5 +198,31 @@ table { width: 100%; }
 
 .section-subtitle {
   font-size: 13px;
-  color: #666;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+@include bp.compact {
+  .page-container {
+    padding: 16px;
+  }
+
+  .invoice-header {
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+
+    .header-actions {
+      width: 100%;
+      justify-content: space-between;
+    }
+  }
+
+  .summary-cards {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .breakdown-container, .table-container {
+    border-radius: 10px;
+  }
 }

@@ -24,21 +24,22 @@
 
   .subtitle {
     margin: 0.5rem 0 0;
-    color: #666;
+    color: var(--mat-sys-on-surface-variant);
     font-size: 0.9rem;
   }
 }
 
 .form-card {
-  background: #fff;
+  background: var(--app-card-bg, var(--mat-sys-surface));
+  border: 1px solid var(--app-card-border, var(--mat-sys-outline-variant));
   border-radius: 12px;
   padding: 2rem;
-  border-top: 4px solid transparent;
-  transition: border-top-color 220ms ease;
+  box-shadow: var(--app-card-shadow);
+  transition: border-color 220ms ease;
 
-  &.card-expense  { border-top-color: #ef5350; }
-  &.card-income   { border-top-color: #66bb6a; }
-  &.card-transfer { border-top-color: #42a5f5; }
+  &.card-expense  { border-color: var(--fintech-expense); }
+  &.card-income   { border-color: var(--fintech-income); }
+  &.card-transfer { border-color: var(--fintech-info); }
 }
 
 .form-row {
@@ -179,10 +180,10 @@ mat-form-field {
 
 .propagate-section {
   margin-top: 16px;
-  padding: 12px 14px;
-  background: var(--mat-sys-surface-container-low, #f5f5f5);
-  border-left: 3px solid var(--mat-sys-primary, #6750a4);
-  border-radius: 0 8px 8px 0;
+  padding: 14px 16px;
+  background: var(--mat-sys-surface-container-low);
+  border: 1px solid var(--app-card-border, var(--mat-sys-outline-variant));
+  border-radius: 8px;
 
   .propagate-label {
     display: flex;
@@ -190,7 +191,7 @@ mat-form-field {
     gap: 6px;
     font-size: 0.85rem;
     font-weight: 600;
-    color: rgba(0, 0, 0, 0.7);
+    color: var(--mat-sys-on-surface-variant);
     margin-bottom: 12px;
   }
 
@@ -198,10 +199,10 @@ mat-form-field {
     font-size: 18px;
     width: 18px;
     height: 18px;
-    color: var(--mat-sys-primary, #6750a4);
+    color: var(--mat-sys-primary);
   }
 
-  small { color: rgba(0, 0, 0, 0.5); margin-left: 4px; }
+  small { color: var(--mat-sys-outline); margin-left: 4px; }
 }
 
 .propagate-checkboxes {

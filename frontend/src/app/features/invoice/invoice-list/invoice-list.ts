@@ -8,6 +8,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatCardModule } from '@angular/material/card';
 
 import { finalize } from 'rxjs/operators';
 
@@ -21,7 +22,7 @@ import { InvoicePayDialogComponent, InvoicePayDialogResult } from '../invoice-pa
   standalone: true,
   imports: [
     CommonModule, CurrencyPipe, DatePipe, RouterLink,
-    MatTableModule, MatButtonModule, MatIconModule,
+    MatTableModule, MatButtonModule, MatIconModule, MatCardModule,
     MatSelectModule, MatFormFieldModule, MatSnackBarModule, MatDialogModule
   ],
   templateUrl: './invoice-list.html',

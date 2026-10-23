@@ -220,6 +220,13 @@
                 }
               </div>
 
+              @if (availableToSpend() < 0) {
+                <div class="deficit-coaching-banner">
+                  <mat-icon>tips_and_updates</mat-icon>
+                  <span>O ciclo atual ultrapassou a projeção inicial em {{ formatMoney(-availableToSpend()) }}. Revise as despesas variáveis ou reequilibre os envelopes no planejamento para restabelecer o teto diário.</span>
+                </div>
+              }
+
               <!-- Mini Grid Secundário de Indicadores do Ciclo -->
               <div class="hero-secondary-grid">
                 <div class="hero-substat">
@@ -349,7 +356,7 @@
                     <!-- Topo do Card: Identificação do Cartão e Status -->
                     <div class="synopsis-top-bar">
                       <div class="card-identity">
-                        <div class="card-color-avatar" [style.background-color]="card.account.color || '#4f46e5'">
+                        <div class="card-color-avatar" [style.background-color]="card.account.color || 'var(--mat-sys-primary)'">
                           <mat-icon>credit_card</mat-icon>
                         </div>
                         <div class="card-name-meta">

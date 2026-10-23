@@ -89,8 +89,8 @@
     width: 28px;
     height: 28px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #00838f, #4f46e5);
-    color: #ffffff;
+    background: linear-gradient(135deg, var(--mat-sys-primary, #00838f), #00acc1);
+    color: var(--mat-sys-on-primary, #ffffff);
     font-size: 0.725rem;
     font-weight: 700;
     display: flex;

@@ -32,6 +32,7 @@ describe('InvoicePayDialogComponent', () => {
   };
 
   beforeEach(async () => {
+    TestBed.resetTestingModule();
     accountsSvc = { listAccounts: vi.fn().mockReturnValue(of([checkingAccount])) };
     dialogRef = { close: vi.fn() };
 

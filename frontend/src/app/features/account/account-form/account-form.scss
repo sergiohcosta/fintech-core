@@ -19,8 +19,10 @@
 }
 
 .credit-card-section {
-  border-left: 3px solid #3F51B5;
-  padding-left: 16px;
+  padding: 16px;
+  background-color: var(--mat-sys-surface-container-low, rgba(0, 0, 0, 0.02));
+  border: 1px solid var(--app-card-border, var(--mat-sys-outline-variant));
+  border-radius: 12px;
 }
 
 .form-actions {
