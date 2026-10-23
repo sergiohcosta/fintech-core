@@ -316,6 +316,20 @@ export class TransactionQuickSheetComponent {
     }
   }
 
+  getAccountIcon(type?: string): string {
+    const icons: Record<string, string> = {
+      CHECKING: 'account_balance_wallet',
+      CREDIT_CARD: 'credit_card',
+      INVESTMENT: 'savings',
+      CASH: 'payments',
+    };
+    return (type ? icons[type] : undefined) ?? 'account_balance';
+  }
+
+  getAccountName(id: string | null): string {
+    return this.accounts().find(a => a.id === id)?.name ?? '';
+  }
+
   private validationField(error: unknown): string | null {
     if (!(error instanceof HttpErrorResponse)) return null;
     const body: unknown = error.error;

@@ -1,41 +1,47 @@
 .installment-title {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: var(--space-sm, 8px);
+  margin-bottom: var(--space-md, 16px);
   font-size: 0.95rem;
+  color: var(--mat-sys-on-surface);
 
   .label-chip {
-    background: rgba(0, 0, 0, 0.08);
+    background: var(--mat-sys-surface-container-high);
+    color: var(--mat-sys-on-surface-variant);
+    border: 1px solid var(--mat-sys-outline-variant);
     border-radius: 12px;
     padding: 2px 8px;
     font-size: 0.8rem;
-    font-weight: 500;
+    font-weight: 600;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
   }
 }
 
 .scope-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: var(--space-sm, 8px);
+  margin-bottom: var(--space-md, 16px);
 }
 
 .paid-warning {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  padding: 10px 12px;
-  background: #fff8e1;
-  border-radius: 4px;
+  gap: var(--space-sm, 8px);
+  padding: 12px 14px;
+  background: color-mix(in srgb, #f59e0b 14%, var(--mat-sys-surface));
+  border: 1px solid color-mix(in srgb, #f59e0b 30%, transparent);
+  border-radius: 8px;
   font-size: 0.85rem;
-  color: #5f4000;
+  color: color-mix(in srgb, #f59e0b 80%, var(--mat-sys-on-surface));
 
   mat-icon {
-    font-size: 18px;
-    width: 18px;
-    height: 18px;
-    color: #f9a825;
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+    color: color-mix(in srgb, #f59e0b 85%, var(--mat-sys-on-surface));
     flex-shrink: 0;
   }
 }

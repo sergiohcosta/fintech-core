@@ -27,7 +27,7 @@
   <form [formGroup]="form" (ngSubmit)="submit()" [attr.aria-busy]="saving()" novalidate>
     <mat-form-field appearance="outline" class="field-full amount-field">
       <mat-label>Valor</mat-label>
-      <span matTextPrefix>R$&nbsp;</span>
+      <span matTextPrefix class="amount-prefix">R$&nbsp;</span>
       <input #amountInput matInput type="number" inputmode="decimal" step="0.01" min="0.01"
              formControlName="amount" placeholder="0,00" />
       @if (form.controls.amount.hasError('required') && form.controls.amount.touched) {
@@ -41,9 +41,18 @@
       <span class="field-label">Tipo</span>
       <mat-button-toggle-group #typeToggle formControlName="type" aria-label="Tipo do lançamento"
                                [hideSingleSelectionIndicator]="true">
-        <mat-button-toggle value="EXPENSE">Despesa</mat-button-toggle>
-        <mat-button-toggle value="INCOME">Receita</mat-button-toggle>
-        <mat-button-toggle value="TRANSFER">Transferência</mat-button-toggle>
+        <mat-button-toggle value="EXPENSE" class="type-expense">
+          <mat-icon class="toggle-icon">trending_down</mat-icon>
+          Despesa
+        </mat-button-toggle>
+        <mat-button-toggle value="INCOME" class="type-income">
+          <mat-icon class="toggle-icon">trending_up</mat-icon>
+          Receita
+        </mat-button-toggle>
+        <mat-button-toggle value="TRANSFER" class="type-transfer">
+          <mat-icon class="toggle-icon">swap_horiz</mat-icon>
+          Transferência
+        </mat-button-toggle>
       </mat-button-toggle-group>
     </div>
 
@@ -78,8 +87,19 @@
     <mat-form-field appearance="outline" class="field-full">
       <mat-label>{{ isTransfer() ? 'Conta de origem' : 'Conta' }}</mat-label>
       <mat-select #accountSelect formControlName="accountId">
+        <mat-select-trigger>
+          <span class="account-option">
+            <mat-icon class="account-icon">{{ getAccountIcon(accounts()[0]?.type) }}</mat-icon>
+            {{ getAccountName(form.controls.accountId.value) }}
+          </span>
+        </mat-select-trigger>
         @for (account of accounts(); track account.id) {
-          <mat-option [value]="account.id">{{ account.name }}</mat-option>
+          <mat-option [value]="account.id">
+            <span class="account-option">
+              <mat-icon class="account-icon">{{ getAccountIcon(account.type) }}</mat-icon>
+              {{ account.name }}
+            </span>
+          </mat-option>
         }
       </mat-select>
       @if (accounts().length === 0) {
@@ -94,9 +114,18 @@
       <mat-form-field appearance="outline" class="field-full">
         <mat-label>Conta de destino</mat-label>
         <mat-select #destinationAccountSelect formControlName="destinationAccountId">
+          <mat-select-trigger>
+            <span class="account-option">
+              <mat-icon class="account-icon">{{ getAccountIcon(accounts()[0]?.type) }}</mat-icon>
+              {{ getAccountName(form.controls.destinationAccountId.value) }}
+            </span>
+          </mat-select-trigger>
           @for (account of accounts(); track account.id) {
             <mat-option [value]="account.id" [disabled]="account.id === form.controls.accountId.value">
-              {{ account.name }}
+              <span class="account-option">
+                <mat-icon class="account-icon">{{ getAccountIcon(account.type) }}</mat-icon>
+                {{ account.name }}
+              </span>
             </mat-option>
           }
         </mat-select>
@@ -112,7 +141,12 @@
         <mat-select #categorySelect formControlName="categoryId">
           @for (category of availableCategories(); track category.id) {
             <mat-option [value]="category.id">
-              <span [style.padding-left.px]="category.level * 16">{{ category.name }}</span>
+              <span [style.padding-left.px]="category.level * 16" class="category-option">
+                @if (category.level > 0) {
+                  <span class="sub-indicator">↳&nbsp;</span>
+                }
+                {{ category.name }}
+              </span>
             </mat-option>
           }
         </mat-select>
