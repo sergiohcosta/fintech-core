@@ -22,7 +22,7 @@
                 }
 
                 <button mat-flat-button color="primary" class="full-width submit-btn"
-                    [disabled]="form.invalid || isLoading()">
+                    [disabled]="isInvalid() || isLoading()">
                     {{ isLoading() ? 'ENTRANDO...' : 'ENTRAR' }}
                 </button>
 

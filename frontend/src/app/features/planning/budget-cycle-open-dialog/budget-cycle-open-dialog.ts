@@ -14,6 +14,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { PlanningService } from '../planning.service';
 import { TransactionsService } from '../../../core/api/transactions/transactions.service';
+import { formInvalidSignal } from '../../../core/form.utils';
 
 interface CyclePreview {
   startDate: string;
@@ -55,8 +56,7 @@ export class BudgetCycleOpenDialogComponent implements OnInit {
     openingBalance: new FormControl<number | null>(null, [Validators.required, Validators.min(0)]),
   });
 
-  private readonly statusSignal = toSignal(this.form.statusChanges, { initialValue: this.form.status });
-  readonly isInvalid = computed(() => this.statusSignal() === 'INVALID');
+  readonly isInvalid = formInvalidSignal(this.form);
 
   // Reativo para recalcular projectedBalance ao editar o campo
   private readonly openingBalanceValue = toSignal(

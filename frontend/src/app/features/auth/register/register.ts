@@ -8,6 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth';
+import { formInvalidSignal } from '../../../core/form.utils';
 
 @Component({
   selector: 'app-register',
@@ -53,6 +54,8 @@ export class RegisterComponent implements OnInit {
       Validators.pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/),
     ]]
   });
+
+  readonly isInvalid = formInvalidSignal(this.form);
 
   onSubmit() {
     if (this.form.invalid) return;

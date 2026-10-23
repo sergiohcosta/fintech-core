@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
@@ -11,6 +12,7 @@ describe('ForgotPasswordComponent', () => {
   let httpMock: HttpTestingController;
 
   beforeEach(async () => {
+    TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
       imports: [ForgotPasswordComponent],
       providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
@@ -28,6 +30,18 @@ describe('ForgotPasswordComponent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('isInvalid signal reflete a validade do formulário reativamente', async () => {
+    expect(component.isInvalid()).toBe(true);
+
+    component.form.patchValue({ email: 'usuario@fintech.com' });
+    await fixture.whenStable();
+    expect(component.isInvalid()).toBe(false);
+
+    component.form.patchValue({ email: '' });
+    await fixture.whenStable();
+    expect(component.isInvalid()).toBe(true);
   });
 
   it('marca submitted após envio bem-sucedido', () => {

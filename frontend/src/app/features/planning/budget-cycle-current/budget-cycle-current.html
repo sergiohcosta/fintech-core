@@ -1,383 +1,491 @@
 <div class="planning-container">
 
   @if (loading()) {
-    <p>Carregando...</p>
+    <div class="planning-loading-state">
+      <mat-spinner diameter="44"></mat-spinner>
+      <p>Carregando planejamento financeiro...</p>
+    </div>
   }
 
   @if (!loading() && !cycle()) {
     <mat-card class="empty-state-card">
       <mat-card-content>
-        <mat-icon>event_note</mat-icon>
-        <h2>Nenhum ciclo de planejamento aberto</h2>
-        <p>Abra um ciclo para começar a planejar o mês.</p>
-        <button mat-flat-button color="primary" (click)="openCycle()">
-          Abrir ciclo
+        <div class="empty-icon-wrap">
+          <mat-icon>calendar_month</mat-icon>
+        </div>
+        <h2>Comece seu Planejamento Mensal</h2>
+        <p>
+          Abra um ciclo orçamentário para antecipar gastos fixos, parcelas e despesas recorrentes.
+          Você terá clareza imediata sobre seu <strong>limite diário seguro</strong> até o fim do mês.
+        </p>
+        <button mat-flat-button color="primary" class="open-cycle-btn" (click)="openCycle()">
+          <mat-icon>add</mat-icon> Iniciar Novo Ciclo com Prévia
         </button>
       </mat-card-content>
     </mat-card>
   }
 
   @if (!loading() && cycle()) {
-    <div class="cycle-header">
-      <div class="cycle-dates">
-        <h1>Planejamento</h1>
-        <span class="period">{{ cycle()!.startDate | date:'dd/MM/yyyy' }} –
-          {{ cycle()!.endDate | date:'dd/MM/yyyy' }}</span>
+
+    @if (cycle()!.status === 'CLOSED') {
+      <div class="retrospective-banner">
+        <div class="retro-icon">
+          <mat-icon>task_alt</mat-icon>
+        </div>
+        <div class="retro-content">
+          <h3>Ciclo Encerrado com Sucesso</h3>
+          <p>Este planejamento mensal foi concluído e arquivado. Você pode iniciar o próximo mês a qualquer momento com base nas suas médias e recorrências.</p>
+        </div>
+        <button mat-flat-button color="primary" (click)="openCycle()">
+          <mat-icon>add</mat-icon> Planejar Próximo Mês
+        </button>
       </div>
-      <div class="cycle-actions">
-        <mat-chip [class.chip-open]="cycle()!.status === 'OPEN'"
-                  [class.chip-closed]="cycle()!.status === 'CLOSED'">
-          {{ cycle()!.status === 'OPEN' ? 'Aberto' : 'Fechado' }}
-        </mat-chip>
-        @if (cycle()!.status === 'OPEN') {
-          <button mat-stroked-button [disabled]="closing()" (click)="closeCycle()">
-            Fechar ciclo
-          </button>
-        }
+    }
+
+    <!-- ═══ HERO BANNER: Decisão Diária & Ritmo do Mês ═══ -->
+    <div class="planning-hero-card" [class.deficit-hero]="summary().availableToSpend < 0">
+      <div class="hero-top-row">
+        <div class="cycle-calendar-tag">
+          <mat-icon>calendar_today</mat-icon>
+          <span class="cycle-period-text">{{ cycle()!.startDate | date:'dd/MM/yyyy' }} – {{ cycle()!.endDate | date:'dd/MM/yyyy' }}</span>
+          <span class="cycle-days-tag">• {{ daysRemaining() }} dias restantes</span>
+        </div>
+        <div class="hero-actions-group">
+          <span class="cycle-status-pill" [class.pill-open]="cycle()!.status === 'OPEN'" [class.pill-closed]="cycle()!.status === 'CLOSED'">
+            {{ cycle()!.status === 'OPEN' ? 'Ciclo Aberto' : 'Ciclo Encerrado' }}
+          </span>
+          @if (cycle()!.status === 'OPEN') {
+            <button mat-stroked-button class="close-cycle-btn" [disabled]="closing()" (click)="closeCycle()">
+              <mat-icon>lock</mat-icon> Fechar ciclo
+            </button>
+          }
+        </div>
       </div>
-    </div>
 
-    <div class="summary-grid">
-      <mat-card>
-        <mat-card-header class="card-head">
-          <mat-card-title>Receitas</mat-card-title>
-          <button mat-icon-button class="card-head__eye" (click)="openBreakdown('income')"
-                  matTooltip="Ver composição" aria-label="Ver composição de Receitas">
-            <mat-icon>visibility</mat-icon>
-          </button>
-        </mat-card-header>
-        <mat-card-content>
-          <div class="summary-line">
-            <span>Previsto</span>
-            <strong>{{ summary().plannedIncome | currency:'BRL' }}</strong>
-          </div>
-          <div class="summary-line realized">
-            <span>Realizado</span>
-            <strong>{{ summary().realizedIncome | currency:'BRL' }}</strong>
-          </div>
-        </mat-card-content>
-      </mat-card>
+      <!-- Barra de progresso temporal do mês -->
+      <div class="month-time-tracker">
+        <div class="time-tracker-labels">
+          <span>Ritmo do mês: Dia {{ daysElapsed() }} de {{ cycleDaysTotal() }}</span>
+          <span>{{ timeProgress() | number:'1.0-0' }}% decorrido</span>
+        </div>
+        <mat-progress-bar mode="determinate" [value]="timeProgress()" class="time-progress-bar"></mat-progress-bar>
+      </div>
 
-      <mat-card>
-        <mat-card-header class="card-head">
-          <mat-card-title>Despesas</mat-card-title>
-          <button mat-icon-button class="card-head__eye" (click)="openBreakdown('expense')"
-                  matTooltip="Ver composição" aria-label="Ver composição de Despesas">
-            <mat-icon>visibility</mat-icon>
-          </button>
-        </mat-card-header>
-        <mat-card-content>
-          <div class="summary-line">
-            <span>Previsto</span>
-            <strong>{{ summary().plannedExpense | currency:'BRL' }}</strong>
+      <!-- Bloco Principal do Hero: Limite Diário Seguro -->
+      <div class="hero-values-section">
+        <div class="allowance-highlight-box">
+          <span class="allowance-label">Limite Seguro Hoje</span>
+          <div class="allowance-amount">
+            {{ summary().dailyAllowance | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}<span class="per-day">/dia</span>
           </div>
-          <div class="summary-line realized">
-            <span>Realizado</span>
-            <strong>{{ summary().realizedExpense | currency:'BRL' }}</strong>
-          </div>
-        </mat-card-content>
-      </mat-card>
+          <span class="allowance-caption">Teto diário para manter o caixa em equilíbrio</span>
+        </div>
 
-      <mat-card>
-        <mat-card-header class="card-head">
-          <mat-card-title>Saldo</mat-card-title>
-          <button mat-icon-button class="card-head__eye" (click)="openBreakdown('balance')"
-                  matTooltip="Ver composição" aria-label="Ver composição de Saldo">
-            <mat-icon>visibility</mat-icon>
-          </button>
-        </mat-card-header>
-        <mat-card-content>
-          <div class="summary-line">
-            <span>Abertura</span>
-            <strong>{{ cycle()!.openingBalance | currency:'BRL' }}</strong>
-          </div>
-          <div class="summary-line">
-            <span>Projetado</span>
-            <strong>{{ summary().projectedBalance | currency:'BRL' }}</strong>
-          </div>
-          <div class="summary-line realized">
-            <span>Atual</span>
-            <strong>{{ summary().currentBalance | currency:'BRL' }}</strong>
-          </div>
-        </mat-card-content>
-      </mat-card>
-
-      @if (cycle()!.status === 'OPEN') {
-        <mat-card class="available-card">
-          <mat-card-header class="card-head">
-            <mat-card-title>Disponível</mat-card-title>
-            <button mat-icon-button class="card-head__eye" (click)="openBreakdown('available')"
-                    matTooltip="Ver composição" aria-label="Ver composição de Disponível">
+        <div class="available-spend-box">
+          <div class="spend-header">
+            <span class="spend-label">Disponível no Ciclo</span>
+            <button mat-icon-button class="breakdown-btn" (click)="openBreakdown('available')" matTooltip="Ver composição detalhada" aria-label="Ver composição detalhada">
               <mat-icon>visibility</mat-icon>
             </button>
-          </mat-card-header>
-          <mat-card-content>
-            <div class="summary-line available-to-spend" [class.negative]="summary().availableToSpend < 0">
-              <span>Para gastar</span>
-              <strong>{{ summary().availableToSpend | currency:'BRL' }}</strong>
-            </div>
-            <div class="summary-line daily-allowance">
-              <span>Por dia</span>
-              <strong>{{ summary().dailyAllowance | currency:'BRL' }}</strong>
-            </div>
-            <div class="summary-line">
-              <span>Dias restantes</span>
-              <strong>{{ summary().remainingDays }}</strong>
-            </div>
-          </mat-card-content>
-        </mat-card>
+          </div>
+          <div class="spend-amount" [class.negative]="summary().availableToSpend < 0">
+            {{ summary().availableToSpend | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}
+          </div>
+          <span class="spend-subtext">Caixa líquido projetado</span>
+        </div>
+      </div>
+
+      @if (summary().availableToSpend < 0) {
+        <div class="coaching-notice-banner">
+          <mat-icon>tips_and_updates</mat-icon>
+          <span>O ciclo ultrapassou a projeção em {{ -summary().availableToSpend | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}. Ajuste os envelopes ou segure gastos variáveis nos próximos dias para restabelecer o teto diário.</span>
+        </div>
       }
     </div>
 
-    @if (cycle()!.status === 'OPEN') {
-      <button mat-flat-button color="primary" (click)="addItem()" class="add-btn">
-        <mat-icon>add</mat-icon> Adicionar item
-      </button>
-    }
-
-    <mat-expansion-panel [expanded]="true">
-      <mat-expansion-panel-header>
-        <mat-panel-title>
-          <mat-icon>trending_up</mat-icon> Receitas ({{ incomeItems().length }})
-        </mat-panel-title>
-      </mat-expansion-panel-header>
-      <ng-template matExpansionPanelContent>
-        <table mat-table [dataSource]="incomeItems()">
-          <ng-container matColumnDef="description">
-            <th mat-header-cell *matHeaderCellDef>Descrição</th>
-            <td mat-cell *matCellDef="let item">{{ item.description }}</td>
-          </ng-container>
-          <ng-container matColumnDef="expectedDate">
-            <th mat-header-cell *matHeaderCellDef>Data</th>
-            <td mat-cell *matCellDef="let item">{{ item.expectedDate | date:'dd/MM' }}</td>
-          </ng-container>
-          <ng-container matColumnDef="amount">
-            <th mat-header-cell *matHeaderCellDef>Valor</th>
-            <td mat-cell *matCellDef="let item">{{ item.amount | currency:'BRL' }}</td>
-          </ng-container>
-          <ng-container matColumnDef="status">
-            <th mat-header-cell *matHeaderCellDef>Status</th>
-            <td mat-cell *matCellDef="let item"><mat-chip>{{ item.status }}</mat-chip></td>
-          </ng-container>
-          <ng-container matColumnDef="actions">
-            <th mat-header-cell *matHeaderCellDef></th>
-            <td mat-cell *matCellDef="let item">
-              @if (!item.transactionId && cycle()!.status === 'OPEN') {
-                <button mat-icon-button matTooltip="Vincular transação"
-                        (click)="linkTransaction(item)">
-                  <mat-icon>link</mat-icon>
-                </button>
-              }
-              @if (item.transactionId) {
-                <button mat-icon-button matTooltip="Desvincular"
-                        (click)="unlinkTransaction(item)">
-                  <mat-icon>link_off</mat-icon>
-                </button>
-              }
-              <button mat-icon-button matTooltip="Tornar recorrente"
-                      (click)="makeRecurring(item)">
-                <mat-icon>event_repeat</mat-icon>
-              </button>
-              @if (item.source !== 'INSTALLMENT' && cycle()!.status === 'OPEN') {
-                @if (confirmingDeleteId() === item.id) {
-                  <span style="font-size:0.75rem;color:var(--mat-sys-error)">Remover?</span>
-                  <button mat-icon-button color="warn" matTooltip="Confirmar remoção"
-                          (click)="deleteItem(item)">
-                    <mat-icon>check</mat-icon>
-                  </button>
-                  <button mat-icon-button matTooltip="Cancelar"
-                          (click)="confirmingDeleteId.set(null)">
-                    <mat-icon>close</mat-icon>
-                  </button>
-                } @else {
-                  <button mat-icon-button matTooltip="Remover"
-                          (click)="confirmingDeleteId.set(item.id!)">
-                    <mat-icon>delete_outline</mat-icon>
-                  </button>
-                }
-              }
-            </td>
-          </ng-container>
-          <tr mat-header-row *matHeaderRowDef="['description','expectedDate','amount','status','actions']"></tr>
-          <tr mat-row *matRowDef="let row; columns: ['description','expectedDate','amount','status','actions']"></tr>
-        </table>
-      </ng-template>
-    </mat-expansion-panel>
-
-    <mat-expansion-panel [expanded]="true">
-      <mat-expansion-panel-header>
-        <mat-panel-title>
-          <mat-icon>trending_down</mat-icon> Despesas fixas ({{ expenseItems().length }})
-        </mat-panel-title>
-      </mat-expansion-panel-header>
-      <ng-template matExpansionPanelContent>
-        <table mat-table [dataSource]="expenseItems()">
-          <ng-container matColumnDef="description">
-            <th mat-header-cell *matHeaderCellDef>Descrição</th>
-            <td mat-cell *matCellDef="let item">{{ item.description }}</td>
-          </ng-container>
-          <ng-container matColumnDef="expectedDate">
-            <th mat-header-cell *matHeaderCellDef>Data</th>
-            <td mat-cell *matCellDef="let item">{{ item.expectedDate | date:'dd/MM' }}</td>
-          </ng-container>
-          <ng-container matColumnDef="amount">
-            <th mat-header-cell *matHeaderCellDef>Valor</th>
-            <td mat-cell *matCellDef="let item">{{ item.amount | currency:'BRL' }}</td>
-          </ng-container>
-          <ng-container matColumnDef="status">
-            <th mat-header-cell *matHeaderCellDef>Status</th>
-            <td mat-cell *matCellDef="let item"><mat-chip>{{ item.status }}</mat-chip></td>
-          </ng-container>
-          <ng-container matColumnDef="actions">
-            <th mat-header-cell *matHeaderCellDef></th>
-            <td mat-cell *matCellDef="let item">
-              @if (!item.transactionId && cycle()!.status === 'OPEN') {
-                <button mat-icon-button matTooltip="Vincular transação"
-                        (click)="linkTransaction(item)">
-                  <mat-icon>link</mat-icon>
-                </button>
-              }
-              @if (item.transactionId) {
-                <button mat-icon-button (click)="unlinkTransaction(item)">
-                  <mat-icon>link_off</mat-icon>
-                </button>
-              }
-              <button mat-icon-button matTooltip="Tornar recorrente"
-                      (click)="makeRecurring(item)">
-                <mat-icon>event_repeat</mat-icon>
-              </button>
-              @if (cycle()!.status === 'OPEN') {
-                @if (confirmingDeleteId() === item.id) {
-                  <span style="font-size:0.75rem;color:var(--mat-sys-error)">Remover?</span>
-                  <button mat-icon-button color="warn" matTooltip="Confirmar remoção"
-                          (click)="deleteItem(item)">
-                    <mat-icon>check</mat-icon>
-                  </button>
-                  <button mat-icon-button matTooltip="Cancelar"
-                          (click)="confirmingDeleteId.set(null)">
-                    <mat-icon>close</mat-icon>
-                  </button>
-                } @else {
-                  <button mat-icon-button matTooltip="Remover"
-                          (click)="confirmingDeleteId.set(item.id!)">
-                    <mat-icon>delete_outline</mat-icon>
-                  </button>
-                }
-              }
-            </td>
-          </ng-container>
-          <tr mat-header-row *matHeaderRowDef="['description','expectedDate','amount','status','actions']"></tr>
-          <tr mat-row *matRowDef="let row; columns: ['description','expectedDate','amount','status','actions']"></tr>
-        </table>
-      </ng-template>
-    </mat-expansion-panel>
-
-    <mat-expansion-panel>
-      <mat-expansion-panel-header>
-        <mat-panel-title>
-          <mat-icon>credit_card</mat-icon> Parcelas do cartão ({{ installmentItems().length }})
-        </mat-panel-title>
-      </mat-expansion-panel-header>
-      <ng-template matExpansionPanelContent>
-        <table mat-table [dataSource]="installmentItems()">
-          <ng-container matColumnDef="description">
-            <th mat-header-cell *matHeaderCellDef>Descrição</th>
-            <td mat-cell *matCellDef="let item">{{ item.description }}</td>
-          </ng-container>
-          <ng-container matColumnDef="expectedDate">
-            <th mat-header-cell *matHeaderCellDef>Data</th>
-            <td mat-cell *matCellDef="let item">{{ item.expectedDate | date:'dd/MM' }}</td>
-          </ng-container>
-          <ng-container matColumnDef="amount">
-            <th mat-header-cell *matHeaderCellDef>Valor</th>
-            <td mat-cell *matCellDef="let item">{{ item.amount | currency:'BRL' }}</td>
-          </ng-container>
-          <ng-container matColumnDef="status">
-            <th mat-header-cell *matHeaderCellDef>Status</th>
-            <td mat-cell *matCellDef="let item"><mat-chip>{{ item.status }}</mat-chip></td>
-          </ng-container>
-          <tr mat-header-row *matHeaderRowDef="['description','expectedDate','amount','status']"></tr>
-          <tr mat-row *matRowDef="let row; columns: ['description','expectedDate','amount','status']"></tr>
-        </table>
-      </ng-template>
-    </mat-expansion-panel>
-
-    @if (unplannedItems().length > 0) {
-      <mat-card class="budget-section">
-        <mat-card-header>
-          <mat-card-title>
-            <mat-icon color="warn">warning_amber</mat-icon>
-            Não planejados ({{ unplannedItems().length }})
-          </mat-card-title>
-          <mat-card-subtitle>Transações do período sem item de planejamento vinculado</mat-card-subtitle>
+    <!-- ═══ RESUMO FINANCEIRO COMPLETO ═══ -->
+    <div class="planning-summary-grid">
+      <mat-card class="summary-metric-card">
+        <mat-card-header class="metric-card-head">
+          <div class="metric-title-group">
+            <mat-icon class="icon-income">trending_up</mat-icon>
+            <span>Receitas</span>
+          </div>
+          <button mat-icon-button class="card-head__eye" (click)="openBreakdown('income')" matTooltip="Ver composição" aria-label="Ver composição de Receitas">
+            <mat-icon>visibility</mat-icon>
+          </button>
         </mat-card-header>
         <mat-card-content>
-          <mat-table [dataSource]="unplannedItems()">
+          <div class="metric-row">
+            <span>Previsto:</span>
+            <strong class="mono">{{ summary().plannedIncome | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong>
+          </div>
+          <div class="metric-row">
+            <span>Recebido:</span>
+            <strong class="mono text-income">{{ summary().realizedIncome | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong>
+          </div>
+          <mat-progress-bar mode="determinate" [value]="incomeProgress()" class="metric-progress income-bar"></mat-progress-bar>
+        </mat-card-content>
+      </mat-card>
 
-            <ng-container matColumnDef="date">
-              <mat-header-cell *matHeaderCellDef>Data</mat-header-cell>
-              <mat-cell *matCellDef="let tx">{{ (tx.date ?? '') | date:'dd/MM' }}</mat-cell>
-            </ng-container>
+      <mat-card class="summary-metric-card">
+        <mat-card-header class="metric-card-head">
+          <div class="metric-title-group">
+            <mat-icon class="icon-expense">trending_down</mat-icon>
+            <span>Despesas</span>
+          </div>
+          <button mat-icon-button class="card-head__eye" (click)="openBreakdown('expense')" matTooltip="Ver composição" aria-label="Ver composição de Despesas">
+            <mat-icon>visibility</mat-icon>
+          </button>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="metric-row">
+            <span>Teto orçado:</span>
+            <strong class="mono">{{ summary().plannedExpense | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong>
+          </div>
+          <div class="metric-row">
+            <span>Realizado:</span>
+            <strong class="mono text-expense">{{ summary().realizedExpense | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong>
+          </div>
+          <mat-progress-bar mode="determinate" [value]="expenseProgress()" class="metric-progress expense-bar" [class.over-budget]="summary().realizedExpense > summary().plannedExpense"></mat-progress-bar>
+        </mat-card-content>
+      </mat-card>
 
+      <mat-card class="summary-metric-card">
+        <mat-card-header class="metric-card-head">
+          <div class="metric-title-group">
+            <mat-icon class="icon-balance">account_balance</mat-icon>
+            <span>Caixa & Saldo</span>
+          </div>
+          <button mat-icon-button class="card-head__eye" (click)="openBreakdown('balance')" matTooltip="Ver composição" aria-label="Ver composição de Saldo">
+            <mat-icon>visibility</mat-icon>
+          </button>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="metric-row">
+            <span>Abertura histórica:</span>
+            <strong class="mono">{{ cycle()!.openingBalance | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong>
+          </div>
+          <div class="metric-row">
+            <span>Saldo atual em caixa:</span>
+            <strong class="mono" [class.text-income]="summary().currentBalance >= 0" [class.text-expense]="summary().currentBalance < 0">
+              {{ summary().currentBalance | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}
+            </strong>
+          </div>
+          <div class="metric-row">
+            <span>Saldo projetado final:</span>
+            <strong class="mono">{{ summary().projectedBalance | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    @if (cycle()!.status === 'OPEN') {
+      <div class="section-toolbar">
+        <button mat-flat-button color="primary" (click)="addItem()" class="add-btn">
+          <mat-icon>add</mat-icon> Adicionar Item Planejado
+        </button>
+      </div>
+    }
+
+    <!-- ═══ ENVELOPES & DESPESAS FIXAS ═══ -->
+    <mat-expansion-panel [expanded]="true" class="planning-panel">
+      <mat-expansion-panel-header>
+        <mat-panel-title>
+          <mat-icon class="icon-expense">trending_down</mat-icon>
+          <span>Despesas e Envelopes ({{ expenseItems().length }})</span>
+        </mat-panel-title>
+        <mat-panel-description>
+          <span>{{ summary().realizedExpense | currency:'BRL':'symbol':'1.2-2':'pt-BR' }} de {{ summary().plannedExpense | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
+        </mat-panel-description>
+      </mat-expansion-panel-header>
+      <ng-template matExpansionPanelContent>
+        <div class="table-responsive-wrapper">
+          <table mat-table [dataSource]="expenseItems()">
             <ng-container matColumnDef="description">
-              <mat-header-cell *matHeaderCellDef>Descrição</mat-header-cell>
-              <mat-cell *matCellDef="let tx">{{ tx.description }}</mat-cell>
+              <th mat-header-cell *matHeaderCellDef>Descrição</th>
+              <td mat-cell *matCellDef="let item">
+                <div class="item-description-cell">
+                  <span class="desc-text">{{ item.description }}</span>
+                  @if (item.categoryName) {
+                    <span class="category-subtag">{{ item.categoryName }}</span>
+                  }
+                </div>
+              </td>
             </ng-container>
 
-            <ng-container matColumnDef="account">
-              <mat-header-cell *matHeaderCellDef>Conta</mat-header-cell>
-              <mat-cell *matCellDef="let tx">{{ tx.accountName ?? '' }}</mat-cell>
+            <ng-container matColumnDef="expectedDate">
+              <th mat-header-cell *matHeaderCellDef>Previsão</th>
+              <td mat-cell *matCellDef="let item" class="date-cell">{{ item.expectedDate | date:'dd/MM' }}</td>
             </ng-container>
 
             <ng-container matColumnDef="amount">
-              <mat-header-cell *matHeaderCellDef>Valor</mat-header-cell>
-              <mat-cell *matCellDef="let tx"
-                        [style.color]="tx.type === 'INCOME' ? 'var(--mat-sys-primary)' : 'var(--mat-sys-error)'">
-                {{ tx.amount | currency:'BRL':'symbol':'1.2-2' }}
-              </mat-cell>
+              <th mat-header-cell *matHeaderCellDef>Valor</th>
+              <td mat-cell *matCellDef="let item" class="amount-cell mono">{{ item.amount | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</td>
             </ng-container>
 
             <ng-container matColumnDef="status">
-              <mat-header-cell *matHeaderCellDef>Status</mat-header-cell>
-              <mat-cell *matCellDef="let tx">
-                <mat-chip [highlighted]="tx.status === 'PAID'">
-                  {{ tx.status === 'PAID' ? 'Pago' : 'Pendente' }}
-                </mat-chip>
-              </mat-cell>
+              <th mat-header-cell *matHeaderCellDef>Status</th>
+              <td mat-cell *matCellDef="let item">
+                <span class="status-pill" [class]="statusClass(item.status)">
+                  {{ statusLabel(item.status) }}
+                </span>
+              </td>
             </ng-container>
 
             <ng-container matColumnDef="actions">
-              <mat-header-cell *matHeaderCellDef></mat-header-cell>
-              <mat-cell *matCellDef="let tx">
-                <button mat-icon-button
-                        matTooltip="Criar item planejado"
-                        (click)="createPlannedFromUnplanned(tx)">
-                  <mat-icon>add_task</mat-icon>
-                </button>
-                <button mat-icon-button
-                        matTooltip="Vincular a item planejado"
-                        (click)="linkFromUnplanned(tx)">
-                  <mat-icon>link</mat-icon>
-                </button>
-              </mat-cell>
+              <th mat-header-cell *matHeaderCellDef></th>
+              <td mat-cell *matCellDef="let item">
+                <div class="row-actions">
+                  @if (confirmingDeleteId() === item.id) {
+                    <div class="confirm-delete-box">
+                      <span class="confirm-prompt">Excluir?</span>
+                      <button mat-icon-button color="warn" matTooltip="Confirmar exclusão" (click)="deleteItem(item)">
+                        <mat-icon>check</mat-icon>
+                      </button>
+                      <button mat-icon-button matTooltip="Cancelar" (click)="confirmingDeleteId.set(null)">
+                        <mat-icon>close</mat-icon>
+                      </button>
+                    </div>
+                  } @else {
+                    <button mat-icon-button [matMenuTriggerFor]="itemMenu" [matMenuTriggerData]="{ item: item }" matTooltip="Mais ações" aria-label="Mais ações">
+                      <mat-icon>more_vert</mat-icon>
+                    </button>
+                  }
+                </div>
+              </td>
             </ng-container>
 
-            <mat-header-row *matHeaderRowDef="['date','description','account','amount','status','actions']"></mat-header-row>
-            <mat-row *matRowDef="let row; columns: ['date','description','account','amount','status','actions']"></mat-row>
-          </mat-table>
+            <tr mat-header-row *matHeaderRowDef="['description','expectedDate','amount','status','actions']"></tr>
+            <tr mat-row *matRowDef="let row; columns: ['description','expectedDate','amount','status','actions']"></tr>
+          </table>
+        </div>
+      </ng-template>
+    </mat-expansion-panel>
+
+    <!-- ═══ RECEITAS PREVISTAS ═══ -->
+    <mat-expansion-panel [expanded]="false" class="planning-panel">
+      <mat-expansion-panel-header>
+        <mat-panel-title>
+          <mat-icon class="icon-income">trending_up</mat-icon>
+          <span>Receitas Previstas ({{ incomeItems().length }})</span>
+        </mat-panel-title>
+        <mat-panel-description>
+          <span>{{ summary().realizedIncome | currency:'BRL':'symbol':'1.2-2':'pt-BR' }} de {{ summary().plannedIncome | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
+        </mat-panel-description>
+      </mat-expansion-panel-header>
+      <ng-template matExpansionPanelContent>
+        <div class="table-responsive-wrapper">
+          <table mat-table [dataSource]="incomeItems()">
+            <ng-container matColumnDef="description">
+              <th mat-header-cell *matHeaderCellDef>Descrição</th>
+              <td mat-cell *matCellDef="let item">
+                <div class="item-description-cell">
+                  <span class="desc-text">{{ item.description }}</span>
+                </div>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="expectedDate">
+              <th mat-header-cell *matHeaderCellDef>Data</th>
+              <td mat-cell *matCellDef="let item" class="date-cell">{{ item.expectedDate | date:'dd/MM' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="amount">
+              <th mat-header-cell *matHeaderCellDef>Valor</th>
+              <td mat-cell *matCellDef="let item" class="amount-cell mono text-income">{{ item.amount | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>Status</th>
+              <td mat-cell *matCellDef="let item">
+                <span class="status-pill" [class]="statusClass(item.status)">
+                  {{ statusLabel(item.status) }}
+                </span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef></th>
+              <td mat-cell *matCellDef="let item">
+                <div class="row-actions">
+                  @if (confirmingDeleteId() === item.id) {
+                    <div class="confirm-delete-box">
+                      <span class="confirm-prompt">Excluir?</span>
+                      <button mat-icon-button color="warn" matTooltip="Confirmar exclusão" (click)="deleteItem(item)">
+                        <mat-icon>check</mat-icon>
+                      </button>
+                      <button mat-icon-button matTooltip="Cancelar" (click)="confirmingDeleteId.set(null)">
+                        <mat-icon>close</mat-icon>
+                      </button>
+                    </div>
+                  } @else {
+                    <button mat-icon-button [matMenuTriggerFor]="itemMenu" [matMenuTriggerData]="{ item: item }" matTooltip="Mais ações" aria-label="Mais ações">
+                      <mat-icon>more_vert</mat-icon>
+                    </button>
+                  }
+                </div>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="['description','expectedDate','amount','status','actions']"></tr>
+            <tr mat-row *matRowDef="let row; columns: ['description','expectedDate','amount','status','actions']"></tr>
+          </table>
+        </div>
+      </ng-template>
+    </mat-expansion-panel>
+
+    <!-- ═══ PARCELAS DE CARTÃO ═══ -->
+    <mat-expansion-panel [expanded]="false" class="planning-panel">
+      <mat-expansion-panel-header>
+        <mat-panel-title>
+          <mat-icon>credit_card</mat-icon>
+          <span>Parcelas de Cartão de Crédito ({{ installmentItems().length }})</span>
+        </mat-panel-title>
+      </mat-expansion-panel-header>
+      <ng-template matExpansionPanelContent>
+        <div class="table-responsive-wrapper">
+          <table mat-table [dataSource]="installmentItems()">
+            <ng-container matColumnDef="description">
+              <th mat-header-cell *matHeaderCellDef>Descrição</th>
+              <td mat-cell *matCellDef="let item">{{ item.description }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="expectedDate">
+              <th mat-header-cell *matHeaderCellDef>Data</th>
+              <td mat-cell *matCellDef="let item" class="date-cell">{{ item.expectedDate | date:'dd/MM' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="amount">
+              <th mat-header-cell *matHeaderCellDef>Valor</th>
+              <td mat-cell *matCellDef="let item" class="amount-cell mono">{{ item.amount | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>Status</th>
+              <td mat-cell *matCellDef="let item">
+                <span class="status-pill" [class]="statusClass(item.status)">
+                  {{ statusLabel(item.status) }}
+                </span>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="['description','expectedDate','amount','status']"></tr>
+            <tr mat-row *matRowDef="let row; columns: ['description','expectedDate','amount','status']"></tr>
+          </table>
+        </div>
+      </ng-template>
+    </mat-expansion-panel>
+
+    <!-- ═══ DESPESAS NÃO PLANEJADAS ═══ -->
+    @if (unplannedItems().length > 0) {
+      <mat-card class="unplanned-card">
+        <mat-card-header>
+          <div class="unplanned-header-row">
+            <div class="title-with-icon">
+              <mat-icon class="icon-warning">warning_amber</mat-icon>
+              <span>Gastos Não Planejados ({{ unplannedItems().length }})</span>
+            </div>
+            <span class="unplanned-subtitle">Transações executadas no período sem item de orçamento vinculado</span>
+          </div>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="table-responsive-wrapper">
+            <mat-table [dataSource]="unplannedItems()">
+
+              <ng-container matColumnDef="date">
+                <mat-header-cell *matHeaderCellDef>Data</mat-header-cell>
+                <mat-cell *matCellDef="let tx" class="date-cell">{{ (tx.date ?? '') | date:'dd/MM' }}</mat-cell>
+              </ng-container>
+
+              <ng-container matColumnDef="description">
+                <mat-header-cell *matHeaderCellDef>Descrição</mat-header-cell>
+                <mat-cell *matCellDef="let tx">{{ tx.description }}</mat-cell>
+              </ng-container>
+
+              <ng-container matColumnDef="account">
+                <mat-header-cell *matHeaderCellDef>Conta</mat-header-cell>
+                <mat-cell *matCellDef="let tx">{{ tx.accountName ?? '' }}</mat-cell>
+              </ng-container>
+
+              <ng-container matColumnDef="amount">
+                <mat-header-cell *matHeaderCellDef>Valor</mat-header-cell>
+                <mat-cell *matCellDef="let tx"
+                          class="amount-cell mono"
+                          [class.text-income]="tx.type === 'INCOME'"
+                          [class.text-expense]="tx.type === 'EXPENSE'">
+                  {{ tx.amount | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}
+                </mat-cell>
+              </ng-container>
+
+              <ng-container matColumnDef="status">
+                <mat-header-cell *matHeaderCellDef>Status</mat-header-cell>
+                <mat-cell *matCellDef="let tx">
+                  <span class="status-pill" [class.status-realized]="tx.status === 'PAID'">
+                    {{ tx.status === 'PAID' ? 'Pago' : 'Pendente' }}
+                  </span>
+                </mat-cell>
+              </ng-container>
+
+              <ng-container matColumnDef="actions">
+                <mat-header-cell *matHeaderCellDef></mat-header-cell>
+                <mat-cell *matCellDef="let tx">
+                  <button mat-stroked-button class="action-btn-compact" (click)="createPlannedFromUnplanned(tx)">
+                    <mat-icon>add_task</mat-icon> Criar planejado
+                  </button>
+                  <button mat-button class="action-btn-compact" (click)="linkFromUnplanned(tx)">
+                    <mat-icon>link</mat-icon> Vincular
+                  </button>
+                </mat-cell>
+              </ng-container>
+
+              <mat-header-row *matHeaderRowDef="['date','description','account','amount','status','actions']"></mat-header-row>
+              <mat-row *matRowDef="let row; columns: ['date','description','account','amount','status','actions']"></mat-row>
+            </mat-table>
+          </div>
 
           @if (summary().unplannedExpense > 0 || summary().unplannedIncome > 0) {
-            <div style="margin-top: 8px; display: flex; gap: 16px; font-size: 0.875rem;">
+            <div class="unplanned-totals-row">
               @if (summary().unplannedExpense > 0) {
-                <span>Despesas não planejadas: <strong>{{ summary().unplannedExpense | currency:'BRL':'symbol':'1.2-2' }}</strong></span>
+                <span>Total de despesas não planejadas: <strong>{{ summary().unplannedExpense | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong></span>
               }
               @if (summary().unplannedIncome > 0) {
-                <span>Receitas não planejadas: <strong>{{ summary().unplannedIncome | currency:'BRL':'symbol':'1.2-2' }}</strong></span>
+                <span>Total de receitas não planejadas: <strong>{{ summary().unplannedIncome | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong></span>
               }
             </div>
           }
         </mat-card-content>
       </mat-card>
     }
+
   }
 </div>
+
+<!-- ═══ MENU DE AÇÕES CONTEXTUAIS DO ITEM ═══ -->
+<mat-menu #itemMenu="matMenu">
+  <ng-template matMenuContent let-item="item">
+    @if (!item.transactionId && cycle()?.status === 'OPEN') {
+      <button mat-menu-item (click)="linkTransaction(item)">
+        <mat-icon>link</mat-icon>
+        <span>Vincular a transação existente</span>
+      </button>
+    }
+    @if (item.transactionId) {
+      <button mat-menu-item (click)="unlinkTransaction(item)">
+        <mat-icon>link_off</mat-icon>
+        <span>Desvincular transação</span>
+      </button>
+    }
+    <button mat-menu-item (click)="makeRecurring(item)">
+      <mat-icon>event_repeat</mat-icon>
+      <span>Tornar recorrente (regra mensal)</span>
+    </button>
+    @if (item.source !== 'INSTALLMENT' && cycle()?.status === 'OPEN') {
+      <mat-divider></mat-divider>
+      <button mat-menu-item (click)="confirmingDeleteId.set(item.id!)" class="menu-delete-item">
+        <mat-icon color="warn">delete_outline</mat-icon>
+        <span>Remover do planejamento</span>
+      </button>
+    }
+  </ng-template>
+</mat-menu>

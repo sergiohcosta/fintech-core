@@ -1,6 +1,6 @@
 :host {
   display: block;
-  color: var(--mat-sys-on-surface, #18231f);
+  color: var(--mat-sys-on-surface);
 }
 
 .dialog-shell {
@@ -20,8 +20,8 @@
   height: 48px;
   place-items: center;
   border-radius: 16px;
-  color: var(--mat-sys-primary, #176b50);
-  background: var(--mat-sys-primary-container, #d5f1e2);
+  color: var(--mat-sys-primary);
+  background: var(--mat-sys-primary-container);
 
   mat-icon {
     width: 25px;
@@ -32,7 +32,7 @@
 
 .eyebrow {
   margin: 0 0 3px;
-  color: var(--mat-sys-primary, #176b50);
+  color: var(--mat-sys-primary);
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -45,6 +45,7 @@ h2[mat-dialog-title] {
   font-size: 1.45rem;
   font-weight: 650;
   letter-spacing: -0.025em;
+  color: var(--mat-sys-on-surface);
 }
 
 mat-dialog-content {
@@ -54,7 +55,7 @@ mat-dialog-content {
 
 .intro {
   margin: 4px 0 18px;
-  color: var(--mat-sys-on-surface-variant, #59635e);
+  color: var(--mat-sys-on-surface-variant);
   font-size: 0.9rem;
   line-height: 1.55;
 }
@@ -65,14 +66,15 @@ mat-dialog-content {
   gap: 12px;
   margin: 4px 0 18px;
   padding: 14px 16px;
-  border: 1px solid #e7c9a6;
+  border: 1px solid color-mix(in srgb, #f59e0b 35%, transparent);
   border-radius: 12px;
-  color: #75430f;
-  background: #fff4e2;
+  color: color-mix(in srgb, #f59e0b 80%, var(--mat-sys-on-surface));
+  background: color-mix(in srgb, #f59e0b 14%, var(--mat-sys-surface));
 
   > mat-icon {
     flex: 0 0 auto;
     margin-top: 1px;
+    color: color-mix(in srgb, #f59e0b 85%, var(--mat-sys-on-surface));
   }
 
   > div {
@@ -102,14 +104,14 @@ mat-dialog-content {
   gap: 14px;
   min-height: 76px;
   padding: 12px 16px;
-  border: 1px solid var(--mat-sys-outline-variant, #d9e1dc);
+  border: 1px solid var(--mat-sys-outline-variant);
   border-radius: 14px;
-  background: var(--mat-sys-surface-container-low, #f7faf8);
+  background: var(--mat-sys-surface-container-low);
   transition: background-color 160ms ease, border-color 160ms ease;
 
   &.is-skipped {
-    border-color: #e7c9a6;
-    background: #fff7eb;
+    border-color: color-mix(in srgb, #f59e0b 35%, transparent);
+    background: color-mix(in srgb, #f59e0b 8%, var(--mat-sys-surface));
   }
 }
 
@@ -122,26 +124,29 @@ mat-dialog-content {
 }
 
 .number {
-  color: var(--mat-sys-primary, #176b50);
+  color: var(--mat-sys-primary);
   font-size: 1rem;
   font-weight: 700;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-variant-numeric: tabular-nums;
 }
 
 .row-caption,
 .due-caption {
-  color: var(--mat-sys-on-surface-variant, #69736d);
+  color: var(--mat-sys-on-surface-variant);
   font-size: 0.7rem;
 }
 
 .amount {
   font-size: 0.95rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-variant-numeric: tabular-nums;
+  color: var(--mat-sys-on-surface);
 }
 
 .invoice-label,
 .due-cell > span:last-child {
-  color: var(--mat-sys-on-surface-variant, #59635e);
+  color: var(--mat-sys-on-surface-variant);
   font-size: 0.78rem;
 }
 
@@ -150,7 +155,7 @@ mat-dialog-content {
   align-items: center;
   justify-self: end;
   gap: 6px;
-  color: #176b50;
+  color: var(--fintech-income, #10b981);
   font-size: 0.78rem;
   font-weight: 650;
   white-space: nowrap;
@@ -159,11 +164,16 @@ mat-dialog-content {
     width: 18px;
     height: 18px;
     font-size: 18px;
+    color: var(--fintech-income, #10b981);
   }
 }
 
 .status-skipped {
-  color: #925314;
+  color: color-mix(in srgb, #f59e0b 85%, var(--mat-sys-on-surface));
+
+  mat-icon {
+    color: color-mix(in srgb, #f59e0b 85%, var(--mat-sys-on-surface));
+  }
 }
 
 mat-dialog-actions {

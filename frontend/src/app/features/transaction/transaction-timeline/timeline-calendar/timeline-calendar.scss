@@ -1,4 +1,10 @@
-.calendar { display: flex; flex-direction: column; gap: 12px; }
+.calendar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 .calendar-nav { display: flex; align-items: center; justify-content: center; gap: 16px; h3 { margin: 0; min-width: 180px; text-align: center; } }
 // Tabela semantica: o <table> e o grid CSS, display:contents em thead/tbody/tr
 // deixa th e td participarem do grid-template-columns sem quebrar a arvore a11y.
@@ -7,6 +13,7 @@
   grid-template-columns: repeat(7, 1fr);
   gap: 4px;
   width: 100%;
+  min-width: 320px;
   border-collapse: collapse;
 }
 .calendar-grid thead,
@@ -21,10 +28,31 @@
   &.expanded { outline: 2px solid var(--mat-sys-primary); }
 }
 .day-number { font-size: 0.8rem; font-weight: 500; }
-.day-net { margin-top: auto; font-size: 0.7rem; font-weight: 600;
-  &.positive { color: var(--mat-sys-primary); } &.negative { color: var(--mat-sys-error); } }
+.day-net {
+  margin-top: auto;
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+
+  &.positive { color: var(--fintech-income, #10b981); }
+  &.negative { color: var(--mat-sys-error); }
+}
 .day-detail { border-top: 1px solid var(--mat-sys-outline-variant); padding-top: 8px;
   h4 { margin: 0 0 8px; } }
-.detail-row { display: flex; align-items: center; gap: 8px; padding: 4px 0;
-  .desc { flex: 1; } .amount { font-weight: 600; }
-  &.income .amount { color: var(--mat-sys-primary); } &.expense .amount { color: var(--mat-sys-error); } }
+.detail-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+
+  .desc { flex: 1; }
+  .amount {
+    font-weight: 600;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &.income .amount { color: var(--fintech-income, #10b981); }
+  &.expense .amount { color: var(--mat-sys-error); }
+}

@@ -26,6 +26,7 @@ describe('CategoryForm', () => {
   let service: CategoriesService;
 
   beforeEach(async () => {
+    TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
       imports: [CategoryForm, NoopAnimationsModule],
       providers: [
@@ -159,6 +160,23 @@ describe('CategoryForm', () => {
       expect(editComponent.form.get('icon')?.disabled).toBe(true);
       expect(editComponent.form.get('color')?.disabled).toBe(true);
       expect(editComponent.inheritedFromName()).toBe('Alimentação');
+      expect(editComponent.isInvalid()).toBe(false);
+    });
+  });
+
+  describe('reatividade de validade em zoneless', () => {
+    it('isInvalid reflete o estado inicial e reage a preenchimento de campos', async () => {
+      expect(component.isInvalid()).toBe(true);
+
+      component.form.patchValue({ name: 'Educação' });
+      await fixture.whenStable();
+
+      expect(component.isInvalid()).toBe(false);
+
+      component.form.patchValue({ name: '' });
+      await fixture.whenStable();
+
+      expect(component.isInvalid()).toBe(true);
     });
   });
 });

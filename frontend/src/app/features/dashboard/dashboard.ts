@@ -1,23 +1,54 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
-import { switchMap, catchError, of } from 'rxjs';
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { switchMap, catchError, of, forkJoin, map } from 'rxjs';
+import { DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatListModule } from '@angular/material/list';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 import { DashboardService } from '../../core/api/dashboard/dashboard.service';
 import { TransactionsService } from '../../core/api/transactions/transactions.service';
 import { AccountsService } from '../../core/api/accounts/accounts.service';
+import { InvoicesService } from '../../core/api/invoices/invoices.service';
 import { TransactionEventsService } from '../../core/services/transaction-events';
 import { AuthService } from '../../core/services/auth';
-import { AccountResponse, TransactionResponseDTO } from '../../core/api/fintechSaaSAPI.schemas';
+import { PlanningService } from '../planning/planning.service';
+import {
+  AccountResponse,
+  BudgetCycleResponse,
+  BudgetCycleSummary,
+  InvoiceResponseDTO,
+  TransactionResponseDTO,
+} from '../../core/api/fintechSaaSAPI.schemas';
+import { DEFAULT_SUMMARY } from '../planning/budget-cycle-current/budget-cycle.utils';
+import { WelcomeWizardComponent } from './welcome-wizard/welcome-wizard';
+import { InvoicePayDialogComponent, InvoicePayDialogResult } from '../invoice/invoice-pay-dialog/invoice-pay-dialog';
+
+export interface CardSynopsis {
+  account: AccountResponse;
+  featuredInvoice?: InvoiceResponseDTO;
+  nextOpenInvoice?: InvoiceResponseDTO;
+  isClosedWaitingPayment: boolean;
+  isOpenInvoice: boolean;
+  hasInvoices: boolean;
+  limitAmount?: number | null;
+  usedBalance: number;
+  availableLimit?: number | null;
+  limitUsagePercentage?: number | null;
+  closingDay?: number;
+  dueDay?: number;
+  isDueSoon: boolean;
+  isOverdue: boolean;
+}
 
 @Component({
   selector: 'app-dashboard',
@@ -30,8 +61,12 @@ import { AccountResponse, TransactionResponseDTO } from '../../core/api/fintechS
     MatDividerModule,
     MatChipsModule,
     MatProgressSpinnerModule,
+    MatProgressBarModule,
     MatTooltipModule,
     MatListModule,
+    MatDialogModule,
+    MatSnackBarModule,
+    WelcomeWizardComponent,
   ],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',
@@ -40,8 +75,12 @@ export class DashboardComponent {
   private dashboardService = inject(DashboardService);
   private transactionService = inject(TransactionsService);
   private accountsService = inject(AccountsService);
+  private invoicesService = inject(InvoicesService);
   private transactionEvents = inject(TransactionEventsService);
   private authService = inject(AuthService);
+  private planningService = inject(PlanningService);
+  private dialog = inject(MatDialog);
+  private snackBar = inject(MatSnackBar);
 
   private now = new Date();
   selectedYear = signal(this.now.getFullYear());
@@ -96,6 +135,12 @@ export class DashboardComponent {
     return label.charAt(0).toUpperCase() + label.slice(1);
   });
 
+  currentMonthName = computed(() => {
+    const d = new Date(this.selectedYear(), this.selectedMonthIndex() - 1, 1);
+    const label = d.toLocaleDateString('pt-BR', { month: 'long' });
+    return label.charAt(0).toUpperCase() + label.slice(1);
+  });
+
   isCurrentMonth = computed(() => {
     const n = new Date();
     return this.selectedYear() === n.getFullYear() && this.selectedMonthIndex() === n.getMonth() + 1;
@@ -105,8 +150,219 @@ export class DashboardComponent {
   private accounts$ = toObservable(this.transactionEvents.refreshTrigger).pipe(
     switchMap(() => this.accountsService.listAccounts().pipe(catchError(() => of([]))))
   );
-  accounts = toSignal(this.accounts$, { initialValue: [] as AccountResponse[] });
+  accounts = toSignal(this.accounts$);
   hasAccounts = computed(() => (this.accounts()?.length ?? 0) > 0);
+
+  // Faturas de Cartão de Crédito (Radar de Faturas)
+  creditCardAccounts = computed(() => {
+    return (this.accounts() ?? []).filter(a => a.active && a.type === 'CREDIT_CARD');
+  });
+
+  private ccTrigger = computed(() => ({
+    refresh: this.transactionEvents.refreshTrigger(),
+    ccIds: this.creditCardAccounts().map(a => a.id).sort().join(','),
+  }));
+
+  private invoices$ = toObservable(this.ccTrigger).pipe(
+    switchMap(() => {
+      const cards = this.creditCardAccounts();
+      if (cards.length === 0) return of([] as InvoiceResponseDTO[]);
+      return forkJoin(
+        cards.map(c => this.invoicesService.listInvoices({ accountId: c.id }).pipe(catchError(() => of([]))))
+      ).pipe(
+        map(lists => {
+          const all = lists.flat();
+          return all
+            .filter(inv => inv.status === 'OPEN' || inv.status === 'CLOSED')
+            .sort((a, b) => (a.dueDate ?? '').localeCompare(b.dueDate ?? ''));
+        })
+      );
+    })
+  );
+
+  creditCardInvoices = toSignal(this.invoices$, { initialValue: [] as InvoiceResponseDTO[] });
+
+  // Sinopse consolidada por Cartão de Crédito
+  cardSynopses = computed<CardSynopsis[]>(() => {
+    const cards = this.creditCardAccounts();
+    const allInvoices = this.creditCardInvoices();
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const threeDays = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 3);
+    const threeDaysStr = `${threeDays.getFullYear()}-${String(threeDays.getMonth() + 1).padStart(2, '0')}-${String(threeDays.getDate()).padStart(2, '0')}`;
+
+    return cards.map(card => {
+      const cardInvoices = allInvoices.filter(inv => inv.accountId === card.id);
+
+      // Prioridade máxima: fatura FECHADA (aguardando quitação)
+      const closedInvoice = cardInvoices.find(inv => inv.status === 'CLOSED');
+      // Fatura ABERTA corrente
+      const openInvoice = cardInvoices.find(inv => inv.status === 'OPEN');
+
+      let featuredInvoice: InvoiceResponseDTO | undefined;
+      let nextOpenInvoice: InvoiceResponseDTO | undefined;
+      let isClosedWaitingPayment = false;
+      let isOpenInvoice = false;
+
+      if (closedInvoice) {
+        featuredInvoice = closedInvoice;
+        isClosedWaitingPayment = true;
+        nextOpenInvoice = openInvoice;
+      } else if (openInvoice) {
+        featuredInvoice = openInvoice;
+        isOpenInvoice = true;
+      }
+
+      const hasInvoices = !!featuredInvoice;
+      const limitAmount = card.creditCardDetails?.limitAmount ?? null;
+      const usedBalance = Math.max(0, card.balance ?? 0);
+      let availableLimit: number | null = null;
+      let limitUsagePercentage: number | null = null;
+
+      if (limitAmount !== null && limitAmount > 0) {
+        availableLimit = Math.max(0, limitAmount - usedBalance);
+        limitUsagePercentage = Math.min(100, Math.round((usedBalance / limitAmount) * 100));
+      }
+
+      let isDueSoon = false;
+      let isOverdue = false;
+      if (featuredInvoice?.dueDate && isClosedWaitingPayment) {
+        if (featuredInvoice.dueDate < todayStr) {
+          isOverdue = true;
+        } else if (featuredInvoice.dueDate <= threeDaysStr) {
+          isDueSoon = true;
+        }
+      }
+
+      return {
+        account: card,
+        featuredInvoice,
+        nextOpenInvoice,
+        isClosedWaitingPayment,
+        isOpenInvoice,
+        hasInvoices,
+        limitAmount,
+        usedBalance,
+        availableLimit,
+        limitUsagePercentage,
+        closingDay: card.creditCardDetails?.closingDay,
+        dueDay: card.creditCardDetails?.dueDay,
+        isDueSoon,
+        isOverdue,
+      };
+    });
+  });
+
+  onPayInvoice(invoice: InvoiceResponseDTO): void {
+    const dialogRef = this.dialog.open(InvoicePayDialogComponent, {
+      data: { invoice },
+      width: '480px',
+    });
+    dialogRef.afterClosed().subscribe((result: InvoicePayDialogResult | undefined) => {
+      if (!result) return;
+      this.invoicesService.payInvoice(invoice.id, {
+        sourceAccountId: result.sourceAccountId,
+        paymentDate: result.paymentDate,
+      }).subscribe({
+        next: () => {
+          this.snackBar.open('Fatura paga com sucesso!', 'Fechar', { duration: 3000 });
+          this.transactionEvents.notifyTransactionCreated();
+        },
+        error: () => {
+          this.snackBar.open('Erro ao pagar fatura.', 'Fechar', { duration: 5000 });
+        },
+      });
+    });
+  }
+
+  // Wizard de Boas-Vindas do Dia Zero
+  private getInitialWelcomeWizardState(): boolean {
+    try {
+      return localStorage.getItem('fintech_welcome_wizard_dismissed') === 'true';
+    } catch {
+      return false;
+    }
+  }
+
+  welcomeWizardDismissed = signal<boolean>(this.getInitialWelcomeWizardState());
+
+  dismissWelcomeWizard(): void {
+    this.welcomeWizardDismissed.set(true);
+    try {
+      localStorage.setItem('fintech_welcome_wizard_dismissed', 'true');
+    } catch {}
+  }
+
+  reopenWelcomeWizard(): void {
+    this.welcomeWizardDismissed.set(false);
+  }
+
+  showWelcomeWizard = computed(() => {
+    return !this.isLoading() && !this.hasAccounts() && !this.welcomeWizardDismissed();
+  });
+
+  // Carregamento do Planejamento Ativo (Budget Cycle)
+  private currentCycle$ = toObservable(this.transactionEvents.refreshTrigger).pipe(
+    switchMap(() => this.planningService.getCurrentCycle().pipe(catchError(() => of(null))))
+  );
+  currentCycle = toSignal(this.currentCycle$);
+  hasActiveCycle = computed(() => {
+    const c = this.currentCycle();
+    return !!c && c.status === 'OPEN';
+  });
+  cycleSummary = computed((): Required<BudgetCycleSummary> => ({
+    ...DEFAULT_SUMMARY,
+    ...(this.currentCycle()?.summary ?? {}),
+  }));
+
+  // Carregamento Inicial: evita flash do onboarding e de ciclo vazio pós-login
+  isLoading = computed(() => {
+    const accs = this.accounts();
+    if (accs === undefined) return true;
+    if (accs.length === 0) return false;
+    return this.currentCycle() === undefined;
+  });
+
+  cycleDatesLabel = computed(() => {
+    const c = this.currentCycle();
+    if (!c || !c.startDate || !c.endDate) return '';
+    const [sy, sm, sd] = c.startDate.split('-').map(Number);
+    const [ey, em, ed] = c.endDate.split('-').map(Number);
+    const start = new Date(sy, sm - 1, sd);
+    const end = new Date(ey, em - 1, ed);
+    const fmt = (d: Date) => d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    return `${fmt(start)} a ${fmt(end)}/${end.getFullYear()}`;
+  });
+
+  availableToSpend = computed(() => this.cycleSummary().availableToSpend);
+  dailyAllowance = computed(() => this.cycleSummary().dailyAllowance);
+  remainingDays = computed(() => this.cycleSummary().remainingDays);
+
+  expenseProgress = computed(() => {
+    const planned = this.cycleSummary().plannedExpense;
+    const realized = this.cycleSummary().realizedExpense;
+    if (!planned || planned <= 0) return 0;
+    return Math.min(100, Math.round((realized / planned) * 100));
+  });
+
+  incomeProgress = computed(() => {
+    const planned = this.cycleSummary().plannedIncome;
+    const realized = this.cycleSummary().realizedIncome;
+    if (!planned || planned <= 0) return 0;
+    return Math.min(100, Math.round((realized / planned) * 100));
+  });
+
+  liquidBalance = computed(() => {
+    const s = this.summary();
+    if (s?.totalAccountBalance !== undefined && s?.totalAccountBalance !== null) {
+      return s.totalAccountBalance;
+    }
+    const accs = this.accounts();
+    if (!accs || accs.length === 0) return 0;
+    return accs
+      .filter(a => a.active && a.countInLiquidBalance)
+      .reduce((sum, a) => sum + (a.balance ?? 0), 0);
+  });
 
   // Carregamento do Resumo Financeiro
   private refreshState = computed(() => ({
@@ -117,7 +373,14 @@ export class DashboardComponent {
     switchMap(({ month }) => this.dashboardService.getDashboardSummary({ month }).pipe(catchError(() => of(null))))
   );
   summary = toSignal(this.summary$, { initialValue: null });
-  hasTransactions = computed(() => (this.summary()?.transactionCount ?? 0) > 0);
+
+  // Transações recentes: exibimos as 5 primeiras
+  private recentTransactions$ = toObservable(this.transactionEvents.refreshTrigger).pipe(
+    switchMap(() => this.transactionService.listTransactions().pipe(catchError(() => of([]))))
+  );
+  recentTransactions = toSignal(this.recentTransactions$, { initialValue: [] as TransactionResponseDTO[] });
+
+  hasTransactions = computed(() => (this.summary()?.transactionCount ?? 0) > 0 || (this.recentTransactions()?.length ?? 0) > 0);
 
   // Taxa de Poupança / Economia do mês (%)
   savingsRate = computed<number | null>(() => {
@@ -127,11 +390,76 @@ export class DashboardComponent {
     return Math.round((balance / s.totalIncome) * 100);
   });
 
-  // Transações recentes: exibimos as 5 primeiras
-  private recentTransactions$ = toObservable(this.transactionEvents.refreshTrigger).pipe(
-    switchMap(() => this.transactionService.listTransactions().pipe(catchError(() => of([]))))
-  );
-  recentTransactions = toSignal(this.recentTransactions$, { initialValue: [] as TransactionResponseDTO[] });
+  // Checklist de Onboarding Progressivo (Primeiros Passos)
+  private getInitialOnboardingDismissedState(): boolean {
+    try {
+      return localStorage.getItem('fintech_onboarding_dismissed') === 'true';
+    } catch {
+      return false;
+    }
+  }
+
+  onboardingDismissed = signal<boolean>(this.getInitialOnboardingDismissedState());
+
+  dismissOnboarding(): void {
+    this.onboardingDismissed.set(true);
+    try {
+      localStorage.setItem('fintech_onboarding_dismissed', 'true');
+    } catch {}
+  }
+
+  onboardingSteps = computed(() => [
+    {
+      id: 'account',
+      title: 'Cadastrar primeira conta ou cartão',
+      description: 'Conta bancária, carteira ou cartão de crédito para gerenciar seu saldo.',
+      completed: this.hasAccounts(),
+      actionUrl: '/accounts/new',
+      actionLabel: 'Criar Conta',
+      actionIcon: 'add',
+      secondaryActionUrl: null,
+      secondaryActionLabel: null,
+      secondaryActionIcon: null,
+    },
+    {
+      id: 'transaction',
+      title: 'Lançar ou importar primeira movimentação',
+      description: 'Importe seu extrato bancário ou registre uma despesa do dia a dia.',
+      completed: this.hasTransactions(),
+      actionUrl: '/transactions/new',
+      actionLabel: 'Lançar Despesa',
+      actionIcon: 'add',
+      secondaryActionUrl: '/import',
+      secondaryActionLabel: 'Importar Extrato',
+      secondaryActionIcon: 'upload_file',
+    },
+    {
+      id: 'planning',
+      title: 'Abrir planejamento do mês',
+      description: 'Defina o período do seu orçamento e acompanhe seu limite diário para gastar.',
+      completed: this.hasActiveCycle(),
+      actionUrl: '/planning',
+      actionLabel: 'Abrir Planejamento',
+      actionIcon: 'event_note',
+      secondaryActionUrl: null,
+      secondaryActionLabel: null,
+      secondaryActionIcon: null,
+    },
+  ]);
+
+  onboardingCompletedCount = computed(() => {
+    return this.onboardingSteps().filter(s => s.completed).length;
+  });
+
+  onboardingTotalCount = computed(() => this.onboardingSteps().length);
+
+  isOnboardingComplete = computed(() => {
+    return this.onboardingCompletedCount() === this.onboardingTotalCount();
+  });
+
+  showOnboardingChecklist = computed(() => {
+    return this.hasAccounts() && !this.isOnboardingComplete() && !this.onboardingDismissed();
+  });
 
   prevMonth(): void {
     if (this.selectedMonthIndex() === 1) {

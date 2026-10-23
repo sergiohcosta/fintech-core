@@ -1,6 +1,5 @@
 .container {
     padding: 20px;
-    font-family: Roboto, "Helvetica Neue", sans-serif;
 }
 
 // Marca d'água global: canto inferior direito, discreta, sobre qualquer tela.
@@ -12,7 +11,7 @@
     z-index: 1000;
     padding: 2px 8px;
     border-radius: 10px;
-    font-family: "Roboto Mono", ui-monospace, monospace;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     font-size: 11px;
     letter-spacing: 0.3px;
     // Alpha 0.65 → ~#595959 sobre branco; contraste ≈ 6.3:1 (WCAG AA 4.5:1).

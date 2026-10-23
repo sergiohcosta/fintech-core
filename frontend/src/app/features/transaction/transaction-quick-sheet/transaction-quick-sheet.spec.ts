@@ -4,7 +4,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
-import { vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import { AccountsService } from '../../../core/api/accounts/accounts.service';
 import { CategoriesService } from '../../../core/api/categories/categories.service';
@@ -53,6 +53,7 @@ describe('TransactionQuickSheetComponent', () => {
     router = { navigate: vi.fn().mockResolvedValue(true) };
     dialog = { open: vi.fn(() => ({ afterClosed: () => of(true) })) };
 
+    TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
       imports: [TransactionQuickSheetComponent],
       providers: [
@@ -74,9 +75,11 @@ describe('TransactionQuickSheetComponent', () => {
   });
 
   it('cria uma despesa, fecha a sheet e sinaliza a atualização', () => {
+    const testDate = new Date(2026, 9, 19);
     component.form.setValue({
       amount: 100,
       type: 'EXPENSE',
+      date: testDate,
       accountId: 'account-1',
       destinationAccountId: '',
       categoryId: 'category-1',
@@ -88,6 +91,7 @@ describe('TransactionQuickSheetComponent', () => {
     expect(transactionService.createTransaction).toHaveBeenCalledWith(expect.objectContaining({
       amount: 100,
       type: 'EXPENSE',
+      date: '2026-10-19',
       accountId: 'account-1',
       categoryId: 'category-1',
       description: 'Lançamento rápido',
@@ -95,6 +99,21 @@ describe('TransactionQuickSheetComponent', () => {
     expect(sheetRef.dismiss).toHaveBeenCalledOnce();
     expect(snackBar.open).toHaveBeenCalledWith('Transação lançada', 'OK', { duration: 3000 });
     expect(TestBed.inject(TransactionEventsService).refreshTrigger()).toBe(1);
+  });
+
+  it('inicializa com a data de hoje e permite alternar para ontem pelo atalho', () => {
+    expect(component.isToday()).toBe(true);
+    expect(component.isYesterday()).toBe(false);
+
+    component.setDateYesterday();
+
+    expect(component.isToday()).toBe(false);
+    expect(component.isYesterday()).toBe(true);
+
+    component.setDateToday();
+
+    expect(component.isToday()).toBe(true);
+    expect(component.isYesterday()).toBe(false);
   });
 
   it('usa o serviço de transferências e impede a mesma conta nos dois lados', () => {
@@ -159,6 +178,7 @@ describe('TransactionQuickSheetComponent', () => {
     component.form.setValue({
       amount: 100,
       type: 'EXPENSE',
+      date: new Date(),
       accountId: 'account-1',
       destinationAccountId: '',
       categoryId: 'category-1',

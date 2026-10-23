@@ -88,15 +88,15 @@ function sortTransferPairsTogether(transactions: TransactionResponseDTO[]): Tran
   const result: TransactionResponseDTO[] = [];
   const placed = new Set<string>();
   for (const t of transactions) {
-    if (placed.has(t.id)) continue;
-    placed.add(t.id);
+    if (t.id && placed.has(t.id)) continue;
+    if (t.id) placed.add(t.id);
     result.push(t);
     if (t.transferId) {
       const pair = transactions.find(
-        other => other.transferId === t.transferId && other.id !== t.id && !placed.has(other.id)
+        other => other.transferId === t.transferId && other.id !== t.id && (!other.id || !placed.has(other.id))
       );
       if (pair) {
-        placed.add(pair.id);
+        if (pair.id) placed.add(pair.id);
         result.push(pair);
       }
     }
@@ -135,7 +135,7 @@ function buildFlatRows(
   return transactions.flatMap(t => {
     if (t.installmentGroupId) {
       const group = groupInfoMap.get(t.installmentGroupId)!;
-      const isExpanded = expandedIds.has(t.id);
+      const isExpanded = t.id ? expandedIds.has(t.id) : false;
       const rows: DisplayRow[] = [{ kind: 'installment', data: t, group, isExpanded }];
       if (isExpanded) {
         rows.push({ kind: 'installment-detail', data: t, group });
@@ -221,6 +221,16 @@ export function buildDisplayRows(
     },
     ...buildFlatRows(sortTransactions(group.transactions, sortCriteria), expandedIds),
   ]);
+}
+
+export function rowTrackKey(row: DisplayRow, index: number): string {
+  if (row.kind === 'period-header') return row.key;
+  if (row.kind === 'invoice-summary') return row.invoiceId;
+  if (row.data.id) return `${row.kind}:${row.data.id}`;
+  if (isGhost(row.data)) {
+    return `ghost:${row.data.recurrenceRuleId ?? ''}:${row.data.occurrenceDate ?? row.data.date ?? index}`;
+  }
+  return `${row.kind}:${index}`;
 }
 
 export function effectiveMonth(t: TransactionResponseDTO): string {
@@ -400,12 +410,6 @@ export function getSortInfo(
   const idx = criteria.findIndex(c => c.col === col);
   if (idx < 0) return null;
   return { priority: idx + 1, dir: criteria[idx].dir };
-}
-
-export function resolveSwipeAction(distanceX: number, threshold = 96): 'delete' | 'edit' | null {
-  if (distanceX <= -threshold) return 'delete';
-  if (distanceX >= threshold) return 'edit';
-  return null;
 }
 
 // --- CSV Export ---

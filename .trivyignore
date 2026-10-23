@@ -1,0 +1,5 @@
+# CVE-2026-111497: brotli-libs Out-of-Bounds Write in Google Brotli Decoder
+# Vulnerabilidade no pacote brotli-libs embutido na imagem base eclipse-temurin:21-jre-alpine (alpine 3.24.3).
+# O Alpine já publicou o fix (1.2.1-r0), mas a imagem oficial do Eclipse Temurin no Docker Hub ainda não foi rebuildada.
+# O backend Spring Boot roda na JVM e não utiliza a biblioteca nativa brotli-libs.
+CVE-2026-111497

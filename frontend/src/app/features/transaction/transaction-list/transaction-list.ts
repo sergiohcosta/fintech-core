@@ -3,7 +3,6 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { BreakpointObserver } from '@angular/cdk/layout';
-import { CdkDragEnd, DragDropModule } from '@angular/cdk/drag-drop';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatTableModule } from '@angular/material/table';
 import { MatListModule } from '@angular/material/list';
@@ -17,6 +16,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatDividerModule } from '@angular/material/divider';
 import { forkJoin, map, catchError, of, Observable } from 'rxjs';
 
 import { TransactionsService } from '../../../core/api/transactions/transactions.service';
@@ -29,23 +29,21 @@ import { ConfirmationDialogComponent } from '../../../components/confirmation-di
 import { DeleteInstallmentDialogComponent, DeleteInstallmentDialogResult } from './delete-installment-dialog/delete-installment-dialog';
 import { TransactionFiltersComponent } from './transaction-filters/transaction-filters';
 import { TransactionFilters, DEFAULT_FILTERS, currentMonthFilters, TransactionType, TransactionStatus } from './transaction-filters/transaction-filters.types';
-import { buildDisplayRows, InstallmentGroupInfo, DisplayRow, InvoiceSummaryRow, resolveMonthKey, formatMonthLabel, SortCol, SortCriterion, applySort, getSortInfo, isGhost, exportToCsv, selectableRowId, planBulkDelete, resolveSwipeAction } from './transaction-list.utils';
+import { buildDisplayRows, InstallmentGroupInfo, DisplayRow, InvoiceSummaryRow, resolveMonthKey, formatMonthLabel, SortCol, SortCriterion, applySort, getSortInfo, isGhost, exportToCsv, selectableRowId, planBulkDelete, rowTrackKey } from './transaction-list.utils';
 import { RecurrenceService } from '../../../core/services/recurrence.service';
 import { triggerCsvDownload } from '../../../core/csv.utils';
 import { TransactionActionSheetComponent, TransactionActionSheetData, TransactionActionSheetResult } from './transaction-action-sheet/transaction-action-sheet';
 export { buildDisplayRows } from './transaction-list.utils';
 export type { InstallmentGroupInfo, DisplayRow, InvoiceSummaryRow, SortCriterion } from './transaction-list.utils';
 
-// Compact troca somente a apresentação e os atalhos de toque; os mesmos dados e comandos
-// de domínio alimentam a tabela desktop e os cards. O CDK bloqueia touch-action no drag root;
-// o SCSS restaura pan-y para scroll vertical e preserva o arraste horizontal de ações.
+// Compact troca a apresentação para cards táteis e menu de ações nativo; os mesmos dados
+// e comandos de domínio alimentam a tabela desktop e a listagem mobile sem interceptação de gestos.
 @Component({
   selector: 'app-transaction-list',
   standalone: true,
   imports: [
     CommonModule,
     RouterLink,
-    DragDropModule,
     MatTableModule,
     MatListModule,
     MatButtonModule,
@@ -58,6 +56,7 @@ export type { InstallmentGroupInfo, DisplayRow, InvoiceSummaryRow, SortCriterion
     MatSnackBarModule,
     MatProgressBarModule,
     MatCheckboxModule,
+    MatDividerModule,
     CurrencyPipe,
     DatePipe,
     TransactionFiltersComponent,
@@ -81,7 +80,10 @@ export class TransactionList implements OnInit {
 
   @ViewChild('desktopContextTrigger') private desktopContextTrigger?: MatMenuTrigger;
 
+  readonly rowTrackKey = rowTrackKey;
+
   isCompact = signal(false);
+  loading = signal(false);
   transactions         = signal<TransactionResponseDTO[]>([]);
   accounts             = signal<AccountResponse[]>([]);
   expandedTransactions = signal(new Set<string>());
@@ -90,18 +92,10 @@ export class TransactionList implements OnInit {
   sortCriteria         = signal<SortCriterion[]>([{ col: 'date', dir: 'desc' }]);
   invoicesForGrouping  = signal<InvoiceResponseDTO[]>([]);
   selectedIds          = signal<Set<string>>(new Set());
-  swipedRow = signal<{ id: string; direction: 'left' | 'right' } | null>(null);
   desktopMenuData = signal<{ transaction: TransactionResponseDTO } | null>(null);
   desktopMenuPosition = signal({ x: -1000, y: -1000 });
 
-  private longPressTimer: ReturnType<typeof setTimeout> | null = null;
-  private longPressOrigin: { x: number; y: number } | null = null;
-  private longPressTriggered = false;
-  private lastSwipeEndAt = 0;
   private menuReturnFocus: HTMLElement | null = null;
-  private readonly swipeLeftPosition = { x: -96, y: 0 };
-  private readonly swipeRightPosition = { x: 96, y: 0 };
-  private readonly resetSwipePosition = { x: 0, y: 0 };
 
   constructor() {
     this.breakpointObserver.observe('(max-width: 719.98px)')
@@ -110,7 +104,6 @@ export class TransactionList implements OnInit {
         this.isCompact.set(matches);
         if (matches) {
           this.clearSelection();
-          this.swipedRow.set(null);
         }
       });
 
@@ -234,89 +227,19 @@ export class TransactionList implements OnInit {
     this.sortCriteria.update(criteria => applySort(criteria, col, false));
   }
 
-  swipePosition(id: string): { x: number; y: number } {
-    const openRow = this.swipedRow();
-    if (!openRow || openRow.id !== id) return this.resetSwipePosition;
-    return openRow.direction === 'left' ? this.swipeLeftPosition : this.swipeRightPosition;
-  }
-
-  onSwipeEnd(event: CdkDragEnd<TransactionResponseDTO>, transaction: TransactionResponseDTO): void {
-    if (isGhost(transaction)) {
-      event.source.reset();
-      return;
-    }
-    const action = resolveSwipeAction(event.distance.x);
-    if (!action || (action === 'edit' && !!transaction.transferId)) {
-      this.swipedRow.set(null);
-      event.source.reset();
-      return;
-    }
-    const direction = action === 'delete' ? 'left' : 'right';
-    this.swipedRow.set({ id: transaction.id, direction });
-    this.lastSwipeEndAt = Date.now();
-    event.source.setFreeDragPosition(direction === 'left' ? this.swipeLeftPosition : this.swipeRightPosition);
-  }
-
-  closeSwipe(): void {
-    this.swipedRow.set(null);
-  }
-
-  swipeEdit(transaction: TransactionResponseDTO): void {
-    this.closeSwipe();
-    this.onEdit(transaction);
-  }
-
-  swipeDelete(transaction: TransactionResponseDTO): void {
-    this.closeSwipe();
-    this.confirmCompactDelete(transaction);
-  }
-
-  startLongPress(event: PointerEvent, transaction: TransactionResponseDTO): void {
-    if (event.pointerType !== 'touch') return;
-    this.cancelLongPress();
-    this.longPressTriggered = false;
-    this.longPressOrigin = { x: event.clientX, y: event.clientY };
-    this.longPressTimer = setTimeout(() => {
-      this.longPressTimer = null;
-      this.longPressTriggered = true;
-      this.swipedRow.set(null);
+  onCompactCardClick(event: MouseEvent, transaction: TransactionResponseDTO): void {
+    if (transaction.installmentGroupId) {
+      this.toggleExpand(transaction.id);
+    } else {
       const card = event.currentTarget instanceof HTMLElement
         ? event.currentTarget.closest<HTMLElement>('.tx-card')
         : null;
       this.openTransactionMenu(transaction, event.clientX, event.clientY, card);
-    }, 500);
-  }
-
-  moveLongPress(event: PointerEvent): void {
-    if (!this.longPressOrigin) return;
-    if (Math.hypot(event.clientX - this.longPressOrigin.x, event.clientY - this.longPressOrigin.y) > 10) {
-      this.cancelLongPress();
     }
-  }
-
-  endLongPress(): void {
-    this.cancelLongPress();
-  }
-
-  onCompactCardClick(event: MouseEvent, transaction: TransactionResponseDTO): void {
-    if (Date.now() - this.lastSwipeEndAt < 250) return;
-    if (this.swipedRow()?.id === transaction.id) {
-      this.swipedRow.set(null);
-      return;
-    }
-    if (this.longPressTriggered) {
-      this.longPressTriggered = false;
-      event.preventDefault();
-      return;
-    }
-    if (transaction.installmentGroupId) this.toggleExpand(transaction.id);
   }
 
   onCompactContextMenu(event: MouseEvent, transaction: TransactionResponseDTO): void {
     event.preventDefault();
-    if (this.longPressTriggered) return;
-    this.cancelLongPress();
-    this.swipedRow.set(null);
     const card = event.currentTarget instanceof HTMLElement
       ? event.currentTarget.closest<HTMLElement>('.tx-card')
       : null;
@@ -329,7 +252,6 @@ export class TransactionList implements OnInit {
     y: number,
     returnFocus: HTMLElement | null = null,
   ): void {
-    this.swipedRow.set(null);
     this.desktopMenuData.set({ transaction });
     this.desktopMenuPosition.set({ x, y });
     this.menuReturnFocus = returnFocus;
@@ -345,12 +267,6 @@ export class TransactionList implements OnInit {
   restoreMenuFocus(): void {
     this.menuReturnFocus?.focus();
     this.menuReturnFocus = null;
-  }
-
-  private cancelLongPress(): void {
-    if (this.longPressTimer !== null) clearTimeout(this.longPressTimer);
-    this.longPressTimer = null;
-    this.longPressOrigin = null;
   }
 
   @HostListener('document:contextmenu', ['$event'])
@@ -388,7 +304,7 @@ export class TransactionList implements OnInit {
     });
   }
 
-  private confirmCompactDelete(transaction: TransactionResponseDTO): void {
+  confirmCompactDelete(transaction: TransactionResponseDTO): void {
     const isTransfer = !!transaction.transferId;
     const data: TransactionActionSheetData = {
       title: transaction.installmentGroupId
@@ -492,6 +408,7 @@ export class TransactionList implements OnInit {
     const qp = this.route.snapshot.queryParams as Record<string, string | undefined>;
     const initial = TransactionList.mergeFiltersFromQueryParams(saved, qp);
     this.filters.set(initial);
+    this.loading.set(true);
     forkJoin({
       accounts:     this.accountService.listAccounts(),
       transactions: this.service.listTransactions({
@@ -505,8 +422,12 @@ export class TransactionList implements OnInit {
       next: ({ accounts, transactions }) => {
         this.accounts.set(accounts);
         this.transactions.set(transactions);
+        this.loading.set(false);
       },
-      error: () => this.snackBar.open('Erro ao carregar dados.', 'Fechar', { duration: 5000 }),
+      error: () => {
+        this.snackBar.open('Erro ao carregar dados.', 'Fechar', { duration: 5000 });
+        this.loading.set(false);
+      },
     });
   }
 
@@ -549,7 +470,16 @@ export class TransactionList implements OnInit {
     }
   }
 
+  clearAllFilters(): void {
+    this.clearSelection();
+    const defaults = currentMonthFilters();
+    this.filters.set(defaults);
+    this.saveToStorage(defaults);
+    this.loadTransactions(defaults);
+  }
+
   loadTransactions(f: TransactionFilters = this.filters()): void {
+    this.loading.set(true);
     this.service.listTransactions({
       accountIds: f.accountIds.length > 0 ? f.accountIds : undefined,
       status:    f.statuses[0],
@@ -559,8 +489,14 @@ export class TransactionList implements OnInit {
       // O backend só projeta quando há janela (startDate+endDate); sem período, retorna só reais.
       includeProjected: true,
     }).subscribe({
-      next:  (data) => this.transactions.set(data.map(t => this.withGhostKey(t))),
-      error: () => this.snackBar.open('Erro ao carregar transações.', 'Fechar', { duration: 5000 }),
+      next:  (data) => {
+        this.transactions.set(data.map(t => this.withGhostKey(t)));
+        this.loading.set(false);
+      },
+      error: () => {
+        this.snackBar.open('Erro ao carregar transações.', 'Fechar', { duration: 5000 });
+        this.loading.set(false);
+      },
     });
   }
 

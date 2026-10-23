@@ -9,6 +9,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { BudgetItemCreateRequest } from '../../../core/api/fintechSaaSAPI.schemas';
+import { formInvalidSignal } from '../../../core/form.utils';
 
 export type BudgetItemFormResult = BudgetItemCreateRequest;
 
@@ -64,6 +65,9 @@ export class BudgetItemFormComponent implements OnInit {
     type: ['EXPENSE', Validators.required],
     expectedDate: [null as Date | null, Validators.required],
   });
+
+  readonly isCycleFormInvalid = formInvalidSignal(this.cycleForm);
+  readonly isItemFormInvalid = formInvalidSignal(this.itemForm);
 
   ngOnInit(): void {
     this.isOpenCycleMode.set(this.data?.mode === 'openCycle');

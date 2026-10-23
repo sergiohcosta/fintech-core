@@ -25,7 +25,7 @@
   cursor: grab;
 
   span {
-    width: 32px;
+    width: 36px;
     height: 4px;
     border-radius: 999px;
     background: var(--mat-sys-outline-variant);
@@ -44,6 +44,7 @@
     font-size: 1.35rem;
     font-weight: 600;
     line-height: 1.2;
+    color: var(--mat-sys-on-surface);
   }
 
   .eyebrow {
@@ -55,7 +56,10 @@
     text-transform: uppercase;
   }
 
-  button { min-width: var(--touch-target-min, 48px); min-height: var(--touch-target-min, 48px); }
+  button {
+    min-width: var(--touch-target-min, 48px);
+    min-height: var(--touch-target-min, 48px);
+  }
 }
 
 .import-shortcut {
@@ -65,12 +69,13 @@
   width: 100%;
   min-height: var(--touch-target-min, 48px);
   margin-bottom: var(--space-xs, 4px);
+  border-radius: 12px;
 }
 
 .import-hint {
   margin: 0 0 var(--space-sm, 8px);
   color: var(--mat-sys-on-surface-variant);
-  font-size: .75rem;
+  font-size: 0.75rem;
 }
 
 form {
@@ -81,9 +86,20 @@ form {
 
 .field-full { width: 100%; }
 
-.amount-field input {
-  font-size: 1.5rem;
-  font-weight: 600;
+.amount-field {
+  input {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 1.5rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .amount-prefix {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--mat-sys-on-surface-variant);
+  }
 }
 
 .type-field {
@@ -94,22 +110,109 @@ form {
 
   .field-label {
     color: var(--mat-sys-on-surface-variant);
-    font-size: 0.875rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
   }
 
   mat-button-toggle-group {
     display: flex;
     width: 100%;
     min-height: var(--touch-target-min, 48px);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--mat-sys-outline-variant);
+    background: var(--mat-sys-surface-container-high);
   }
 
-  mat-button-toggle { flex: 1; }
+  mat-button-toggle {
+    flex: 1;
+    font-weight: 500;
+
+    .toggle-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+
+    &.type-expense.mat-button-toggle-checked {
+      background-color: color-mix(in srgb, var(--fintech-expense, var(--mat-sys-error)) 15%, var(--mat-sys-surface));
+      .mat-button-toggle-button { color: var(--fintech-expense, var(--mat-sys-error)); }
+      mat-icon { color: var(--fintech-expense, var(--mat-sys-error)); }
+    }
+
+    &.type-income.mat-button-toggle-checked {
+      background-color: color-mix(in srgb, var(--fintech-income, #10b981) 15%, var(--mat-sys-surface));
+      .mat-button-toggle-button { color: var(--fintech-income, #10b981); }
+      mat-icon { color: var(--fintech-income, #10b981); }
+    }
+
+    &.type-transfer.mat-button-toggle-checked {
+      background-color: color-mix(in srgb, var(--fintech-info, var(--mat-sys-primary)) 15%, var(--mat-sys-surface));
+      .mat-button-toggle-button { color: var(--fintech-info, var(--mat-sys-primary)); }
+      mat-icon { color: var(--fintech-info, var(--mat-sys-primary)); }
+    }
+  }
+}
+
+.date-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs, 4px);
+  margin-bottom: var(--space-xs, 4px);
+}
+
+.date-shortcuts {
+  display: flex;
+  gap: var(--space-sm, 8px);
+  margin-bottom: var(--space-xs, 4px);
+
+  .shortcut-btn {
+    flex: 1;
+    min-height: var(--touch-target-min, 40px);
+    font-size: 0.875rem;
+    border-radius: 8px;
+
+    &.active-shortcut {
+      background: color-mix(in srgb, var(--mat-sys-primary) 12%, var(--mat-sys-surface));
+      color: var(--mat-sys-primary);
+      border-color: var(--mat-sys-primary);
+      font-weight: 600;
+    }
+  }
+}
+
+.account-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  .account-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+.category-option {
+  display: inline-flex;
+  align-items: center;
+
+  .sub-indicator {
+    color: var(--mat-sys-outline);
+    font-weight: 600;
+  }
 }
 
 .submit-button {
   min-height: var(--touch-target-min, 48px);
   margin-top: var(--space-xs, 4px);
   font-weight: 600;
+  border-radius: 12px;
 }
 
 .submit-content {

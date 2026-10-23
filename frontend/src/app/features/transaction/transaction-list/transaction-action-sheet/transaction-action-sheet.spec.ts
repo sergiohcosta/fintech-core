@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { MAT_BOTTOM_SHEET_DATA, MatBottomSheetRef } from '@angular/material/bottom-sheet';
-import { vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { TransactionActionSheetComponent, TransactionActionSheetData } from './transaction-action-sheet';
 
 describe('TransactionActionSheetComponent', () => {
@@ -12,6 +12,7 @@ describe('TransactionActionSheetComponent', () => {
       confirmText: 'Excluir',
     };
 
+    TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
       imports: [TransactionActionSheetComponent],
       providers: [

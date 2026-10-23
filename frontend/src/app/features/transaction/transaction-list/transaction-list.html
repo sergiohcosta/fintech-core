@@ -6,17 +6,17 @@
     </div>
     <div class="header-actions">
       @if (isCompact()) {
+        <a mat-icon-button routerLink="/transactions/timeline" aria-label="Ver linha do tempo e calendário" matTooltip="Linha do tempo e calendário">
+          <mat-icon>calendar_month</mat-icon>
+        </a>
         <button mat-icon-button (click)="toggleFilters()" aria-label="Abrir filtros" matTooltip="Filtrar transações">
           <mat-icon>filter_alt</mat-icon>
           @if (activeFilterChips().length > 0) {
             <span class="filter-badge">{{ activeFilterChips().length }}</span>
           }
         </button>
-        <button mat-icon-button [matMenuTriggerFor]="sortMenu" aria-label="Ordenar transações">
+        <button mat-icon-button [matMenuTriggerFor]="sortMenu" aria-label="Ordenar e mais opções">
           <mat-icon>more_vert</mat-icon>
-        </button>
-        <button mat-icon-button (click)="exportCsv()" aria-label="Exportar CSV" matTooltip="Exportar CSV">
-          <mat-icon>download</mat-icon>
         </button>
         <a mat-flat-button color="primary" routerLink="/transactions/new" aria-label="Nova transação">
           <mat-icon>add</mat-icon>
@@ -30,8 +30,8 @@
             <span class="filter-badge">{{ activeFilterChips().length }}</span>
           }
         </button>
-        <a mat-stroked-button routerLink="/transactions/timeline">
-          <mat-icon>timeline</mat-icon>
+        <a mat-stroked-button routerLink="/transactions/timeline" matTooltip="Ver visualização em linha do tempo e calendário">
+          <mat-icon>calendar_month</mat-icon>
           Linha do tempo
         </a>
         <button mat-icon-button (click)="exportCsv()" aria-label="Exportar CSV" matTooltip="Exportar CSV">
@@ -94,6 +94,15 @@
       <mat-icon>{{ sortInfo('description')?.dir === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
       <span>Descrição</span>
     </button>
+    <mat-divider></mat-divider>
+    <a mat-menu-item routerLink="/transactions/timeline">
+      <mat-icon>calendar_month</mat-icon>
+      <span>Linha do tempo / Calendário</span>
+    </a>
+    <button mat-menu-item (click)="exportCsv()">
+      <mat-icon>download</mat-icon>
+      <span>Exportar CSV</span>
+    </button>
   </mat-menu>
 
   <mat-menu #transactionMenu="matMenu" (closed)="restoreMenuFocus()">
@@ -109,7 +118,7 @@
         <button mat-menu-item (click)="onEdit(transaction)" [disabled]="!!transaction.transferId">
           <mat-icon>edit</mat-icon><span>Editar</span>
         </button>
-        <button mat-menu-item (click)="swipeDelete(transaction)">
+        <button mat-menu-item (click)="confirmCompactDelete(transaction)">
           <mat-icon>delete</mat-icon><span>Excluir</span>
         </button>
         <button mat-menu-item (click)="duplicateTransaction(transaction)"
@@ -126,103 +135,93 @@
           aria-hidden="true" tabindex="-1" [matMenuTriggerRestoreFocus]="false"></button>
 
   @if (isCompact()) {
+    @if (loading()) {
+      <mat-progress-bar mode="indeterminate" class="table-loading-bar" />
+    }
     <mat-list class="tx-cards">
       @if (displayRows().length === 0) {
-        <mat-list-item class="empty-state">
-          <mat-icon matListItemIcon>receipt_long</mat-icon>
-          <span matListItemTitle>Nenhuma transação encontrada.</span>
-        </mat-list-item>
+        <div class="empty-state">
+          @if (loading()) {
+            <mat-icon class="spinning">hourglass_empty</mat-icon>
+            <p>Carregando transações...</p>
+          } @else {
+            <mat-icon>receipt_long</mat-icon>
+            <p>Nenhuma transação encontrada.</p>
+            @if (activeFilterChips().length > 0) {
+              <p class="empty-hint">Tente ajustar ou limpar os filtros aplicados.</p>
+              <button mat-stroked-button (click)="clearAllFilters()" class="clear-filters-btn">
+                <mat-icon>filter_alt_off</mat-icon>
+                Limpar filtros
+              </button>
+            }
+          }
+        </div>
       }
 
       <ng-template #transactionCard let-transaction let-group="group" let-expanded="expanded">
-        <div class="swipe-shell" [class.is-swiped]="swipedRow()?.id === transaction.id">
-          @if (swipedRow()?.id === transaction.id) {
-            <div class="swipe-actions" [class.delete-action]="swipedRow()?.direction === 'left'"
-                 [class.edit-action]="swipedRow()?.direction === 'right'">
-              @if (swipedRow()?.direction === 'left') {
-                <button mat-button type="button" (click)="swipeDelete(transaction)">
-                  <mat-icon>delete</mat-icon>Excluir
-                </button>
-              } @else {
-                <button mat-button type="button" [disabled]="!!transaction.transferId || isGhost(transaction)"
-                        (click)="swipeEdit(transaction)">
-                  <mat-icon>edit</mat-icon>Editar
-                </button>
-              }
-            </div>
-          }
-
-          <mat-list-item class="tx-card" tabindex="0" cdkDrag cdkDragLockAxis="x"
-                         [cdkDragFreeDragPosition]="swipePosition(transaction.id)"
-                         (cdkDragEnded)="onSwipeEnd($event, transaction)"
-                         (contextmenu)="onCompactContextMenu($event, transaction)"
-                         (click)="onCompactCardClick($event, transaction)">
-            <div class="tx-card-main"
-                 (pointerdown)="startLongPress($event, transaction)"
-                 (pointermove)="moveLongPress($event)"
-                 (pointerup)="endLongPress()"
-                 (pointercancel)="endLongPress()"
-                 (pointerleave)="endLongPress()">
-              <div class="tx-card-copy">
-                <div class="tx-card-heading">
-                  <span class="tx-description">{{ transaction.description }}</span>
-                  @if (isGhost(transaction)) {
-                    <span class="ghost-label">Prevista</span>
-                  }
-                </div>
-                @if (transaction.transferId) {
-                  <span class="tx-account">→ {{ transferDestination(transaction) ?? 'Conta de destino' }}</span>
-                } @else if (transaction.accountName) {
-                  <span class="tx-account">{{ transaction.accountName }}</span>
+        <mat-list-item class="tx-card" tabindex="0"
+                       (contextmenu)="onCompactContextMenu($event, transaction)"
+                       (click)="onCompactCardClick($event, transaction)">
+          <div class="tx-card-main">
+            <div class="tx-card-copy">
+              <div class="tx-card-heading">
+                <span class="tx-description">{{ transaction.description }}</span>
+                @if (isGhost(transaction)) {
+                  <span class="ghost-label">Prevista</span>
                 }
-                <div class="tx-card-meta">
-                  @if (transaction.categoryName) {
-                    <mat-chip>{{ transaction.categoryName }}</mat-chip>
-                  }
-                  @if (transaction.installmentNumber && transaction.totalInstallments) {
-                    <span class="installment-badge">{{ transaction.installmentNumber }}/{{ transaction.totalInstallments }}</span>
-                  } @else if (transaction.installmentLabel) {
-                    <span class="installment-badge">{{ transaction.installmentLabel }}</span>
-                  }
-                  <span [class]="'status-badge status-' + (transaction.status ?? '').toLowerCase()">
-                    {{ statusLabel(transaction.status ?? '') }}
-                  </span>
-                </div>
               </div>
-
-              <div class="tx-card-value">
-                <span class="tx-date">
-                  {{ (transaction.installmentGroupId && transaction.invoiceDueDate
-                    ? transaction.invoiceDueDate
-                    : transaction.date) | date:'dd/MM' }}
-                </span>
-                <span [class]="'amount ' + (transaction.transferId ? 'transfer' : (transaction.type ?? '').toLowerCase())">
-                  {{ transaction.amount | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}
+              @if (transaction.transferId) {
+                <span class="tx-account">→ {{ transferDestination(transaction) ?? 'Conta de destino' }}</span>
+              } @else if (transaction.accountName) {
+                <span class="tx-account">{{ transaction.accountName }}</span>
+              }
+              <div class="tx-card-meta">
+                @if (transaction.categoryName) {
+                  <mat-chip>{{ transaction.categoryName }}</mat-chip>
+                }
+                @if (transaction.installmentNumber && transaction.totalInstallments) {
+                  <span class="installment-badge">{{ transaction.installmentNumber }}/{{ transaction.totalInstallments }}</span>
+                } @else if (transaction.installmentLabel) {
+                  <span class="installment-badge">{{ transaction.installmentLabel }}</span>
+                }
+                <span [class]="'status-badge status-' + (transaction.status ?? '').toLowerCase()">
+                  {{ statusLabel(transaction.status ?? '') }}
                 </span>
               </div>
-
-              <button mat-icon-button class="tx-menu-trigger" type="button"
-                      aria-label="Mais ações" (click)="onMenuButtonClick($event, transaction)">
-                <mat-icon>more_vert</mat-icon>
-              </button>
             </div>
-          </mat-list-item>
 
-          @if (expanded && group) {
-            <div class="installment-detail-panel">
-              <div class="detail-group-info">
-                <span class="detail-group-name">{{ group.description }}</span>
-                <span class="detail-group-meta">{{ group.paidInstallments }}/{{ group.totalInstallments }} pagas</span>
-              </div>
-              <mat-progress-bar class="detail-progress" mode="determinate"
-                                [value]="(group.paidInstallments / group.totalInstallments) * 100" />
-              <span class="detail-meta-chip">{{ group.accountName ?? '—' }}</span>
+            <div class="tx-card-value">
+              <span class="tx-date">
+                {{ (transaction.installmentGroupId && transaction.invoiceDueDate
+                  ? transaction.invoiceDueDate
+                  : transaction.date) | date:'dd/MM' }}
+              </span>
+              <span [class]="'amount ' + (transaction.transferId ? 'transfer' : (transaction.type ?? '').toLowerCase())">
+                {{ transaction.amount | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}
+              </span>
             </div>
-          }
-        </div>
+
+            <button mat-icon-button class="tx-menu-trigger" type="button"
+                    aria-label="Mais ações" (click)="onMenuButtonClick($event, transaction)">
+              <mat-icon>more_vert</mat-icon>
+            </button>
+          </div>
+        </mat-list-item>
+
+        @if (expanded && group) {
+          <div class="installment-detail-panel">
+            <div class="detail-group-info">
+              <span class="detail-group-name">{{ group.description }}</span>
+              <span class="detail-group-meta">{{ group.paidInstallments }}/{{ group.totalInstallments }} pagas</span>
+            </div>
+            <mat-progress-bar class="detail-progress" mode="determinate"
+                              [value]="(group.paidInstallments / group.totalInstallments) * 100" />
+            <span class="detail-meta-chip">{{ group.accountName ?? '—' }}</span>
+          </div>
+        }
       </ng-template>
 
-      @for (row of displayRows(); track row.kind === 'period-header' ? row.key : row.kind === 'invoice-summary' ? row.invoiceId : row.kind + row.data.id) {
+      @for (row of displayRows(); track rowTrackKey(row, $index)) {
         @switch (row.kind) {
           @case ('single') {
             <ng-container *ngTemplateOutlet="transactionCard; context: { $implicit: row.data, group: null, expanded: false }" />
@@ -253,6 +252,9 @@
     </mat-list>
   } @else {
   <div class="table-container mat-elevation-z2">
+    @if (loading()) {
+      <mat-progress-bar mode="indeterminate" class="table-loading-bar" />
+    }
     <table mat-table [dataSource]="displayRows()">
 
       <ng-container matColumnDef="select">
@@ -551,8 +553,20 @@
 
       <tr class="mat-row" *matNoDataRow>
         <td class="mat-cell empty-state" [attr.colspan]="displayedColumns.length">
-          <mat-icon>receipt_long</mat-icon>
-          <p>Nenhuma transação encontrada.</p>
+          @if (loading()) {
+            <mat-icon class="spinning">hourglass_empty</mat-icon>
+            <p>Carregando transações...</p>
+          } @else {
+            <mat-icon>receipt_long</mat-icon>
+            <p>Nenhuma transação encontrada.</p>
+            @if (activeFilterChips().length > 0) {
+              <p class="empty-hint">Tente ajustar ou limpar os filtros aplicados.</p>
+              <button mat-stroked-button (click)="clearAllFilters()" class="clear-filters-btn">
+                <mat-icon>filter_alt_off</mat-icon>
+                Limpar filtros
+              </button>
+            }
+          }
         </td>
       </tr>
     </table>

@@ -12,9 +12,9 @@
         Mostrar arquivadas
       </mat-slide-toggle>
       @if (isAdmin()) {
-        <button mat-stroked-button color='primary' routerLink='/categories/taxonomy'>
+        <button mat-stroked-button color='primary' routerLink='/categories/taxonomy' matTooltip="Vincular ao padrão bancário para reconhecimento inteligente">
           <mat-icon>account_tree</mat-icon>
-          Mapeamento de Taxonomia
+          Categorias Padrão
         </button>
       }
       <button mat-flat-button color='primary' routerLink='/categories/new'>
@@ -33,13 +33,14 @@
         <td mat-cell *matCellDef='let cat'>
           <div [style.padding-left.px]='cat.level * 32' style='display: flex; align-items: center;'>
             @if (cat.level > 0) {
-              <mat-icon style='font-size: 18px; width: 18px; height: 18px; margin-right: 8px; color: #bdbdbd;'>
+              <mat-icon class="hierarchy-arrow">
                 subdirectory_arrow_right
               </mat-icon>
             }
             <mat-icon
-              [style.color]='cat.archived ? "#bdbdbd" : cat.color'
-              style='font-size: 20px; width: 20px; height: 20px; margin-right: 8px; flex-shrink: 0;'>
+              [style.color]='cat.archived ? "var(--mat-sys-outline)" : (cat.color || "var(--mat-sys-primary)")'
+              class="category-icon"
+              [class.category-archived-icon]="cat.archived">
               {{ cat.icon }}
             </mat-icon>
             <span

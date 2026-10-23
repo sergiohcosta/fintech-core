@@ -15,6 +15,7 @@ html {
   height: 100%;
   @include mat.theme((
     color: (
+      theme-type: light,
       primary: mat.$cyan-palette,
       tertiary: mat.$orange-palette,
     ),
@@ -23,22 +24,32 @@ html {
   ));
 }
 
-body {
-  // Default the application to a light color theme. This can be changed to
-  // `dark` to enable the dark color theme, or to `light dark` to defer to the
-  // user's system settings.
-  color-scheme: light;
+html.dark-theme,
+[data-theme="dark"] {
+  @include mat.theme((
+    color: (
+      theme-type: dark,
+      primary: mat.$cyan-palette,
+      tertiary: mat.$orange-palette,
+    ),
+  ));
+}
 
-  // Set a default background, font and text colors for the application using
-  // Angular Material's system-level CSS variables. Learn more about these
-  // variables at https://material.angular.dev/guide/system-variables
-  background-color: var(--mat-sys-surface);
+body {
+  // O body se ajusta dinamicamente via tokens de canvas e variáveis de sistema do Material 3
+  color-scheme: light;
+  background-color: var(--app-canvas-bg, var(--mat-sys-surface));
   color: var(--mat-sys-on-surface);
   font: var(--mat-sys-body-medium);
 
   // Reset the user agent margin.
   margin: 0;
   height: 100%;
+}
+
+html.dark-theme body,
+[data-theme="dark"] body {
+  color-scheme: dark;
 }
 
 // Zera duracao de transicoes/animacoes CSS no sidenav para eliminar o CLS residual.

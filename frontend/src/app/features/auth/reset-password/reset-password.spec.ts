@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
@@ -6,6 +7,7 @@ import { provideHttpClientTesting, HttpTestingController } from '@angular/common
 import { ResetPasswordComponent } from './reset-password';
 
 function setup(queryToken: string | null) {
+  TestBed.resetTestingModule();
   return TestBed.configureTestingModule({
     imports: [ResetPasswordComponent],
     providers: [

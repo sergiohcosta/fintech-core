@@ -43,7 +43,7 @@
                 }
 
                 <mat-card-actions align="end">
-                    <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid || isLoading()">
+                    <button mat-flat-button color="primary" type="submit" [disabled]="isInvalid() || isLoading()">
                         {{ isLoading() ? 'PROCESSANDO...' : 'CADASTRAR' }}
                     </button>
                 </mat-card-actions>

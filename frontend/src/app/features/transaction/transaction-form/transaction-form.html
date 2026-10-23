@@ -38,9 +38,9 @@
 
         <!-- 2. Valor + Data na mesma linha — QUANTO e QUANDO -->
         <div class="form-row form-row-cols">
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="outline" class="amount-field">
             <mat-label>Valor</mat-label>
-            <span matTextPrefix>R$&nbsp;</span>
+            <span matTextPrefix class="amount-prefix">R$&nbsp;</span>
             <input matInput type="text" inputmode="decimal"
                    [value]="amountDisplay()"
                    placeholder="0,00"
@@ -239,9 +239,9 @@
         </div>
 
         <div class="form-row form-row-cols">
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="outline" class="amount-field">
             <mat-label>Valor</mat-label>
-            <span matTextPrefix>R$&nbsp;</span>
+            <span matTextPrefix class="amount-prefix">R$&nbsp;</span>
             <input matInput type="text" inputmode="decimal"
                    [value]="amountDisplay()"
                    placeholder="0,00"
@@ -271,8 +271,8 @@
           </mat-form-field>
         </div>
 
-        <div class="form-row form-row-cols">
-          <mat-form-field appearance="outline">
+        <div class="transfer-accounts-flow">
+          <mat-form-field appearance="outline" class="transfer-field">
             <mat-label>Conta de origem *</mat-label>
             <mat-select formControlName="fromAccountId">
               <mat-select-trigger>{{ getAccountName(form.controls.fromAccountId.value) }}</mat-select-trigger>
@@ -290,7 +290,11 @@
             }
           </mat-form-field>
 
-          <mat-form-field appearance="outline">
+          <div class="transfer-arrow" aria-hidden="true">
+            <mat-icon>arrow_forward</mat-icon>
+          </div>
+
+          <mat-form-field appearance="outline" class="transfer-field">
             <mat-label>Conta de destino *</mat-label>
             <mat-select formControlName="toAccountId">
               <mat-select-trigger>{{ getAccountName(form.controls.toAccountId.value) }}</mat-select-trigger>

@@ -339,14 +339,17 @@ public class CsvExtractor implements TransactionExtractor {
             return null; // precisa header + ao menos 1 linha de dado
         }
 
-        for (char delimiter : new char[] {',', ';'}) {
-            CSVRecord header = parseSingleLine(lines.get(0), delimiter);
+        char[] candidateDelimiters = new char[] {',', ';', '\t'};
+
+        for (char headerDelim : candidateDelimiters) {
+            CSVRecord header = parseSingleLine(lines.get(0), headerDelim);
             if (header == null || header.size() < 2) {
                 continue; // header não parseia com este delimitador (ou só teria 1 coluna)
             }
             int width = header.size();
 
-            List<CSVRecord> whole = parseWhole(decoded, delimiter);
+            // 1) Caso padrão: mesmo delimitador no arquivo inteiro
+            List<CSVRecord> whole = parseWhole(decoded, headerDelim);
             if (whole != null && whole.size() >= 2) {
                 List<CSVRecord> dataRows = whole.subList(1, whole.size());
                 if (dataRows.stream().allMatch(row -> row.size() == width)) {
@@ -354,11 +357,26 @@ public class CsvExtractor implements TransactionExtractor {
                 }
             }
 
-            List<CSVRecord> rows = lines.subList(1, lines.size()).stream()
-                    .map(line -> parseSingleLine(line, delimiter))
-                    .toList(); // pode conter null — Stream.toList() aceita
-            if (rows.stream().anyMatch(row -> row != null && row.size() == width)) {
-                return new ParsedCsv(header, rows);
+            // 2) Linha a linha com o mesmo delimitador (isolando eventuais linhas ruins com aspas soltas)
+            List<CSVRecord> rowsSameDelim = lines.subList(1, lines.size()).stream()
+                    .map(line -> parseSingleLine(line, headerDelim))
+                    .toList();
+            if (rowsSameDelim.stream().anyMatch(row -> row != null && row.size() == width)) {
+                return new ParsedCsv(header, rowsSameDelim);
+            }
+
+            // 3) Delimitador misto: tolerância para arquivos em que o cabeçalho foi digitado ou exportado
+            // com delimitador diferente das linhas de dados (ex.: header "data;descricao;valor" e linhas com vírgula)
+            for (char dataDelim : candidateDelimiters) {
+                if (dataDelim == headerDelim) {
+                    continue;
+                }
+                List<CSVRecord> rowsAltDelim = lines.subList(1, lines.size()).stream()
+                        .map(line -> parseSingleLine(line, dataDelim))
+                        .toList();
+                if (rowsAltDelim.stream().anyMatch(row -> row != null && row.size() == width)) {
+                    return new ParsedCsv(header, rowsAltDelim);
+                }
             }
         }
         return null;

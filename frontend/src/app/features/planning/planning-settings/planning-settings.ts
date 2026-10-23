@@ -6,6 +6,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { finalize } from 'rxjs/operators';
 import { PlanningService } from '../planning.service';
+import { formInvalidSignal } from '../../../core/form.utils';
 
 @Component({
   selector: 'app-planning-settings',
@@ -32,7 +33,7 @@ import { PlanningService } from '../planning.service';
 
       <div style="margin-top:24px">
         <button mat-flat-button color="primary"
-                [disabled]="startDay.invalid || saving()"
+                [disabled]="isStartDayInvalid() || saving()"
                 (click)="save()">
           Salvar
         </button>
@@ -49,6 +50,7 @@ export class PlanningSettingsComponent implements OnInit {
     nonNullable: true,
     validators: [Validators.required, Validators.min(1), Validators.max(28)],
   });
+  readonly isStartDayInvalid = formInvalidSignal(this.startDay);
 
   ngOnInit(): void {
     this.planningService.getSettings().subscribe({

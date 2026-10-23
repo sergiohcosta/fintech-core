@@ -9,7 +9,16 @@
       Nova Conta
     </button>
   </header>
-
+  @if (accounts().length === 0) {
+    <div class="empty-state-card mat-elevation-z1">
+      <mat-icon class="empty-state-icon">account_balance_wallet</mat-icon>
+      <h3>Nenhuma conta cadastrada</h3>
+      <p>Cadastre suas contas correntes, cartões de crédito ou carteiras em dinheiro para acompanhar seu patrimônio e transações.</p>
+      <a mat-flat-button color="primary" routerLink="/accounts/new">
+        <mat-icon>add</mat-icon> Cadastrar Primeira Conta
+      </a>
+    </div>
+  } @else {
   <div class="table-container mat-elevation-z2">
     <table mat-table [dataSource]="accounts()">
 
@@ -91,4 +100,5 @@
       </tr>
     </table>
   </div>
+  }
 </div>

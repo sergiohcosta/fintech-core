@@ -68,6 +68,7 @@ describe('ImportComponent', () => {
   let router: Router;
 
   beforeEach(() => {
+    TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       imports: [ImportComponent, NoopAnimationsModule],
       providers: [
@@ -405,6 +406,7 @@ describe('ImportComponent — carregado por :id da rota', () => {
   let categories: CategoriesService;
 
   function configureWithRouteId(id: string): void {
+    TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       imports: [ImportComponent, NoopAnimationsModule],
       providers: [

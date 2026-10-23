@@ -5,6 +5,8 @@ import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Va
 import { MatBottomSheetRef } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { provideNativeDateAdapter } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -23,6 +25,7 @@ import { TransfersService } from '../../../core/api/transfers/transfers.service'
 import { ConfirmationDialogComponent, ConfirmationDialogData } from '../../../components/confirmation-dialog/confirmation-dialog';
 import { TransactionEventsService } from '../../../core/services/transaction-events';
 import { formatLocalDate } from '../transaction-form/transaction-form.utils';
+import { formInvalidSignal } from '../../../core/form.utils';
 
 type QuickEntryType = 'INCOME' | 'EXPENSE' | 'TRANSFER';
 
@@ -41,12 +44,14 @@ interface QuickEntryCategory {
     ReactiveFormsModule,
     MatButtonModule,
     MatButtonToggleModule,
+    MatDatepickerModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
     MatProgressSpinnerModule,
     MatSelectModule,
   ],
+  providers: [provideNativeDateAdapter()],
   templateUrl: './transaction-quick-sheet.html',
   styleUrl: './transaction-quick-sheet.scss',
 })
@@ -70,6 +75,7 @@ export class TransactionQuickSheetComponent {
   readonly form = this.fb.nonNullable.group({
     amount: [null as number | null, [Validators.required, Validators.min(0.01)]],
     type: ['EXPENSE' as QuickEntryType, Validators.required],
+    date: [new Date(), Validators.required],
     accountId: ['', Validators.required],
     destinationAccountId: [''],
     categoryId: ['', Validators.required],
@@ -79,7 +85,28 @@ export class TransactionQuickSheetComponent {
   readonly selectedType = toSignal(this.form.controls.type.valueChanges, {
     initialValue: this.form.controls.type.value,
   });
+  readonly selectedDate = toSignal(this.form.controls.date.valueChanges, {
+    initialValue: this.form.controls.date.value,
+  });
+  readonly isInvalid = formInvalidSignal(this.form);
   readonly isTransfer = computed(() => this.selectedType() === 'TRANSFER');
+  readonly isToday = computed(() => {
+    const d = this.selectedDate();
+    if (!d) return false;
+    const today = new Date();
+    return d.getFullYear() === today.getFullYear() &&
+      d.getMonth() === today.getMonth() &&
+      d.getDate() === today.getDate();
+  });
+  readonly isYesterday = computed(() => {
+    const d = this.selectedDate();
+    if (!d) return false;
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    return d.getFullYear() === yesterday.getFullYear() &&
+      d.getMonth() === yesterday.getMonth() &&
+      d.getDate() === yesterday.getDate();
+  });
   readonly isDragging = signal(false);
   readonly dragOffset = signal(0);
   readonly availableCategories = computed(() =>
@@ -90,6 +117,7 @@ export class TransactionQuickSheetComponent {
   private activePointerId: number | null = null;
 
   @ViewChild('amountInput') private amountInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('dateInput') private dateInput?: ElementRef<HTMLInputElement>;
   @ViewChild('accountSelect') private accountSelect?: MatSelect;
   @ViewChild('destinationAccountSelect') private destinationAccountSelect?: MatSelect;
   @ViewChild('categorySelect') private categorySelect?: MatSelect;
@@ -109,6 +137,18 @@ export class TransactionQuickSheetComponent {
     this.form.controls.type.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((type) => this.updateTypeFields(type));
+  }
+
+  setDateToday(): void {
+    this.form.controls.date.setValue(new Date());
+    this.form.controls.date.markAsDirty();
+  }
+
+  setDateYesterday(): void {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    this.form.controls.date.setValue(d);
+    this.form.controls.date.markAsDirty();
   }
 
   close(): void {
@@ -171,7 +211,7 @@ export class TransactionQuickSheetComponent {
     }
 
     const value = this.form.getRawValue();
-    const date = formatLocalDate(new Date());
+    const date = formatLocalDate(value.date);
     let request: Observable<unknown>;
     if (value.type === 'TRANSFER') {
       request = this.transferService.createTransfer({
@@ -231,6 +271,7 @@ export class TransactionQuickSheetComponent {
     }
     category.updateValueAndValidity({ emitEvent: false });
     destination.updateValueAndValidity({ emitEvent: false });
+    this.form.updateValueAndValidity();
   }
 
   private resetDrag(): void {
@@ -254,8 +295,8 @@ export class TransactionQuickSheetComponent {
     }
 
     const fields = this.isTransfer()
-      ? ['amount', 'type', 'accountId', 'destinationAccountId'] as const
-      : ['amount', 'type', 'accountId', 'categoryId'] as const;
+      ? ['amount', 'type', 'date', 'accountId', 'destinationAccountId'] as const
+      : ['amount', 'type', 'date', 'accountId', 'categoryId'] as const;
     const field = fields.find((name) => this.form.controls[name].invalid);
     if (field) this.focusField(field);
   }
@@ -264,6 +305,7 @@ export class TransactionQuickSheetComponent {
     switch (field) {
       case 'amount': this.amountInput?.nativeElement.focus(); break;
       case 'type': this.typeToggle?.nativeElement.querySelector('button')?.focus(); break;
+      case 'date': this.dateInput?.nativeElement.focus(); break;
       case 'accountId':
       case 'fromAccountId': this.accountSelect?.focus(); break;
       case 'destinationAccountId':
@@ -272,6 +314,20 @@ export class TransactionQuickSheetComponent {
       case 'description': this.descriptionInput?.nativeElement.focus(); break;
       default: break;
     }
+  }
+
+  getAccountIcon(type?: string): string {
+    const icons: Record<string, string> = {
+      CHECKING: 'account_balance_wallet',
+      CREDIT_CARD: 'credit_card',
+      INVESTMENT: 'savings',
+      CASH: 'payments',
+    };
+    return (type ? icons[type] : undefined) ?? 'account_balance';
+  }
+
+  getAccountName(id: string | null): string {
+    return this.accounts().find(a => a.id === id)?.name ?? '';
   }
 
   private validationField(error: unknown): string | null {

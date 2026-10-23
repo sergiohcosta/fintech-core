@@ -1,3 +1,5 @@
+@use '../../../../styles/breakpoints' as bp;
+
 .page-container {
   padding: 24px;
   max-width: 1200px;
@@ -6,8 +8,17 @@
 
 .page-header {
   margin-bottom: 24px;
-  h1 { margin: 0; }
-  .subtitle { margin: 4px 0 0; color: #666; font-size: 14px; }
+  h1 {
+    margin: 0;
+    font-size: 1.75rem;
+    font-weight: 500;
+    color: var(--mat-sys-on-surface);
+  }
+  .subtitle {
+    margin: 4px 0 0;
+    color: var(--mat-sys-on-surface-variant);
+    font-size: 14px;
+  }
 }
 
 .account-selector {
@@ -17,22 +28,34 @@
 }
 
 .table-container {
-  border-radius: 8px;
+  border-radius: 12px;
   overflow: hidden;
+  background: var(--app-card-bg, var(--mat-sys-surface));
+  border: 1px solid var(--app-card-border, var(--mat-sys-outline-variant));
 }
 
-table { width: 100%; }
+table {
+  width: 100%;
+}
 
 .empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 48px;
-  // Cor #999 -> #595959: contraste 2.8:1 -> 7:1 sobre branco.
-  // shortcut: quando o app ganhar um shared <empty-state> component, mover para lá.
-  color: #595959;
-  mat-icon { font-size: 48px; height: 48px; width: 48px; margin-bottom: 16px; }
-  p { margin: 0; font-size: 16px; }
+  color: var(--mat-sys-on-surface-variant);
+
+  mat-icon {
+    font-size: 48px;
+    height: 48px;
+    width: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+  }
+  p {
+    margin: 0;
+    font-size: 16px;
+  }
 }
 
 .status-chip {
@@ -40,7 +63,158 @@ table { width: 100%; }
   border-radius: 12px;
   font-size: 12px;
   font-weight: 500;
+  display: inline-block;
 }
-.status-open   { background: #e3f2fd; color: #1565c0; }
-.status-closed { background: #fff3e0; color: #e65100; }
-.status-paid   { background: #e8f5e9; color: #2e7d32; }
+
+.status-open {
+  background: var(--fintech-info-bg, rgba(2, 132, 199, 0.1));
+  color: var(--fintech-info, #0284c7);
+}
+
+.status-closed {
+  background: var(--fintech-pending-bg, rgba(217, 119, 6, 0.1));
+  color: var(--fintech-pending, #d97706);
+}
+
+.status-paid {
+  background: var(--fintech-income-bg, rgba(22, 163, 74, 0.1));
+  color: var(--fintech-income, #16a34a);
+}
+
+.empty-state-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 3rem 1.5rem;
+  background: var(--mat-sys-surface-container-low, var(--mat-sys-surface));
+  border-radius: 16px;
+  border: 1px dashed var(--mat-sys-outline-variant, rgba(0, 0, 0, 0.15));
+  margin-top: 1rem;
+
+  .empty-state-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    color: var(--mat-sys-primary);
+    margin-bottom: 1rem;
+    opacity: 0.8;
+  }
+
+  h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--mat-sys-on-surface);
+  }
+
+  p {
+    margin: 0 0 1.5rem;
+    color: var(--mat-sys-on-surface-variant);
+    font-size: 0.95rem;
+    max-width: 480px;
+    line-height: 1.5;
+  }
+}
+
+.empty-hint {
+  font-size: 0.85rem;
+  color: var(--mat-sys-on-surface-variant);
+  margin-top: 4px;
+}
+
+// Mobile Cards Container (Default hidden on desktop)
+.mobile-cards-container {
+  display: none;
+}
+
+// Card layout on mobile viewports
+.invoice-mobile-card {
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--app-card-bg, var(--mat-sys-surface));
+  border: 1px solid var(--app-card-border, var(--mat-sys-outline-variant));
+  box-shadow: var(--app-card-shadow);
+
+  .mobile-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+
+    .mobile-invoice-label {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--mat-sys-on-surface);
+    }
+  }
+
+  .mobile-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 14px;
+
+    .mobile-dates {
+      font-size: 0.825rem;
+      color: var(--mat-sys-on-surface-variant);
+      display: flex;
+      gap: 6px;
+      align-items: center;
+
+      .dot { opacity: 0.5; }
+    }
+
+    .mobile-values {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-top: 4px;
+
+      .mobile-count {
+        font-size: 0.825rem;
+        color: var(--mat-sys-on-surface-variant);
+      }
+
+      .mobile-total {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-variant-numeric: tabular-nums;
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: var(--mat-sys-on-surface);
+      }
+    }
+  }
+
+  .mobile-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid var(--mat-sys-outline-variant);
+
+    button, a {
+      font-size: 0.85rem;
+    }
+  }
+}
+
+@include bp.compact {
+  .page-container {
+    padding: 16px;
+  }
+
+  .account-selector {
+    width: 100%;
+  }
+
+  .desktop-table-container {
+    display: none;
+  }
+
+  .mobile-cards-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+}

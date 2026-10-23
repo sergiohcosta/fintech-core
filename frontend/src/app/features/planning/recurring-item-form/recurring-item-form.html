@@ -57,7 +57,7 @@
 
 <mat-dialog-actions align="end">
   <button mat-button (click)="onCancel()">Cancelar</button>
-  <button mat-flat-button color="primary" (click)="onSubmit()" [disabled]="form.invalid">
+  <button mat-flat-button color="primary" (click)="onSubmit()" [disabled]="isInvalid()">
     {{ existing ? 'Salvar' : 'Criar' }}
   </button>
 </mat-dialog-actions>

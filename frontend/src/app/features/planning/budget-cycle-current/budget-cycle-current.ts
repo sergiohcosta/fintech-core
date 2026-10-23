@@ -1,5 +1,5 @@
 import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
-import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
+import { CommonModule, CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
@@ -12,6 +12,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatDividerModule } from '@angular/material/divider';
 import { finalize } from 'rxjs/operators';
 
 import { PlanningService } from '../planning.service';
@@ -19,6 +23,7 @@ import { BudgetCycleResponse, BudgetCycleSummary, BudgetItemResponse, Recurrence
 import { RecurringItemFormComponent } from '../recurring-item-form/recurring-item-form';
 import { DEFAULT_SUMMARY, findDuplicateRecurring } from './budget-cycle.utils';
 import { BudgetItemFormComponent, BudgetItemFormResult } from '../budget-item-form/budget-item-form';
+import { BudgetCycleOpenDialogComponent } from '../budget-cycle-open-dialog/budget-cycle-open-dialog';
 import { LinkTransactionDialogComponent, LinkTransactionDialogData } from '../link-transaction-dialog/link-transaction-dialog';
 import { LinkBudgetItemDialogComponent, LinkBudgetItemDialogData } from '../link-budget-item-dialog/link-budget-item-dialog';
 import { ConfirmationDialogComponent, ConfirmationDialogData } from '../../../components/confirmation-dialog/confirmation-dialog';
@@ -34,6 +39,7 @@ import { buildBreakdown, BreakdownCard } from '../breakdown/budget-cycle-breakdo
     CommonModule, CurrencyPipe, DatePipe,
     MatButtonModule, MatCardModule, MatChipsModule, MatExpansionModule,
     MatIconModule, MatSnackBarModule, MatTableModule, MatTooltipModule,
+    MatProgressBarModule, MatMenuModule, MatProgressSpinnerModule, MatDividerModule,
   ],
   templateUrl: './budget-cycle-current.html',
   styleUrl: './budget-cycle-current.scss',
@@ -63,6 +69,65 @@ export class BudgetCycleCurrentComponent implements OnInit {
     ...(this.cycle()?.summary ?? {}),
   }));
   readonly unplannedItems = computed(() => this.cycle()?.unplannedTransactions ?? []);
+
+  readonly cycleDaysTotal = computed(() => {
+    const c = this.cycle();
+    if (!c?.startDate || !c?.endDate) return 30;
+    const start = new Date(c.startDate + 'T00:00:00');
+    const end = new Date(c.endDate + 'T00:00:00');
+    const diff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    return diff > 0 ? diff : 30;
+  });
+
+  readonly daysRemaining = computed(() => {
+    return this.summary().remainingDays ?? 0;
+  });
+
+  readonly daysElapsed = computed(() => {
+    const total = this.cycleDaysTotal();
+    const remaining = this.daysRemaining();
+    const elapsed = total - remaining;
+    return Math.max(0, Math.min(total, elapsed));
+  });
+
+  readonly timeProgress = computed(() => {
+    const total = this.cycleDaysTotal();
+    if (total <= 0) return 0;
+    return Math.min(100, Math.max(0, (this.daysElapsed() / total) * 100));
+  });
+
+  readonly incomeProgress = computed(() => {
+    const planned = this.summary().plannedIncome ?? 0;
+    const realized = this.summary().realizedIncome ?? 0;
+    if (planned <= 0) return realized > 0 ? 100 : 0;
+    return Math.min(100, (realized / planned) * 100);
+  });
+
+  readonly expenseProgress = computed(() => {
+    const planned = this.summary().plannedExpense ?? 0;
+    const realized = this.summary().realizedExpense ?? 0;
+    if (planned <= 0) return realized > 0 ? 100 : 0;
+    return Math.min(100, (realized / planned) * 100);
+  });
+
+  statusLabel(status?: string | null): string {
+    switch (status) {
+      case 'PENDING': return 'Aguardando';
+      case 'REALIZED': return 'Realizado';
+      case 'SKIPPED': return 'Ignorado';
+      case 'INSTALLMENT': return 'Parcela';
+      default: return status ?? 'Pendente';
+    }
+  }
+
+  statusClass(status?: string | null): string {
+    switch (status) {
+      case 'REALIZED': return 'status-realized';
+      case 'PENDING': return 'status-pending';
+      case 'SKIPPED': return 'status-skipped';
+      default: return '';
+    }
+  }
 
   constructor() {
     // O modal continua no desktop; em compact a mesma composição vira uma página navegável,
@@ -125,20 +190,14 @@ export class BudgetCycleCurrentComponent implements OnInit {
   }
 
   openCycle(): void {
-    const ref = this.dialog.open(BudgetItemFormComponent, {
-      width: '400px',
-      data: { mode: 'openCycle' },
+    const ref = this.dialog.open(BudgetCycleOpenDialogComponent, {
+      width: '640px',
+      maxWidth: '95vw',
     });
-    ref.afterClosed().subscribe((referenceMonth?: string) => {
-      if (!referenceMonth) return;
-      this.planningService.openCycle({ referenceMonth }).subscribe({
-        next: c => {
-          this.cycle.set(c);
-          this.items.set(c.items ?? []);
-          this.snackBar.open('Ciclo aberto com sucesso.', 'OK', { duration: 3000 });
-        },
-        error: () => this.snackBar.open('Erro ao abrir ciclo.', 'OK', { duration: 3000 }),
-      });
+    ref.afterClosed().subscribe((opened?: boolean) => {
+      if (opened) {
+        this.loadCurrentCycle();
+      }
     });
   }
 

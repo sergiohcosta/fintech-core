@@ -7,6 +7,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatInputModule } from '@angular/material/input';
+import { MatIconModule } from '@angular/material/icon';
 
 import { AccountsService } from '../../../core/api/accounts/accounts.service';
 import { AccountResponse, AccountType, InvoiceResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
@@ -27,9 +28,10 @@ interface DialogData {
   imports: [
     CommonModule, CurrencyPipe, FormsModule,
     MatDialogModule, MatSelectModule, MatFormFieldModule, MatButtonModule,
-    MatDatepickerModule, MatInputModule
+    MatDatepickerModule, MatInputModule, MatIconModule
   ],
-  templateUrl: './invoice-pay-dialog.html'
+  templateUrl: './invoice-pay-dialog.html',
+  styleUrls: ['./invoice-pay-dialog.scss']
 })
 export class InvoicePayDialogComponent implements OnInit {
   private dialogRef = inject(MatDialogRef<InvoicePayDialogComponent>);
@@ -50,6 +52,18 @@ export class InvoicePayDialogComponent implements OnInit {
   );
 
   hasNoEligibleAccounts = computed(() => this.eligibleAccounts().length === 0);
+
+  selectedAccount = computed(() => {
+    const id = this.selectedAccountId();
+    if (!id) return null;
+    return this.eligibleAccounts().find(a => a.id === id) ?? null;
+  });
+
+  balanceAfterPayment = computed(() => {
+    const acc = this.selectedAccount();
+    if (!acc) return null;
+    return acc.balance - this.invoice.totalAmount;
+  });
 
   get invoice(): InvoiceResponseDTO { return this.data.invoice; }
 

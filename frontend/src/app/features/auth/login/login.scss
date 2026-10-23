@@ -39,7 +39,7 @@
 }
 
 .error-message {
-    color: #d32f2f;
+    color: var(--mat-sys-error);
     font-size: 12px;
     margin-bottom: 10px;
     text-align: center;
@@ -54,10 +54,10 @@ mat-card-footer {
 // Versão/ambiente evidente no login (maior que a marca d'água global do canto).
 .app-version-line {
     margin-top: 4px;
-    font-family: "Roboto Mono", ui-monospace, monospace;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     font-size: 12px;
     letter-spacing: 0.3px;
-    color: rgba(0, 0, 0, 0.55);
+    color: var(--mat-sys-on-surface-variant);
 }
 
 @include bp.compact {

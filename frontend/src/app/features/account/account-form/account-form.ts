@@ -14,6 +14,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { AccountsService } from '../../../core/api/accounts/accounts.service';
 import { AccountCreateRequest, AccountUpdateRequest } from '../../../core/api/fintechSaaSAPI.schemas';
 import { IconPicker } from '../../../components/icon-picker/icon-picker';
+import { formInvalidSignal } from '../../../core/form.utils';
 
 @Component({
   selector: 'app-account-form',
@@ -66,6 +67,7 @@ export class AccountForm implements OnInit {
   // toSignal converte o Observable de mudanças do campo em um Signal — correto para Zoneless
   private typeValue = toSignal(this.form.get('type')!.valueChanges, { initialValue: 'CHECKING' });
   isCreditCard = computed(() => this.typeValue() === 'CREDIT_CARD');
+  readonly isInvalid = formInvalidSignal(this.form);
 
   ngOnInit(): void {
     // Em modo criação, ajusta countInLiquidBalance ao trocar o tipo.

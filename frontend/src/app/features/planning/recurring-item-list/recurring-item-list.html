@@ -15,7 +15,14 @@
   @if (loading()) {
     <p>Carregando...</p>
   } @else if (items().length === 0 && !showInactive()) {
-    <p>Nenhum template recorrente configurado.</p>
+    <div class="empty-state-card mat-elevation-z1">
+      <mat-icon class="empty-state-icon">autorenew</mat-icon>
+      <h3>Nenhuma recorrência cadastrada</h3>
+      <p>Configure despesas fixas (como aluguel e internet) ou receitas frequentes (como salário) para automatizar o planejamento.</p>
+      <button mat-flat-button color="primary" (click)="openForm()">
+        <mat-icon>add</mat-icon> Criar Primeira Recorrência
+      </button>
+    </div>
   } @else {
     @if (items().length > 0) {
       <table mat-table [dataSource]="items()" style="width:100%">

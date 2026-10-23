@@ -169,7 +169,31 @@ class ImportServiceTest {
     private NormalizedTransactionDTO lowAmountConfidence() {
         return new NormalizedTransactionDTO(
                 null,
-                Map.of("amount", fieldValue(1000.00, "0.80")),
+                Map.of("amount", fieldValue(1000.00, "0.80"),
+                        "transaction_date", fieldValue("2026-06-28", "1.0")),
+                null, null,
+                new BigDecimal("0.99"),
+                null, null);
+    }
+
+    /** overall e amount altos, mas transaction_date sem leitura (conf 0.00 &lt; 0.90) → exige revisão (#242). */
+    private NormalizedTransactionDTO lowDateConfidence() {
+        return new NormalizedTransactionDTO(
+                null,
+                Map.of("amount", fieldValue(100.00, "0.99"),
+                        "transaction_date", fieldValue("sem-data", "0.00")),
+                null, null,
+                new BigDecimal("0.99"),
+                null, null);
+    }
+
+    /** overall/amount/date altos, mas direction presente com conf 0.00 &lt; 0.70 → exige revisão (#242). */
+    private NormalizedTransactionDTO lowDirectionConfidence() {
+        return new NormalizedTransactionDTO(
+                null,
+                Map.of("amount", fieldValue(100.00, "0.99"),
+                        "transaction_date", fieldValue("2026-06-28", "1.0"),
+                        "direction", fieldValue("saída", "0.00")),
                 null, null,
                 new BigDecimal("0.99"),
                 null, null);
@@ -334,6 +358,29 @@ class ImportServiceTest {
         assertThat(requiresReviewOf(staged, "0.95")).isFalse();  // alta confiança → não revisa
         assertThat(requiresReviewOf(staged, "0.85")).isTrue();   // overall < 0.90 → revisa
         assertThat(requiresReviewOf(staged, "0.99")).isTrue();   // amount conf < 0.95 → revisa
+
+        ImportBatchResponseDTO dateCreated = importService.createBatch(batchOf(lowDateConfidence()), user);
+        assertThat(importService.listStaged(dateCreated.id(), user).get(0).requiresReview()).isTrue();
+
+        ImportBatchResponseDTO directionCreated = importService.createBatch(batchOf(lowDirectionConfidence()), user);
+        assertThat(importService.listStaged(directionCreated.id(), user).get(0).requiresReview()).isTrue();
+    }
+
+    /**
+     * #242 — data ou direção ilegível na visão (confiança 0.00) força requires_review mesmo com
+     * overall e amount altos, cobrindo o cenário real do VisionFieldNormalizer (#241).
+     */
+    @Test
+    void transacaoComDataOuDirecaoIlegivelNaVisaoExigeRevisaoMesmoComOverallAlto() {
+        Tenant tenant = persistTenant("Tenant Import Critical Fields");
+        User user = persistUser(tenant, "critical@import.test");
+
+        ImportBatchResponseDTO created = importService.createBatch(
+                batchOf(lowDateConfidence(), lowDirectionConfidence()), user);
+
+        List<StagedTransactionResponseDTO> staged = importService.listStaged(created.id(), user);
+        assertThat(staged).hasSize(2);
+        assertThat(staged).allSatisfy(s -> assertThat(s.requiresReview()).isTrue());
     }
 
     /** Alta confiança em tudo, mas o EXTRATOR manda requiresReview=true — mesma via do #194. */

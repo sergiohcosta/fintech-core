@@ -8,6 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { InvitationService } from '../../../core/services/invitation';
+import { formInvalidSignal } from '../../../core/form.utils';
 
 type DialogState = 'form' | 'submitting' | 'success';
 
@@ -38,6 +39,8 @@ export class InviteDialogComponent {
   form = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
   });
+
+  readonly isInvalid = formInvalidSignal(this.form);
 
   submit(): void {
     if (this.form.invalid) return;

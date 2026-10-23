@@ -1,13 +1,44 @@
-<mat-toolbar color="primary" class="toolbar">
-  <button mat-icon-button (click)="toggleSidenav()" aria-label="Abrir/fechar menu">
-    <mat-icon>menu</mat-icon>
+<mat-toolbar class="toolbar">
+  <button
+    mat-icon-button
+    type="button"
+    (click)="toggleSidenav()"
+    [attr.aria-label]="isCompact() ? 'Abrir menu de navegação' : (isPinned() ? 'Recolher menu lateral' : 'Expandir e fixar menu lateral')"
+    [matTooltip]="isCompact() ? 'Menu' : (isPinned() ? 'Recolher menu' : 'Fixar menu aberto')">
+    <mat-icon>{{ isCompact() ? 'menu' : (isPinned() ? 'menu_open' : 'menu') }}</mat-icon>
   </button>
-  <span class="toolbar-title">Nosso Dinheirinho</span>
+
+  <a routerLink="/dashboard" class="brand-group" aria-label="Ir para Dashboard">
+    <div class="brand-logo-mark">
+      <mat-icon>account_balance_wallet</mat-icon>
+    </div>
+    <span class="toolbar-title">Nosso Dinheirinho</span>
+  </a>
 
   <span class="spacer"></span>
 
-  <span class="user-name">{{ userName() }}</span>
-  <button mat-icon-button (click)="logout()" matTooltip="Sair" aria-label="Sair">
+  <button
+    mat-icon-button
+    type="button"
+    (click)="themeService.toggleTheme()"
+    [matTooltip]="themeService.isDark() ? 'Mudar para tema claro' : 'Mudar para tema escuro'"
+    [attr.aria-label]="themeService.isDark() ? 'Alternar para tema claro' : 'Alternar para tema escuro'"
+    class="theme-toggle-btn">
+    <mat-icon class="theme-icon">{{ themeService.isDark() ? 'light_mode' : 'dark_mode' }}</mat-icon>
+  </button>
+
+  <div class="user-profile-pill" [matTooltip]="'Logado como ' + userName()">
+    <div class="user-avatar" [attr.aria-label]="userName()">{{ userInitials() }}</div>
+    <span class="user-name">{{ userName() }}</span>
+  </div>
+
+  <button
+    mat-icon-button
+    type="button"
+    (click)="logout()"
+    matTooltip="Sair da conta"
+    aria-label="Sair da conta"
+    class="logout-btn">
     <mat-icon>logout</mat-icon>
   </button>
 </mat-toolbar>
@@ -17,16 +48,45 @@
     [mode]="sidenavMode()"
     [opened]="sidenavOpened() || sidenavOpen()"
     (openedChange)="sidenavOpen.set($event)"
-    class="sidenav">
+    class="sidenav"
+    [class.is-rail]="isRail()"
+    [class.is-pinned]="isPinned()">
+
+    @if (!isCompact()) {
+      <div class="sidenav-rail-header">
+        <span class="rail-header-title">Menu</span>
+        <button
+          mat-icon-button
+          type="button"
+          (click)="togglePin()"
+          [matTooltip]="isPinned() ? 'Desafixar menu (recolher)' : 'Fixar menu aberto'"
+          matTooltipPosition="right"
+          [attr.aria-label]="isPinned() ? 'Desafixar menu lateral' : 'Fixar menu lateral'">
+          <mat-icon class="pin-icon" [class.unpinned]="!isPinned()">push_pin</mat-icon>
+        </button>
+      </div>
+    }
+
     <mat-nav-list>
-      @for (item of navItems; track item.route) {
-        @if (!item.adminOnly || isAdmin()) {
-          <a mat-list-item
-             [routerLink]="item.route"
-             routerLinkActive="active-link">
-            <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
-            <span matListItemTitle>{{ item.label }}</span>
-          </a>
+      @for (section of navSections; track section.title; let first = $first) {
+        @if (!first) {
+          <mat-divider class="section-divider"></mat-divider>
+        }
+        @if (section.title) {
+          <div mat-subheader class="nav-subheader">{{ section.title }}</div>
+        }
+        @for (item of section.items; track item.route) {
+          @if (!item.adminOnly || isAdmin()) {
+            <a mat-list-item
+               [routerLink]="item.route"
+               routerLinkActive="active-link"
+               [matTooltip]="isRail() ? item.label : ''"
+               matTooltipPosition="right"
+               (click)="isCompact() && sidenavOpen.set(false)">
+              <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+              <span matListItemTitle>{{ item.label }}</span>
+            </a>
+          }
         }
       }
     </mat-nav-list>

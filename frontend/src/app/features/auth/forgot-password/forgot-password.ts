@@ -6,6 +6,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { AuthService } from '../../../core/services/auth';
+import { formInvalidSignal } from '../../../core/form.utils';
 
 @Component({
   selector: 'app-forgot-password',
@@ -33,6 +34,8 @@ export class ForgotPasswordComponent {
   form = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
   });
+
+  readonly isInvalid = formInvalidSignal(this.form);
 
   onSubmit(): void {
     if (this.form.invalid) return;

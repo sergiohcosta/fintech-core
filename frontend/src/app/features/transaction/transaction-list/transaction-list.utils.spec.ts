@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sortTransactions, applySort, getSortInfo, isGhost, exportToCsv, selectableRowId, planBulkDelete } from './transaction-list.utils';
+import { sortTransactions, applySort, getSortInfo, isGhost, exportToCsv, selectableRowId, planBulkDelete, buildDisplayRows, rowTrackKey } from './transaction-list.utils';
 import type { TransactionResponseDTO } from '../../../core/api/fintechSaaSAPI.schemas';
 import type { DisplayRow, InstallmentGroupInfo } from './transaction-list.utils';
 
@@ -297,5 +297,55 @@ describe('planBulkDelete', () => {
     const plan = planBulkDelete(rows, new Set(['ghost:r1:2026-08-01']));
     expect(plan.transactionIds).toEqual([]);
     expect(plan.transferIds).toEqual([]);
+  });
+});
+
+describe('buildDisplayRows - fantasmas (issue #142)', () => {
+  function ghost(overrides: Partial<TransactionResponseDTO> = {}): TransactionResponseDTO {
+    return tx({
+      id: null as unknown as string,
+      projected: true,
+      recurrenceRuleId: 'rule-1',
+      ...overrides,
+    } as Partial<TransactionResponseDTO>);
+  }
+
+  it('preserva múltiplas fantasmas com mesma data (não deduplica por id null)', () => {
+    const txs = [
+      ghost({ occurrenceDate: '2026-08-01' } as Partial<TransactionResponseDTO>),
+      ghost({ occurrenceDate: '2026-08-01', recurrenceRuleId: 'rule-2' } as Partial<TransactionResponseDTO>),
+      ghost({ occurrenceDate: '2026-08-01', recurrenceRuleId: 'rule-3' } as Partial<TransactionResponseDTO>),
+    ];
+    const rows = buildDisplayRows(txs, new Set());
+    expect(rows).toHaveLength(3);
+  });
+
+  it('preserva múltiplas fantasmas com datas diferentes', () => {
+    const txs = [
+      ghost({ occurrenceDate: '2026-08-01' } as Partial<TransactionResponseDTO>),
+      ghost({ occurrenceDate: '2026-09-01' } as Partial<TransactionResponseDTO>),
+    ];
+    const rows = buildDisplayRows(txs, new Set());
+    expect(rows).toHaveLength(2);
+  });
+
+  it('gera rowTrackKey distintas para fantasmas diferentes', () => {
+    const rowA: DisplayRow = { kind: 'single', data: ghost({ occurrenceDate: '2026-08-01' } as Partial<TransactionResponseDTO>) };
+    const rowB: DisplayRow = { kind: 'single', data: ghost({ occurrenceDate: '2026-09-01', recurrenceRuleId: 'rule-2' } as Partial<TransactionResponseDTO>) };
+    expect(rowTrackKey(rowA, 0)).not.toBe(rowTrackKey(rowB, 1));
+  });
+});
+
+describe('sortTransferPairsTogether (via buildDisplayRows) - pares de transferência', () => {
+  it('mantém pares de transferência agrupados e sem duplicação', () => {
+    const txs = [
+      tx({ id: 'leg-1', transferId: 'transfer-1', type: 'EXPENSE' }),
+      tx({ id: 'leg-2', transferId: 'transfer-1', type: 'INCOME' }),
+      tx({ id: 'other' }),
+    ];
+    const rows = buildDisplayRows(txs, new Set());
+    expect(rows).toHaveLength(3);
+    const ids = rows.map(r => (r as { data: TransactionResponseDTO }).data.id);
+    expect(ids.filter(id => id === 'leg-1' || id === 'leg-2')).toHaveLength(2);
   });
 });
